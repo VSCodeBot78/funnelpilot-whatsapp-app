@@ -4,12 +4,7 @@ import {
   buildSchedulingConfigPayloadFromCampaign,
   normalizeBookingProvider,
 } from "../utils/dashboardHelpers";
-
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export async function loadCampaignSchedulingConfigFromApi({
   apiBaseUrl,
@@ -23,7 +18,7 @@ export async function loadCampaignSchedulingConfigFromApi({
   const backendCampaignId = getBackendCampaignId(campaign.id);
 
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/scheduling-config/${backendCampaignId}`,
+    buildApiUrl(`/scheduling-config/${backendCampaignId}`, apiBaseUrl),
   );
 
   const data = await response.json();
@@ -61,7 +56,7 @@ export async function saveCampaignSchedulingConfigToApi({
   const payload = buildSchedulingConfigPayloadFromCampaign(campaign, settings);
 
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/scheduling-config/${backendCampaignId}`,
+    buildApiUrl(`/scheduling-config/${backendCampaignId}`, apiBaseUrl),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +74,7 @@ export async function saveCampaignSchedulingConfigToApi({
 }
 
 export async function loadCampaignsFromApi(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/campaigns`);
+  const response = await fetch(buildApiUrl("/campaigns", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok || !Array.isArray(data?.campaigns)) {
@@ -90,7 +85,7 @@ export async function loadCampaignsFromApi(apiBaseUrl) {
 }
 
 export async function createCampaignInApi(campaign, apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/campaigns`, {
+  const response = await fetch(buildApiUrl("/campaigns", apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(campaign),
@@ -110,7 +105,7 @@ export async function updateCampaignInApi(campaign, apiBaseUrl) {
     throw new Error("campaign_missing_id");
   }
 
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/campaigns/${encodeURIComponent(campaign.id)}`, {
+  const response = await fetch(buildApiUrl(`/campaigns/${encodeURIComponent(campaign.id)}`, apiBaseUrl), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(campaign),
@@ -130,7 +125,7 @@ export async function deleteCampaignInApi(campaignId, apiBaseUrl) {
     throw new Error("campaign_missing_id");
   }
 
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/campaigns/${encodeURIComponent(campaignId)}`, {
+  const response = await fetch(buildApiUrl(`/campaigns/${encodeURIComponent(campaignId)}`, apiBaseUrl), {
     method: "DELETE",
   });
 

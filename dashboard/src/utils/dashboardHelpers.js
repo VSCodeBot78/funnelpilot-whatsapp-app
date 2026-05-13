@@ -88,6 +88,149 @@ const CAMPAIGN_ID_ALIASES = {
   fit: "eltern-vital-fit",
 };
 
+export const DEFAULT_OFFER_CONTEXT = {
+  priceInquiryText:
+    "Die Preise hängen davon ab, welche Begleitung wirklich zu deiner Situation passt. Wenn du möchtest, schauen wir im Strategiegespräch kurz, was sinnvoll ist.",
+  infoLink1Enabled: true,
+  infoLink1Label: "Angebot ansehen",
+  infoLink1Url: "",
+  infoLink2Enabled: false,
+  infoLink2Label: "Video ansehen",
+  infoLink2Url: "",
+  internalNote: "",
+};
+
+export function getDefaultOfferContext() {
+  return { ...DEFAULT_OFFER_CONTEXT };
+}
+
+export function getNormalizedOfferContext(campaign = {}) {
+  const context = campaign?.offerContext || {};
+
+  return {
+    priceInquiryText:
+      typeof context.priceInquiryText === "string"
+        ? context.priceInquiryText
+        : DEFAULT_OFFER_CONTEXT.priceInquiryText,
+    infoLink1Enabled:
+      typeof context.infoLink1Enabled === "boolean"
+        ? context.infoLink1Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink1Enabled,
+    infoLink1Label:
+      typeof context.infoLink1Label === "string"
+        ? context.infoLink1Label
+        : DEFAULT_OFFER_CONTEXT.infoLink1Label,
+    infoLink1Url:
+      typeof context.infoLink1Url === "string"
+        ? context.infoLink1Url
+        : DEFAULT_OFFER_CONTEXT.infoLink1Url,
+    infoLink2Enabled:
+      typeof context.infoLink2Enabled === "boolean"
+        ? context.infoLink2Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink2Enabled,
+    infoLink2Label:
+      typeof context.infoLink2Label === "string"
+        ? context.infoLink2Label
+        : DEFAULT_OFFER_CONTEXT.infoLink2Label,
+    infoLink2Url:
+      typeof context.infoLink2Url === "string"
+        ? context.infoLink2Url
+        : DEFAULT_OFFER_CONTEXT.infoLink2Url,
+    internalNote:
+      typeof context.internalNote === "string"
+        ? context.internalNote
+        : DEFAULT_OFFER_CONTEXT.internalNote,
+  };
+}
+
+export const DEFAULT_UNKNOWN_ENTRY_FALLBACK_TEXT =
+  "Danke dir. Damit ich dich sauber einordne: Geht es bei dir gerade eher um Energie, Bauch, Schlaf/Stress oder Struktur?";
+
+export const DEFAULT_ENTRY_CONFIG = {
+  entryChannel: "meta_ctwa",
+  starterMode: "prefilled_message",
+  suggestedEntryMessage: "",
+  matchingMode: "hybrid",
+  exactTriggerRequired: false,
+  triggerFallbackEnabled: true,
+  ctwaAttributionEnabled: true,
+  metaAdId: "",
+  metaAdName: "",
+  metaCampaignId: "",
+  metaCampaignName: "",
+  unknownEntryFallbackText: DEFAULT_UNKNOWN_ENTRY_FALLBACK_TEXT,
+};
+
+function normalizeOptionValue(value, allowedValues, fallback) {
+  return allowedValues.includes(value) ? value : fallback;
+}
+
+export function getDefaultEntryConfig(trigger = "") {
+  return {
+    ...DEFAULT_ENTRY_CONFIG,
+    suggestedEntryMessage: typeof trigger === "string" ? trigger : "",
+  };
+}
+
+export function getNormalizedEntryConfig(campaign = {}) {
+  const config = campaign?.entryConfig || {};
+  const legacyTrigger = typeof campaign?.trigger === "string" ? campaign.trigger : "";
+
+  return {
+    entryChannel: normalizeOptionValue(
+      config.entryChannel,
+      ["meta_ctwa", "website_whatsapp_link", "qr_shortlink", "organic_dm", "manual"],
+      DEFAULT_ENTRY_CONFIG.entryChannel,
+    ),
+    starterMode: normalizeOptionValue(
+      config.starterMode,
+      ["prefilled_message", "start_conversation_prompt", "whatsapp_flow", "free_text"],
+      DEFAULT_ENTRY_CONFIG.starterMode,
+    ),
+    suggestedEntryMessage:
+      typeof config.suggestedEntryMessage === "string" &&
+      config.suggestedEntryMessage.trim()
+        ? config.suggestedEntryMessage
+        : legacyTrigger,
+    matchingMode: normalizeOptionValue(
+      config.matchingMode,
+      ["hybrid", "referral_only", "text_only", "fallback_only"],
+      DEFAULT_ENTRY_CONFIG.matchingMode,
+    ),
+    exactTriggerRequired:
+      typeof config.exactTriggerRequired === "boolean"
+        ? config.exactTriggerRequired
+        : DEFAULT_ENTRY_CONFIG.exactTriggerRequired,
+    triggerFallbackEnabled:
+      typeof config.triggerFallbackEnabled === "boolean"
+        ? config.triggerFallbackEnabled
+        : DEFAULT_ENTRY_CONFIG.triggerFallbackEnabled,
+    ctwaAttributionEnabled:
+      typeof config.ctwaAttributionEnabled === "boolean"
+        ? config.ctwaAttributionEnabled
+        : DEFAULT_ENTRY_CONFIG.ctwaAttributionEnabled,
+    metaAdId:
+      typeof config.metaAdId === "string" ? config.metaAdId : DEFAULT_ENTRY_CONFIG.metaAdId,
+    metaAdName:
+      typeof config.metaAdName === "string"
+        ? config.metaAdName
+        : DEFAULT_ENTRY_CONFIG.metaAdName,
+    metaCampaignId:
+      typeof config.metaCampaignId === "string"
+        ? config.metaCampaignId
+        : DEFAULT_ENTRY_CONFIG.metaCampaignId,
+    metaCampaignName:
+      typeof config.metaCampaignName === "string"
+        ? config.metaCampaignName
+        : DEFAULT_ENTRY_CONFIG.metaCampaignName,
+    unknownEntryFallbackText:
+      typeof config.unknownEntryFallbackText === "string" &&
+      config.unknownEntryFallbackText.trim()
+        ? config.unknownEntryFallbackText
+        : DEFAULT_ENTRY_CONFIG.unknownEntryFallbackText,
+  };
+}
+
 export function normalizeBookingProvider(value, fallback = "manual") {
   const raw = String(value || "").trim().toLowerCase();
   const aliased = BOOKING_PROVIDER_ALIASES[raw] || raw;

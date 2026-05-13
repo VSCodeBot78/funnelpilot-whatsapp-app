@@ -1,11 +1,7 @@
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export async function checkBackendHealth(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/health`, {
+  const response = await fetch(buildApiUrl("/health", apiBaseUrl), {
     cache: "no-store",
   });
 

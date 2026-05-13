@@ -278,12 +278,59 @@ export type CampaignTexts = {
   starterPurchaseSuccessReply: string;
 };
 
+export type CampaignOfferContext = {
+  priceInquiryText: string;
+  infoLink1Enabled: boolean;
+  infoLink1Label: string;
+  infoLink1Url: string;
+  infoLink2Enabled: boolean;
+  infoLink2Label: string;
+  infoLink2Url: string;
+  internalNote: string;
+};
+
+export type CampaignEntryChannel =
+  | "meta_ctwa"
+  | "website_whatsapp_link"
+  | "qr_shortlink"
+  | "organic_dm"
+  | "manual";
+
+export type CampaignStarterMode =
+  | "prefilled_message"
+  | "start_conversation_prompt"
+  | "whatsapp_flow"
+  | "free_text";
+
+export type CampaignEntryMatchingMode =
+  | "hybrid"
+  | "referral_only"
+  | "text_only"
+  | "fallback_only";
+
+export type CampaignEntryConfig = {
+  entryChannel: CampaignEntryChannel;
+  starterMode: CampaignStarterMode;
+  suggestedEntryMessage: string;
+  matchingMode: CampaignEntryMatchingMode;
+  exactTriggerRequired: boolean;
+  triggerFallbackEnabled: boolean;
+  ctwaAttributionEnabled: boolean;
+  metaAdId: string;
+  metaAdName: string;
+  metaCampaignId: string;
+  metaCampaignName: string;
+  unknownEntryFallbackText: string;
+};
+
 export type CampaignConfig = {
   id: string;
   name: string;
   triggerKeywords: string[];
   flow: FlowStepDefinition[];
   texts: CampaignTexts;
+  offerContext?: CampaignOfferContext;
+  entryConfig?: CampaignEntryConfig;
 };
 
 export type LeadIntent =

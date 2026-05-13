@@ -1,5 +1,7 @@
+import crypto from "node:crypto";
 import { Router } from "express";
 import { env } from "../config/env.js";
+import type { RawBodyRequest } from "../app.js";
 import {
   getMessageEventByMessageId,
   saveMessageEventLogEntry,
@@ -25,6 +27,27 @@ type MetaMessage = {
   text?: {
     body?: string;
   };
+  referral?: MetaReferral;
+  context?: {
+    referral?: MetaReferral;
+  };
+};
+
+type MetaReferral = {
+  source_url?: string;
+  source_type?: string;
+  source_id?: string;
+  headline?: string;
+  body?: string;
+  media_type?: string;
+  image_url?: string;
+  video_url?: string;
+  thumbnail_url?: string;
+  ctwa_clid?: string;
+  ad_id?: string;
+  ad_title?: string;
+  campaign_id?: string;
+  campaign_name?: string;
 };
 
 type MetaStatus = {
@@ -68,6 +91,50 @@ type WebhookOutboundStatus =
 
 function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function verifyMetaWebhookSignature(req: RawBodyRequest): {
+  ok: boolean;
+  statusCode: number;
+  error?: string;
+} {
+  if (!env.META_APP_SECRET) {
+    return {
+      ok: false,
+      statusCode: 500,
+      error: "META_APP_SECRET ist nicht gesetzt. Meta Webhook Signaturprüfung ist erforderlich.",
+    };
+  }
+
+  const signature = normalizeString(req.get("x-hub-signature-256"));
+  if (!signature.startsWith("sha256=")) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "X-Hub-Signature-256 fehlt oder ist ungültig.",
+    };
+  }
+
+  const expected = `sha256=${crypto
+    .createHmac("sha256", env.META_APP_SECRET)
+    .update(req.rawBody ?? Buffer.alloc(0))
+    .digest("hex")}`;
+
+  const signatureBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expected, "utf8");
+
+  if (
+    signatureBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  ) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Meta Webhook Signaturprüfung fehlgeschlagen.",
+    };
+  }
+
+  return { ok: true, statusCode: 200 };
 }
 
 function nowIso(): string {
@@ -123,12 +190,46 @@ function buildMessageRawPreview(
   contactName: string,
 ): Record<string, unknown> {
   const textBody = normalizeString(message.text?.body);
+  const ctwaAttribution = buildCtwaAttributionPreview(message);
 
   return {
     timestamp: normalizeString(message.timestamp),
     contactName: contactName || undefined,
     textPreview: textBody ? textBody.slice(0, 160) : undefined,
+    ctwaAttribution,
   };
+}
+
+function buildCtwaAttributionPreview(
+  message: MetaMessage,
+): Record<string, string> | undefined {
+  const referral = message.referral ?? message.context?.referral;
+
+  if (!referral) {
+    return undefined;
+  }
+
+  const attribution = {
+    sourceType: normalizeString(referral.source_type),
+    sourceId: normalizeString(referral.source_id),
+    sourceUrl: normalizeString(referral.source_url),
+    ctwaClid: normalizeString(referral.ctwa_clid),
+    adId: normalizeString(referral.ad_id),
+    adTitle: normalizeString(referral.ad_title),
+    campaignId: normalizeString(referral.campaign_id),
+    campaignName: normalizeString(referral.campaign_name),
+    headline: normalizeString(referral.headline),
+    body: normalizeString(referral.body),
+    mediaType: normalizeString(referral.media_type),
+  };
+
+  const compactAttribution = Object.fromEntries(
+    Object.entries(attribution).filter(([, value]) => Boolean(value)),
+  );
+
+  return Object.keys(compactAttribution).length > 0
+    ? compactAttribution
+    : undefined;
 }
 
 function buildBotReplyPreview(value: unknown): string | undefined {
@@ -258,7 +359,14 @@ router.get("/", (req, res) => {
   });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req: RawBodyRequest, res) => {
+  const signatureCheck = verifyMetaWebhookSignature(req);
+  if (!signatureCheck.ok) {
+    return res
+      .status(signatureCheck.statusCode)
+      .json({ ok: false, error: signatureCheck.error });
+  }
+
   const payload = (req.body ?? {}) as MetaWebhookPayload;
   const entries = Array.isArray(payload.entry) ? payload.entry : [];
 

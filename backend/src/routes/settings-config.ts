@@ -5,6 +5,7 @@ import {
   resetSettings,
   type SettingsConfig,
 } from "../services/settings-store.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 
@@ -32,6 +33,8 @@ router.get("/settings-config", (_req: Request, res: Response) => {
     return res.json({
       ok: true,
       settings,
+      openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
+      openAiModelConfigured: Boolean(settings.aiModel?.trim()),
     });
   } catch (error) {
     console.error("settings GET error:", error);
@@ -62,6 +65,8 @@ router.post("/settings-config", (req: Request, res: Response) => {
     return res.json({
       ok: true,
       settings: nextSettings,
+      openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
+      openAiModelConfigured: Boolean(nextSettings.aiModel?.trim()),
     });
   } catch (error) {
     console.error("settings POST error:", error);
@@ -80,6 +85,8 @@ router.post("/settings-config/reset", (_req: Request, res: Response) => {
     return res.json({
       ok: true,
       settings: reset,
+      openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
+      openAiModelConfigured: Boolean(reset.aiModel?.trim()),
     });
   } catch (error) {
     console.error("settings RESET error:", error);

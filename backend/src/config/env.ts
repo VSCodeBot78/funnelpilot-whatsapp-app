@@ -86,10 +86,14 @@ export const env = {
   CALENDLY_WEBHOOK_SECRET: getCalendlyWebhookSecret(),
   CALENDLY_WEBHOOK_VERIFY_MODE: getCalendlyWebhookVerifyMode(),
   META_VERIFY_TOKEN: getOptionalEnv("META_VERIFY_TOKEN"),
-  META_ACCESS_TOKEN: getOptionalEnv("META_ACCESS_TOKEN"),
+  META_ACCESS_TOKEN:
+    getOptionalEnv("META_ACCESS_TOKEN") || getOptionalEnv("WHATSAPP_ACCESS_TOKEN"),
   META_PHONE_NUMBER_ID: getOptionalEnv("META_PHONE_NUMBER_ID"),
   META_WABA_ID: getOptionalEnv("META_WABA_ID"),
   META_GRAPH_API_VERSION: getMetaGraphApiVersion(),
   META_APP_SECRET: getOptionalEnv("META_APP_SECRET"),
   WHATSAPP_SEND_ENABLED: getWhatsappSendEnabled(),
+  ENABLE_GENERIC_WEBHOOKS: getBooleanEnv("ENABLE_GENERIC_WEBHOOKS"),
+  OPENAI_MODEL: getOptionalEnv("OPENAI_MODEL"),
+  OPENAI_API_KEY_CONFIGURED: Boolean(getOptionalEnv("OPENAI_API_KEY")),
 };

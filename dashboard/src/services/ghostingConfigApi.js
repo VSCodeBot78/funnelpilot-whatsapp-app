@@ -1,8 +1,4 @@
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 function normalizeGhostingConfig(config) {
   return {
@@ -15,7 +11,7 @@ function normalizeGhostingConfig(config) {
 }
 
 export async function loadGhostingConfigFromApi(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/ghosting-config`);
+  const response = await fetch(buildApiUrl("/ghosting-config", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok || !data?.config) {
@@ -29,7 +25,7 @@ export async function saveGhostingConfigToApi({ apiBaseUrl, config }) {
   const safeConfig = normalizeGhostingConfig(config);
 
   const schedulesResponse = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting-config/schedules`,
+    buildApiUrl("/ghosting-config/schedules", apiBaseUrl),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -46,7 +42,7 @@ export async function saveGhostingConfigToApi({ apiBaseUrl, config }) {
   }
 
   const messagesResponse = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting-config/messages`,
+    buildApiUrl("/ghosting-config/messages", apiBaseUrl),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -69,7 +65,7 @@ export async function saveGhostingConfigToApi({ apiBaseUrl, config }) {
 
 export async function resetGhostingConfigInApi(apiBaseUrl) {
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting-config/reset`,
+    buildApiUrl("/ghosting-config/reset", apiBaseUrl),
     {
       method: "POST",
     },

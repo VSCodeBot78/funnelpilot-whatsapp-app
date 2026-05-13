@@ -1,8 +1,4 @@
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export function buildExpectedSeedLeadId(name) {
   const clean = String(name || "")
@@ -156,7 +152,7 @@ export function mapConversationMessagesToInbox(messages = []) {
 }
 
 export async function loadConversationSummaries(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/conversations`);
+  const response = await fetch(buildApiUrl("/conversations", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok) {
@@ -172,7 +168,7 @@ export async function loadConversationStateDetail({
   leadId,
 }) {
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/conversations/${campaignId}/${leadId}`,
+    buildApiUrl(`/conversations/${campaignId}/${leadId}`, apiBaseUrl),
   );
 
   const data = await response.json();
@@ -269,7 +265,7 @@ export async function ensureConversationStateInApi(
     },
   };
 
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/conversations/ensure`, {
+  const response = await fetch(buildApiUrl("/conversations/ensure", apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

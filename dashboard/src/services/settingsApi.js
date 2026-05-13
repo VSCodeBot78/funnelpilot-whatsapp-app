@@ -1,25 +1,32 @@
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export async function loadSettingsConfig(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/settings-config`);
+  const response = await fetch(buildApiUrl("/settings-config", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok || !data?.settings) {
     throw new Error(data?.error || "settings_config_load_failed");
   }
 
-  return data.settings;
+  return {
+    ...data.settings,
+    openAiApiKeyConfigured: Boolean(data.openAiApiKeyConfigured),
+    openAiModelConfigured: Boolean(data.openAiModelConfigured),
+  };
 }
 
 export async function saveSettings(settings) {
-  const response = await fetch(`${getApiBaseUrl(settings.apiBaseUrl)}/settings-config`, {
+  const {
+    openAiApiKeyConfigured,
+    openAiModelConfigured,
+    aiBotSettingsConfigured,
+    ...persistableSettings
+  } = settings || {};
+
+  const response = await fetch(buildApiUrl("/settings-config", persistableSettings.apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(settings),
+    body: JSON.stringify(persistableSettings),
   });
 
   const data = await response.json();
@@ -28,11 +35,15 @@ export async function saveSettings(settings) {
     throw new Error(data?.error || "settings_save_failed");
   }
 
-  return data.settings;
+  return {
+    ...data.settings,
+    openAiApiKeyConfigured: Boolean(data.openAiApiKeyConfigured),
+    openAiModelConfigured: Boolean(data.openAiModelConfigured),
+  };
 }
 
 export async function resetSettings(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/settings-config/reset`, {
+  const response = await fetch(buildApiUrl("/settings-config/reset", apiBaseUrl), {
     method: "POST",
   });
 
@@ -42,5 +53,9 @@ export async function resetSettings(apiBaseUrl) {
     throw new Error(data?.error || "settings_reset_failed");
   }
 
-  return data.settings;
+  return {
+    ...data.settings,
+    openAiApiKeyConfigured: Boolean(data.openAiApiKeyConfigured),
+    openAiModelConfigured: Boolean(data.openAiModelConfigured),
+  };
 }

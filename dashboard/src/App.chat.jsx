@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { buildApiUrl } from "./services/apiBase";
 
 function makeTestLeadId() {
   const rand = Math.floor(100000 + Math.random() * 900000);
@@ -82,8 +83,6 @@ export default function ChatTest() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const backendMessageUrl = "http://localhost:3001/test-chat/message";
-  const backendStateBaseUrl = "http://localhost:3001/test-chat/state";
   const campaignId = "eltern-vital-fit";
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
@@ -104,7 +103,7 @@ export default function ChatTest() {
     setLoading(true);
 
     try {
-      const res = await fetch(backendMessageUrl, {
+      const res = await fetch(buildApiUrl("/test-chat/message"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -165,7 +164,7 @@ export default function ChatTest() {
     setRefreshing(true);
 
     try {
-      const res = await fetch(`${backendStateBaseUrl}/${campaignId}/${leadId}`);
+      const res = await fetch(buildApiUrl(`/test-chat/state/${campaignId}/${leadId}`));
       const contentType = res.headers.get("content-type") || "";
       let data;
 

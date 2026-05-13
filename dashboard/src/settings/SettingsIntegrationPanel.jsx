@@ -2,6 +2,7 @@ import React from "react";
 import { inputStyle } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
 import InfoHint from "../components/layout/common/InfoHint";
+import { getApiBaseUrl } from "../services/apiBase";
 
 export default function SettingsIntegrationPanel({
   colors,
@@ -32,7 +33,7 @@ export default function SettingsIntegrationPanel({
     ...settings,
   };
 
-  const apiBase = (safeSettings.apiBaseUrl || "http://localhost:3001").replace(/\/+$/, "");
+  const apiBase = getApiBaseUrl(safeSettings.apiBaseUrl);
   const providerWebhookRoute = `${apiBase}/booking-events/provider`;
   const calendlyWebhookUrl = `${apiBase}/booking-events/calendly`;
   const webhookSecretStatus = safeSettings.webhookVerifyToken ? "gesetzt" : "nicht gesetzt";

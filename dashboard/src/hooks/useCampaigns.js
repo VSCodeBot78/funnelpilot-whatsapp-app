@@ -3,6 +3,10 @@ import {
   makeId,
   getDefaultBookingConfig,
   getNormalizedBookingConfig,
+  getDefaultOfferContext,
+  getNormalizedOfferContext,
+  getDefaultEntryConfig,
+  getNormalizedEntryConfig,
 } from "../utils/dashboardHelpers";
 import {
   loadCampaignSchedulingConfigFromApi,
@@ -22,6 +26,10 @@ export function createInitialCampaigns(settings) {
         "Hi Jochen, ich habe deine Anzeige gesehen und interessiere mich für die ELTERN VITAL METHODE. Kannst du mir mehr Infos schicken?",
       askNameFirst: true,
       useGlobalBookingDefaults: false,
+      offerContext: getDefaultOfferContext(),
+      entryConfig: getDefaultEntryConfig(
+        "Hi Jochen, ich habe deine Anzeige gesehen und interessiere mich fÃ¼r die ELTERN VITAL METHODE. Kannst du mir mehr Infos schicken?",
+      ),
       slot1: "Montag 19:00",
       slot2: "Montag 19:45",
       booking: {
@@ -73,6 +81,8 @@ Letzte Erinnerung von mir.`,
       trigger: "DUMMY TEST",
       askNameFirst: true,
       useGlobalBookingDefaults: false,
+      offerContext: getDefaultOfferContext(),
+      entryConfig: getDefaultEntryConfig("DUMMY TEST"),
       slot1: "Mittwoch 12:00",
       slot2: "Donnerstag 18:30",
       booking: {
@@ -122,6 +132,8 @@ const emptyCampaignForm = {
   trigger: "",
   askNameFirst: true,
   useGlobalBookingDefaults: false,
+  offerContext: getDefaultOfferContext(),
+  entryConfig: getDefaultEntryConfig(),
   slot1: "",
   slot2: "",
   booking: getDefaultBookingConfig({}),
@@ -159,6 +171,8 @@ export function useCampaigns({
       const nextCampaignForm = {
         ...campaign,
         useGlobalBookingDefaults: campaign.useGlobalBookingDefaults === true,
+        offerContext: getNormalizedOfferContext(campaign),
+        entryConfig: getNormalizedEntryConfig(campaign),
         booking: getNormalizedBookingConfig(campaign, settings),
       };
 
@@ -208,11 +222,19 @@ export function useCampaigns({
 
         const loadedCampaigns = await loadCampaignsFromApi(settings.apiBaseUrl);
         if (Array.isArray(loadedCampaigns) && loadedCampaigns.length) {
-          setCampaigns(loadedCampaigns);
-          setBackendCampaignIds(new Set(loadedCampaigns.map((campaign) => campaign.id)));
+          const normalizedCampaigns = loadedCampaigns.map((campaign) => ({
+            ...campaign,
+            offerContext: getNormalizedOfferContext(campaign),
+            entryConfig: getNormalizedEntryConfig(campaign),
+          }));
 
-          if (!loadedCampaigns.some((campaign) => campaign.id === activeCampaignId)) {
-            setActiveCampaignId(loadedCampaigns[0].id);
+          setCampaigns(normalizedCampaigns);
+          setBackendCampaignIds(
+            new Set(normalizedCampaigns.map((campaign) => campaign.id)),
+          );
+
+          if (!normalizedCampaigns.some((campaign) => campaign.id === activeCampaignId)) {
+            setActiveCampaignId(normalizedCampaigns[0].id);
           }
         }
       } catch (error) {
@@ -247,6 +269,8 @@ export function useCampaigns({
       slot1: "",
       slot2: "",
       booking: getDefaultBookingConfig(settings),
+      offerContext: getDefaultOfferContext(),
+      entryConfig: getDefaultEntryConfig("NEU"),
       useGlobalBookingDefaults: false,
       welcome: "Willkommenstext",
       q1: "Frage 1",
@@ -291,6 +315,11 @@ export function useCampaigns({
         useGlobalBookingDefaults: campaignForm.useGlobalBookingDefaults === true,
         name: cleanName || "Neue Kampagne",
         trigger: cleanTrigger || "NEU",
+        offerContext: getNormalizedOfferContext(campaignForm),
+        entryConfig: getNormalizedEntryConfig({
+          ...campaignForm,
+          trigger: cleanTrigger || "NEU",
+        }),
         booking: getNormalizedBookingConfig(campaignForm, settings),
       };
 

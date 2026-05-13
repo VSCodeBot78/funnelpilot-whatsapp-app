@@ -2,12 +2,7 @@ import {
   mapAvailabilityConfigToForm,
   parseWeeklySlotsTextMap,
 } from "../utils/dashboardHelpers";
-
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 function buildAvailabilityPayload(form) {
   return {
@@ -18,7 +13,7 @@ function buildAvailabilityPayload(form) {
 }
 
 export async function loadAvailabilityConfigFromApi(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/availability-config`);
+  const response = await fetch(buildApiUrl("/availability-config", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok || !data?.config) {
@@ -31,7 +26,7 @@ export async function loadAvailabilityConfigFromApi(apiBaseUrl) {
 export async function saveAvailabilityConfigToApi({ apiBaseUrl, form }) {
   const payload = buildAvailabilityPayload(form);
 
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/availability-config`, {
+  const response = await fetch(buildApiUrl("/availability-config", apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -48,7 +43,7 @@ export async function saveAvailabilityConfigToApi({ apiBaseUrl, form }) {
 
 export async function resetAvailabilityConfigInApi(apiBaseUrl) {
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/availability-config/reset`,
+    buildApiUrl("/availability-config/reset", apiBaseUrl),
     {
       method: "POST",
     },

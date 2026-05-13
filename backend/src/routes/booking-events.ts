@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { Router, type Request } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
+import type { RawBodyRequest } from "../app.js";
 import { getAllLeads, getLeadById, saveLead } from "../data/leads.store.js";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { getAllBookingEvents, getBookingEventByIdempotencyKey, saveBookingEventLogEntry } from "../data/booking-events.store.js";
@@ -18,6 +19,24 @@ const ALLOWED_PROVIDER_NAMES = new Set([
   "zoom",
   "meet",
 ]);
+
+function providerWebhookGuard(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (env.NODE_ENV === "production" && !env.ENABLE_GENERIC_WEBHOOKS) {
+    res.status(404).json({
+      ok: false,
+      error: "provider_webhook_disabled",
+      message:
+        "Generische Provider-Webhooks sind in production standardmäßig deaktiviert. Calendly bleibt unter /booking-events/calendly separat.",
+    });
+    return;
+  }
+
+  next();
+}
 
 function normalizeString(value: unknown): string {
   return String(value ?? "").trim();
@@ -41,6 +60,11 @@ function extractString(value: unknown): string {
 }
 
 function getRawWebhookPayload(req: Request): string {
+  const rawBody = (req as RawBodyRequest).rawBody;
+  if (rawBody) {
+    return rawBody.toString("utf8");
+  }
+
   if (typeof req.body === "string") {
     return req.body;
   }
@@ -685,7 +709,7 @@ function buildProviderBookingCanceledState(
   };
 }
 
-router.post("/provider", (req, res) => {
+router.post("/provider", providerWebhookGuard, (req, res) => {
   try {
     const result = createBookingEventInput(req.body ?? {});
     const execution = processBookingEventWithLogging(req.body ?? {}, result);

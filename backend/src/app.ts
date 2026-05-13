@@ -20,6 +20,10 @@ import { readSettings } from "./services/settings-store.js";
 
 const app = express();
 
+export type RawBodyRequest = Request & {
+  rawBody?: Buffer;
+};
+
 const LOCAL_DEV_CORS_ORIGINS = new Set([
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -94,6 +98,21 @@ function isConfiguredLegalUrl(value: unknown): boolean {
   return url.startsWith("http://") || url.startsWith("https://");
 }
 
+function areAiBotSettingsConfigured(settings: ReturnType<typeof readSettings>): boolean {
+  return Boolean(
+    settings.assistantName?.trim() &&
+      settings.defaultLanguage?.trim() &&
+      settings.defaultBotTone?.trim() &&
+      settings.brandVoice?.trim() &&
+      settings.answerLength?.trim() &&
+      settings.escalationHint?.trim() &&
+      settings.noGos?.trim() &&
+      settings.fallbackReply?.trim() &&
+      settings.aiProvider?.trim() &&
+      settings.aiModel?.trim(),
+  );
+}
+
 function destructiveRouteGuard(
   req: Request,
   res: Response,
@@ -119,7 +138,13 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+app.use(
+  express.json({
+    verify(req: RawBodyRequest, _res, buf) {
+      req.rawBody = Buffer.from(buf);
+    },
+  }),
+);
 app.use(destructiveRouteGuard);
 
 app.use(settingsConfigRoute);
@@ -160,11 +185,16 @@ app.get("/health/readiness", (_req, res) => {
     privacyPolicyUrlConfigured,
     imprintUrlConfigured,
     legalLinksReady: privacyPolicyUrlConfigured && imprintUrlConfigured,
+    aiBotSettingsConfigured: areAiBotSettingsConfigured(settings),
+    openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
+    openAiModelConfigured: Boolean(settings.aiModel?.trim()),
     timestamp: new Date().toISOString(),
   });
 });
 
 app.use("/test-chat", testChatRouter);
+// Public in production via NGINX: /webhooks/meta/whatsapp and, if used, /booking-events/calendly.
+// Dashboard and admin routes should be protected at the NGINX layer, not with Express Basic Auth.
 app.use("/webhook", webhookRouter);
 app.use("/scheduling", schedulingRouter);
 app.use("/scheduling-config", schedulingConfigRouter);

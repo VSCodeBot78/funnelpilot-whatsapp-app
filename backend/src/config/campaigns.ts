@@ -83,6 +83,32 @@ export const campaigns: Record<string, CampaignConfig> = {
         type: "message",
       },
     ],
+    offerContext: {
+      priceInquiryText:
+        "Die Preise hängen davon ab, welche Begleitung wirklich zu deiner Situation passt. Wenn du möchtest, schauen wir im Strategiegespräch kurz, was sinnvoll ist.",
+      infoLink1Enabled: true,
+      infoLink1Label: "Angebot ansehen",
+      infoLink1Url: "",
+      infoLink2Enabled: false,
+      infoLink2Label: "Video ansehen",
+      infoLink2Url: "",
+      internalNote: "",
+    },
+    entryConfig: {
+      entryChannel: "meta_ctwa",
+      starterMode: "prefilled_message",
+      suggestedEntryMessage: "FIT",
+      matchingMode: "hybrid",
+      exactTriggerRequired: false,
+      triggerFallbackEnabled: true,
+      ctwaAttributionEnabled: true,
+      metaAdId: "",
+      metaAdName: "",
+      metaCampaignId: "",
+      metaCampaignName: "",
+      unknownEntryFallbackText:
+        "Danke dir. Damit ich dich sauber einordne: Geht es bei dir gerade eher um Energie, Bauch, Schlaf/Stress oder Struktur?",
+    },
     texts: {
       introTemplate:
         "Freut mich [Name]\nBevor ich dir einfach irgendwas schicke,\nlass uns kurz schauen, ob das überhaupt zu deiner Situation passt.\nIch stelle dir dazu kurz ein paar schnelle Fragen, ok?",

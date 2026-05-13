@@ -1,10 +1,5 @@
 import { getDefaultBookingData } from "../utils/dashboardHelpers";
-
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export function normalizeLeadFromBackend(lead) {
   const bookingData = lead.bookingData
@@ -94,7 +89,7 @@ export function buildLeadPayload(contact) {
 }
 
 export async function loadLeadsFromApi(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/leads`);
+  const response = await fetch(buildApiUrl("/leads", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok || !Array.isArray(data?.leads)) {
@@ -107,7 +102,7 @@ export async function loadLeadsFromApi(apiBaseUrl) {
 export async function createLeadInApi(contact, apiBaseUrl) {
   const payload = buildLeadPayload(contact);
 
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/leads`, {
+  const response = await fetch(buildApiUrl("/leads", apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -126,7 +121,7 @@ export async function updateLeadInApi(contact, apiBaseUrl) {
   const payload = buildLeadPayload(contact);
 
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/leads/${String(contact.id)}`,
+    buildApiUrl(`/leads/${String(contact.id)}`, apiBaseUrl),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -145,7 +140,7 @@ export async function updateLeadInApi(contact, apiBaseUrl) {
 
 export async function deleteLeadInApi(leadId, apiBaseUrl) {
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/leads/${String(leadId)}`,
+    buildApiUrl(`/leads/${String(leadId)}`, apiBaseUrl),
     {
       method: "DELETE",
     },

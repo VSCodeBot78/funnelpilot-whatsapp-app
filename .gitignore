@@ -29,7 +29,9 @@ dashboard/.env.production
 
 # Runtime data / local persistence
 backend/data/
-data/
+/data/
+runtime-data/
+backups/
 
 # Build output
 dist/

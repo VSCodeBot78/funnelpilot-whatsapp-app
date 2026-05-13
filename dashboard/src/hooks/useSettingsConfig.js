@@ -22,19 +22,42 @@ function getUserInitial(name) {
   return clean.charAt(0).toUpperCase();
 }
 
+const defaultNoGos = [
+  "- kein Druckverkauf",
+  "- keine Diagnose",
+  "- keine medizinischen Versprechen",
+  "- keine Heilversprechen",
+  "- keine unrealistischen Ergebnisse versprechen",
+  "- keine aggressiven Closing-Techniken",
+].join("\n");
+
 export const defaultSettings = {
   productName: "Funnel Pilot",
   adminName: "Jochen Kammerer",
   adminRole: "Admin",
   defaultTheme: "dark",
-  brandHint: "Funnel Pilot / White Label später",
+  brandHint: "Funnel Pilot / White Label sp\u00e4ter",
   topbarSubtitle: "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
   footerText: "copyright Jochen Kammerer",
   aiEnabled: false,
   testMode: true,
-  aiProvider: "openai",
-  aiModel: "gpt-5.4-thinking",
-  aiFallback: "Wenn die KI ausfällt, übernimmt der Regel-Flow ohne Eskalation.",
+  aiProvider: "OpenAI",
+  aiModel: "gpt-4.1-mini",
+  aiFallback: "Wenn die KI ausf\u00e4llt, \u00fcbernimmt der Regel-Flow ohne Eskalation.",
+  assistantName: "Pete",
+  assistantRole: "",
+  defaultBotTone: "ruhig",
+  defaultLanguage: "Deutsch",
+  brandVoice: "Jochen-Sprache",
+  answerLength: "kurz",
+  fallbackReply:
+    "Da m\u00f6chte ich nichts Falsches sagen. Ich gebe das lieber an Jochen weiter, damit du eine saubere Antwort bekommst.",
+  qualificationPrompt: "",
+  escalationHint:
+    "Wenn der Lead medizinische Beschwerden schildert, rechtliche Fragen stellt, aggressiv wird, konkrete Preise verhandeln will oder deutlich zeigt, dass ein Mensch \u00fcbernehmen sollte.",
+  noGos: defaultNoGos,
+  openAiApiKeyConfigured: false,
+  openAiModelConfigured: true,
   defaultBookingUrl:
     "https://calendly.com/eltern-fitundvital/strategiegespraech",
   onboardingBookingUrl:
@@ -43,13 +66,13 @@ export const defaultSettings = {
     "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
   maxSuggestions: "2",
   bookingPrompt:
-    "Ein kurzer Austausch ist hier am sinnvollsten.\nWann passt es dir eher?\na) unter der Woche abends\nb) Freitag oder Samstag tagsüber\nc) ich bin flexibel",
-  apiBaseUrl: "http://localhost:3001",
+    "Ein kurzer Austausch ist hier am sinnvollsten.\nWann passt es dir eher?\na) unter der Woche abends\nb) Freitag oder Samstag tags\u00fcber\nc) ich bin flexibel",
+  apiBaseUrl: "",
   whatsappProvider: "meta",
   phoneNumberId: "",
   webhookVerifyToken: "",
   calendarId: "",
-  tokenHint: "später sicher speichern",
+  tokenHint: "sp\u00e4ter sicher speichern",
   privacyPolicyUrl: "",
   imprintUrl: "",
 };
@@ -108,7 +131,7 @@ export function useSettingsConfig({
         isInvalidOptionalUrl(settings.imprintUrl)
       ) {
         setSettingsMessage(
-          "Rechtliche Links müssen leer sein oder mit http:// bzw. https:// beginnen.",
+          "Rechtliche Links m\u00fcssen leer sein oder mit http:// bzw. https:// beginnen.",
         );
         return null;
       }
@@ -150,11 +173,11 @@ export function useSettingsConfig({
         onSettingsReset(mergedSettings);
       }
 
-      setSettingsMessage("Settings im Backend zurückgesetzt.");
+      setSettingsMessage("Settings im Backend zur\u00fcckgesetzt.");
       return mergedSettings;
     } catch (error) {
       console.error("settings reset error:", error);
-      setSettingsMessage("Settings konnten nicht zurückgesetzt werden.");
+      setSettingsMessage("Settings konnten nicht zur\u00fcckgesetzt werden.");
       return null;
     }
   }, [onSettingsReset, settings.apiBaseUrl]);

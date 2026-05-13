@@ -1,11 +1,6 @@
 import { getBackendCampaignId } from "../utils/dashboardHelpers";
 import { findConversationMatchForContact } from "./inboxStateApi";
-
-const FALLBACK_API_BASE_URL = "http://localhost:3001";
-
-function getApiBaseUrl(apiBaseUrl) {
-  return apiBaseUrl || FALLBACK_API_BASE_URL;
-}
+import { buildApiUrl } from "./apiBase";
 
 export function formatGhostingRows(previews) {
   return [...previews].sort((a, b) => {
@@ -22,7 +17,7 @@ export function formatGhostingRows(previews) {
 }
 
 async function loadGhostingSchedules(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/ghosting/schedule`);
+  const response = await fetch(buildApiUrl("/ghosting/schedule", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok) {
@@ -33,7 +28,7 @@ async function loadGhostingSchedules(apiBaseUrl) {
 }
 
 async function loadConversationSummaries(apiBaseUrl) {
-  const response = await fetch(`${getApiBaseUrl(apiBaseUrl)}/conversations`);
+  const response = await fetch(buildApiUrl("/conversations", apiBaseUrl));
   const data = await response.json();
 
   if (!response.ok || !data?.ok) {
@@ -45,7 +40,7 @@ async function loadConversationSummaries(apiBaseUrl) {
 
 async function loadGhostingPreview({ apiBaseUrl, campaignId, leadId }) {
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting/preview/${campaignId}/${leadId}`,
+    buildApiUrl(`/ghosting/preview/${campaignId}/${leadId}`, apiBaseUrl),
   );
 
   const data = await response.json();
@@ -221,7 +216,7 @@ export async function sendGhostingDueInApi({ apiBaseUrl, row, sendAt }) {
   validateExecutableGhostingRow(row);
 
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting/send-due/${row.campaignId}/${row.leadId}`,
+    buildApiUrl(`/ghosting/send-due/${row.campaignId}/${row.leadId}`, apiBaseUrl),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -244,7 +239,7 @@ export async function markGhostingSentInApi({ apiBaseUrl, row, sentAt }) {
   validateExecutableGhostingRow(row);
 
   const response = await fetch(
-    `${getApiBaseUrl(apiBaseUrl)}/ghosting/mark-sent/${row.campaignId}/${row.leadId}`,
+    buildApiUrl(`/ghosting/mark-sent/${row.campaignId}/${row.leadId}`, apiBaseUrl),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

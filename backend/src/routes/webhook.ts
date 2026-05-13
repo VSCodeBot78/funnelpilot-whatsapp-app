@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
+import { env } from "../config/env.js";
 import { getCampaignById } from "../config/campaigns.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import {
@@ -19,6 +20,24 @@ import type {
 } from "../types/types.js";
 
 const router = Router();
+
+function genericWebhookGuard(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (env.NODE_ENV === "production" && !env.ENABLE_GENERIC_WEBHOOKS) {
+    res.status(404).json({
+      ok: false,
+      error: "generic_webhook_disabled",
+      message:
+        "Generische Test-/Integrations-Webhooks sind in production standardmäßig deaktiviert.",
+    });
+    return;
+  }
+
+  next();
+}
 
 function normalizeText(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -77,7 +96,7 @@ function buildStarterPurchaseSuccessReply(params: {
  * - messageText / message / text
  * - source / channel / provider
  */
-router.post("/", async (req, res) => {
+router.post("/", genericWebhookGuard, async (req, res) => {
   try {
     const payload = req.body as IncomingMessagePayload;
     const mapped = mapIncomingMessagePayload(payload);
@@ -116,7 +135,7 @@ router.post("/", async (req, res) => {
  * Alias für produktnähere Struktur
  * z. B. für spätere Systemanbindung / Integrationen.
  */
-router.post("/message", async (req, res) => {
+router.post("/message", genericWebhookGuard, async (req, res) => {
   try {
     const payload = req.body as IncomingMessagePayload;
     const mapped = mapIncomingMessagePayload(payload);
@@ -154,7 +173,7 @@ router.post("/message", async (req, res) => {
 /**
  * Noch klarerer Incoming-Pfad für spätere externe Integrationen.
  */
-router.post("/messages/incoming", async (req, res) => {
+router.post("/messages/incoming", genericWebhookGuard, async (req, res) => {
   try {
     const payload = req.body as IncomingMessagePayload;
     const mapped = mapIncomingMessagePayload(payload);
@@ -208,7 +227,7 @@ router.post("/messages/incoming", async (req, res) => {
  *   "productId": "starter_499"
  * }
  */
-router.post("/checkout", (req, res) => {
+router.post("/checkout", genericWebhookGuard, (req, res) => {
   try {
     const payload = req.body as CheckoutWebhookPayload;
 
