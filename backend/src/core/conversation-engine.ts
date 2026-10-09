@@ -27,6 +27,13 @@ import {
   mustGoToCall,
 } from "../domain/pricing-rules.js";
 import {
+  buildHumanChoiceClarifier,
+  buildNaturalChoiceAcknowledgement,
+  extractScaleValue,
+  interpretChoiceDeterministically,
+  parseParentContext,
+} from "../domain/qualification-intelligence.js";
+import {
   generateAlreadyTriedBridgeReply,
   generateConsequenceBridgeReply,
 } from "../services/ai-funnel.service.js";
@@ -34,6 +41,7 @@ import {
   checkStaticAvailability,
   formatAvailabilitySlot,
 } from "../services/availability.service.js";
+import { interpretChoiceWithAi } from "../services/qualification-ai.service.js";
 import {
   activateProviderBookingState,
   markProviderBookingBooked,
@@ -81,7 +89,6 @@ import {
 import {
   buildBookingConfirmedReply,
   buildBookingPrompt,
-  buildChoiceValidationReply,
   buildCommitmentValidationReply,
   buildInfoLinkReply,
   buildInfoOnlyReply,
@@ -280,14 +287,43 @@ function isPauseRequest(input: string): boolean {
   );
 }
 
-function isChoiceKey(input: string, allowedKeys: string[]): boolean {
-  const normalized = input.trim().toLowerCase();
-  return allowedKeys.includes(normalized);
+function isScaleValue(input: string, min: number, max: number): boolean {
+  return extractScaleValue(input, min, max) !== null;
 }
 
-function isScaleValue(input: string, min: number, max: number): boolean {
-  const numeric = Number(input.trim());
-  return Number.isInteger(numeric) && numeric >= min && numeric <= max;
+async function resolveAdaptiveChoice(params: {
+  stepId: FlowStepId;
+  input: string;
+  step: FlowStepDefinition;
+  leadName?: string;
+}): Promise<string | null> {
+  const options = params.step.options ?? [];
+  const deterministic = interpretChoiceDeterministically({
+    stepId: params.stepId,
+    input: params.input,
+    options,
+  });
+
+  if (deterministic.mappedChoice) {
+    return deterministic.mappedChoice;
+  }
+
+  const aiResult = await interpretChoiceWithAi({
+    stepId: params.stepId,
+    input: params.input,
+    options,
+    leadName: params.leadName,
+  });
+
+  if (
+    aiResult?.mappedChoice &&
+    aiResult.confidence >= 0.72 &&
+    options.some((option) => option.key === aiResult.mappedChoice)
+  ) {
+    return aiResult.mappedChoice;
+  }
+
+  return null;
 }
 
 function getStepOrThrow(
@@ -2087,6 +2123,16 @@ export async function processIncomingMessage(
     }
 
     updateAnswer(state, "name", parsedName);
+
+    const parentContextFromName = parseParentContext(input.messageText);
+    if (parentContextFromName.explicit) {
+      patchAnswers(state, {
+        parentRole: parentContextFromName.role,
+        parentContextText: parentContextFromName.rawText,
+        isTargetParent: parentContextFromName.role !== "not_parent",
+      });
+    }
+
     setCurrentStep(state, "intro_ack");
 
     const replyText = buildIntroText(campaign.id, parsedName);
@@ -2115,9 +2161,47 @@ export async function processIncomingMessage(
       };
     }
 
-    const nextStep = getNextFlowStep(campaign.id, "intro_ack");
+    const parentContextFromAck = parseParentContext(input.messageText);
+    if (parentContextFromAck.explicit) {
+      patchAnswers(state, {
+        parentRole: parentContextFromAck.role,
+        parentContextText: parentContextFromAck.rawText,
+        isTargetParent: parentContextFromAck.role !== "not_parent",
+      });
+    }
+
+    if (state.answers.parentRole === "not_parent") {
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+
+      const replyText =
+        "Danke für die Klarheit. Mein Coaching ist wirklich auf den Elternalltag zugeschnitten, deshalb würde ich dir hier nichts aufdrücken.\nWenn du trotzdem nur einen Einblick in die Methode willst, kann ich dir den passenden Link schicken.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "info_only",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    let nextStep = getNextFlowStep(campaign.id, "intro_ack");
     if (!nextStep) {
       throw new Error("Missing next flow step after intro_ack.");
+    }
+
+    if (
+      nextStep.id === "parent_context" &&
+      state.answers.parentRole &&
+      state.answers.parentRole !== "unknown"
+    ) {
+      const afterParent = getNextFlowStep(campaign.id, "parent_context");
+      if (!afterParent) {
+        throw new Error("Missing next flow step after parent_context.");
+      }
+      nextStep = afterParent;
     }
 
     setCurrentStep(state, nextStep.id);
@@ -2134,12 +2218,113 @@ export async function processIncomingMessage(
     };
   }
 
+  if (state.currentStep === "parent_context") {
+    const parentContext = parseParentContext(input.messageText);
+
+    if (!parentContext.explicit || parentContext.role === "unknown") {
+      const replyText =
+        "Nur damit ich dich wirklich richtig einordne: Bist du Mama, Papa oder grundsätzlich Elternteil?\nDas Alter der Kinder kannst du gern direkt dazuschreiben.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "parent_context",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    patchAnswers(state, {
+      parentRole: parentContext.role,
+      parentContextText: parentContext.rawText,
+      isTargetParent: parentContext.role !== "not_parent",
+    });
+
+    if (parentContext.role === "not_parent") {
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+
+      const replyText =
+        "Danke dir. Mein Coaching ist bewusst für Eltern gebaut. Deshalb macht es keinen Sinn, dich jetzt durch einen Eltern-Funnel zu drücken.\nWenn du nur die Methode anschauen willst, kann ich dir den Link schicken.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "info_only",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    const situationStep = getStepOrThrow(campaign.id, "situation_choice");
+    const situationChoice = await resolveAdaptiveChoice({
+      stepId: "situation_choice",
+      input: input.messageText,
+      step: situationStep,
+      leadName: state.answers.name,
+    });
+
+    if (situationChoice) {
+      patchAnswers(state, {
+        situationChoice,
+        situationChoiceText: input.messageText.trim(),
+      });
+
+      const nextStep = getNextFlowStep(campaign.id, "situation_choice");
+      if (!nextStep) {
+        throw new Error("Missing next flow step after situation_choice.");
+      }
+
+      setCurrentStep(state, nextStep.id);
+      const replyText =
+        buildNaturalChoiceAcknowledgement("situation_choice", situationChoice) +
+        "\n\n" +
+        buildQuestionReply(campaign.id, nextStep);
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: nextStep.id,
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    const nextStep = getNextFlowStep(campaign.id, "parent_context");
+    if (!nextStep) {
+      throw new Error("Missing next flow step after parent_context.");
+    }
+
+    setCurrentStep(state, nextStep.id);
+
+    const replyText =
+      "Perfekt, danke. Dann weiß ich schon mal, aus welchem Alltag du kommst.\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
+    appendAssistantMessage(state, replyText);
+    persistConversationState(state);
+
+    return {
+      text: replyText,
+      nextStep: nextStep.id,
+      detectedIntent: "flow_answer",
+      state,
+    };
+  }
+
   if (state.currentStep === "situation_choice") {
     const step = getStepOrThrow(campaign.id, "situation_choice");
-    const allowedKeys = (step.options ?? []).map((option) => option.key.toLowerCase());
+    const mappedChoice = await resolveAdaptiveChoice({
+      stepId: "situation_choice",
+      input: input.messageText,
+      step,
+      leadName: state.answers.name,
+    });
 
-    if (!isChoiceKey(input.messageText, allowedKeys)) {
-      const replyText = buildChoiceValidationReply();
+    if (!mappedChoice) {
+      const replyText = buildHumanChoiceClarifier("situation_choice");
       appendAssistantMessage(state, replyText);
       persistConversationState(state);
 
@@ -2151,7 +2336,10 @@ export async function processIncomingMessage(
       };
     }
 
-    updateAnswer(state, "situationChoice", input.messageText.trim().toLowerCase());
+    patchAnswers(state, {
+      situationChoice: mappedChoice,
+      situationChoiceText: input.messageText.trim(),
+    });
 
     const nextStep = getNextFlowStep(campaign.id, "situation_choice");
     if (!nextStep) {
@@ -2160,7 +2348,10 @@ export async function processIncomingMessage(
 
     setCurrentStep(state, nextStep.id);
 
-    const replyText = buildQuestionReply(campaign.id, nextStep);
+    const replyText =
+      buildNaturalChoiceAcknowledgement("situation_choice", mappedChoice) +
+      "\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
     appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
@@ -2188,30 +2379,17 @@ export async function processIncomingMessage(
       leadName: state.answers.name,
     });
 
-    if (aiBridge?.replyText?.trim()) {
-      patchAnswers(state, {
-        pendingAiFollowUpQuestion: nextQuestion,
-        pendingAiReturnStep: nextStep.id,
-        pendingAiSource: "tried_before_freetext",
-      });
-
-      appendAssistantMessage(state, aiBridge.replyText.trim());
-      persistConversationState(state);
-
-      return {
-        text: aiBridge.replyText.trim(),
-        nextStep: "tried_before_freetext",
-        detectedIntent: "flow_answer",
-        state,
-      };
-    }
-
     setCurrentStep(state, nextStep.id);
-    appendAssistantMessage(state, nextQuestion);
+
+    const replyText = aiBridge?.replyText?.trim()
+      ? aiBridge.replyText.trim() + "\n\n" + nextQuestion
+      : nextQuestion;
+
+    appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
     return {
-      text: nextQuestion,
+      text: replyText,
       nextStep: nextStep.id,
       detectedIntent: "flow_answer",
       state,
@@ -2234,30 +2412,17 @@ export async function processIncomingMessage(
       leadName: state.answers.name,
     });
 
-    if (aiBridge?.replyText?.trim()) {
-      patchAnswers(state, {
-        pendingAiFollowUpQuestion: nextQuestion,
-        pendingAiReturnStep: nextStep.id,
-        pendingAiSource: "consequence_freetext",
-      });
-
-      appendAssistantMessage(state, aiBridge.replyText.trim());
-      persistConversationState(state);
-
-      return {
-        text: aiBridge.replyText.trim(),
-        nextStep: "consequence_freetext",
-        detectedIntent: "flow_answer",
-        state,
-      };
-    }
-
     setCurrentStep(state, nextStep.id);
-    appendAssistantMessage(state, nextQuestion);
+
+    const replyText = aiBridge?.replyText?.trim()
+      ? aiBridge.replyText.trim() + "\n\n" + nextQuestion
+      : nextQuestion;
+
+    appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
     return {
-      text: nextQuestion,
+      text: replyText,
       nextStep: nextStep.id,
       detectedIntent: "flow_answer",
       state,
@@ -2266,10 +2431,15 @@ export async function processIncomingMessage(
 
   if (state.currentStep === "goal_choice") {
     const step = getStepOrThrow(campaign.id, "goal_choice");
-    const allowedKeys = (step.options ?? []).map((option) => option.key.toLowerCase());
+    const mappedChoice = await resolveAdaptiveChoice({
+      stepId: "goal_choice",
+      input: input.messageText,
+      step,
+      leadName: state.answers.name,
+    });
 
-    if (!isChoiceKey(input.messageText, allowedKeys)) {
-      const replyText = buildChoiceValidationReply();
+    if (!mappedChoice) {
+      const replyText = buildHumanChoiceClarifier("goal_choice");
       appendAssistantMessage(state, replyText);
       persistConversationState(state);
 
@@ -2281,7 +2451,10 @@ export async function processIncomingMessage(
       };
     }
 
-    updateAnswer(state, "goalChoice", input.messageText.trim().toLowerCase());
+    patchAnswers(state, {
+      goalChoice: mappedChoice,
+      goalChoiceText: input.messageText.trim(),
+    });
 
     const nextStep = getNextFlowStep(campaign.id, "goal_choice");
     if (!nextStep) {
@@ -2290,7 +2463,10 @@ export async function processIncomingMessage(
 
     setCurrentStep(state, nextStep.id);
 
-    const replyText = buildQuestionReply(campaign.id, nextStep);
+    const replyText =
+      buildNaturalChoiceAcknowledgement("goal_choice", mappedChoice) +
+      "\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
     appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
@@ -2320,7 +2496,10 @@ export async function processIncomingMessage(
       };
     }
 
-    const score = Number(input.messageText.trim());
+    const score = extractScaleValue(input.messageText, minScale, maxScale);
+    if (score === null) {
+      throw new Error("Scale value passed validation but could not be extracted.");
+    }
     updateAnswer(state, "importanceScore", score);
 
     if (score <= 7) {

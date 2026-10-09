@@ -7,6 +7,7 @@ type AiReplyParams = {
   currentStep:
     | "ask_name"
     | "intro_ack"
+    | "parent_context"
     | "situation_choice"
     | "tried_before_freetext"
     | "consequence_freetext"
@@ -19,6 +20,7 @@ type AiReplyParams = {
   nextStep:
     | "ask_name"
     | "intro_ack"
+    | "parent_context"
     | "situation_choice"
     | "tried_before_freetext"
     | "consequence_freetext"
@@ -30,6 +32,7 @@ type AiReplyParams = {
     | "done";
   leadName?: string;
   allowedModes?: string[];
+  mustNotAskQuestion?: boolean;
 };
 
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
@@ -99,6 +102,7 @@ function buildSchema() {
         enum: [
           "ask_name",
           "intro_ack",
+          "parent_context",
           "situation_choice",
           "tried_before_freetext",
           "consequence_freetext",
@@ -148,6 +152,9 @@ function buildSystemPrompt(params: AiReplyParams): string {
     `Aktueller Funnel-Step: ${params.currentStep}`,
     `Zielschritt: ${params.nextStep}`,
     `Lead-Name: ${params.leadName ?? "unbekannt"}`,
+    params.mustNotAskQuestion
+      ? "Wichtig: Stelle in replyText KEINE eigene Frage. Das System hängt direkt danach die nächste Funnel-Frage an."
+      : "Du darfst eine kurze passende Frage stellen, wenn sie für die Führung nötig ist.",
     "Antworte ausschließlich als JSON nach Schema.",
   ].join("\n");
 }
@@ -170,6 +177,9 @@ function buildUserPrompt(params: AiReplyParams): string {
     "- Rückführung in den Funnel muss spürbar sein.",
     "- replyText darf maximal 5 Zeilen haben.",
     "- Wenn der Lead etwas Echtes offenlegt, nicht sofort in a/b/c pressen.",
+    params.mustNotAskQuestion
+      ? "- Keine Frage in replyText. Nur kurz spiegeln/einordnen, damit die nächste Systemfrage direkt anschließen kann."
+      : "- Wenn sinnvoll, darfst du mit einer kurzen Frage führen.",
   ].join("\n");
 }
 
@@ -264,7 +274,8 @@ export async function generateAlreadyTriedBridgeReply(params: {
     currentStep: params.currentStep,
     nextStep: params.nextStep,
     leadName: params.leadName,
-    allowedModes: ["mirror", "open_lead", "direct_funnel"],
+    allowedModes: ["mirror", "direct_funnel"],
+    mustNotAskQuestion: true,
   });
 }
 
@@ -280,6 +291,7 @@ export async function generateConsequenceBridgeReply(params: {
     currentStep: params.currentStep,
     nextStep: params.nextStep,
     leadName: params.leadName,
-    allowedModes: ["mirror", "open_lead", "direct_funnel"],
+    allowedModes: ["mirror", "direct_funnel"],
+    mustNotAskQuestion: true,
   });
 }

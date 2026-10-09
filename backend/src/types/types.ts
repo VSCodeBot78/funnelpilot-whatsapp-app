@@ -33,6 +33,7 @@ export type ProviderBookingWebhookEventType =
 export type FlowStepId =
   | "ask_name"
   | "intro_ack"
+  | "parent_context"
   | "situation_choice"
   | "tried_before_freetext"
   | "consequence_freetext"
@@ -174,10 +175,15 @@ export type ConversationAnswerValue =
 export type ConversationAnswerMap = {
   [key: string]: ConversationAnswerValue;
   name?: string;
+  parentRole?: "mama" | "papa" | "parent" | "not_parent" | "unknown";
+  parentContextText?: string;
+  isTargetParent?: boolean;
   situationChoice?: string;
+  situationChoiceText?: string;
   triedBeforeText?: string;
   consequenceText?: string;
   goalChoice?: string;
+  goalChoiceText?: string;
   importanceScore?: number;
   commitmentChoice?: CommitmentChoice;
   bookingRequest?: BookingRequestData;

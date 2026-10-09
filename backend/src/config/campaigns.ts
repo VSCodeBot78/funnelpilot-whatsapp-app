@@ -22,6 +22,12 @@ export const campaigns: Record<string, CampaignConfig> = {
         type: "ack",
       },
       {
+        id: "parent_context",
+        type: "freetext",
+        prompt:
+          "Kurz zur Einordnung: Bist du Mama, Papa oder grundsätzlich Elternteil?\nUnd wenn du magst: Wie alt sind deine Kinder ungefähr?",
+      },
+      {
         id: "situation_choice",
         type: "choice",
         prompt: "Was merkst du aktuell im Alltag am meisten?",
