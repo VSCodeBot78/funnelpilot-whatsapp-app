@@ -199,4 +199,63 @@ test("Phase 3 adaptive qualification", async (t) => {
     assert.equal(result.nextStep, "info_only");
     assert.match(result.text ?? "", /für Eltern|Eltern gebaut/i);
   });
+
+  await t.test("known parent context in the name message is not asked twice", async () => {
+    clearConversationStore();
+    const leadId = "phase3-parent-known-from-name";
+
+    let result = await processIncomingMessage({
+      leadId,
+      campaignId: DEFAULT_CAMPAIGN_ID,
+      messageText: "Ich bin Max, Papa von zwei Kindern",
+    });
+
+    assert.equal(result.state.answers.parentRole, "papa");
+    assert.equal(result.nextStep, "intro_ack");
+
+    result = await processIncomingMessage({
+      leadId,
+      campaignId: DEFAULT_CAMPAIGN_ID,
+      messageText: "Ja",
+    });
+
+    assert.equal(result.nextStep, "situation_choice");
+    assert.doesNotMatch(result.text ?? "", /Bist du Mama|Bist du Papa|Elternteil/i);
+  });
+
+  await t.test("natural-language qualification reaches booking without choice letters", async () => {
+    clearConversationStore();
+    const leadId = "phase3-full-natural-booking";
+
+    const messages = [
+      "Max",
+      "Ja",
+      "Papa von zwei Kindern",
+      "Ich bin ständig platt und habe kaum Energie",
+      "Ich habe Kalorien gezählt und öfter Sport angefangen",
+      "Mich würde nerven, dass ich weiter so platt bin",
+      "Ich will endlich wieder mehr Energie haben",
+      "8 von 10",
+      "Ich will das wirklich angehen",
+    ];
+
+    let result;
+    for (const messageText of messages) {
+      result = await processIncomingMessage({
+        leadId,
+        campaignId: DEFAULT_CAMPAIGN_ID,
+        messageText,
+      });
+    }
+
+    assert.ok(result);
+    assert.equal(result.state.currentStep, "booking");
+    assert.equal(result.state.answers.parentRole, "papa");
+    assert.equal(result.state.answers.situationChoice, "a");
+    assert.equal(result.state.answers.goalChoice, "a");
+    assert.equal(result.state.answers.importanceScore, 8);
+    assert.equal(result.state.answers.commitmentChoice, "really_start");
+    assert.equal(result.state.flags.wantsBooking, true);
+  });
+
 });
