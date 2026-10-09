@@ -12,6 +12,8 @@ const testDataDir = fs.mkdtempSync(
 process.env.NODE_ENV = "test";
 process.env.DATA_DIR = testDataDir;
 process.env.INSTAGRAM_SEND_ENABLED = "false";
+process.env.INSTAGRAM_ENGINE_ENABLED = "true";
+process.env.INSTAGRAM_ALLOWED_SENDER_IDS = "route-test-igsid";
 process.env.INSTAGRAM_VERIFY_TOKEN = "instagram-test-token";
 process.env.META_APP_SECRET = "test-app-secret";
 process.env.INSTAGRAM_ACCOUNT_ID = "17841400000000000";
@@ -32,6 +34,10 @@ const {
 const {
   verifyMetaWebhookSignature,
 } = await import("../services/meta-webhook-signature.service.js");
+const {
+  evaluateInstagramAutomationGate,
+  isInstagramRecipientAllowed,
+} = await import("../services/instagram-automation-gate.service.js");
 const {
   getLeadById,
   deleteLead,
@@ -174,6 +180,47 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     assert.equal(getLeadById(leadId)?.source, "Instagram");
 
     deleteLead(leadId);
+  });
+
+  await t.test("Instagram engine is explicitly gated", () => {
+    const disabled = evaluateInstagramAutomationGate({
+      senderId: "test-sender",
+      engineEnabled: false,
+      allowedSenderIds: [],
+    });
+    assert.equal(disabled.allowed, false);
+    if (!disabled.allowed) {
+      assert.equal(disabled.reason, "engine_disabled");
+    }
+
+    const blocked = evaluateInstagramAutomationGate({
+      senderId: "other-sender",
+      engineEnabled: true,
+      allowedSenderIds: ["allowed-sender"],
+    });
+    assert.equal(blocked.allowed, false);
+    if (!blocked.allowed) {
+      assert.equal(blocked.reason, "sender_not_allowlisted");
+    }
+
+    const allowed = evaluateInstagramAutomationGate({
+      senderId: "allowed-sender",
+      engineEnabled: true,
+      allowedSenderIds: ["allowed-sender"],
+    });
+    assert.equal(allowed.allowed, true);
+  });
+
+  await t.test("Instagram send allowlist protects the live-test recipient", () => {
+    assert.equal(
+      isInstagramRecipientAllowed("route-test-igsid", ["route-test-igsid"]),
+      true,
+    );
+    assert.equal(
+      isInstagramRecipientAllowed("real-lead", ["route-test-igsid"]),
+      false,
+    );
+    assert.equal(isInstagramRecipientAllowed("anyone", []), true);
   });
 
   await t.test("outbound Instagram is dry-run by default", async () => {
