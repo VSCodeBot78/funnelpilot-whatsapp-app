@@ -118,7 +118,7 @@ test("Pricing and intent routing use the current offer truth", async (t) => {
     assert.match(result.replyText ?? "", /499 €/);
     assert.match(result.replyText ?? "", /Selbststarter/);
     assert.match(result.replyText ?? "", /14,95 €/);
-    assert.match(result.replyText ?? "", /2\\.499 €/);
+    assert.match(result.replyText ?? "", /2\.499 €/);
     assert.doesNotMatch(result.replyText ?? "", /Eltern-Energie-Startphase/);
   });
 
