@@ -211,6 +211,9 @@ export type ConversationFlags = {
   wantsInfoLinkOnly: boolean;
 };
 
+export type ConversationOwner = "ai" | "human";
+export type ConversationActor = "lead" | "ai" | "human";
+
 export type ConversationMessageRole = "user" | "assistant";
 
 export type MessageOutboundStatus =
@@ -222,6 +225,7 @@ export type MessageOutboundStatus =
 export type ConversationMessage = {
   id: string;
   role: ConversationMessageRole;
+  actor?: ConversationActor;
   text: string;
   createdAt: string;
   outboundStatus?: MessageOutboundStatus;
@@ -243,6 +247,10 @@ export type ConversationState = {
   updatedAt: string;
   lastUserMessageAt?: string;
   lastAssistantMessageAt?: string;
+  lastHumanMessageAt?: string;
+  owner?: ConversationOwner;
+  aiPaused?: boolean;
+  lastActor?: ConversationActor;
   leadName?: string;
   phone?: string;
   source?: string;
@@ -370,10 +378,11 @@ export type EngineInput = {
 };
 
 export type EngineReply = {
-  text: string;
+  text: string | null;
   nextStep: FlowStepId;
   detectedIntent: LeadIntent;
   state: ConversationState;
+  replySuppressedReason?: "human_owned" | "stopped";
 };
 
 export type IncomingMessagePayload = {
@@ -450,6 +459,7 @@ export type LeadFlags = ConversationFlags;
 export type CreateMessageParams = {
   id?: string;
   role: ConversationMessageRole;
+  actor?: ConversationActor;
   text: string;
   createdAt?: string;
 };
