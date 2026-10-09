@@ -413,7 +413,7 @@ export type MappedIncomingMessage = {
 
 export type IncomingMessageResponse = {
   ok: boolean;
-  reply?: string;
+  reply?: string | null;
   nextStep?: FlowStepId;
   detectedIntent?: LeadIntent;
   leadId?: string;
