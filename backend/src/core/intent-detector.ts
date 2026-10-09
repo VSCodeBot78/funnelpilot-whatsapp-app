@@ -260,12 +260,13 @@ function buildIntentResult(
  * 1. stop
  * 2. installments
  * 3. long_term_support
- * 4. direct_buy_starter
- * 5. price_question
- * 6. info_link_only
- * 7. info_only
- * 8. booking_intent
- * 9. unknown
+ * 4. selfstarter_interest
+ * 5. direct_buy_coaching_entry
+ * 6. price_question
+ * 7. info_link_only
+ * 8. info_only
+ * 9. booking_intent
+ * 10. unknown
  */
 export function detectLeadIntent(input: string): IntentDetectionResult {
   const normalized = normalizeText(input);
@@ -289,8 +290,12 @@ export function detectLeadIntent(input: string): IntentDetectionResult {
     return buildIntentResult("long_term_support", 0.97, pricingIntent.matchedText);
   }
 
-  if (pricingIntent.intent === "direct_buy_starter") {
-    return buildIntentResult("direct_buy_starter", 0.96, pricingIntent.matchedText);
+  if (pricingIntent.intent === "selfstarter_interest") {
+    return buildIntentResult("selfstarter_interest", 0.98, pricingIntent.matchedText);
+  }
+
+  if (pricingIntent.intent === "direct_buy_coaching_entry") {
+    return buildIntentResult("direct_buy_coaching_entry", 0.96, pricingIntent.matchedText);
   }
 
   const priceSubtype = detectPriceIntentSubtype(normalized);
@@ -339,7 +344,8 @@ export function isHighPriorityIntent(intent: LeadIntent): boolean {
     intent === "stop" ||
     intent === "installments" ||
     intent === "long_term_support" ||
-    intent === "direct_buy_starter" ||
+    intent === "selfstarter_interest" ||
+    intent === "direct_buy_coaching_entry" ||
     intent === "price_question" ||
     intent === "info_link_only" ||
     intent === "info_only" ||

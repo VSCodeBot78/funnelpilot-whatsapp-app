@@ -51,6 +51,7 @@ function createInitialConversationState(
       askedInstallments: false,
       wantsBooking: false,
       wantsLongTermSupport: false,
+      wantsDirectBuyCoachingEntry: false,
       wantsDirectBuyStarter: false,
       askedPrice: false,
       wantsInfoOnly: false,

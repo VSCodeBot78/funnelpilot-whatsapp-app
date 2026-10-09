@@ -189,6 +189,14 @@ export type ConversationAnswerMap = {
   pausedLastQuestion?: string;
   pausedAt?: string;
 
+  coachingEntryCheckoutSentAt?: string;
+  coachingEntryPurchaseStatus?: "none" | "link_sent" | "paid";
+  coachingEntryPurchasedAt?: string;
+  coachingEntryCheckoutSessionId?: string;
+  coachingEntryProductId?: string;
+
+  // Legacy compatibility: these fields historically meant the 499 EUR coaching entry,
+  // never the 14,95 EUR Selfstarter.
   starterCheckoutSentAt?: string;
   starterPurchaseStatus?: "none" | "link_sent" | "paid";
   starterPurchasedAt?: string;
@@ -205,6 +213,8 @@ export type ConversationFlags = {
   askedInstallments: boolean;
   wantsBooking: boolean;
   wantsLongTermSupport: boolean;
+  wantsDirectBuyCoachingEntry: boolean;
+  // Legacy compatibility for persisted states.
   wantsDirectBuyStarter: boolean;
   askedPrice: boolean;
   wantsInfoOnly: boolean;
@@ -273,6 +283,8 @@ export type CampaignTexts = {
   bookingFollowUpPrompt: string;
   bookingNoShowGuardTemplate: string;
   bookingConfirmedTemplate: string;
+  // Legacy field names: these currently represent the 499 EUR coaching entry,
+  // not the 14,95 EUR Selfstarter.
   starterPriceText: string;
   starterCheckoutUrl: string;
   starterDirectBuyText: string;
@@ -345,7 +357,8 @@ export type LeadIntent =
   | "stop"
   | "installments"
   | "long_term_support"
-  | "direct_buy_starter"
+  | "direct_buy_coaching_entry"
+  | "selfstarter_interest"
   | "price_question"
   | "info_link_only"
   | "info_only"

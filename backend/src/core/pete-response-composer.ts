@@ -1,3 +1,4 @@
+import { OFFER_TRUTH } from "../config/offer-truth.js";
 import type { CampaignConfig, FlowStepId } from "../types/types.js";
 import { getNextFlowStep } from "./flow-definition.js";
 import type { PeteDecision } from "./pete-decision-layer.js";
@@ -21,12 +22,12 @@ const HARD_STOP_REPLY =
   "Alles klar, danke f\u00fcr die R\u00fcckmeldung. Dann schreibe ich dir dazu nicht weiter.";
 
 const PRICE_CONTEXT_FALLBACK =
-  "Die Preise h\u00e4ngen davon ab, welche Begleitung wirklich zu deiner Situation passt.\n" +
-  "Ich will dir da keine Zahl ohne Kontext hinwerfen.\n" +
-  "Wenn du m\u00f6chtest, ordnen wir kurz ein, wo du stehst. Dann sehen wir, was sinnvoll ist.";
+  `Der persönliche Einstieg ist das 5-Wochen-Coaching für ${OFFER_TRUTH.coachingEntry.priceText}.\n` +
+  `Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+  "Dann können wir kurz schauen, was für deine Situation sinnvoll ist.";
 
 const LINK_CLARIFICATION_REPLY =
-  "Geht's dir um die kostenlose Video-Anleitung oder um Infos zur Eltern-Energie-Startphase?";
+  "Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck oder den Keto Guide?";
 
 const AMBIGUOUS_LINK_REPLY =
   "Klar. Geht's dir um die kostenlose Video-Anleitung oder m\u00f6chtest du direkt einen Termin?";
@@ -79,25 +80,15 @@ function getSafeOfferPriceText(campaign: CampaignConfig): string {
   return PRICE_CONTEXT_FALLBACK;
 }
 
-function getStarterPriceText(campaign: CampaignConfig): string {
-  const rawPrice = campaign.texts.starterPriceText?.trim();
-
-  if (!rawPrice || hasAggressiveClosingText(rawPrice)) {
-    return "499 \u20ac";
-  }
-
-  if (rawPrice.includes("499")) {
-    return "499 \u20ac";
-  }
-
-  return rawPrice.replace("EUR", "\u20ac");
+function getCoachingEntryPriceText(_campaign: CampaignConfig): string {
+  return OFFER_TRUTH.coachingEntry.priceText;
 }
 
 function buildDirectPriceReply(campaign: CampaignConfig): string {
   return (
-    `Die Eltern-Energie-Startphase liegt bei ${getStarterPriceText(campaign)}.\n` +
-    "Die mehrmonatige 1:1-Begleitung liegt h\u00f6her.\n" +
-    "Wichtig ist: Erst kurz einordnen, was wirklich passt."
+    `Das 5-Wochen-Coaching liegt bei ${getCoachingEntryPriceText(campaign)}.\n` +
+    `Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+    "Wichtig ist, was zu deiner Situation und deinem Unterstützungsbedarf passt."
   );
 }
 
@@ -152,9 +143,9 @@ function buildInfoLinkReply(context: PeteResponseComposerContext): string {
 
 function buildOfferInfoReply(): string {
   return (
-    "Kurz gesagt: Es geht um die Eltern-Energie-Startphase und passende Begleitung f\u00fcr Eltern im echten Alltag.\n" +
-    "Mehr Energie, bessere Struktur und wieder ein besseres K\u00f6rpergef\u00fchl.\n" +
-    "Ohne Di\u00e4tstress oder unrealistische Fitnesspl\u00e4ne."
+    "Kurz gesagt: Das persönliche Einstiegsangebot ist das 5-Wochen-Coaching für Eltern im echten Alltag.\n" +
+    "Mehr Energie, bessere Struktur und wieder ein besseres Körpergefühl.\n" +
+    `Wenn du erstmal selbst loslegen willst, gibt es zusätzlich den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.`
   );
 }
 
@@ -206,8 +197,8 @@ function buildHandoffPendingReply(): string {
 function buildTrustReply(): string {
   return (
     "Kann ich verstehen.\n" +
-    "Online wird viel versprochen, deshalb dr\u00fccke ich dich hier in nichts rein.\n" +
-    "Soll ich dir erst die kostenlose Video-Anleitung schicken?"
+    "Online wird viel versprochen, deshalb drücke ich dich hier in nichts rein.\n" +
+    "Soll ich dir erst den kostenlosen Elterncheck schicken?"
   );
 }
 

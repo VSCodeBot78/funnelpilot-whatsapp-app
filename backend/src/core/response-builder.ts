@@ -7,10 +7,11 @@ import {
 } from "../domain/booking-rules.js";
 import { getInfoLinkReply, getInfoOnlyReply } from "../domain/info-path.js";
 import {
+  getCoachingEntryDirectBuyReply,
+  getCoachingEntryPriceReply,
   getInstallmentsReply,
   getLongTermReply,
-  getStarterDirectBuyReply,
-  getStarterPriceReply,
+  getSelfstarterReply,
 } from "../domain/pricing-rules.js";
 import type {
   CampaignConfig,
@@ -74,7 +75,7 @@ export function buildQuestionReply(
 }
 
 export function buildPriceReply(campaignId: string): string {
-  return getStarterPriceReply(campaignId);
+  return getCoachingEntryPriceReply(campaignId);
 }
 
 export function buildInstallmentsReply(campaignId: string): string {
@@ -85,8 +86,15 @@ export function buildLongTermReply(campaignId: string): string {
   return getLongTermReply(campaignId);
 }
 
-export function buildDirectBuyStarterReply(campaignId: string): string {
-  return getStarterDirectBuyReply(campaignId);
+export function buildDirectBuyCoachingEntryReply(campaignId: string): string {
+  return getCoachingEntryDirectBuyReply(campaignId);
+}
+
+/** @deprecated Legacy alias. */
+export const buildDirectBuyStarterReply = buildDirectBuyCoachingEntryReply;
+
+export function buildSelfstarterReply(): string {
+  return getSelfstarterReply();
 }
 
 export function buildInfoOnlyReply(campaignId: string): string {
@@ -127,8 +135,10 @@ export function buildIntentReply(campaignId: string, intent: LeadIntent): string
       return buildInstallmentsReply(campaignId);
     case "long_term_support":
       return buildLongTermReply(campaignId);
-    case "direct_buy_starter":
-      return buildDirectBuyStarterReply(campaignId);
+    case "direct_buy_coaching_entry":
+      return buildDirectBuyCoachingEntryReply(campaignId);
+    case "selfstarter_interest":
+      return buildSelfstarterReply();
     case "info_only":
       return buildInfoOnlyReply(campaignId);
     case "info_link_only":

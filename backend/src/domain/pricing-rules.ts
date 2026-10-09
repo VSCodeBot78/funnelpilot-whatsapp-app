@@ -1,4 +1,9 @@
 import { getCampaignById } from "../config/campaigns.js";
+import {
+  getCoachingEntryOffer,
+  getLongTermOffer,
+  getSelfstarterOffer,
+} from "../config/offer-truth.js";
 import type { CampaignConfig, LeadIntent } from "../types/types.js";
 
 const INSTALLMENT_KEYWORDS = [
@@ -39,6 +44,15 @@ const LONG_TERM_KEYWORDS = [
   "langfristige zusammenarbeit",
   "enger begleitet",
   "enger betreut",
+];
+
+const SELFSTARTER_KEYWORDS = [
+  "selbststarter",
+  "selfstarter",
+  "no bullshit elternfitness",
+  "no-bullshit elternfitness",
+  "14,95",
+  "14.95",
 ];
 
 const DIRECT_BUY_KEYWORDS = [
@@ -225,9 +239,16 @@ export function isLongTermSupportRequest(input: string): boolean {
   return includesAnyKeyword(input, LONG_TERM_KEYWORDS) !== null;
 }
 
-export function isStarterDirectBuyIntent(input: string): boolean {
+export function isSelfstarterInterest(input: string): boolean {
+  return includesAnyKeyword(input, SELFSTARTER_KEYWORDS) !== null;
+}
+
+export function isCoachingEntryDirectBuyIntent(input: string): boolean {
   return includesAnyKeyword(input, DIRECT_BUY_KEYWORDS) !== null;
 }
+
+/** @deprecated Legacy name. "Starter" historically meant the 499 EUR coaching entry. */
+export const isStarterDirectBuyIntent = isCoachingEntryDirectBuyIntent;
 
 export function isPriceQuestion(input: string): boolean {
   return (
@@ -259,10 +280,18 @@ export function getMatchedPricingIntent(input: string): {
     };
   }
 
+  const selfstarterMatch = includesAnyKeyword(input, SELFSTARTER_KEYWORDS);
+  if (selfstarterMatch) {
+    return {
+      intent: "selfstarter_interest",
+      matchedText: selfstarterMatch,
+    };
+  }
+
   const directBuyMatch = includesAnyKeyword(input, DIRECT_BUY_KEYWORDS);
   if (directBuyMatch) {
     return {
-      intent: "direct_buy_starter",
+      intent: "direct_buy_coaching_entry",
       matchedText: directBuyMatch,
     };
   }
@@ -302,14 +331,42 @@ export function getMatchedPricingIntent(input: string): {
   };
 }
 
-export function getStarterPriceReply(campaignId: string): string {
-  const campaign = getCampaignById(campaignId);
-  return campaign.texts.starterPriceReply;
+export function getCoachingEntryPriceReply(_campaignId: string): string {
+  const offer = getCoachingEntryOffer();
+  return (
+    `Das ${offer.name} liegt bei ${offer.priceText}.\n` +
+    "Das ist der persönliche Einstieg in die Begleitung. " +
+    "Wenn du erstmal selbst loslegen willst, gibt es zusätzlich den Selbststarter für 14,95 €."
+  );
 }
 
-export function getStarterDirectBuyReply(campaignId: string): string {
+export function getCoachingEntryDirectBuyReply(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
-  return campaign.texts.starterDirectBuyText;
+  const offer = getCoachingEntryOffer();
+  const checkoutUrl =
+    campaign.texts.starterCheckoutUrl?.trim() ||
+    offer.checkoutUrl ||
+    "";
+
+  if (!checkoutUrl) {
+    return (
+      `Das ${offer.name} liegt bei ${offer.priceText}.\n` +
+      "Für den Start klären wir den nächsten Schritt kurz persönlich."
+    );
+  }
+
+  return (
+    `Klar. Das ${offer.name} liegt bei ${offer.priceText}.\n` +
+    `Hier kannst du direkt starten:\n${checkoutUrl}`
+  );
+}
+
+export function getSelfstarterReply(): string {
+  const offer = getSelfstarterOffer();
+  return (
+    `Wenn du erstmal selbst starten willst: Der ${offer.name} kostet ${offer.priceText}.\n` +
+    `Hier findest du ihn:\n${offer.productUrl}`
+  );
 }
 
 export function getInstallmentsReply(campaignId: string): string {
@@ -319,20 +376,26 @@ export function getInstallmentsReply(campaignId: string): string {
 
 export function getLongTermReply(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
-  return campaign.texts.longTermReply;
+  const offer = getLongTermOffer();
+
+  return (
+    `Die ${offer.name} liegt regulär bei ${offer.priceText}.\n` +
+    `Wenn du vorher das 5-Wochen-Coaching für 499 € gemacht hast, werden die 499 € angerechnet. Dann bleiben noch ${offer.upgradeBalanceEur?.toLocaleString("de-DE")} € für die weitere Begleitung.\n` +
+    campaign.texts.longTermReply
+  );
 }
 
-export function getStarterCheckoutUrl(campaignId: string): string {
+export function getCoachingEntryCheckoutUrl(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
-  return campaign.texts.starterCheckoutUrl;
+  const offer = getCoachingEntryOffer();
+  return campaign.texts.starterCheckoutUrl?.trim() || offer.checkoutUrl || "";
 }
 
-export function getStarterPriceText(campaignId: string): string {
-  const campaign = getCampaignById(campaignId);
-  return campaign.texts.starterPriceText;
+export function getCoachingEntryPriceText(_campaignId: string): string {
+  return getCoachingEntryOffer().priceText;
 }
 
-export function canSendStarterCheckoutDirectly(params: {
+export function canSendCoachingEntryCheckoutDirectly(params: {
   hasInstallmentRequest: boolean;
   wantsLongTermSupport: boolean;
 }): boolean {
@@ -346,6 +409,13 @@ export function canSendStarterCheckoutDirectly(params: {
 
   return true;
 }
+
+/** @deprecated Legacy aliases. "Starter" historically meant the 499 EUR coaching entry. */
+export const getStarterPriceReply = getCoachingEntryPriceReply;
+export const getStarterDirectBuyReply = getCoachingEntryDirectBuyReply;
+export const getStarterCheckoutUrl = getCoachingEntryCheckoutUrl;
+export const getStarterPriceText = getCoachingEntryPriceText;
+export const canSendStarterCheckoutDirectly = canSendCoachingEntryCheckoutDirectly;
 
 export function mustGoToCall(params: {
   hasInstallmentRequest: boolean;

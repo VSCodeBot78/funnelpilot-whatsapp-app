@@ -4,6 +4,7 @@ import {
   type PeteEscalationCategory,
 } from "../config/pete-prompt-v1.js";
 import { DEFAULT_VIDEO_GUIDE_URL } from "../config/campaigns.js";
+import { OFFER_TRUTH } from "../config/offer-truth.js";
 import type { CampaignConfig, FlowStepId } from "../types/types.js";
 
 export type PeteRuntimeSafetyCategory =
@@ -246,9 +247,14 @@ const BOOKING_LINK_CONTEXT_KEYWORDS = [
 
 const OFFER_LINK_CONTEXT_KEYWORDS = [
   "angebot",
-  "startphase",
   "programm",
   "begleitung",
+  "coaching",
+  "5 wochen",
+  "5-wochen",
+  "eltern vital",
+  "selbststarter",
+  "startphase",
 ];
 
 const IDENTITY_QUESTION_KEYWORDS = [
@@ -327,18 +333,18 @@ const PROVIDER_BOOKING_EXPECTED = [
 ];
 
 const PRICE_FALLBACK_REPLY =
-  "Die Preise h\u00e4ngen davon ab, welche Begleitung wirklich zu deiner Situation passt. Ich will dir da keine Zahl ohne Kontext hinwerfen. Wenn du magst, ordnen wir kurz ein, wo du stehst - dann sehen wir, was sinnvoll ist.";
+  `Der persönliche Einstieg ist das 5-Wochen-Coaching für ${OFFER_TRUTH.coachingEntry.priceText}. Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.`;
 
 const DIRECT_PRICE_REPLY_FALLBACK =
-  "Die Eltern-Energie-Startphase liegt bei 499 \u20ac.\n" +
-  "Die mehrmonatige 1:1-Begleitung liegt deutlich h\u00f6her.\n" +
-  "Wichtig ist: Erst kurz einordnen, was wirklich passt - nicht jeder braucht direkt das gro\u00dfe Programm.";
+  `Das 5-Wochen-Coaching liegt bei ${OFFER_TRUTH.coachingEntry.priceText}.\n` +
+  `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+  "Was davon sinnvoll ist, hängt davon ab, wie viel Unterstützung du gerade brauchst.";
 
 const LEGACY_STARTPHASE_INFO_URL =
   "https://jochen-kammerer.de/die-eltern-energie-startphase/";
 
 const LINK_CLARIFICATION_REPLY =
-  "Klar. Geht's dir um die kostenlose Video-Anleitung oder m\u00f6chtest du direkt einen Termin?";
+  "Klar. Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck, den Keto Guide oder direkt um einen Termin?";
 
 const MEDICAL_CRITICAL_REPLY =
   "Da m\u00f6chte ich nichts Falsches sagen. Bei Medikamenten, Diagnosen oder akuten Beschwerden sollte das sauber \u00e4rztlich abgekl\u00e4rt werden. Ich gebe das an Jochen weiter, damit du keine unklare Empfehlung bekommst.";
@@ -561,6 +567,37 @@ function buildDefaultVideoGuideLink(): RuntimeLinkOption {
   };
 }
 
+function buildElterncheckLink(): RuntimeLinkOption {
+  return {
+    label: OFFER_TRUTH.resources.elterncheck.name,
+    url: OFFER_TRUTH.resources.elterncheck.url,
+  };
+}
+
+function buildKetoGuideLink(): RuntimeLinkOption {
+  return {
+    label: OFFER_TRUTH.resources.ketoGuide.name,
+    url: OFFER_TRUTH.resources.ketoGuide.url,
+  };
+}
+
+function hasElterncheckIntent(normalized: string): boolean {
+  return (
+    normalized.includes("elterncheck") ||
+    normalized.includes("eltern check") ||
+    normalized.includes("check")
+  );
+}
+
+function hasKetoGuideIntent(normalized: string): boolean {
+  return (
+    normalized.includes("keto guide") ||
+    normalized.includes("keto-guide") ||
+    normalized.includes("ketoguide") ||
+    normalized.includes("keto")
+  );
+}
+
 function hasVideoGuideIntent(normalized: string): boolean {
   return (
     normalized.includes("video") ||
@@ -591,7 +628,12 @@ function linkLooksLikeOffer(link: RuntimeLinkOption): boolean {
   return (
     label.includes("angebot") ||
     label.includes("programm") ||
+    label.includes("coaching") ||
+    label.includes("eltern vital") ||
+    label.includes("selbststarter") ||
     label.includes("startphase") ||
+    url.includes("die-eltern-vital-methode") ||
+    url.includes("no-bullshit-elternfitness-selbststarter") ||
     url.includes("die-eltern-energie-startphase")
   );
 }
@@ -636,6 +678,14 @@ function getMatchingInfoLinks(
   links: RuntimeLinkOption[],
   normalized: string,
 ): RuntimeLinkOption[] {
+  if (hasElterncheckIntent(normalized)) {
+    return [buildElterncheckLink()];
+  }
+
+  if (hasKetoGuideIntent(normalized)) {
+    return [buildKetoGuideLink()];
+  }
+
   if (links.length <= 1) {
     if (hasVideoGuideIntent(normalized)) {
       return links.filter(
@@ -651,6 +701,9 @@ function getMatchingInfoLinks(
   const wantsOffer =
     normalized.includes("angebot") ||
     normalized.includes("programm") ||
+    normalized.includes("coaching") ||
+    normalized.includes("eltern vital") ||
+    normalized.includes("selbststarter") ||
     normalized.includes("startphase");
 
   if (wantsVideoGuide) {
@@ -736,17 +789,11 @@ function buildMedicalSoftReply(matchedKeyword: string): string {
   );
 }
 
-function buildDirectPriceReply(campaign?: CampaignConfig): string {
-  const rawPriceText = campaign?.texts.starterPriceText?.trim();
-  const priceText =
-    rawPriceText && !hasAggressiveClosingText(rawPriceText)
-      ? rawPriceText.replace("â‚¬", "\u20ac")
-      : "499 \u20ac";
-
+function buildDirectPriceReply(_campaign?: CampaignConfig): string {
   return (
-    `Die Eltern-Energie-Startphase liegt bei ${priceText}.\n` +
-    "Die mehrmonatige 1:1-Begleitung liegt deutlich h\u00f6her.\n" +
-    "Wichtig ist: Erst kurz einordnen, was wirklich passt - nicht jeder braucht direkt das gro\u00dfe Programm."
+    `Das 5-Wochen-Coaching liegt bei ${OFFER_TRUTH.coachingEntry.priceText}.\n` +
+    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+    `Die 6-Monats-Begleitung liegt regulär bei ${OFFER_TRUTH.longTerm.priceText}; nach dem 5-Wochen-Coaching bleiben durch die Anrechnung noch ${OFFER_TRUTH.longTerm.upgradeBalanceEur?.toLocaleString("de-DE")} € offen.`
   );
 }
 
