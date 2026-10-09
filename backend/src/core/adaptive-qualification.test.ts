@@ -143,6 +143,45 @@ test("Adaptive qualification end-to-end", async (t) => {
     assert.equal(result.state.flags.wantsInfoOnly, true);
   });
 
+  await t.test("parent context can capture target group and problem in the same turn", async () => {
+    clearConversationStore();
+    const leadId = "phase3-parent-and-problem";
+
+    await send(leadId, "Max");
+    await send(leadId, "Ja");
+
+    const result = await send(
+      leadId,
+      "Papa von zwei Kindern. Ich bin ständig platt und habe kaum Energie.",
+    );
+
+    assert.equal(result.state.answers.parentRole, "papa");
+    assert.equal(result.state.answers.isTargetParent, true);
+    assert.equal(result.state.answers.situationChoice, "a");
+    assert.equal(result.state.currentStep, "tried_before_freetext");
+    assert.match(result.text ?? "", /Hast du bisher/i);
+  });
+
+  await t.test("free-text bridge advances immediately instead of burning an extra turn", async () => {
+    clearConversationStore();
+    const leadId = "phase3-no-dead-turn";
+
+    await send(leadId, "Tom");
+    await send(leadId, "Ja");
+    await send(leadId, "Papa von einem Kind");
+    await send(leadId, "Ich bin oft müde.");
+
+    const result = await send(
+      leadId,
+      "Ich habe schon mal mit Training angefangen.",
+    );
+
+    assert.equal(result.nextStep, "consequence_freetext");
+    assert.equal(result.state.currentStep, "consequence_freetext");
+    assert.match(result.text ?? "", /2-3 Monaten/i);
+    assert.equal(result.state.answers.pendingAiFollowUpQuestion, undefined);
+  });
+
   await t.test("natural answers progress through qualification without choice letters", async () => {
     clearConversationStore();
     const leadId = "phase3-natural-flow";
