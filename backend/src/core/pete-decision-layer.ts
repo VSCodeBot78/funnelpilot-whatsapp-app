@@ -443,7 +443,9 @@ export function decidePeteNextAction(
     bookingUrl: context.bookingUrl,
   });
   const linkTarget = classifyLinkTarget(normalized, context);
-  const frustration = isPreviousAttemptFrustration(normalized);
+  const frustration =
+    context.currentStep !== "tried_before_freetext" &&
+    isPreviousAttemptFrustration(normalized);
 
   if (
     isExplicitHardStop(
