@@ -16,10 +16,16 @@ export type InstagramWebhookMessagingEvent = {
   message?: InstagramWebhookMessage;
 };
 
+export type InstagramWebhookChange = {
+  field?: string;
+  value?: InstagramWebhookMessagingEvent;
+};
+
 export type InstagramWebhookEntry = {
   id?: string;
   time?: number | string;
   messaging?: InstagramWebhookMessagingEvent[];
+  changes?: InstagramWebhookChange[];
 };
 
 export type InstagramWebhookPayload = {
@@ -68,12 +74,28 @@ export function parseInstagramMessageEvents(
 
   const result: ParsedInstagramMessageEvent[] = [];
 
+  const seenMessageIds = new Set<string>();
+
   for (const entry of entries) {
-    const messaging = Array.isArray(entry.messaging)
-      ? entry.messaging
+    const messagingEvents: InstagramWebhookMessagingEvent[] = Array.isArray(
+      entry.messaging,
+    )
+      ? [...entry.messaging]
       : [];
 
-    for (const event of messaging) {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+
+    for (const change of changes) {
+      if (
+        normalizeString(change.field).toLowerCase() === "messages" &&
+        change.value &&
+        typeof change.value === "object"
+      ) {
+        messagingEvents.push(change.value);
+      }
+    }
+
+    for (const event of messagingEvents) {
       const message = event.message;
       if (!message) {
         continue;
@@ -84,9 +106,11 @@ export function parseInstagramMessageEvents(
       const recipientId = normalizeString(event.recipient?.id);
       const text = normalizeString(message.text);
 
-      if (!messageId) {
+      if (!messageId || seenMessageIds.has(messageId)) {
         continue;
       }
+
+      seenMessageIds.add(messageId);
 
       result.push({
         messageId,
