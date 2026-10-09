@@ -61,7 +61,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     internalColorUsageNote:
       "sachlich einordnen, nicht diskutieren, keine Farbe oder Typisierung nennen",
     exampleReply:
-      "Die Preise h\u00e4ngen davon ab, welche Begleitung wirklich zu deiner Situation passt. Ich will dir da keine Zahl ohne Kontext hinwerfen. Wenn du magst, ordnen wir kurz ein, wo du stehst - dann sehen wir, was sinnvoll ist.",
+      "Der persönliche Einstieg ist das 5-Wochen-Coaching für 499 €. Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für 14,95 €.",
   },
   {
     id: "price-direct-sag-schon",
@@ -145,7 +145,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     peteMayAnswer: true,
     jochenMustTakeOver: false,
     exampleReply:
-      "Klar. Geht's dir um die kostenlose Video-Anleitung oder m\u00f6chtest du direkt einen Termin?",
+      "Klar. Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck, den Keto Guide oder direkt um einen Termin?",
   },
   {
     id: "warm-signal-alone",
@@ -457,7 +457,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     jochenMustTakeOver: false,
     escalationCategory: "price_negotiation",
     exampleReply:
-      "Die Preise h\u00e4ngen davon ab, welche Begleitung wirklich zu deiner Situation passt.\nIch will dir da keine Zahl ohne Kontext hinwerfen.\nWenn du m\u00f6chtest, ordnen wir kurz ein, wo du stehst. Dann sehen wir, was sinnvoll ist.",
+      "Der persönliche Einstieg ist das 5-Wochen-Coaching für 499 €. Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für 14,95 €.",
   },
   {
     id: "regression-direct-price-sag-schon-no-push",
