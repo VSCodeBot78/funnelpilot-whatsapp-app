@@ -132,6 +132,28 @@ export function evaluateProviderBookingFollowUp(
   state: ConversationState,
   now = new Date(),
 ): ProviderFollowUpEvaluationResult {
+  if (state.owner === "human" || state.aiPaused === true) {
+    return {
+      shouldActivate: false,
+      active: false,
+      status: state.providerBooking?.status ?? "inactive",
+      stage: "inactive",
+      dueNow: false,
+      reason: "Human Takeover aktiv. Booking-Follow-up pausiert.",
+    };
+  }
+
+  if (state.flags?.stopped) {
+    return {
+      shouldActivate: false,
+      active: false,
+      status: state.providerBooking?.status ?? "inactive",
+      stage: "inactive",
+      dueNow: false,
+      reason: "Automation gestoppt. Booking-Follow-up pausiert.",
+    };
+  }
+
   const providerBooking = state.providerBooking;
 
   if (!providerBooking || providerBooking.status === "inactive") {
