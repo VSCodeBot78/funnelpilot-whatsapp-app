@@ -187,6 +187,7 @@ app.get("/health/readiness", (_req, res) => {
     metaVerifyTokenConfigured: Boolean(env.META_VERIFY_TOKEN),
     metaSendConfigured,
     instagramVerifyTokenConfigured: Boolean(env.INSTAGRAM_VERIFY_TOKEN),
+    instagramAppSecretConfigured: Boolean(env.INSTAGRAM_APP_SECRET),
     instagramEngineEnabled: env.INSTAGRAM_ENGINE_ENABLED,
     instagramAllowedSenderCount: env.INSTAGRAM_ALLOWED_SENDER_IDS.length,
     instagramSendEnabled: env.INSTAGRAM_SEND_ENABLED,
