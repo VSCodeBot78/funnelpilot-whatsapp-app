@@ -161,11 +161,32 @@ router.get("/", (req, res) => {
 });
 
 router.post("/", async (req: RawBodyRequest, res) => {
+  const signatureHeader = req.get("x-hub-signature-256");
   const signatureCheck = verifyMetaWebhookSignature({
     rawBody: req.rawBody,
-    signatureHeader: req.get("x-hub-signature-256"),
+    signatureHeader,
     appSecret: env.META_APP_SECRET,
   });
+
+  const body = req.body as Record<string, unknown> | undefined;
+  const bodyKeys =
+    body && typeof body === "object" ? Object.keys(body).sort() : [];
+  const hasEntryArray = Array.isArray(body?.entry);
+  const looksLikeFieldSample =
+    typeof body?.field === "string" && body?.value !== undefined;
+
+  console.log(
+    [
+      "[meta-instagram-post]",
+      "received=true",
+      `signaturePresent=${Boolean(signatureHeader)}`,
+      `signatureValid=${signatureCheck.ok}`,
+      `rawBodyPresent=${Boolean(req.rawBody?.length)}`,
+      `hasEntryArray=${hasEntryArray}`,
+      `looksLikeFieldSample=${looksLikeFieldSample}`,
+      `bodyKeys=${bodyKeys.join(",") || "-"}`,
+    ].join(" "),
+  );
 
   if (!signatureCheck.ok) {
     return res
@@ -174,6 +195,15 @@ router.post("/", async (req: RawBodyRequest, res) => {
   }
 
   const events = parseInstagramMessageEvents(req.body);
+
+  console.log(
+    [
+      "[meta-instagram-post]",
+      `parsedEvents=${events.length}`,
+      `engineEnabled=${env.INSTAGRAM_ENGINE_ENABLED}`,
+      `sendEnabled=${env.INSTAGRAM_SEND_ENABLED}`,
+    ].join(" "),
+  );
 
   let processed = 0;
   let duplicates = 0;
