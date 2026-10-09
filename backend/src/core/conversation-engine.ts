@@ -22,7 +22,8 @@ import {
   parseName,
 } from "../domain/name-parser.js";
 import {
-  canSendStarterCheckoutDirectly,
+  canSendCoachingEntryCheckoutDirectly,
+  isSelfstarterInterest,
   mustGoToCall,
 } from "../domain/pricing-rules.js";
 import {
@@ -93,6 +94,7 @@ import {
   buildPriceReply,
   buildQuestionReply,
   buildScaleValidationReply,
+  buildSelfstarterReply,
 } from "./response-builder.js";
 import {
   buildExecutionBinaryBookingReply,
@@ -210,7 +212,7 @@ const SIMPLE_ACK_KEYWORDS = [
   "super",
 ];
 
-const STARTER_BUY_SIGNAL_KEYWORDS = [
+const COACHING_ENTRY_BUY_SIGNAL_KEYWORDS = [
   "gekauft",
   "kauf ich",
   "kauf ich direkt",
@@ -639,22 +641,22 @@ function isSimpleAcknowledgement(input: string): boolean {
   );
 }
 
-function isStrongStarterBuySignal(input: string): boolean {
+function isStrongCoachingEntryBuySignal(input: string): boolean {
   const normalized = normalizeText(input);
 
   if (!normalized) {
     return false;
   }
 
-  return STARTER_BUY_SIGNAL_KEYWORDS.some(
+  return COACHING_ENTRY_BUY_SIGNAL_KEYWORDS.some(
     (keyword) => normalized === keyword || normalized.includes(keyword),
   );
 }
 
-function buildStarterDirectBuyLeadReply(campaignId: string): string {
+function buildCoachingEntryDirectBuyLeadReply(campaignId: string): string {
   return (
     "Mega 👊\n\n" +
-    `${buildIntentReply(campaignId, "direct_buy_starter")}\n\n` +
+    `${buildIntentReply(campaignId, "direct_buy_coaching_entry")}\n\n` +
     "Danke für dein Vertrauen."
   );
 }
@@ -1198,6 +1200,19 @@ export async function processIncomingMessage(
       detectedIntent: "unknown",
       state,
       replySuppressedReason: "human_owned",
+    };
+  }
+
+  if (isSelfstarterInterest(input.messageText)) {
+    const replyText = buildSelfstarterReply();
+    appendAssistantMessage(state, replyText);
+    persistConversationState(state);
+
+    return {
+      text: replyText,
+      nextStep: state.currentStep,
+      detectedIntent: "selfstarter_interest",
+      state,
     };
   }
 
@@ -1768,18 +1783,19 @@ export async function processIncomingMessage(
   if (
     state.flags.askedPrice &&
     state.currentStep !== "booking" &&
-    isStrongStarterBuySignal(input.messageText)
+    isStrongCoachingEntryBuySignal(input.messageText)
   ) {
     resetPriceFlowState(state);
     patchFlags(state, {
+      wantsDirectBuyCoachingEntry: true,
       wantsDirectBuyStarter: true,
     });
 
-    const replyText = canSendStarterCheckoutDirectly({
+    const replyText = canSendCoachingEntryCheckoutDirectly({
       hasInstallmentRequest: state.flags.askedInstallments,
       wantsLongTermSupport: state.flags.wantsLongTermSupport,
     })
-      ? buildStarterDirectBuyLeadReply(campaign.id)
+      ? buildCoachingEntryDirectBuyLeadReply(campaign.id)
       : buildBookingPrompt(campaign.id);
 
     const nextStep: FlowStepId = mustGoToCall({
@@ -1800,7 +1816,7 @@ export async function processIncomingMessage(
     return {
       text: replyText,
       nextStep,
-      detectedIntent: "direct_buy_starter",
+      detectedIntent: "direct_buy_coaching_entry",
       state,
     };
   }
@@ -1845,17 +1861,17 @@ export async function processIncomingMessage(
     };
   }
 
-  if (detectedIntent.intent === "direct_buy_starter") {
+  if (detectedIntent.intent === "direct_buy_coaching_entry") {
     resetPriceFlowState(state);
     patchFlags(state, {
       wantsDirectBuyStarter: true,
     });
 
-    const replyText = canSendStarterCheckoutDirectly({
+    const replyText = canSendCoachingEntryCheckoutDirectly({
       hasInstallmentRequest: state.flags.askedInstallments,
       wantsLongTermSupport: state.flags.wantsLongTermSupport,
     })
-      ? buildStarterDirectBuyLeadReply(campaign.id)
+      ? buildCoachingEntryDirectBuyLeadReply(campaign.id)
       : buildBookingPrompt(campaign.id);
 
     const nextStep: FlowStepId = mustGoToCall({
@@ -1876,7 +1892,7 @@ export async function processIncomingMessage(
     return {
       text: replyText,
       nextStep,
-      detectedIntent: "direct_buy_starter",
+      detectedIntent: "direct_buy_coaching_entry",
       state,
     };
   }
