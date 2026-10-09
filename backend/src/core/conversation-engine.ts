@@ -145,6 +145,10 @@ const INTRO_ACK_YES_KEYWORDS = [
   "mach",
   "go",
   "weiter",
+  "leg los",
+  "stell die fragen",
+  "frag ruhig",
+  "fragen ok",
 ];
 
 const POST_DONE_THANKS_KEYWORDS = [

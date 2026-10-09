@@ -74,6 +74,29 @@ test("Phase 3 adaptive qualification", async (t) => {
     assert.equal(extractScaleValue("Ehrlich gesagt eine 8 von 10.", 1, 10), 8);
   });
 
+  await t.test("parent context already present in the name message is reused", async () => {
+    clearConversationStore();
+    const leadId = "phase3-parent-in-name";
+
+    let result = await processIncomingMessage({
+      leadId,
+      campaignId: DEFAULT_CAMPAIGN_ID,
+      messageText: "Ich bin Max, Papa von zwei Kindern",
+    });
+
+    assert.equal(result.state.answers.parentRole, "papa");
+    assert.equal(result.state.currentStep, "intro_ack");
+
+    result = await processIncomingMessage({
+      leadId,
+      campaignId: DEFAULT_CAMPAIGN_ID,
+      messageText: "Ja, leg los",
+    });
+
+    assert.equal(result.state.currentStep, "situation_choice");
+    assert.doesNotMatch(result.text ?? "", /Bist du Mama|Bist du Papa|Elternteil/i);
+  });
+
   await t.test("parent context can also answer the situation and skip a redundant turn", async () => {
     clearConversationStore();
     const leadId = "phase3-parent-and-situation";
@@ -171,6 +194,40 @@ test("Phase 3 adaptive qualification", async (t) => {
 
     assert.equal(last?.state.answers.goalChoice, "b");
     assert.equal(last?.state.answers.importanceScore, 8);
+  });
+
+  await t.test("natural qualification can reach booking without choice letters", async () => {
+    clearConversationStore();
+    const leadId = "phase3-natural-to-booking";
+
+    const messages = [
+      "Max",
+      "Ja",
+      "Papa von zwei Kindern",
+      "Ich bin ständig platt und habe kaum Energie",
+      "Ich habe schon Training und Kalorien zählen probiert",
+      "Mich würde nerven, wenn ich weiter so energielos bin",
+      "Ich will wieder deutlich mehr Energie haben",
+      "8 von 10",
+      "Ich will das wirklich angehen",
+    ];
+
+    let result;
+    for (const messageText of messages) {
+      result = await processIncomingMessage({
+        leadId,
+        campaignId: DEFAULT_CAMPAIGN_ID,
+        messageText,
+      });
+    }
+
+    assert.ok(result);
+    assert.equal(result.state.answers.parentRole, "papa");
+    assert.equal(result.state.answers.situationChoice, "a");
+    assert.equal(result.state.answers.goalChoice, "a");
+    assert.equal(result.state.answers.importanceScore, 8);
+    assert.equal(result.state.answers.commitmentChoice, "really_start");
+    assert.equal(result.state.currentStep, "booking");
   });
 
   await t.test("non-parent leads are not pushed into the parent coaching funnel", async () => {
