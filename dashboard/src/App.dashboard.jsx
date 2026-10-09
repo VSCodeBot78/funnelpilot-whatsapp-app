@@ -165,6 +165,8 @@ export default function AppDashboard() {
     openChat,
     closeChatTab,
     sendManualMessage,
+    takeOverActiveConversation,
+    releaseActiveConversationToAi,
     inboxContacts,
     activeInboxContact,
     activeConversation,
@@ -401,6 +403,8 @@ export default function AppDashboard() {
             onNewManualMessageChange={setNewManualMessage}
             onOpenChat={openChat}
             onSendManualMessage={sendManualMessage}
+            onTakeOverConversation={takeOverActiveConversation}
+            onReleaseConversation={releaseActiveConversationToAi}
             onSetActiveContactId={setActiveContactId}
             onCloseChatTab={closeChatTab}
             onReloadInbox={loadInboxData}
