@@ -15,6 +15,10 @@ import {
   getSelfstarterReply,
 } from "../domain/pricing-rules.js";
 import { detectLeadIntent } from "../core/intent-detector.js";
+import {
+  buildPeteRuntimeInfoLinkReply,
+  evaluatePeteRuntimeSafety,
+} from "../core/pete-runtime-safety.js";
 
 test("Offer Truth is unambiguous", async (t) => {
   await t.test("Selfstarter is the 14,95 EUR low-ticket offer", () => {
@@ -101,6 +105,37 @@ test("Pricing and intent routing use the current offer truth", async (t) => {
     assert.match(reply, /2\.499 €/);
     assert.match(reply, /499 €/);
     assert.match(reply, /2\.000 €/);
+  });
+
+  await t.test("Pete runtime direct price answer uses current offer truth", () => {
+    const result = evaluatePeteRuntimeSafety("Sag mir jetzt den Preis", {
+      campaign: campaigns[DEFAULT_CAMPAIGN_ID],
+      askedPrice: true,
+    });
+
+    assert.equal(result.category, "price");
+    assert.match(result.replyText ?? "", /5-Wochen-Coaching/);
+    assert.match(result.replyText ?? "", /499 €/);
+    assert.match(result.replyText ?? "", /Selbststarter/);
+    assert.match(result.replyText ?? "", /14,95 €/);
+    assert.match(result.replyText ?? "", /2\\.499 €/);
+    assert.doesNotMatch(result.replyText ?? "", /Eltern-Energie-Startphase/);
+  });
+
+  await t.test("Pete runtime can return Elterncheck and Keto Guide explicitly", () => {
+    const campaign = campaigns[DEFAULT_CAMPAIGN_ID];
+
+    const checkReply = buildPeteRuntimeInfoLinkReply(
+      "Schick mir den Elterncheck",
+      campaign,
+    );
+    assert.match(checkReply, /check\.jochen-kammerer\.de/);
+
+    const ketoReply = buildPeteRuntimeInfoLinkReply(
+      "Schick mir den Keto Guide",
+      campaign,
+    );
+    assert.match(ketoReply, /jochen-kammerer\.de\/keto-guide\//);
   });
 
   await t.test("campaign links match the current offer truth", () => {
