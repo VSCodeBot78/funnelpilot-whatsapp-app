@@ -84,6 +84,43 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     });
   });
 
+  await t.test("parses Instagram messages delivered via changes envelope", () => {
+    const events = parseInstagramMessageEvents({
+      object: "instagram",
+      entry: [
+        {
+          id: "17841400000000000",
+          time: 1791550000000,
+          changes: [
+            {
+              field: "messages",
+              value: {
+                sender: { id: "123456789012345" },
+                recipient: { id: "17841400000000000" },
+                timestamp: "1791550000123",
+                message: {
+                  mid: "changes-mid-1",
+                  text: "Hallo aus dem changes Envelope.",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0], {
+      messageId: "changes-mid-1",
+      senderId: "123456789012345",
+      recipientId: "17841400000000000",
+      text: "Hallo aus dem changes Envelope.",
+      timestampMs: 1791550000123,
+      isEcho: false,
+      hasAttachments: false,
+    });
+  });
+
   await t.test("ignores non-Instagram webhook envelopes", () => {
     const events = parseInstagramMessageEvents({
       object: "page",
@@ -298,14 +335,17 @@ test("Phase 4 Instagram transport foundation", async (t) => {
         entry: [
           {
             id: "17841400000000000",
-            messaging: [
+            changes: [
               {
-                sender: { id: "route-test-igsid" },
-                recipient: { id: "17841400000000000" },
-                timestamp: Date.now(),
-                message: {
-                  mid: "route-test-mid-1",
-                  text: "Max",
+                field: "messages",
+                value: {
+                  sender: { id: "route-test-igsid" },
+                  recipient: { id: "17841400000000000" },
+                  timestamp: Date.now(),
+                  message: {
+                    mid: "route-test-mid-1",
+                    text: "Max",
+                  },
                 },
               },
             ],
