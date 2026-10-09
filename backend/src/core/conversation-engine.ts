@@ -2129,6 +2129,16 @@ export async function processIncomingMessage(
     }
 
     updateAnswer(state, "name", parsedName);
+
+    const parentContextFromName = parseParentContext(input.messageText);
+    if (parentContextFromName.explicit) {
+      patchAnswers(state, {
+        parentRole: parentContextFromName.role,
+        parentContextText: parentContextFromName.rawText,
+        isTargetParent: parentContextFromName.role !== "not_parent",
+      });
+    }
+
     setCurrentStep(state, "intro_ack");
 
     const replyText = buildIntroText(campaign.id, parsedName);
@@ -2157,14 +2167,148 @@ export async function processIncomingMessage(
       };
     }
 
-    const nextStep = getNextFlowStep(campaign.id, "intro_ack");
+    const parentContextFromAck = parseParentContext(input.messageText);
+    if (parentContextFromAck.explicit) {
+      patchAnswers(state, {
+        parentRole: parentContextFromAck.role,
+        parentContextText: parentContextFromAck.rawText,
+        isTargetParent: parentContextFromAck.role !== "not_parent",
+      });
+    }
+
+    if (state.answers.parentRole === "not_parent") {
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+
+      const replyText =
+        "Danke für die Klarheit. Mein Coaching ist wirklich auf den Elternalltag zugeschnitten, deshalb würde ich dir hier nichts aufdrücken.\nWenn du trotzdem nur einen Einblick in die Methode willst, kann ich dir den passenden Link schicken.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "info_only",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    let nextStep = getNextFlowStep(campaign.id, "intro_ack");
     if (!nextStep) {
       throw new Error("Missing next flow step after intro_ack.");
+    }
+
+    if (
+      nextStep.id === "parent_context" &&
+      state.answers.parentRole &&
+      state.answers.parentRole !== "unknown"
+    ) {
+      const afterParent = getNextFlowStep(campaign.id, "parent_context");
+      if (!afterParent) {
+        throw new Error("Missing next flow step after parent_context.");
+      }
+      nextStep = afterParent;
     }
 
     setCurrentStep(state, nextStep.id);
 
     const replyText = buildQuestionReply(campaign.id, nextStep);
+    appendAssistantMessage(state, replyText);
+    persistConversationState(state);
+
+    return {
+      text: replyText,
+      nextStep: nextStep.id,
+      detectedIntent: "flow_answer",
+      state,
+    };
+  }
+
+  if (state.currentStep === "parent_context") {
+    const parentContext = parseParentContext(input.messageText);
+
+    if (!parentContext.explicit || parentContext.role === "unknown") {
+      const replyText =
+        "Nur damit ich dich wirklich richtig einordne: Bist du Mama, Papa oder grundsätzlich Elternteil?\nDas Alter der Kinder kannst du gern direkt dazuschreiben.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "parent_context",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    patchAnswers(state, {
+      parentRole: parentContext.role,
+      parentContextText: parentContext.rawText,
+      isTargetParent: parentContext.role !== "not_parent",
+    });
+
+    if (parentContext.role === "not_parent") {
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+
+      const replyText =
+        "Danke dir. Mein Coaching ist bewusst für Eltern gebaut. Deshalb macht es keinen Sinn, dich jetzt durch einen Eltern-Funnel zu drücken.\nWenn du nur die Methode anschauen willst, kann ich dir den Link schicken.";
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: "info_only",
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    const situationStep = getStepOrThrow(campaign.id, "situation_choice");
+    const situationChoice = await resolveAdaptiveChoice({
+      stepId: "situation_choice",
+      input: input.messageText,
+      step: situationStep,
+      leadName: state.answers.name,
+    });
+
+    if (situationChoice) {
+      patchAnswers(state, {
+        situationChoice,
+        situationChoiceText: input.messageText.trim(),
+      });
+
+      const nextStep = getNextFlowStep(campaign.id, "situation_choice");
+      if (!nextStep) {
+        throw new Error("Missing next flow step after situation_choice.");
+      }
+
+      setCurrentStep(state, nextStep.id);
+      const replyText =
+        buildNaturalChoiceAcknowledgement("situation_choice", situationChoice) +
+        "\n\n" +
+        buildQuestionReply(campaign.id, nextStep);
+      appendAssistantMessage(state, replyText);
+      persistConversationState(state);
+
+      return {
+        text: replyText,
+        nextStep: nextStep.id,
+        detectedIntent: "flow_answer",
+        state,
+      };
+    }
+
+    const nextStep = getNextFlowStep(campaign.id, "parent_context");
+    if (!nextStep) {
+      throw new Error("Missing next flow step after parent_context.");
+    }
+
+    setCurrentStep(state, nextStep.id);
+
+    const replyText =
+      "Perfekt, danke. Dann weiß ich schon mal, aus welchem Alltag du kommst.\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
     appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
