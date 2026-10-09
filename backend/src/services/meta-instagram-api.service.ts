@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { isInstagramRecipientAllowed } from "./instagram-automation-gate.service.js";
 
 export type MetaInstagramSendResult =
   | {
@@ -13,7 +14,9 @@ export type MetaInstagramSendResult =
       sent: false;
       dryRun: true;
       sendSkipped: true;
-      reason: "INSTAGRAM_SEND_ENABLED=false";
+      reason:
+        | "INSTAGRAM_SEND_ENABLED=false"
+        | "recipient_not_allowlisted";
     }
   | {
       ok: false;
@@ -72,6 +75,16 @@ export async function sendMetaInstagramTextMessage(
 
   const to = normalizeString(input.to);
   const body = normalizeString(input.body);
+
+  if (!isInstagramRecipientAllowed(to)) {
+    return {
+      ok: true,
+      sent: false,
+      dryRun: true,
+      sendSkipped: true,
+      reason: "recipient_not_allowlisted",
+    };
+  }
 
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_ACCOUNT_ID) {
     return {
