@@ -210,6 +210,14 @@ export function evaluateGhostingState(
   currentGhosting: GhostingState | undefined,
   now = new Date(),
 ): GhostingEvaluationResult {
+  if (state.owner === "human" || state.aiPaused === true) {
+    return buildInactiveResult("Human Takeover aktiv. Ghosting pausiert.");
+  }
+
+  if (state.flags?.stopped) {
+    return buildInactiveResult("Automation gestoppt. Ghosting pausiert.");
+  }
+
   const outboundAt = getReferenceOutboundAt(state);
 
   if (!outboundAt) {
