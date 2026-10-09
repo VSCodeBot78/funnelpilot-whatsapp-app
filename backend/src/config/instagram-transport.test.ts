@@ -77,6 +77,24 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     });
   });
 
+  await t.test("ignores non-Instagram webhook envelopes", () => {
+    const events = parseInstagramMessageEvents({
+      object: "page",
+      entry: [
+        {
+          messaging: [
+            {
+              sender: { id: "wrong-channel" },
+              message: { mid: "wrong-mid", text: "Ignore me" },
+            },
+          ],
+        },
+      ],
+    });
+
+    assert.deepEqual(events, []);
+  });
+
   await t.test("recognizes echo messages so they cannot loop back into Pete", () => {
     const [event] = parseInstagramMessageEvents({
       object: "instagram",
