@@ -165,7 +165,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   const signatureCheck = verifyMetaWebhookSignature({
     rawBody: req.rawBody,
     signatureHeader,
-    appSecret: env.META_APP_SECRET,
+    appSecret: env.INSTAGRAM_APP_SECRET,
   });
 
   const body = req.body as Record<string, unknown> | undefined;
