@@ -89,7 +89,6 @@ import {
 import {
   buildBookingConfirmedReply,
   buildBookingPrompt,
-  buildChoiceValidationReply,
   buildCommitmentValidationReply,
   buildInfoLinkReply,
   buildInfoOnlyReply,
@@ -286,11 +285,6 @@ function isPauseRequest(input: string): boolean {
   return PAUSE_KEYWORDS.some(
     (keyword) => normalized === keyword || normalized.includes(keyword),
   );
-}
-
-function isChoiceKey(input: string, allowedKeys: string[]): boolean {
-  const normalized = input.trim().toLowerCase();
-  return allowedKeys.includes(normalized);
 }
 
 function isScaleValue(input: string, min: number, max: number): boolean {
