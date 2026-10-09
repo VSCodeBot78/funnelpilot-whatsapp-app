@@ -19,6 +19,7 @@ function createMessage(params: CreateMessageParams): ChatMessage {
   return {
     id: params.id ?? crypto.randomUUID(),
     role: params.role,
+    actor: params.actor,
     text: params.text,
     createdAt: params.createdAt ?? nowIso(),
   };
@@ -39,6 +40,10 @@ function createInitialConversationState(
     updatedAt: now,
     lastUserMessageAt: undefined,
     lastAssistantMessageAt: undefined,
+    lastHumanMessageAt: undefined,
+    owner: "ai",
+    aiPaused: false,
+    lastActor: undefined,
     answers: {},
     flags: {
       stopped: false,
@@ -76,6 +81,7 @@ export function getOrCreateConversationState(
   const existing = getConversationState(leadId, campaignId);
 
   if (existing) {
+    ensureOwnershipState(existing);
     return existing;
   }
 
@@ -84,26 +90,88 @@ export function getOrCreateConversationState(
   return created;
 }
 
+export function ensureOwnershipState(state: ConversationState): void {
+  if (!state.owner) {
+    state.owner = "ai";
+  }
+
+  if (typeof state.aiPaused !== "boolean") {
+    state.aiPaused = false;
+  }
+
+  if (!state.lastActor && state.messages.length > 0) {
+    const lastMessage = state.messages[state.messages.length - 1];
+    state.lastActor =
+      lastMessage.actor ??
+      (lastMessage.role === "user" ? "lead" : "ai");
+  }
+}
+
 export function appendUserMessage(state: ConversationState, text: string): void {
+  ensureOwnershipState(state);
+
   const message = createMessage({
     role: "user",
+    actor: "lead",
     text,
   });
 
   state.messages.push(message);
   state.lastUserMessageAt = message.createdAt;
+  state.lastActor = "lead";
   state.updatedAt = message.createdAt;
 }
 
 export function appendAssistantMessage(state: ConversationState, text: string): void {
+  ensureOwnershipState(state);
+
   const message = createMessage({
     role: "assistant",
+    actor: "ai",
     text,
   });
 
   state.messages.push(message);
   state.lastAssistantMessageAt = message.createdAt;
+  state.lastActor = "ai";
   state.updatedAt = message.createdAt;
+}
+
+export function takeOverByHuman(
+  state: ConversationState,
+  at = nowIso(),
+): void {
+  ensureOwnershipState(state);
+  state.owner = "human";
+  state.aiPaused = true;
+  state.lastActor = "human";
+  state.lastHumanMessageAt = at;
+  state.updatedAt = at;
+}
+
+export function appendHumanMessage(state: ConversationState, text: string): void {
+  ensureOwnershipState(state);
+
+  const message = createMessage({
+    role: "assistant",
+    actor: "human",
+    text,
+  });
+
+  state.messages.push(message);
+  takeOverByHuman(state, message.createdAt);
+}
+
+export function releaseToAi(state: ConversationState): void {
+  ensureOwnershipState(state);
+  state.owner = "ai";
+  state.aiPaused = false;
+  state.updatedAt = nowIso();
+}
+
+export function isAiReplyAllowed(state: ConversationState): boolean {
+  ensureOwnershipState(state);
+  return state.owner !== "human" && state.aiPaused !== true && !state.flags.stopped;
 }
 
 export function setCurrentStep(state: ConversationState, stepId: FlowStepId): void {
