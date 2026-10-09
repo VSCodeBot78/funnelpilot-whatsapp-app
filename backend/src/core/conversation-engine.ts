@@ -1178,15 +1178,26 @@ export async function processIncomingMessage(
   appendUserMessage(state, input.messageText);
 
   if (state.flags.stopped) {
-    const replyText = "Alles klar, ich schreibe dir nicht weiter.";
-    appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
     return {
-      text: replyText,
+      text: null,
       nextStep: state.currentStep,
       detectedIntent: "stop",
       state,
+      replySuppressedReason: "stopped",
+    };
+  }
+
+  if (state.owner === "human" || state.aiPaused === true) {
+    persistConversationState(state);
+
+    return {
+      text: null,
+      nextStep: state.currentStep,
+      detectedIntent: "unknown",
+      state,
+      replySuppressedReason: "human_owned",
     };
   }
 
