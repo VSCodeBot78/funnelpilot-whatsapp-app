@@ -37,9 +37,10 @@ export function normalizeName(value) {
 
 export function findConversationMatchForContact(contact, conversations) {
   const campaignMap = {
-    fit: "mama-papa-kampagne",
+    fit: "eltern-vital-fit",
     reset: "dummy-kampagne",
-    "mama-papa-kampagne": "mama-papa-kampagne",
+    "eltern-vital-fit": "eltern-vital-fit",
+    "mama-papa-kampagne": "eltern-vital-fit",
     "dummy-kampagne": "dummy-kampagne",
   };
 
@@ -226,10 +227,10 @@ export async function loadInboxConversationMapForContacts({
 }
 
 const BACKEND_CONVERSATION_CAMPAIGN_MAP = {
-  fit: "mama-papa-kampagne",
+  fit: "eltern-vital-fit",
   reset: "dummy-kampagne",
-  "eltern-vital-fit": "mama-papa-kampagne",
-  "mama-papa-kampagne": "mama-papa-kampagne",
+  "eltern-vital-fit": "eltern-vital-fit",
+  "mama-papa-kampagne": "eltern-vital-fit",
   "dummy-kampagne": "dummy-kampagne",
 };
 
