@@ -17,7 +17,7 @@ function getLinkLabel(url) {
   const lower = String(url).toLowerCase();
 
   if (lower.includes("calendly.com")) {
-    return "Termin final über Calendly eintragen";
+    return "Strategiegespräch buchen";
   }
 
   if (lower.includes("calendar.google.com")) {

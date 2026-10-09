@@ -37,13 +37,17 @@ import {
   activateProviderBookingState,
   markProviderBookingBooked,
 } from "../services/provider-booking.service.js";
-import { buildSchedulingPreviewFromState } from "../services/scheduling-request.service.js";
+import {
+  buildSchedulingPreviewFromState,
+  resolveProviderBookingUrlFromState,
+} from "../services/scheduling-request.service.js";
 import type {
   BookingRequestData,
   EngineInput,
   EngineReply,
   FlowStepDefinition,
   FlowStepId,
+  LeadIntent,
   SuggestedBookingOption,
 } from "../types/types.js";
 import {
@@ -52,6 +56,17 @@ import {
   getNextFlowStep,
 } from "./flow-definition.js";
 import { detectLeadIntent } from "./intent-detector.js";
+import {
+  classifyPeteObjection,
+  evaluatePeteObjection,
+  type ObjectionIntent,
+  type PeteObjectionResult,
+} from "./pete-objection-handler.js";
+import {
+  buildPeteRuntimeInfoLinkReply,
+  buildPeteRuntimeHandoffPendingReply,
+  evaluatePeteRuntimeSafety,
+} from "./pete-runtime-safety.js";
 import {
   appendAssistantMessage,
   appendUserMessage,
@@ -100,6 +115,14 @@ import {
   classifyExecutionDetail,
   classifyPriceObjectionFollowUp,
 } from "./price-flow.js";
+import {
+  decidePeteNextAction,
+  type PeteDecision,
+} from "./pete-decision-layer.js";
+import {
+  composePeteResponse,
+  type PeteComposedResponse,
+} from "./pete-response-composer.js";
 
 const INTRO_ACK_YES_KEYWORDS = [
   "ja",
@@ -402,7 +425,7 @@ function getExternalProviderPreview(
 
   if (
     schedulingRequest.providerMode !== "booking_link" ||
-    !schedulingRequest.externalBookingUrl
+    !isHttpUrl(schedulingRequest.externalBookingUrl)
   ) {
     return null;
   }
@@ -640,10 +663,29 @@ function buildProviderBookingResendReply(
   state: ReturnType<typeof getOrCreateConversationState>,
 ): string {
   const preview = getExternalProviderPreview(state);
-  const bookingUrl =
-    state.providerBooking?.bookingUrl || preview?.externalBookingUrl || "";
+  const configuredProviderBookingUrl = resolveProviderBookingUrlFromState(state);
+  const bookingUrl = [
+    configuredProviderBookingUrl,
+    preview?.externalBookingUrl,
+    state.providerBooking?.bookingUrl,
+  ].find(isHttpUrl)?.trim();
+
+  if (!bookingUrl) {
+    return (
+      "Ja, das macht Sinn.\n" +
+      "Dann halte ich kurz fest, worum es geht, und Jochen meldet sich pers\u00f6nlich bei dir."
+    );
+  }
+
+  state.providerBooking = activateProviderBookingState({
+    current: state.providerBooking,
+    provider: inferBookingProviderFromUrl(bookingUrl),
+    bookingUrl,
+    linkSentAt: nowIso(),
+  });
+
   const providerName =
-    preview?.providerLabel || state.providerBooking?.provider || "dem Buchungslink";
+    preview?.providerLabel || state.providerBooking.provider || "dem Buchungslink";
 
   return (
     "Klar 👍\n\n" +
@@ -667,6 +709,378 @@ function buildProviderBookingSimpleAckReply(): string {
     "Wenn du durch bist, schreib mir kurz „hab gebucht“.\n" +
     "Und falls du den Link nochmal brauchst, schreib einfach „Link“."
   );
+}
+
+function isHttpUrl(value: string | undefined): value is string {
+  const url = value?.trim();
+  return Boolean(url && (url.startsWith("http://") || url.startsWith("https://")));
+}
+
+function getLastAssistantText(
+  state: ReturnType<typeof getOrCreateConversationState>,
+): string | undefined {
+  return [...state.messages]
+    .reverse()
+    .find((message) => message.role === "assistant")
+    ?.text.trim();
+}
+
+function getRuntimeBookingUrl(params: {
+  state: ReturnType<typeof getOrCreateConversationState>;
+}): string | undefined {
+  const preview = getExternalProviderPreview(params.state);
+  const configuredProviderBookingUrl = resolveProviderBookingUrlFromState(
+    params.state,
+  );
+  const candidates = [
+    configuredProviderBookingUrl,
+    preview?.externalBookingUrl,
+    params.state.providerBooking?.bookingUrl,
+  ];
+
+  return candidates.find(isHttpUrl)?.trim();
+}
+
+function mapPeteDecisionToIntent(decision: PeteDecision): LeadIntent {
+  if (decision.decisionType === "hard_stop") {
+    return "stop";
+  }
+
+  if (
+    decision.decisionType === "human_request" ||
+    decision.decisionType === "booking_request"
+  ) {
+    return "booking_intent";
+  }
+
+  if (decision.decisionType === "link_request") {
+    return decision.metadata?.linkTarget === "booking"
+      ? "booking_intent"
+      : "info_link_only";
+  }
+
+  if (
+    decision.decisionType === "price_question" ||
+    decision.decisionType === "price_objection"
+  ) {
+    return "price_question";
+  }
+
+  if (
+    decision.decisionType === "offer_info" ||
+    decision.decisionType === "frustration_previous_attempts"
+  ) {
+    return "info_only";
+  }
+
+  if (decision.decisionType === "question_intro_confirmed") {
+    return "flow_answer";
+  }
+
+  return "unknown";
+}
+
+function getStoredAnswerString(
+  state: ReturnType<typeof getOrCreateConversationState>,
+  key: string,
+): string | undefined {
+  const value = state.answers[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getStoredAnswerNumber(
+  state: ReturnType<typeof getOrCreateConversationState>,
+  key: string,
+): number | undefined {
+  const value = state.answers[key];
+  return typeof value === "number" ? value : undefined;
+}
+
+function applyPeteDecisionStatePatch(params: {
+  decision: PeteDecision;
+  composed: PeteComposedResponse;
+  state: ReturnType<typeof getOrCreateConversationState>;
+  runtimeBookingUrl?: string;
+}): void {
+  const { decision, composed, state, runtimeBookingUrl } = params;
+
+  patchAnswers(state, {
+    peteDecisionType: decision.decisionType,
+    peteDecisionAction: decision.action,
+    peteDecisionReason: decision.reason,
+    peteDecisionLastAt: nowIso(),
+  });
+
+  if (decision.decisionType === "hard_stop") {
+    patchFlags(state, { stopped: true });
+    setCurrentStep(state, "done");
+    return;
+  }
+
+  if (
+    decision.decisionType === "medical_critical" ||
+    decision.decisionType === "legal_privacy" ||
+    decision.decisionType === "emotional_crisis"
+  ) {
+    patchFlags(state, {
+      peteRuntimeHandoffRequested: true,
+      peteRuntimeHandoffActive: true,
+    });
+    patchAnswers(state, {
+      peteRuntimeSafetyCategory: decision.decisionType,
+      peteRuntimeSafetyReason: decision.reason,
+      peteRuntimeSafetyLastAt: nowIso(),
+    });
+    return;
+  }
+
+  if (
+    decision.decisionType === "human_request" ||
+    decision.decisionType === "booking_request" ||
+    (decision.decisionType === "link_request" &&
+      decision.metadata?.linkTarget === "booking")
+  ) {
+    resetPriceFlowState(state);
+    patchFlags(state, { wantsBooking: true });
+    setCurrentStep(state, "booking");
+
+    if (runtimeBookingUrl) {
+      state.providerBooking = activateProviderBookingState({
+        current: state.providerBooking,
+        provider: inferBookingProviderFromUrl(runtimeBookingUrl),
+        bookingUrl: runtimeBookingUrl,
+        linkSentAt: nowIso(),
+      });
+    }
+    return;
+  }
+
+  if (
+    decision.decisionType === "link_request" &&
+    decision.metadata?.linkTarget === "info"
+  ) {
+    resetPriceFlowState(state);
+    patchFlags(state, {
+      wantsInfoOnly: true,
+      wantsInfoLinkOnly: true,
+    });
+    setCurrentStep(state, "info_only");
+    return;
+  }
+
+  if (decision.decisionType === "price_question") {
+    patchFlags(state, { askedPrice: true });
+    resetPriceFlowState(state);
+    return;
+  }
+
+  if (decision.decisionType === "price_objection") {
+    patchFlags(state, { askedPrice: true });
+
+    if (decision.action === "offer_booking") {
+      resetPriceFlowState(state);
+      patchFlags(state, { wantsBooking: true });
+      setCurrentStep(state, "booking");
+    }
+    return;
+  }
+
+  if (decision.decisionType === "objection") {
+    patchAnswers(state, {
+      objectionIntent:
+        typeof decision.metadata?.objectionIntent === "string"
+          ? decision.metadata.objectionIntent
+          : undefined,
+      objectionAction: decision.action,
+      objectionCount:
+        typeof decision.metadata?.objectionCount === "number"
+          ? decision.metadata.objectionCount
+          : undefined,
+      objectionTemplateId:
+        typeof decision.metadata?.templateId === "string"
+          ? decision.metadata.templateId
+          : undefined,
+      objectionLastAt: nowIso(),
+    });
+
+    if (decision.action === "close") {
+      setCurrentStep(state, "done");
+    } else if (decision.metadata?.shouldSetInfoOnly) {
+      resetPriceFlowState(state);
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+    }
+    return;
+  }
+
+  if (decision.decisionType === "offer_info") {
+    resetPriceFlowState(state);
+    patchFlags(state, { wantsInfoOnly: true });
+    setCurrentStep(state, "info_only");
+    return;
+  }
+
+  if (decision.decisionType === "question_intro_confirmed" && composed.nextStep) {
+    setCurrentStep(state, composed.nextStep);
+  }
+}
+
+function inferBookingProviderFromUrl(bookingUrl: string | undefined): string {
+  const normalized = bookingUrl?.toLowerCase() ?? "";
+
+  if (normalized.includes("calendly.")) {
+    return "calendly";
+  }
+
+  if (normalized.includes("meetergo.")) {
+    return "meetergo";
+  }
+
+  return "booking_link";
+}
+
+function mapPeteSafetyCategoryToIntent(
+  category: ReturnType<typeof evaluatePeteRuntimeSafety>["category"],
+): LeadIntent {
+  if (category === "price") {
+    return "price_question";
+  }
+
+  if (category === "human_request" || category === "booking_link") {
+    return "booking_intent";
+  }
+
+  if (category === "info_link") {
+    return "info_link_only";
+  }
+
+  if (category === "unclear") {
+    return "unknown";
+  }
+
+  return "unknown";
+}
+
+function buildPeteSafetyStatePatch(
+  safety: ReturnType<typeof evaluatePeteRuntimeSafety>,
+) {
+  return {
+    peteRuntimeSafetyCategory: safety.category,
+    peteRuntimeSafetyLeadTemperature: safety.leadTemperature,
+    peteRuntimeSafetyReason: safety.reason,
+    peteRuntimeSafetyLastAt: nowIso(),
+  };
+}
+
+function shouldLetObjectionModuleHandlePeteSafety(
+  safety: ReturnType<typeof evaluatePeteRuntimeSafety>,
+): boolean {
+  return safety.category === "price" || safety.category === "distrust_aggression";
+}
+
+function getPeteObjectionCount(
+  state: ReturnType<typeof getOrCreateConversationState>,
+  intent: ObjectionIntent,
+): number {
+  const previousIntent =
+    typeof state.answers.objectionIntent === "string"
+      ? state.answers.objectionIntent
+      : "";
+  const previousCount =
+    typeof state.answers.objectionCount === "number"
+      ? state.answers.objectionCount
+      : 0;
+
+  return previousIntent === intent ? previousCount + 1 : 1;
+}
+
+function buildPeteObjectionStatePatch(result: PeteObjectionResult) {
+  return {
+    objectionIntent: result.intent,
+    objectionAction: result.action,
+    objectionCount: result.objectionCount,
+    objectionTemplateId: result.templateId,
+    objectionMatchedKeyword: result.matchedKeyword,
+    handoffReason: result.shouldHandoffToJochen ? result.reason : undefined,
+    objectionLastAt: nowIso(),
+  };
+}
+
+function mapPeteObjectionIntentToLeadIntent(
+  result: PeteObjectionResult,
+): LeadIntent {
+  if (result.intent === "hard_stop") {
+    return "stop";
+  }
+
+  if (result.intent === "price") {
+    return "price_question";
+  }
+
+  if (result.intent === "info") {
+    return result.shouldSendInfoLink ? "info_link_only" : "info_only";
+  }
+
+  if (result.action === "offer_booking") {
+    return "booking_intent";
+  }
+
+  return "unknown";
+}
+
+function handlePeteObjectionResult(params: {
+  campaign: ReturnType<typeof getCampaignById>;
+  state: ReturnType<typeof getOrCreateConversationState>;
+  result: PeteObjectionResult;
+  inputText: string;
+}): EngineReply | null {
+  const { campaign, state, result, inputText } = params;
+
+  if (result.intent === "none") {
+    return null;
+  }
+
+  const replyText = result.shouldSendInfoLink
+    ? buildPeteRuntimeInfoLinkReply(inputText, campaign, {
+        campaign,
+        lastAssistantText: getLastAssistantText(state),
+      })
+    : result.replyText;
+
+  if (!replyText?.trim()) {
+    return null;
+  }
+
+  patchAnswers(state, buildPeteObjectionStatePatch(result));
+
+  if (result.intent === "hard_stop") {
+    patchFlags(state, { stopped: true });
+    setCurrentStep(state, "done");
+  } else if (result.shouldClose) {
+    setCurrentStep(state, "done");
+  } else if (result.shouldSetInfoOnly) {
+    resetPriceFlowState(state);
+    patchFlags(state, { wantsInfoOnly: true });
+    setCurrentStep(state, "info_only");
+  } else if (result.shouldSetBooking) {
+    resetPriceFlowState(state);
+    patchFlags(state, { wantsBooking: true });
+    setCurrentStep(state, "booking");
+  }
+
+  if (result.shouldHandoffToJochen) {
+    patchFlags(state, { peteRuntimeHandoffRequested: true });
+  }
+
+  appendAssistantMessage(state, replyText);
+  persistConversationState(state);
+
+  return {
+    text: replyText,
+    nextStep: state.currentStep,
+    detectedIntent: mapPeteObjectionIntentToLeadIntent(result),
+    state,
+  };
 }
 
 async function tryHandleExecutionImmediateBooking(
@@ -776,6 +1190,173 @@ export async function processIncomingMessage(
     };
   }
 
+  const runtimeBookingUrl = getRuntimeBookingUrl({ state });
+  const peteDecision = decidePeteNextAction(input.messageText, {
+    campaign,
+    currentStep: state.currentStep,
+    hasPendingBooking: Boolean(state.answers.pendingBookingText),
+    hasActiveProviderBooking: hasActiveProviderBooking(state),
+    askedPrice: state.flags.askedPrice,
+    lastAssistantText: getLastAssistantText(state),
+    bookingUrl: runtimeBookingUrl,
+    handoffActive: Boolean(state.flags.peteRuntimeHandoffActive),
+    previousObjectionIntent: getStoredAnswerString(state, "objectionIntent"),
+    previousObjectionCount: getStoredAnswerNumber(state, "objectionCount"),
+  });
+  const peteComposedResponse = composePeteResponse(peteDecision, {
+    campaign,
+    currentStep: state.currentStep,
+    userText: input.messageText,
+    lastAssistantText: getLastAssistantText(state),
+    bookingUrl: runtimeBookingUrl,
+  });
+
+  if (peteComposedResponse) {
+    applyPeteDecisionStatePatch({
+      decision: peteDecision,
+      composed: peteComposedResponse,
+      state,
+      runtimeBookingUrl,
+    });
+
+    appendAssistantMessage(state, peteComposedResponse.text);
+    persistConversationState(state);
+
+    return {
+      text: peteComposedResponse.text,
+      nextStep: peteComposedResponse.nextStep ?? state.currentStep,
+      detectedIntent: mapPeteDecisionToIntent(peteDecision),
+      state,
+    };
+  }
+
+  const hardStopObjection = classifyPeteObjection(input.messageText);
+  if (hardStopObjection.intent === "hard_stop") {
+    const objectionResult = evaluatePeteObjection(input.messageText, {
+      objectionCount: getPeteObjectionCount(state, hardStopObjection.intent),
+    });
+    const handledObjection = handlePeteObjectionResult({
+      campaign,
+      state,
+      result: objectionResult,
+      inputText: input.messageText,
+    });
+
+    if (handledObjection) {
+      return handledObjection;
+    }
+  }
+
+  const detectedIntent = detectLeadIntent(input.messageText);
+
+  if (
+    detectedIntent.intent === "stop" &&
+    hardStopObjection.intent !== "no_interest"
+  ) {
+    patchFlags(state, { stopped: true });
+    setCurrentStep(state, "done");
+
+    const replyText =
+      "Alles klar, danke für die Rückmeldung. Dann schreibe ich dir dazu nicht weiter.";
+    appendAssistantMessage(state, replyText);
+    persistConversationState(state);
+
+    return {
+      text: replyText,
+      nextStep: "done",
+      detectedIntent: "stop",
+      state,
+    };
+  }
+
+  const peteSafety = evaluatePeteRuntimeSafety(input.messageText, {
+    campaign,
+    currentStep: state.currentStep,
+    hasPendingBooking: Boolean(state.answers.pendingBookingText),
+    hasActiveProviderBooking: hasActiveProviderBooking(state),
+    askedPrice: state.flags.askedPrice,
+    lastAssistantText: getLastAssistantText(state),
+    bookingUrl: runtimeBookingUrl,
+  });
+
+  if (
+    peteSafety.shouldIntercept &&
+    peteSafety.replyText &&
+    !shouldLetObjectionModuleHandlePeteSafety(peteSafety)
+  ) {
+    patchAnswers(state, buildPeteSafetyStatePatch(peteSafety));
+
+    if (peteSafety.category === "price") {
+      patchFlags(state, { askedPrice: true });
+    }
+
+    if (peteSafety.category === "info_link") {
+      patchFlags(state, {
+        wantsInfoOnly: true,
+        wantsInfoLinkOnly: true,
+      });
+      setCurrentStep(state, "info_only");
+    }
+
+    if (
+      peteSafety.category === "human_request" ||
+      peteSafety.category === "booking_link"
+    ) {
+      patchFlags(state, {
+        wantsBooking: true,
+        peteRuntimeHandoffRequested: Boolean(peteSafety.shouldHandoffToJochen),
+      });
+      setCurrentStep(state, "booking");
+
+      if (runtimeBookingUrl && !peteSafety.shouldHandoffToJochen) {
+        state.providerBooking = activateProviderBookingState({
+          current: state.providerBooking,
+          provider: inferBookingProviderFromUrl(runtimeBookingUrl),
+          bookingUrl: runtimeBookingUrl,
+          linkSentAt: nowIso(),
+        });
+      }
+    } else if (peteSafety.shouldHandoffToJochen) {
+      patchFlags(state, {
+        peteRuntimeHandoffRequested: true,
+      });
+    }
+
+    if (peteSafety.shouldStopAutomation) {
+      patchFlags(state, {
+        peteRuntimeHandoffActive: true,
+      });
+    }
+
+    const replyText = peteSafety.replyText;
+    appendAssistantMessage(state, replyText);
+    persistConversationState(state);
+
+    return {
+      text: replyText,
+      nextStep: state.currentStep,
+      detectedIntent: mapPeteSafetyCategoryToIntent(peteSafety.category),
+      state,
+    };
+  }
+
+  const objectionClassification = classifyPeteObjection(input.messageText);
+  if (objectionClassification.intent !== "none") {
+    const objectionResult = evaluatePeteObjection(input.messageText, {
+      objectionCount: getPeteObjectionCount(state, objectionClassification.intent),
+    });
+    const handledObjection = handlePeteObjectionResult({
+      campaign,
+      state,
+      result: objectionResult,
+      inputText: input.messageText,
+    });
+
+    if (handledObjection) {
+      return handledObjection;
+    }
+  }
+
   if (state.flags.paused && !isPauseRequest(input.messageText)) {
     const resumeStep = state.answers.pausedFromStep ?? state.currentStep;
     const resumeQuestion =
@@ -823,8 +1404,6 @@ export async function processIncomingMessage(
       state,
     };
   }
-
-  const detectedIntent = detectLeadIntent(input.messageText);
 
   if (hasActiveProviderBooking(state)) {
     if (isProviderBookingCompletion(input.messageText)) {
@@ -1211,22 +1790,6 @@ export async function processIncomingMessage(
       text: replyText,
       nextStep,
       detectedIntent: "direct_buy_starter",
-      state,
-    };
-  }
-
-  if (detectedIntent.intent === "stop") {
-    patchFlags(state, { stopped: true });
-    setCurrentStep(state, "done");
-
-    const replyText = buildIntentReply(campaign.id, "stop");
-    appendAssistantMessage(state, replyText);
-    persistConversationState(state);
-
-    return {
-      text: replyText,
-      nextStep: "done",
-      detectedIntent: "stop",
       state,
     };
   }

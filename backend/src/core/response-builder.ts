@@ -136,7 +136,7 @@ export function buildIntentReply(campaignId: string, intent: LeadIntent): string
     case "booking_intent":
       return buildBookingPrompt(campaignId);
     case "stop":
-      return "Alles klar, ich schreibe dir nicht weiter.";
+      return "Alles klar, danke für die Rückmeldung. Dann schreibe ich dir dazu nicht weiter.";
     default:
       return "";
   }

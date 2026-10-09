@@ -2,6 +2,8 @@ import type { CampaignConfig } from "../types/types.js";
 import { DEFAULT_BOOKING_WINDOW_CONFIG } from "./booking-windows.js";
 
 export const DEFAULT_CAMPAIGN_ID = "eltern-vital-fit";
+export const DEFAULT_VIDEO_GUIDE_URL =
+  "https://jochen-kammerer.de/eltern-energie-training/";
 
 export const campaigns: Record<string, CampaignConfig> = {
   "eltern-vital-fit": {
@@ -115,7 +117,7 @@ export const campaigns: Record<string, CampaignConfig> = {
       infoShortText:
         "Mit der ELTERN VITAL METHODE helfe ich Eltern,\nihren Alltag wieder so aufzubauen,\ndass sie mehr Energie haben, fitter werden\nund sich wieder wohler in ihrem Körper fühlen.\n\nOhne Diätstress.\nOhne unrealistische Fitnesspläne.\nSondern so, dass es im echten Alltag überhaupt machbar wird.\n\nEs geht nicht darum, dir noch mehr Druck zu machen.\nSondern darum, wieder Struktur in Bewegung, Alltag und Entscheidungen zu bringen,\ndamit Veränderung überhaupt realistisch wird.\n\nWenn du danach merkst,\ndass du das wirklich angehen willst,\nkönnen wir gern kurz sprechen.",
       infoPageUrl:
-        "https://jochen-kammerer.de/die-eltern-energie-startphase/",
+        DEFAULT_VIDEO_GUIDE_URL,
       commitmentPrompt:
         "Noch eine ehrliche Frage, bevor wir einen Termin festmachen:\nWillst du das gerade wirklich angehen\noder holst du dir eher erstmal nur ein paar Infos?",
       bookingPrompt:
@@ -132,13 +134,13 @@ export const campaigns: Record<string, CampaignConfig> = {
         "Passt das für dich, dass du den Termin auch wirklich wahrnimmst oder rechtzeitig Bescheid gibst, falls etwas dazwischenkommt?",
       bookingConfirmedTemplate:
         "Top, danke dir 👍\nDann steht dein Termin für [Tag].\nDie Terminbestätigung bekommst du zeitnah.\nIch freue mich drauf. Wir schauen uns dann deine Situation ganz entspannt an.",
-      starterPriceText: "499 €",
+      starterPriceText: "499 EUR",
       starterCheckoutUrl:
         "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
       starterDirectBuyText:
-        "Klar. Dann schicke ich dir direkt den Buchungslink, damit du dir den Platz sichern kannst:\nhttps://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
+        "Wenn du die Eltern-Energie-Startphase direkt starten moechtest, klaeren wir den naechsten Schritt am besten kurz sauber im Gespraech.",
       starterPriceReply:
-        "Die Eltern Energie Startphase liegt bei 499 €.\nWenn du dazu Fragen hast, sag direkt Bescheid.\nWenn du direkt starten willst, schicke ich dir den Buchungslink, damit du dir den Platz direkt sichern kannst.",
+        "Die Eltern-Energie-Startphase liegt bei 499 EUR.\nDie mehrmonatige 1:1-Begleitung liegt hoeher.\nWichtig ist: Erst kurz einordnen, was wirklich passt.",
       longTermReply:
         "Wenn du eher eine längere bzw. intensivere Begleitung suchst, macht ein kurzer Austausch am meisten Sinn.\nDann kann ich dir sauber sagen, was in deiner Situation sinnvoll ist.\n" +
         DEFAULT_BOOKING_WINDOW_CONFIG.prompt,
@@ -146,7 +148,7 @@ export const campaigns: Record<string, CampaignConfig> = {
         "Wenn es um Ratenzahlung geht, klären wir das am besten kurz persönlich.\nSo kann ich dir sauber sagen, was in deiner Situation sinnvoll ist.\n" +
         DEFAULT_BOOKING_WINDOW_CONFIG.prompt,
       infoLinkReply:
-        "Klar, dann schau dir hier erstmal alles in Ruhe an:\nhttps://jochen-kammerer.de/die-eltern-energie-startphase/\n\nUnd wenn du merkst, dass du das wirklich angehen willst, können wir danach kurz sprechen.",
+        `Klar, hier ist die kostenlose Video-Anleitung:\n${DEFAULT_VIDEO_GUIDE_URL}\n\nUnd wenn du merkst, dass du das wirklich angehen willst, können wir danach kurz sprechen.`,
       introAckValidationReply:
         "Wenn du willst, gehen wir’s kurz sauber durch.\nWenn du lieber direkt Infos, den Preis oder einen Link willst, sag’s einfach direkt.",
 
