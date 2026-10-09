@@ -7,6 +7,7 @@ type AiReplyParams = {
   currentStep:
     | "ask_name"
     | "intro_ack"
+    | "parent_context"
     | "situation_choice"
     | "tried_before_freetext"
     | "consequence_freetext"
@@ -19,6 +20,7 @@ type AiReplyParams = {
   nextStep:
     | "ask_name"
     | "intro_ack"
+    | "parent_context"
     | "situation_choice"
     | "tried_before_freetext"
     | "consequence_freetext"
@@ -99,6 +101,7 @@ function buildSchema() {
         enum: [
           "ask_name",
           "intro_ack",
+          "parent_context",
           "situation_choice",
           "tried_before_freetext",
           "consequence_freetext",
