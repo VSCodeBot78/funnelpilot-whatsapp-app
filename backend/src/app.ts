@@ -15,6 +15,7 @@ import ghostingConfigRouter from "./routes/ghosting-config.js";
 import leadsRouter from "./routes/leads.js";
 import bookingEventsRouter from "./routes/booking-events.js";
 import metaWhatsappRouter from "./routes/meta-whatsapp.js";
+import metaInstagramRouter from "./routes/meta-instagram.js";
 import { env } from "./config/env.js";
 import { readSettings } from "./services/settings-store.js";
 
@@ -164,6 +165,9 @@ app.get("/health/readiness", (_req, res) => {
   const metaSendConfigured = Boolean(
     env.META_ACCESS_TOKEN && env.META_PHONE_NUMBER_ID,
   );
+  const instagramSendConfigured = Boolean(
+    env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_ACCOUNT_ID,
+  );
   const settings = readSettings();
   const privacyPolicyUrlConfigured = isConfiguredLegalUrl(
     settings.privacyPolicyUrl,
@@ -182,6 +186,9 @@ app.get("/health/readiness", (_req, res) => {
     destructiveRoutesDisabled: areDestructiveRoutesDisabled(),
     metaVerifyTokenConfigured: Boolean(env.META_VERIFY_TOKEN),
     metaSendConfigured,
+    instagramVerifyTokenConfigured: Boolean(env.INSTAGRAM_VERIFY_TOKEN),
+    instagramSendEnabled: env.INSTAGRAM_SEND_ENABLED,
+    instagramSendConfigured,
     privacyPolicyUrlConfigured,
     imprintUrlConfigured,
     legalLinksReady: privacyPolicyUrlConfigured && imprintUrlConfigured,
@@ -193,7 +200,8 @@ app.get("/health/readiness", (_req, res) => {
 });
 
 app.use("/test-chat", testChatRouter);
-// Public in production via NGINX: /webhooks/meta/whatsapp and, if used, /booking-events/calendly.
+// Public in production via NGINX: /webhooks/meta/whatsapp, /webhooks/meta/instagram
+// and, if used, /booking-events/calendly.
 // Dashboard and admin routes should be protected at the NGINX layer, not with Express Basic Auth.
 app.use("/webhook", webhookRouter);
 app.use("/scheduling", schedulingRouter);
@@ -205,6 +213,7 @@ app.use("/ghosting", ghostingRouter);
 app.use("/provider-booking", providerBookingRouter);
 app.use("/booking-events", bookingEventsRouter);
 app.use("/webhooks/meta/whatsapp", metaWhatsappRouter);
+app.use("/webhooks/meta/instagram", metaInstagramRouter);
 app.use(conversationsRouter);
 app.use(ghostingConfigRouter);
 app.use(leadsRouter);
