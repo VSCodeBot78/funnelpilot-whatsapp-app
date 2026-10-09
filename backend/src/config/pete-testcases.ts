@@ -77,7 +77,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     internalColorUsageNote:
       "sachlich bleiben, nicht closen, keine Farbe oder Typisierung nennen",
     exampleReply:
-      "Die Eltern-Energie-Startphase liegt bei 499 \u20ac.\nDie mehrmonatige 1:1-Begleitung liegt deutlich h\u00f6her.\nWichtig ist: Erst kurz einordnen, was wirklich passt - nicht jeder braucht direkt das gro\u00dfe Programm.",
+      "Das 5-Wochen-Coaching liegt bei 499 €.\nWenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für 14,95 €.\nWichtig ist, was zu deiner Situation und deinem Unterstützungsbedarf passt.",
   },
   {
     id: "medical-tinnitus-fatigue",
@@ -129,7 +129,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     incomingMessage: "die Video Anleitung",
     expectedClassification: "direkte Anfrage nach kostenloser Video-Anleitung",
     expectedBehavior:
-      "kostenlose Video-Anleitung mit korrektem Training-Link senden, keine Startphase- oder Angebots-URL",
+      "kostenlose Video-Anleitung mit korrektem Training-Link senden, keine veraltete Angebots-URL",
     peteMayAnswer: true,
     jochenMustTakeOver: false,
     exampleReply:
@@ -141,7 +141,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     incomingMessage: "Schick mir den Link",
     expectedClassification: "unklare Link-Anfrage ohne Kontext",
     expectedBehavior:
-      "nicht raten, keinen zuf\u00e4lligen Link senden, menschlich nach Video-Anleitung oder direktem Termin fragen, ohne technische Link-Bezeichnung",
+      "nicht raten, keinen zufälligen Link senden, nach aktuellem Angebot/Ressource oder Termin klären, ohne technische Link-Bezeichnung",
     peteMayAnswer: true,
     jochenMustTakeOver: false,
     exampleReply:
@@ -469,7 +469,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     jochenMustTakeOver: false,
     escalationCategory: "price_negotiation",
     exampleReply:
-      "Die Eltern-Energie-Startphase liegt bei 499 \u20ac.\nDie mehrmonatige 1:1-Begleitung liegt h\u00f6her.\nWichtig ist: Erst kurz einordnen, was wirklich passt.",
+      "Das 5-Wochen-Coaching liegt bei 499 €.\nWenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für 14,95 €.\nWichtig ist, was zu deiner Situation und deinem Unterstützungsbedarf passt.",
   },
   {
     id: "regression-installments-personal-conversation",
@@ -516,7 +516,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     peteMayAnswer: true,
     jochenMustTakeOver: false,
     exampleReply:
-      "Geht's dir um die kostenlose Video-Anleitung oder um Infos zur Eltern-Energie-Startphase?",
+      "Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck oder den Keto Guide?",
   },
   {
     id: "regression-offer-info-question",
@@ -527,7 +527,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     peteMayAnswer: true,
     jochenMustTakeOver: false,
     exampleReply:
-      "Kurz gesagt: Es geht um die Eltern-Energie-Startphase und passende Begleitung f\u00fcr Eltern im echten Alltag.\nMehr Energie, bessere Struktur und wieder ein besseres K\u00f6rpergef\u00fchl.\nOhne Di\u00e4tstress oder unrealistische Fitnesspl\u00e4ne.",
+      "Kurz gesagt: Das persönliche Einstiegsangebot ist das 5-Wochen-Coaching für Eltern im echten Alltag.\nMehr Energie, bessere Struktur und wieder ein besseres Körpergefühl.\nWenn du erstmal selbst loslegen willst, gibt es zusätzlich den Selbststarter für 14,95 €.",
   },
   {
     id: "regression-soft-no-close",
@@ -602,7 +602,7 @@ export const PETE_TESTCASES: PeteTestCase[] = [
     jochenMustTakeOver: false,
     escalationCategory: "aggression_mistrust",
     exampleReply:
-      "Kann ich verstehen.\nOnline wird viel versprochen, deshalb dr\u00fccke ich dich hier in nichts rein.\nSoll ich dir erst die kostenlose Video-Anleitung schicken?",
+      "Kann ich verstehen.\nOnline wird viel versprochen, deshalb drücke ich dich hier in nichts rein.\nSoll ich dir erst den kostenlosen Elterncheck schicken?",
   },
 ];
 
