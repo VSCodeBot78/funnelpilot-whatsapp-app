@@ -66,7 +66,7 @@ function isSuccessfulCheckout(payload: CheckoutWebhookPayload): boolean {
   );
 }
 
-function buildStarterPurchaseSuccessReply(params: {
+function buildCoachingEntryPurchaseSuccessReply(params: {
   campaignId: string;
   onboardingBookingUrl?: string;
   successReply?: string;
@@ -212,6 +212,7 @@ router.post("/messages/incoming", genericWebhookGuard, async (req, res) => {
 
 /**
  * Checkout Webhook Phase A
+ * Aktuell fuer das 5-Wochen-Coaching (499 EUR), nicht fuer den 14,95 EUR Selfstarter.
  * Erwartet vorerst mindestens:
  * - leadId
  * - campaignId
@@ -224,7 +225,7 @@ router.post("/messages/incoming", genericWebhookGuard, async (req, res) => {
  *   "event": "checkout.completed",
  *   "paymentStatus": "paid",
  *   "checkoutId": "co_123",
- *   "productId": "starter_499"
+ *   "productId": "coaching_5w_499"
  * }
  */
 router.post("/checkout", genericWebhookGuard, (req, res) => {
@@ -255,7 +256,10 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
     const state = getOrCreateConversationState(payload.leadId, payload.campaignId);
     const campaign = getCampaignById(payload.campaignId);
 
-    if (state.answers.starterPurchaseStatus === "paid") {
+    if (
+      state.answers.coachingEntryPurchaseStatus === "paid" ||
+      state.answers.starterPurchaseStatus === "paid"
+    ) {
       const response: CheckoutWebhookResponse = {
         ok: true,
         duplicated: true,
@@ -274,21 +278,29 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
       campaign.texts.onboardingBookingUrl;
 
     patchAnswers(state, {
+      coachingEntryPurchaseStatus: "paid",
+      coachingEntryPurchasedAt: now,
+      coachingEntryCheckoutSessionId: payload.checkoutId?.trim(),
+      coachingEntryProductId: payload.productId?.trim(),
+
+      // Legacy mirror for existing persisted states / older dashboard code.
       starterPurchaseStatus: "paid",
       starterPurchasedAt: now,
       starterCheckoutSessionId: payload.checkoutId?.trim(),
       starterProductId: payload.productId?.trim(),
+
       onboardingBookingUrl,
       onboardingPromptSentAt: now,
     });
 
     patchFlags(state, {
+      wantsDirectBuyCoachingEntry: true,
       wantsDirectBuyStarter: true,
     });
 
     setCurrentStep(state, "done");
 
-    const replyText = buildStarterPurchaseSuccessReply({
+    const replyText = buildCoachingEntryPurchaseSuccessReply({
       campaignId: payload.campaignId,
       onboardingBookingUrl,
       successReply: payload.successReply,
