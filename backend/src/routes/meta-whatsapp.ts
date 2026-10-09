@@ -14,6 +14,7 @@ import {
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { sendMetaWhatsappTextMessage } from "../services/meta-whatsapp-api.service.js";
 import { syncWhatsappLead } from "../services/whatsapp-lead-sync.service.js";
+import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
 import type { ConversationMessage } from "../types/types.js";
 
 const router = Router();
@@ -374,6 +375,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let duplicates = 0;
   let ignoredStatuses = 0;
   let ignoredUnsupported = 0;
+  let ignoredAutomationPaused = 0;
   let failed = 0;
   let leadAction: "found" | "created" | undefined;
   let leadId: string | undefined;
@@ -553,6 +555,49 @@ router.post("/", async (req: RawBodyRequest, res) => {
             from,
             contactName,
           });
+
+          if (!leadSync.lead.botEnabled || leadSync.lead.excluded) {
+            ignoredAutomationPaused += 1;
+
+            saveMessageEventLogEntry(
+              buildLogEntry({
+                messageId,
+                from,
+                receivedAt,
+                type,
+                status: "ignored_status",
+                raw: {
+                  ...raw,
+                  incomingStatus: "processed",
+                  reason: leadSync.lead.excluded
+                    ? "lead_excluded"
+                    : "lead_bot_disabled",
+                  leadId: leadSync.lead.id,
+                  campaignId: leadSync.campaignId,
+                  engineProcessed: false,
+                  botReplyPrepared: false,
+                  outboundStatus: "not_prepared",
+                  sent: false,
+                },
+              }),
+            );
+
+            logMetaMessage({
+              messageId,
+              from,
+              type,
+              status: "ignored_status",
+              leadId: leadSync.lead.id,
+              campaignId: leadSync.campaignId,
+              engineProcessed: false,
+              botReplyPrepared: false,
+              outboundStatus: "not_prepared",
+              sent: false,
+            });
+
+            continue;
+          }
+
           const state = getOrCreateConversationState(
             leadSync.lead.id,
             leadSync.campaignId,
@@ -591,12 +636,25 @@ router.post("/", async (req: RawBodyRequest, res) => {
                 replyText: engineReply.text,
               });
 
-              const sendResult = await sendMetaWhatsappTextMessage({
-                to: from,
-                body: engineReply.text,
+              const outboundPermission = evaluateLatestAiOutboundPermission({
+                leadId: leadSync.lead.id,
+                campaignId: leadSync.campaignId,
               });
 
-              if (sendResult.sendSkipped) {
+              if (!outboundPermission.allowed) {
+                ignoredAutomationPaused += 1;
+                dryRun = true;
+                sent = false;
+                sendSkipped = true;
+                sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
+                outboundStatus = "dry_run";
+              } else {
+                const sendResult = await sendMetaWhatsappTextMessage({
+                  to: from,
+                  body: engineReply.text,
+                });
+
+                if (sendResult.sendSkipped) {
                 dryRun = true;
                 sent = false;
                 sendSkipped = true;
@@ -669,6 +727,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
                   duplicates,
                   ignoredStatuses,
                   ignoredUnsupported,
+                  ignoredAutomationPaused,
                   failed,
                   dryRun: false,
                   leadAction,
@@ -681,6 +740,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
                   sent: false,
                   error: sendResult.error,
                 });
+                }
               }
             }
 
@@ -798,6 +858,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       duplicates,
       ignoredStatuses,
       ignoredUnsupported,
+      ignoredAutomationPaused,
       failed,
       dryRun,
       leadAction,
@@ -825,6 +886,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       duplicates,
       ignoredStatuses,
       ignoredUnsupported,
+      ignoredAutomationPaused,
       failed: failed + 1,
       dryRun: true,
       engineProcessed: false,
