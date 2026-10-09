@@ -668,15 +668,6 @@ export function decidePeteNextAction(
     });
   }
 
-  if (isIntroQuestionConfirmation(normalized, context)) {
-    return decide({
-      decisionType: "question_intro_confirmed",
-      action: "continue_funnel",
-      priority: PRIORITY.introConfirmed,
-      reason: "intro_questions_confirmed",
-    });
-  }
-
   if (safety.category === "unclear") {
     return decide({
       decisionType: "fallback",
