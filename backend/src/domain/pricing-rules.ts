@@ -5,6 +5,7 @@ import {
   getSelfstarterOffer,
 } from "../config/offer-truth.js";
 import type { CampaignConfig, LeadIntent } from "../types/types.js";
+import { getSchedulingTextsConfig } from "../config/scheduling-providers.js";
 
 const INSTALLMENT_KEYWORDS = [
   "ratenzahlung",
@@ -343,7 +344,11 @@ export function getCoachingEntryPriceReply(_campaignId: string): string {
 export function getCoachingEntryDirectBuyReply(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
   const offer = getCoachingEntryOffer();
+  const editableCheckoutUrl =
+    getSchedulingTextsConfig(campaignId).starterCheckoutUrl?.trim();
+
   const checkoutUrl =
+    editableCheckoutUrl ||
     campaign.texts.starterCheckoutUrl?.trim() ||
     offer.checkoutUrl ||
     "";
@@ -388,7 +393,15 @@ export function getLongTermReply(campaignId: string): string {
 export function getCoachingEntryCheckoutUrl(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
   const offer = getCoachingEntryOffer();
-  return campaign.texts.starterCheckoutUrl?.trim() || offer.checkoutUrl || "";
+  const editableCheckoutUrl =
+    getSchedulingTextsConfig(campaignId).starterCheckoutUrl?.trim();
+
+  return (
+    editableCheckoutUrl ||
+    campaign.texts.starterCheckoutUrl?.trim() ||
+    offer.checkoutUrl ||
+    ""
+  );
 }
 
 export function getCoachingEntryPriceText(_campaignId: string): string {

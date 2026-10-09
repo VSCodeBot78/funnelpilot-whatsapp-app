@@ -1,4 +1,5 @@
 import type { CampaignConfig } from "../types/types.js";
+import { getCampaignById as getDashboardCampaignById } from "../data/campaigns.store.js";
 import { DEFAULT_BOOKING_WINDOW_CONFIG } from "./booking-windows.js";
 import { OFFER_TRUTH } from "./offer-truth.js";
 
@@ -101,6 +102,12 @@ export const campaigns: Record<string, CampaignConfig> = {
       infoLink2Enabled: true,
       infoLink2Label: "Selbststarter",
       infoLink2Url: OFFER_TRUTH.selfstarter.productUrl ?? "",
+      infoLink3Enabled: true,
+      infoLink3Label: "Elterncheck",
+      infoLink3Url: OFFER_TRUTH.resources.elterncheck.url,
+      infoLink4Enabled: true,
+      infoLink4Label: "Keto Guide",
+      infoLink4Url: OFFER_TRUTH.resources.ketoGuide.url,
       internalNote: "",
     },
     entryConfig: {
@@ -168,8 +175,76 @@ export const campaigns: Record<string, CampaignConfig> = {
   },
 };
 
+function getDashboardCampaignCandidates(campaignId: string): string[] {
+  const normalized = String(campaignId || "").trim();
+  const candidates = [normalized];
+
+  if (normalized === "eltern-vital-fit") {
+    candidates.push("fit");
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean)));
+}
+
+function mergeRuntimeOfferContext(
+  base: CampaignConfig,
+  campaignId: string,
+): CampaignConfig["offerContext"] {
+  const baseContext = base.offerContext;
+
+  if (!baseContext) {
+    return baseContext;
+  }
+
+  let persisted:
+    | ReturnType<typeof getDashboardCampaignById>
+    | undefined;
+
+  for (const candidate of getDashboardCampaignCandidates(campaignId)) {
+    persisted = getDashboardCampaignById(candidate);
+    if (persisted) break;
+  }
+
+  const saved = persisted?.offerContext;
+  if (!saved || typeof saved !== "object") {
+    return baseContext;
+  }
+
+  const merged = { ...baseContext };
+
+  for (const index of [1, 2, 3, 4] as const) {
+    const urlKey = `infoLink${index}Url` as const;
+    const labelKey = `infoLink${index}Label` as const;
+    const enabledKey = `infoLink${index}Enabled` as const;
+
+    const savedUrl = String(saved[urlKey] ?? "").trim();
+    if (!savedUrl) {
+      continue;
+    }
+
+    merged[urlKey] = savedUrl;
+    merged[labelKey] =
+      String(saved[labelKey] ?? "").trim() || merged[labelKey];
+    merged[enabledKey] =
+      typeof saved[enabledKey] === "boolean"
+        ? saved[enabledKey]
+        : merged[enabledKey];
+  }
+
+  if (typeof saved.internalNote === "string") {
+    merged.internalNote = saved.internalNote;
+  }
+
+  return merged;
+}
+
 export function getCampaignById(campaignId: string): CampaignConfig {
-  return campaigns[campaignId] ?? campaigns[DEFAULT_CAMPAIGN_ID];
+  const base = campaigns[campaignId] ?? campaigns[DEFAULT_CAMPAIGN_ID];
+
+  return {
+    ...base,
+    offerContext: mergeRuntimeOfferContext(base, campaignId),
+  };
 }
 
 export function getCampaignByTrigger(trigger: string): CampaignConfig {

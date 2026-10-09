@@ -656,6 +656,20 @@ function getConfiguredInfoLinks(campaign?: CampaignConfig): RuntimeLinkOption[] 
     });
   }
 
+  if (offerContext?.infoLink3Enabled && isHttpUrl(offerContext.infoLink3Url)) {
+    links.push({
+      label: offerContext.infoLink3Label?.trim() || "Info-Link",
+      url: offerContext.infoLink3Url.trim(),
+    });
+  }
+
+  if (offerContext?.infoLink4Enabled && isHttpUrl(offerContext.infoLink4Url)) {
+    links.push({
+      label: offerContext.infoLink4Label?.trim() || "Info-Link",
+      url: offerContext.infoLink4Url.trim(),
+    });
+  }
+
   if (
     links.length === 0 &&
     isHttpUrl(campaign?.texts.infoPageUrl) &&
@@ -679,11 +693,21 @@ function getMatchingInfoLinks(
   normalized: string,
 ): RuntimeLinkOption[] {
   if (hasElterncheckIntent(normalized)) {
-    return [buildElterncheckLink()];
+    const configured = links.filter((link) => {
+      const label = normalizeText(link.label);
+      const url = normalizeUrlForCompare(link.url);
+      return label.includes("check") || url.includes("check.");
+    });
+    return configured.length > 0 ? configured : [buildElterncheckLink()];
   }
 
   if (hasKetoGuideIntent(normalized)) {
-    return [buildKetoGuideLink()];
+    const configured = links.filter((link) => {
+      const label = normalizeText(link.label);
+      const url = normalizeUrlForCompare(link.url);
+      return label.includes("keto") || url.includes("keto");
+    });
+    return configured.length > 0 ? configured : [buildKetoGuideLink()];
   }
 
   if (links.length <= 1) {

@@ -78,14 +78,53 @@ export function getInfoOnlyReply(campaignId: string): string {
   return campaign.texts.infoShortText;
 }
 
+function getActiveInfoLinks(campaignId: string): Array<{ label: string; url: string }> {
+  const campaign = getCampaignById(campaignId);
+  const context = campaign.offerContext;
+  const links: Array<{ label: string; url: string }> = [];
+
+  for (const index of [1, 2, 3, 4] as const) {
+    const enabledKey = `infoLink${index}Enabled` as keyof typeof context;
+    const labelKey = `infoLink${index}Label` as keyof typeof context;
+    const urlKey = `infoLink${index}Url` as keyof typeof context;
+
+    if (!context || context[enabledKey] !== true) {
+      continue;
+    }
+
+    const url = String(context[urlKey] ?? "").trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      continue;
+    }
+
+    links.push({
+      label: String(context[labelKey] ?? "Info-Link").trim() || "Info-Link",
+      url,
+    });
+  }
+
+  return links;
+}
+
 export function getInfoLinkReply(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
-  return campaign.texts.infoLinkReply;
+  const links = getActiveInfoLinks(campaignId);
+
+  if (links.length === 0) {
+    return campaign.texts.infoLinkReply;
+  }
+
+  if (links.length === 1) {
+    return `Klar, hier ist der Link:\n${links[0].label}\n${links[0].url}`;
+  }
+
+  return `Klar. Was davon meinst du: ${links.map((link) => link.label).join(", ")}?`;
 }
 
 export function getInfoPageUrl(campaignId: string): string {
   const campaign = getCampaignById(campaignId);
-  return campaign.texts.infoPageUrl;
+  const [firstLink] = getActiveInfoLinks(campaignId);
+  return firstLink?.url || campaign.texts.infoPageUrl;
 }
 
 export function shouldSendInfoLinkDirectly(input: string): boolean {

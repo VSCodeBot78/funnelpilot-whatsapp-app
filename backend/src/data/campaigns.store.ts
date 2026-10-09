@@ -17,6 +17,12 @@ export type CampaignOfferContext = {
   infoLink2Enabled: boolean;
   infoLink2Label: string;
   infoLink2Url: string;
+  infoLink3Enabled: boolean;
+  infoLink3Label: string;
+  infoLink3Url: string;
+  infoLink4Enabled: boolean;
+  infoLink4Label: string;
+  infoLink4Url: string;
   internalNote: string;
 };
 
@@ -24,11 +30,17 @@ export const DEFAULT_OFFER_CONTEXT: CampaignOfferContext = {
   priceInquiryText:
     "Die Preise hängen davon ab, welche Begleitung wirklich zu deiner Situation passt. Wenn du möchtest, schauen wir im Strategiegespräch kurz, was sinnvoll ist.",
   infoLink1Enabled: true,
-  infoLink1Label: "Angebot ansehen",
-  infoLink1Url: "",
-  infoLink2Enabled: false,
-  infoLink2Label: "Video ansehen",
-  infoLink2Url: "",
+  infoLink1Label: "Eltern Vital Methode",
+  infoLink1Url: "https://jochen-kammerer.de/die-eltern-vital-methode/",
+  infoLink2Enabled: true,
+  infoLink2Label: "Selbststarter",
+  infoLink2Url: "https://jochen-kammerer.de/produkt/no-bullshit-elternfitness-selbststarter/",
+  infoLink3Enabled: true,
+  infoLink3Label: "Elterncheck",
+  infoLink3Url: "https://check.jochen-kammerer.de",
+  infoLink4Enabled: true,
+  infoLink4Label: "Keto Guide",
+  infoLink4Url: "https://jochen-kammerer.de/keto-guide/",
   internalNote: "",
 };
 
@@ -248,6 +260,30 @@ function normalizeOfferContext(value: unknown): CampaignOfferContext {
       typeof raw.infoLink2Url === "string"
         ? raw.infoLink2Url
         : DEFAULT_OFFER_CONTEXT.infoLink2Url,
+    infoLink3Enabled:
+      typeof raw.infoLink3Enabled === "boolean"
+        ? raw.infoLink3Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink3Enabled,
+    infoLink3Label:
+      typeof raw.infoLink3Label === "string"
+        ? raw.infoLink3Label
+        : DEFAULT_OFFER_CONTEXT.infoLink3Label,
+    infoLink3Url:
+      typeof raw.infoLink3Url === "string"
+        ? raw.infoLink3Url
+        : DEFAULT_OFFER_CONTEXT.infoLink3Url,
+    infoLink4Enabled:
+      typeof raw.infoLink4Enabled === "boolean"
+        ? raw.infoLink4Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink4Enabled,
+    infoLink4Label:
+      typeof raw.infoLink4Label === "string"
+        ? raw.infoLink4Label
+        : DEFAULT_OFFER_CONTEXT.infoLink4Label,
+    infoLink4Url:
+      typeof raw.infoLink4Url === "string"
+        ? raw.infoLink4Url
+        : DEFAULT_OFFER_CONTEXT.infoLink4Url,
     internalNote:
       typeof raw.internalNote === "string"
         ? raw.internalNote
