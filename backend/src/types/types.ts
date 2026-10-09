@@ -312,6 +312,12 @@ export type CampaignOfferContext = {
   infoLink2Enabled: boolean;
   infoLink2Label: string;
   infoLink2Url: string;
+  infoLink3Enabled: boolean;
+  infoLink3Label: string;
+  infoLink3Url: string;
+  infoLink4Enabled: boolean;
+  infoLink4Label: string;
+  infoLink4Url: string;
   internalNote: string;
 };
 
