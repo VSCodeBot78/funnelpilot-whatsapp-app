@@ -12,6 +12,13 @@ import {
 import type { ConversationState } from "../types/types.js";
 import { normalizeBookingData } from "../domain/booking-sync.js";
 import { createInitialGhostingState } from "../services/ghosting.service.js";
+import {
+  appendHumanMessage,
+  ensureOwnershipState,
+  persistConversationState,
+  releaseToAi,
+  takeOverByHuman,
+} from "../core/state-manager.js";
 
 const router = Router();
 
@@ -139,6 +146,10 @@ router.get("/conversations", (_req, res) => {
         updatedAt: state.updatedAt ?? null,
         lastAssistantMessageAt: state.lastAssistantMessageAt ?? null,
         lastUserMessageAt: state.lastUserMessageAt ?? null,
+        lastHumanMessageAt: state.lastHumanMessageAt ?? null,
+        owner: state.owner ?? "ai",
+        aiPaused: state.aiPaused ?? false,
+        lastActor: state.lastActor ?? null,
         ghosting: state.ghosting ?? null,
       })),
     });
@@ -167,6 +178,7 @@ router.get("/conversations/:campaignId/:leadId", (req, res) => {
       });
     }
 
+    ensureOwnershipState(state);
     return res.json({ ok: true, state });
   } catch (error) {
     const message =
@@ -178,6 +190,73 @@ router.get("/conversations/:campaignId/:leadId", (req, res) => {
       ok: false,
       error: message,
     });
+  }
+});
+
+router.post("/conversations/:campaignId/:leadId/takeover", (req, res) => {
+  try {
+    const { campaignId, leadId } = req.params;
+    const state = getConversationState(String(leadId).trim(), String(campaignId).trim());
+
+    if (!state) {
+      return res.status(404).json({ ok: false, error: "Conversation State nicht gefunden." });
+    }
+
+    takeOverByHuman(state);
+    persistConversationState(state);
+
+    return res.json({ ok: true, state });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Human Takeover fehlgeschlagen.";
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+router.post("/conversations/:campaignId/:leadId/release", (req, res) => {
+  try {
+    const { campaignId, leadId } = req.params;
+    const state = getConversationState(String(leadId).trim(), String(campaignId).trim());
+
+    if (!state) {
+      return res.status(404).json({ ok: false, error: "Conversation State nicht gefunden." });
+    }
+
+    releaseToAi(state);
+    persistConversationState(state);
+
+    return res.json({ ok: true, state });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Release an KI fehlgeschlagen.";
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+router.post("/conversations/:campaignId/:leadId/human-message", (req, res) => {
+  try {
+    const { campaignId, leadId } = req.params;
+    const messageText = String(req.body?.messageText ?? "").trim();
+    const state = getConversationState(String(leadId).trim(), String(campaignId).trim());
+
+    if (!state) {
+      return res.status(404).json({ ok: false, error: "Conversation State nicht gefunden." });
+    }
+
+    if (!messageText) {
+      return res.status(400).json({ ok: false, error: "messageText ist erforderlich." });
+    }
+
+    appendHumanMessage(state, messageText);
+    persistConversationState(state);
+
+    return res.json({
+      ok: true,
+      state,
+      outboundTransport: "not_sent",
+      note: "Phase 1 speichert die manuelle Nachricht im Conversation State. Externer Versand bleibt bewusst aus.",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Manuelle Nachricht konnte nicht gespeichert werden.";
+    return res.status(500).json({ ok: false, error: message });
   }
 });
 
@@ -335,6 +414,10 @@ router.post("/conversations/ensure", (req, res) => {
       startedAt: now,
       updatedAt: now,
       lastAssistantMessageAt: now,
+      lastHumanMessageAt: undefined,
+      owner: "ai",
+      aiPaused: false,
+      lastActor: "ai",
       leadName,
       phone,
       source,
