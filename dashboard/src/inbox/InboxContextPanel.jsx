@@ -101,6 +101,15 @@ export default function InboxContextPanel({
             ["Backend-State", activeConversation ? "verbunden" : "nicht verbunden"],
             ["Readiness", activeContact.readiness || "-"],
             ["Funnel-Status", activeConversation?.currentStep || activeContact.stage || "-"],
+            [
+              "Owner",
+              activeConversation
+                ? activeConversation.owner === "human" || activeConversation.aiPaused
+                  ? "Jochen · KI pausiert"
+                  : "KI"
+                : "-",
+            ],
+            ["Letzter Actor", activeConversation?.lastActor || "-"],
             ["Letzte Aktivität", formatRelativeMinutes(conversationUpdatedAt)],
             ["Kampagne", campaign?.name || "-"],
             ["Quelle", activeContact.source || "-"],
