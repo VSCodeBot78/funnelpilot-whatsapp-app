@@ -15,7 +15,7 @@ import { useBackendHealth } from "./hooks/useBackendHealth";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import InboxView from "./inbox/InboxView";
-import CampaignsView from "./campaigns/CampaignsView";
+import CampaignsView from "./campaigns/campaignsView";
 import LeadsView from "./leads/LeadsView";
 import AppointmentsShell from "./appointments/AppointmentsShell";
 import SettingsView from "./settings/SettingsView";
