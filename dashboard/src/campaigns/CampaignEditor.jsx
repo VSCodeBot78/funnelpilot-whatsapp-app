@@ -461,127 +461,85 @@ export default function CampaignEditor({
                 />
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <FieldLabelWithInfo
-                  label="Info-Link 1 aktiv"
-                  title="Info-Link 1 aktiv"
-                  text="Wenn aktiv, darf dieser Link später im Bot-Kontext oder in Antworten verwendet werden. Wenn deaktiviert, bleibt der Link gespeichert, wird aber nicht genutzt."
-                  placement="right"
-                />
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                  <input
-                    type="checkbox"
-                    checked={offerContext.infoLink1Enabled}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink1Enabled", e.target.checked)
-                    }
-                  />
-                  Info-Link 1 aktiv
-                </label>
-              </div>
+              {[1, 2, 3, 4].map((linkIndex) => {
+                const enabledKey = `infoLink${linkIndex}Enabled`;
+                const labelKey = `infoLink${linkIndex}Label`;
+                const urlKey = `infoLink${linkIndex}Url`;
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <div>
-                  <FieldLabelWithInfo
-                    label="Info-Link 1 Label"
-                    title="Info-Link 1"
-                    text="Primärer Link für diese Kampagne, z. B. Angebotsseite, Mainpage oder Strategiegespräch-Seite."
-                    placement="right"
-                  />
-                  <input
-                    style={inputStyle(colors)}
-                    value={offerContext.infoLink1Label}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink1Label", e.target.value)
-                    }
-                  />
-                </div>
+                return (
+                  <div
+                    key={linkIndex}
+                    style={{
+                      border: `1px solid ${colors.border}`,
+                      background: colors.panelSoft,
+                      padding: 10,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        marginBottom: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(offerContext[enabledKey])}
+                        onChange={(e) =>
+                          updateOfferContextField(enabledKey, e.target.checked)
+                        }
+                      />
+                      Info-Link {linkIndex} aktiv
+                    </label>
 
-                <div>
-                  <FieldLabelWithInfo
-                    label="Info-Link 1 URL"
-                    title="Info-Link 1"
-                    text="Primärer Link für diese Kampagne, z. B. Angebotsseite, Mainpage oder Strategiegespräch-Seite."
-                    placement="right"
-                  />
-                  <input
-                    style={inputStyle(colors)}
-                    value={offerContext.infoLink1Url}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink1Url", e.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <FieldLabelWithInfo
+                          label={`Info-Link ${linkIndex} Label`}
+                          title={`Info-Link ${linkIndex}`}
+                          text="Kurzer eindeutiger Name, damit Pete den Link dem richtigen Lead-Wunsch zuordnen kann."
+                          placement="right"
+                        />
+                        <input
+                          style={inputStyle(colors)}
+                          value={offerContext[labelKey] || ""}
+                          onChange={(e) =>
+                            updateOfferContextField(labelKey, e.target.value)
+                          }
+                          placeholder="z. B. Elterncheck"
+                        />
+                      </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <FieldLabelWithInfo
-                  label="Info-Link 2 aktiv"
-                  title="Info-Link 2 aktiv"
-                  text="Wenn aktiv, darf dieser zweite Link später verwendet werden. Wenn deaktiviert, bleibt der Link gespeichert, wird aber nicht genutzt."
-                  placement="right"
-                />
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                  <input
-                    type="checkbox"
-                    checked={offerContext.infoLink2Enabled}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink2Enabled", e.target.checked)
-                    }
-                  />
-                  Info-Link 2 aktiv
-                </label>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <div>
-                  <FieldLabelWithInfo
-                    label="Info-Link 2 Label"
-                    title="Info-Link 2"
-                    text="Optionaler zweiter Link, z. B. VSL, Webinar, kostenlose Anleitung oder weitere Info-Seite."
-                    placement="right"
-                  />
-                  <input
-                    style={inputStyle(colors)}
-                    value={offerContext.infoLink2Label}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink2Label", e.target.value)
-                    }
-                  />
-                </div>
-
-                <div>
-                  <FieldLabelWithInfo
-                    label="Info-Link 2 URL"
-                    title="Info-Link 2"
-                    text="Optionaler zweiter Link, z. B. VSL, Webinar, kostenlose Anleitung oder weitere Info-Seite."
-                    placement="right"
-                  />
-                  <input
-                    style={inputStyle(colors)}
-                    value={offerContext.infoLink2Url}
-                    onChange={(e) =>
-                      updateOfferContextField("infoLink2Url", e.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
+                      <div>
+                        <FieldLabelWithInfo
+                          label={`Info-Link ${linkIndex} URL`}
+                          title={`Info-Link ${linkIndex}`}
+                          text="Öffentliche URL. Änderungen werden vom Backend zur Laufzeit für Pete verwendet."
+                          placement="right"
+                        />
+                        <input
+                          style={inputStyle(colors)}
+                          value={offerContext[urlKey] || ""}
+                          onChange={(e) =>
+                            updateOfferContextField(urlKey, e.target.value)
+                          }
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
               <div>
                 <FieldLabelWithInfo
