@@ -31,7 +31,7 @@ const {
   evaluateProviderBookingFollowUp,
 } = await import("../services/provider-booking.service.js");
 
-const CAMPAIGN_ID = "mama-papa-kampagne";
+const CAMPAIGN_ID = "eltern-vital-fit";
 
 test("Phase 1 human takeover semantics", async (t) => {
   t.after(() => {
