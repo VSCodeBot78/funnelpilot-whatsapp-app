@@ -14,6 +14,7 @@ import { processIncomingMessage } from "../core/conversation-engine.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
 import { evaluateInstagramAutomationGate } from "../services/instagram-automation-gate.service.js";
+import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
 import {
   instagramTimestampToIso,
   parseInstagramMessageEvents,
@@ -457,10 +458,24 @@ router.post("/", async (req: RawBodyRequest, res) => {
             transport: PROVIDER,
           });
 
-          const sendResult = await sendMetaInstagramTextMessage({
-            to: event.senderId,
-            body: engineReply.text,
+          const outboundPermission = evaluateLatestAiOutboundPermission({
+            leadId: leadSync.lead.id,
+            campaignId: leadSync.campaignId,
           });
+
+          if (!outboundPermission.allowed) {
+            dryRun = true;
+            sent = false;
+            sendSkipped = true;
+            sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
+            outboundStatus = "dry_run";
+            ignoredAutomationPaused += 1;
+            persistConversationState(engineReply.state);
+          } else {
+            const sendResult = await sendMetaInstagramTextMessage({
+              to: event.senderId,
+              body: engineReply.text,
+            });
 
           if (sendResult.sendSkipped) {
             dryRun = true;
@@ -537,6 +552,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               sent: false,
               error: sendResult.error,
             });
+          }
           }
         }
 
