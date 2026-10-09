@@ -13,6 +13,7 @@ import {
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
+import { evaluateInstagramAutomationGate } from "../services/instagram-automation-gate.service.js";
 import {
   instagramTimestampToIso,
   parseInstagramMessageEvents,
@@ -159,6 +160,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let duplicates = 0;
   let ignoredEchoes = 0;
   let ignoredUnsupported = 0;
+  let ignoredAutomationPaused = 0;
   let failed = 0;
   let leadAction: "found" | "created" | undefined;
   let leadId: string | undefined;
@@ -291,9 +293,75 @@ router.post("/", async (req: RawBodyRequest, res) => {
         continue;
       }
 
+      const automationGate = evaluateInstagramAutomationGate({
+        senderId: event.senderId,
+      });
+
+      if (!automationGate.allowed) {
+        ignoredAutomationPaused += 1;
+        saveMessageEventLogEntry(
+          buildLogEntry({
+            messageId: event.messageId,
+            from: event.senderId,
+            receivedAt,
+            type: "message",
+            status: "ignored_status",
+            raw: {
+              ...raw,
+              incomingStatus: "processed",
+              reason: automationGate.reason,
+              engineProcessed: false,
+              sent: false,
+            },
+          }),
+        );
+        logInstagramMessage({
+          messageId: event.messageId,
+          from: event.senderId,
+          status: "ignored_status",
+          engineProcessed: false,
+          sent: false,
+        });
+        continue;
+      }
+
       const leadSync = syncInstagramLead({
         instagramScopedId: event.senderId,
       });
+
+      if (!leadSync.lead.botEnabled || leadSync.lead.excluded) {
+        ignoredAutomationPaused += 1;
+        saveMessageEventLogEntry(
+          buildLogEntry({
+            messageId: event.messageId,
+            from: event.senderId,
+            receivedAt,
+            type: "message",
+            status: "ignored_status",
+            raw: {
+              ...raw,
+              incomingStatus: "processed",
+              reason: leadSync.lead.excluded
+                ? "lead_excluded"
+                : "lead_bot_disabled",
+              leadId: leadSync.lead.id,
+              campaignId: leadSync.campaignId,
+              engineProcessed: false,
+              sent: false,
+            },
+          }),
+        );
+        logInstagramMessage({
+          messageId: event.messageId,
+          from: event.senderId,
+          status: "ignored_status",
+          leadId: leadSync.lead.id,
+          campaignId: leadSync.campaignId,
+          engineProcessed: false,
+          sent: false,
+        });
+        continue;
+      }
 
       const state = getOrCreateConversationState(
         leadSync.lead.id,
@@ -407,6 +475,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               duplicates,
               ignoredEchoes,
               ignoredUnsupported,
+              ignoredAutomationPaused,
               failed,
               dryRun: false,
               leadAction,
@@ -517,6 +586,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       duplicates,
       ignoredEchoes,
       ignoredUnsupported,
+      ignoredAutomationPaused,
       failed,
       dryRun,
       leadAction,
@@ -544,6 +614,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       duplicates,
       ignoredEchoes,
       ignoredUnsupported,
+      ignoredAutomationPaused,
       failed: failed + 1,
       dryRun: true,
       engineProcessed: false,

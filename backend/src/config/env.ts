@@ -55,6 +55,13 @@ function getBooleanEnv(name: string): boolean {
   return raw === "true" || raw === "1" || raw === "yes";
 }
 
+function getCsvEnv(name: string): string[] {
+  return getOptionalEnv(name)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function getMetaGraphApiVersion(): string {
   return getOptionalEnv("META_GRAPH_API_VERSION") || "v20.0";
 }
@@ -69,6 +76,14 @@ function getInstagramGraphApiVersion(): string {
 
 function getInstagramSendEnabled(): boolean {
   return getBooleanEnv("INSTAGRAM_SEND_ENABLED");
+}
+
+function getInstagramEngineEnabled(): boolean {
+  return getBooleanEnv("INSTAGRAM_ENGINE_ENABLED");
+}
+
+function getInstagramAllowedSenderIds(): string[] {
+  return getCsvEnv("INSTAGRAM_ALLOWED_SENDER_IDS");
 }
 
 function getDataDir(): string {
@@ -108,6 +123,8 @@ export const env = {
   INSTAGRAM_ACCOUNT_ID: getOptionalEnv("INSTAGRAM_ACCOUNT_ID"),
   INSTAGRAM_GRAPH_API_VERSION: getInstagramGraphApiVersion(),
   INSTAGRAM_SEND_ENABLED: getInstagramSendEnabled(),
+  INSTAGRAM_ENGINE_ENABLED: getInstagramEngineEnabled(),
+  INSTAGRAM_ALLOWED_SENDER_IDS: getInstagramAllowedSenderIds(),
   ENABLE_GENERIC_WEBHOOKS: getBooleanEnv("ENABLE_GENERIC_WEBHOOKS"),
   OPENAI_MODEL: getOptionalEnv("OPENAI_MODEL"),
   OPENAI_API_KEY_CONFIGURED: Boolean(getOptionalEnv("OPENAI_API_KEY")),
