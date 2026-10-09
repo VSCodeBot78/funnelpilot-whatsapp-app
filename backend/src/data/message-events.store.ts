@@ -10,9 +10,11 @@ export type MessageEventStatus =
   | "ignored_unsupported"
   | "failed";
 
+export type MessageEventProvider = "meta_whatsapp" | "meta_instagram";
+
 export type MessageEventLogEntry = {
   id: string;
-  provider: "meta_whatsapp";
+  provider: MessageEventProvider;
   messageId: string;
   from?: string;
   receivedAt: string;
@@ -55,7 +57,8 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
       (item): item is MessageEventLogEntry =>
         item &&
         typeof item === "object" &&
-        item.provider === "meta_whatsapp" &&
+        (item.provider === "meta_whatsapp" ||
+          item.provider === "meta_instagram") &&
         typeof item.messageId === "string" &&
         typeof item.status === "string",
     );
@@ -81,7 +84,7 @@ function persistMessageEventsStore(): void {
 messageEventsStore = readMessageEventsFile();
 
 export function getMessageEventByMessageId(
-  provider: "meta_whatsapp",
+  provider: MessageEventProvider,
   messageId: string,
 ): MessageEventLogEntry | undefined {
   const cleanMessageId = String(messageId || "").trim();

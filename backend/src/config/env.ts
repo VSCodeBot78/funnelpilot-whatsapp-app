@@ -63,6 +63,14 @@ function getWhatsappSendEnabled(): boolean {
   return getBooleanEnv("WHATSAPP_SEND_ENABLED");
 }
 
+function getInstagramGraphApiVersion(): string {
+  return getOptionalEnv("INSTAGRAM_GRAPH_API_VERSION") || "v26.0";
+}
+
+function getInstagramSendEnabled(): boolean {
+  return getBooleanEnv("INSTAGRAM_SEND_ENABLED");
+}
+
 function getDataDir(): string {
   const configured = getOptionalEnv("DATA_DIR");
   if (!configured) {
@@ -93,6 +101,13 @@ export const env = {
   META_GRAPH_API_VERSION: getMetaGraphApiVersion(),
   META_APP_SECRET: getOptionalEnv("META_APP_SECRET"),
   WHATSAPP_SEND_ENABLED: getWhatsappSendEnabled(),
+  INSTAGRAM_VERIFY_TOKEN:
+    getOptionalEnv("INSTAGRAM_VERIFY_TOKEN") ||
+    getOptionalEnv("META_VERIFY_TOKEN"),
+  INSTAGRAM_ACCESS_TOKEN: getOptionalEnv("INSTAGRAM_ACCESS_TOKEN"),
+  INSTAGRAM_ACCOUNT_ID: getOptionalEnv("INSTAGRAM_ACCOUNT_ID"),
+  INSTAGRAM_GRAPH_API_VERSION: getInstagramGraphApiVersion(),
+  INSTAGRAM_SEND_ENABLED: getInstagramSendEnabled(),
   ENABLE_GENERIC_WEBHOOKS: getBooleanEnv("ENABLE_GENERIC_WEBHOOKS"),
   OPENAI_MODEL: getOptionalEnv("OPENAI_MODEL"),
   OPENAI_API_KEY_CONFIGURED: Boolean(getOptionalEnv("OPENAI_API_KEY")),
