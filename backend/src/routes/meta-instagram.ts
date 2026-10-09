@@ -116,9 +116,31 @@ function logInstagramMessage(params: {
 }
 
 router.get("/", (req, res) => {
-  const mode = normalizeString(req.query["hub.mode"]);
-  const verifyToken = normalizeString(req.query["hub.verify_token"]);
-  const challenge = normalizeString(req.query["hub.challenge"]);
+  const mode = normalizeString(
+    req.query["hub.mode"] ?? req.query["hub_mode"],
+  );
+  const verifyToken = normalizeString(
+    req.query["hub.verify_token"] ?? req.query["hub_verify_token"],
+  );
+  const challenge = normalizeString(
+    req.query["hub.challenge"] ?? req.query["hub_challenge"],
+  );
+
+  const tokenConfigured = Boolean(env.INSTAGRAM_VERIFY_TOKEN);
+  const tokenMatches =
+    tokenConfigured && verifyToken === env.INSTAGRAM_VERIFY_TOKEN;
+
+  console.log(
+    [
+      "[meta-instagram-verify]",
+      `mode=${mode || "-"}`,
+      `verifyTokenPresent=${Boolean(verifyToken)}`,
+      `tokenConfigured=${tokenConfigured}`,
+      `tokenMatches=${tokenMatches}`,
+      `challengePresent=${Boolean(challenge)}`,
+      `userAgent=${normalizeString(req.get("user-agent")) || "-"}`,
+    ].join(" "),
+  );
 
   if (!env.INSTAGRAM_VERIFY_TOKEN) {
     return res.status(500).json({
@@ -128,10 +150,7 @@ router.get("/", (req, res) => {
     });
   }
 
-  if (
-    mode === "subscribe" &&
-    verifyToken === env.INSTAGRAM_VERIFY_TOKEN
-  ) {
+  if (mode === "subscribe" && tokenMatches) {
     return res.status(200).type("text/plain").send(challenge);
   }
 
