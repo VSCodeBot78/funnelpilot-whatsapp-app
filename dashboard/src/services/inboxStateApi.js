@@ -279,3 +279,71 @@ export async function ensureConversationStateInApi(
 
   return data.state;
 }
+
+function buildConversationActionUrl(apiBaseUrl, state, action) {
+  const campaignId = encodeURIComponent(String(state?.campaignId || "").trim());
+  const leadId = encodeURIComponent(String(state?.leadId || "").trim());
+
+  if (!campaignId || !leadId) {
+    throw new Error("conversation_identity_missing");
+  }
+
+  return buildApiUrl(
+    `/conversations/${campaignId}/${leadId}/${action}`,
+    apiBaseUrl,
+  );
+}
+
+async function postConversationAction({
+  apiBaseUrl,
+  state,
+  action,
+  body,
+}) {
+  const response = await fetch(
+    buildConversationActionUrl(apiBaseUrl, state, action),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || !data?.ok || !data?.state) {
+    throw new Error(data?.error || "conversation_action_failed");
+  }
+
+  return data;
+}
+
+export async function takeOverConversation({ apiBaseUrl, state }) {
+  return postConversationAction({
+    apiBaseUrl,
+    state,
+    action: "takeover",
+  });
+}
+
+export async function releaseConversationToAi({ apiBaseUrl, state }) {
+  return postConversationAction({
+    apiBaseUrl,
+    state,
+    action: "release",
+  });
+}
+
+export async function sendHumanConversationMessage({
+  apiBaseUrl,
+  state,
+  messageText,
+}) {
+  return postConversationAction({
+    apiBaseUrl,
+    state,
+    action: "human-message",
+    body: { messageText },
+  });
+}
+
