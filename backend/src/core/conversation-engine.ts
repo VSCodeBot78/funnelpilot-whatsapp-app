@@ -27,6 +27,13 @@ import {
   mustGoToCall,
 } from "../domain/pricing-rules.js";
 import {
+  buildHumanChoiceClarifier,
+  buildNaturalChoiceAcknowledgement,
+  extractScaleValue,
+  interpretChoiceDeterministically,
+  parseParentContext,
+} from "../domain/qualification-intelligence.js";
+import {
   generateAlreadyTriedBridgeReply,
   generateConsequenceBridgeReply,
 } from "../services/ai-funnel.service.js";
@@ -34,6 +41,7 @@ import {
   checkStaticAvailability,
   formatAvailabilitySlot,
 } from "../services/availability.service.js";
+import { interpretChoiceWithAi } from "../services/qualification-ai.service.js";
 import {
   activateProviderBookingState,
   markProviderBookingBooked,
@@ -286,8 +294,42 @@ function isChoiceKey(input: string, allowedKeys: string[]): boolean {
 }
 
 function isScaleValue(input: string, min: number, max: number): boolean {
-  const numeric = Number(input.trim());
-  return Number.isInteger(numeric) && numeric >= min && numeric <= max;
+  return extractScaleValue(input, min, max) !== null;
+}
+
+async function resolveAdaptiveChoice(params: {
+  stepId: FlowStepId;
+  input: string;
+  step: FlowStepDefinition;
+  leadName?: string;
+}): Promise<string | null> {
+  const options = params.step.options ?? [];
+  const deterministic = interpretChoiceDeterministically({
+    stepId: params.stepId,
+    input: params.input,
+    options,
+  });
+
+  if (deterministic.mappedChoice) {
+    return deterministic.mappedChoice;
+  }
+
+  const aiResult = await interpretChoiceWithAi({
+    stepId: params.stepId,
+    input: params.input,
+    options,
+    leadName: params.leadName,
+  });
+
+  if (
+    aiResult?.mappedChoice &&
+    aiResult.confidence >= 0.72 &&
+    options.some((option) => option.key === aiResult.mappedChoice)
+  ) {
+    return aiResult.mappedChoice;
+  }
+
+  return null;
 }
 
 function getStepOrThrow(
