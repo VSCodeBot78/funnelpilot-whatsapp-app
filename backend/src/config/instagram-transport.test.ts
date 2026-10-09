@@ -15,7 +15,8 @@ process.env.INSTAGRAM_SEND_ENABLED = "false";
 process.env.INSTAGRAM_ENGINE_ENABLED = "true";
 process.env.INSTAGRAM_ALLOWED_SENDER_IDS = "route-test-igsid";
 process.env.INSTAGRAM_VERIFY_TOKEN = "instagram-test-token";
-process.env.META_APP_SECRET = "test-app-secret";
+process.env.META_APP_SECRET = "test-meta-app-secret";
+process.env.INSTAGRAM_APP_SECRET = "test-instagram-app-secret";
 process.env.INSTAGRAM_ACCOUNT_ID = "17841400000000000";
 process.env.INSTAGRAM_GRAPH_API_VERSION = "v26.0";
 
@@ -316,7 +317,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       const signature =
         "sha256=" +
         crypto
-          .createHmac("sha256", "test-app-secret")
+          .createHmac("sha256", "test-instagram-app-secret")
           .update(Buffer.from(raw, "utf8"))
           .digest("hex");
 
