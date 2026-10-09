@@ -54,6 +54,14 @@ export function parseInstagramMessageEvents(
   }
 
   const typedPayload = payload as InstagramWebhookPayload;
+
+  if (
+    typedPayload.object &&
+    String(typedPayload.object).trim().toLowerCase() !== "instagram"
+  ) {
+    return [];
+  }
+
   const entries = Array.isArray(typedPayload.entry)
     ? typedPayload.entry
     : [];
