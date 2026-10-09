@@ -802,9 +802,9 @@ export default function CampaignEditor({
 
               <div style={{ marginBottom: 10 }}>
                 <FieldLabelWithInfo
-                  label="Starter Checkout URL"
-                  title="Starter Checkout URL"
-                  text="Link zur Bezahl- oder Checkout-Seite für das Startangebot. Wird später genutzt, wenn ein Lead direkt zum Einstieg geführt werden soll."
+                  label="5-Wochen-Coaching Checkout URL"
+                  title="5-Wochen-Coaching Checkout URL"
+                  text="Checkout-Link für den persönlichen 5-Wochen-Coaching-Einstieg (499 €). Nicht mit dem 14,95-€-Selbststarter verwechseln."
                   placement="right"
                 />
                 <input
