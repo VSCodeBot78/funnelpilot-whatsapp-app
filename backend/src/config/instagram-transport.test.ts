@@ -12,6 +12,8 @@ const testDataDir = fs.mkdtempSync(
 process.env.NODE_ENV = "test";
 process.env.DATA_DIR = testDataDir;
 process.env.INSTAGRAM_SEND_ENABLED = "false";
+process.env.INSTAGRAM_VERIFY_TOKEN = "instagram-test-token";
+process.env.META_APP_SECRET = "test-app-secret";
 process.env.INSTAGRAM_ACCOUNT_ID = "17841400000000000";
 process.env.INSTAGRAM_GRAPH_API_VERSION = "v26.0";
 
@@ -34,6 +36,7 @@ const {
   getLeadById,
   deleteLead,
 } = await import("../data/leads.store.js");
+const { default: app } = await import("../app.js");
 
 test("Phase 4 Instagram transport foundation", async (t) => {
   t.after(() => {
@@ -204,5 +207,114 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     });
     assert.equal(invalid.ok, false);
     assert.equal(invalid.statusCode, 401);
+  });
+
+  await t.test("full Instagram webhook route processes a signed DM in dry-run mode", async () => {
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const baseUrl = `http://127.0.0.1:${address.port}`;
+
+      const verifyResponse = await fetch(
+        baseUrl +
+          "/webhooks/meta/instagram?hub.mode=subscribe" +
+          "&hub.verify_token=instagram-test-token" +
+          "&hub.challenge=challenge-123",
+      );
+      assert.equal(verifyResponse.status, 200);
+      assert.equal(await verifyResponse.text(), "challenge-123");
+
+      const payload = {
+        object: "instagram",
+        entry: [
+          {
+            id: "17841400000000000",
+            messaging: [
+              {
+                sender: { id: "route-test-igsid" },
+                recipient: { id: "17841400000000000" },
+                timestamp: Date.now(),
+                message: {
+                  mid: "route-test-mid-1",
+                  text: "Max",
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      const raw = JSON.stringify(payload);
+      const signature =
+        "sha256=" +
+        crypto
+          .createHmac("sha256", "test-app-secret")
+          .update(Buffer.from(raw, "utf8"))
+          .digest("hex");
+
+      const response = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": signature,
+          },
+          body: raw,
+        },
+      );
+
+      assert.equal(response.status, 200);
+      const result = (await response.json()) as {
+        ok: boolean;
+        processed: number;
+        leadId?: string;
+        engineProcessed?: boolean;
+        botReplyPrepared?: boolean;
+        dryRun?: boolean;
+        sent?: boolean;
+        sendSkipped?: boolean;
+        outboundStatus?: string;
+      };
+
+      assert.equal(result.ok, true);
+      assert.equal(result.processed, 1);
+      assert.equal(result.leadId, "instagram:route-test-igsid");
+      assert.equal(result.engineProcessed, true);
+      assert.equal(result.botReplyPrepared, true);
+      assert.equal(result.dryRun, true);
+      assert.equal(result.sent, false);
+      assert.equal(result.sendSkipped, true);
+      assert.equal(result.outboundStatus, "dry_run");
+
+      const duplicateResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": signature,
+          },
+          body: raw,
+        },
+      );
+
+      assert.equal(duplicateResponse.status, 200);
+      const duplicateResult = (await duplicateResponse.json()) as {
+        processed: number;
+        duplicates: number;
+      };
+      assert.equal(duplicateResult.processed, 0);
+      assert.equal(duplicateResult.duplicates, 1);
+
+      deleteLead("instagram:route-test-igsid");
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });
