@@ -92,11 +92,17 @@ export const DEFAULT_OFFER_CONTEXT = {
   priceInquiryText:
     "Die Preise hängen davon ab, welche Begleitung wirklich zu deiner Situation passt. Wenn du möchtest, schauen wir im Strategiegespräch kurz, was sinnvoll ist.",
   infoLink1Enabled: true,
-  infoLink1Label: "Angebot ansehen",
-  infoLink1Url: "",
-  infoLink2Enabled: false,
-  infoLink2Label: "Video ansehen",
-  infoLink2Url: "",
+  infoLink1Label: "Eltern Vital Methode",
+  infoLink1Url: "https://jochen-kammerer.de/die-eltern-vital-methode/",
+  infoLink2Enabled: true,
+  infoLink2Label: "Selbststarter",
+  infoLink2Url: "https://jochen-kammerer.de/produkt/no-bullshit-elternfitness-selbststarter/",
+  infoLink3Enabled: true,
+  infoLink3Label: "Elterncheck",
+  infoLink3Url: "https://check.jochen-kammerer.de",
+  infoLink4Enabled: true,
+  infoLink4Label: "Keto Guide",
+  infoLink4Url: "https://jochen-kammerer.de/keto-guide/",
   internalNote: "",
 };
 
@@ -136,6 +142,30 @@ export function getNormalizedOfferContext(campaign = {}) {
       typeof context.infoLink2Url === "string"
         ? context.infoLink2Url
         : DEFAULT_OFFER_CONTEXT.infoLink2Url,
+    infoLink3Enabled:
+      typeof context.infoLink3Enabled === "boolean"
+        ? context.infoLink3Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink3Enabled,
+    infoLink3Label:
+      typeof context.infoLink3Label === "string"
+        ? context.infoLink3Label
+        : DEFAULT_OFFER_CONTEXT.infoLink3Label,
+    infoLink3Url:
+      typeof context.infoLink3Url === "string"
+        ? context.infoLink3Url
+        : DEFAULT_OFFER_CONTEXT.infoLink3Url,
+    infoLink4Enabled:
+      typeof context.infoLink4Enabled === "boolean"
+        ? context.infoLink4Enabled
+        : DEFAULT_OFFER_CONTEXT.infoLink4Enabled,
+    infoLink4Label:
+      typeof context.infoLink4Label === "string"
+        ? context.infoLink4Label
+        : DEFAULT_OFFER_CONTEXT.infoLink4Label,
+    infoLink4Url:
+      typeof context.infoLink4Url === "string"
+        ? context.infoLink4Url
+        : DEFAULT_OFFER_CONTEXT.infoLink4Url,
     internalNote:
       typeof context.internalNote === "string"
         ? context.internalNote
