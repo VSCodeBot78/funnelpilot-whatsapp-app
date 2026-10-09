@@ -102,6 +102,12 @@ export const campaigns: Record<string, CampaignConfig> = {
       infoLink2Enabled: true,
       infoLink2Label: "Selbststarter",
       infoLink2Url: OFFER_TRUTH.selfstarter.productUrl ?? "",
+      infoLink3Enabled: true,
+      infoLink3Label: "Elterncheck",
+      infoLink3Url: OFFER_TRUTH.resources.elterncheck.url,
+      infoLink4Enabled: true,
+      infoLink4Label: "Keto Guide",
+      infoLink4Url: OFFER_TRUTH.resources.ketoGuide.url,
       internalNote: "",
     },
     entryConfig: {
