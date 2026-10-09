@@ -19,6 +19,8 @@ export default function InboxView({
   onNewManualMessageChange,
   onOpenChat,
   onSendManualMessage,
+  onTakeOverConversation,
+  onReleaseConversation,
   onSetActiveContactId,
   onCloseChatTab,
   onReloadInbox,
@@ -106,6 +108,8 @@ export default function InboxView({
             newManualMessage={newManualMessage}
             onNewManualMessageChange={onNewManualMessageChange}
             onSendManualMessage={onSendManualMessage}
+            onTakeOverConversation={onTakeOverConversation}
+            onReleaseConversation={onReleaseConversation}
             onSetActiveContactId={onSetActiveContactId}
             onCloseChatTab={onCloseChatTab}
           />
