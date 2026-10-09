@@ -3,6 +3,9 @@ import { getDefaultBookingData } from "../utils/dashboardHelpers";
 import {
   loadInboxConversationMapForContacts,
   mapConversationMessagesToInbox,
+  releaseConversationToAi,
+  sendHumanConversationMessage,
+  takeOverConversation,
 } from "../services/inboxStateApi";
 
 export function useInbox({
@@ -151,13 +154,71 @@ export function useInbox({
     [activeContactId, contacts, openChatTabs, setActiveContactId, setOpenChatTabs],
   );
 
-  const sendManualMessage = useCallback(() => {
+  const replaceActiveConversation = useCallback(
+    (state) => {
+      if (!activeContactId || !state) return;
+      setInboxConversationMap((prev) => ({
+        ...prev,
+        [activeContactId]: state,
+      }));
+    },
+    [activeContactId],
+  );
+
+  const takeOverActiveConversation = useCallback(async () => {
+    if (!activeConversation) return;
+
+    try {
+      setInboxMessage("");
+      const data = await takeOverConversation({
+        apiBaseUrl,
+        state: activeConversation,
+      });
+      replaceActiveConversation(data.state);
+      setInboxMessage("Jochen hat übernommen. Die KI ist pausiert.");
+    } catch (error) {
+      console.error("takeover error:", error);
+      setInboxMessage("Übernahme konnte nicht gespeichert werden.");
+    }
+  }, [activeConversation, apiBaseUrl, replaceActiveConversation]);
+
+  const releaseActiveConversationToAi = useCallback(async () => {
+    if (!activeConversation) return;
+
+    try {
+      setInboxMessage("");
+      const data = await releaseConversationToAi({
+        apiBaseUrl,
+        state: activeConversation,
+      });
+      replaceActiveConversation(data.state);
+      setInboxMessage("Conversation wurde an die KI zurückgegeben.");
+    } catch (error) {
+      console.error("release to ai error:", error);
+      setInboxMessage("Rückgabe an die KI ist fehlgeschlagen.");
+    }
+  }, [activeConversation, apiBaseUrl, replaceActiveConversation]);
+
+  const sendManualMessage = useCallback(async () => {
     if (!activeInboxContact || !newManualMessage.trim()) return;
 
     if (activeConversation) {
-      setInboxMessage(
-        "Dieser Chat ist bereits mit dem Backend-State verbunden. Manuelles Senden wird später sauber an denselben State angebunden.",
-      );
+      try {
+        setInboxMessage("");
+        const data = await sendHumanConversationMessage({
+          apiBaseUrl,
+          state: activeConversation,
+          messageText: newManualMessage.trim(),
+        });
+        replaceActiveConversation(data.state);
+        setNewManualMessage("");
+        setInboxMessage(
+          "Manuelle Nachricht im Conversation-State gespeichert. KI ist pausiert; externer Versand bleibt in Phase 1 aus.",
+        );
+      } catch (error) {
+        console.error("manual conversation message error:", error);
+        setInboxMessage("Manuelle Nachricht konnte nicht gespeichert werden.");
+      }
       return;
     }
 
@@ -181,7 +242,14 @@ export function useInbox({
     );
 
     setNewManualMessage("");
-  }, [activeConversation, activeInboxContact, newManualMessage, setContacts]);
+  }, [
+    activeConversation,
+    activeInboxContact,
+    apiBaseUrl,
+    newManualMessage,
+    replaceActiveConversation,
+    setContacts,
+  ]);
 
   function getTimeLabel() {
     return new Date().toLocaleTimeString("de-DE", {
@@ -200,6 +268,8 @@ export function useInbox({
     openChat,
     closeChatTab,
     sendManualMessage,
+    takeOverActiveConversation,
+    releaseActiveConversationToAi,
     inboxContacts,
     activeInboxContact,
     activeConversation,

@@ -581,15 +581,16 @@ router.post("/", async (req: RawBodyRequest, res) => {
             engineProcessed = true;
             messageAppended = true;
             engineReplyPreview = buildBotReplyPreview(engineReply.text);
-            botReplyPrepared = Boolean(engineReplyPreview);
+            botReplyPrepared = Boolean(engineReplyPreview && engineReply.text);
             botReplyPreview = engineReplyPreview;
             outboundStatus = botReplyPrepared ? "prepared" : "not_prepared";
-            markLatestAssistantMessagePrepared({
-              messages: engineReply.state.messages,
-              replyText: engineReply.text,
-            });
 
-            if (botReplyPrepared) {
+            if (botReplyPrepared && engineReply.text) {
+              markLatestAssistantMessagePrepared({
+                messages: engineReply.state.messages,
+                replyText: engineReply.text,
+              });
+
               const sendResult = await sendMetaWhatsappTextMessage({
                 to: from,
                 body: engineReply.text,

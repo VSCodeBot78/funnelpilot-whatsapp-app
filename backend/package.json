@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test src/core/human-takeover.test.ts",
+    "check": "npm run build && npm run test"
   },
   "dependencies": {
     "cors": "^2.8.5",

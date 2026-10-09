@@ -1,4 +1,4 @@
-import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
+import { DEFAULT_CAMPAIGN_ID, getCampaignById } from "../config/campaigns.js";
 import {
   getAllLeads,
   getLeadById,
@@ -122,11 +122,15 @@ export function syncWhatsappLead(
   const existingLead = findLeadByWhatsappPhone(normalizedPhone);
 
   if (existingLead) {
+    const canonicalCampaignId = getCampaignById(
+      existingLead.campaignId || campaignId,
+    ).id;
+
     return {
       action: "found",
       lead: existingLead,
       normalizedPhone,
-      campaignId: existingLead.campaignId || campaignId,
+      campaignId: canonicalCampaignId,
     };
   }
 

@@ -24,6 +24,8 @@ export default function InboxChatPanel({
   newManualMessage,
   onNewManualMessageChange,
   onSendManualMessage,
+  onTakeOverConversation,
+  onReleaseConversation,
   onSetActiveContactId,
   onCloseChatTab,
 }) {
@@ -45,7 +47,10 @@ export default function InboxChatPanel({
     );
   }
 
-  const manualInputDisabled = !!activeConversation;
+  const owner = activeConversation?.owner || "ai";
+  const aiPaused = activeConversation?.aiPaused === true;
+  const humanOwned = owner === "human" || aiPaused;
+  const manualInputDisabled = false;
 
   return (
     <div
@@ -112,16 +117,45 @@ export default function InboxChatPanel({
             >
               Funnel: {activeConversation?.currentStep || activeContact.stage || "-"}
             </span>
+
+            {activeConversation ? (
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "4px 8px",
+                  border: `1px solid ${colors.border}`,
+                  background: colors.panelSoft,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: colors.text,
+                }}
+              >
+                Owner: {humanOwned ? "Jochen · KI pausiert" : "KI"}
+              </span>
+            ) : null}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" style={ghostButtonStyle(colors)}>
-            Übernehmen
-          </button>
-          <button type="button" style={primaryButtonStyle(colors)}>
-            Eingreifen
-          </button>
+          {activeConversation ? (
+            humanOwned ? (
+              <button
+                type="button"
+                onClick={onReleaseConversation}
+                style={primaryButtonStyle(colors)}
+              >
+                An KI zurückgeben
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onTakeOverConversation}
+                style={ghostButtonStyle(colors)}
+              >
+                Übernehmen
+              </button>
+            )
+          ) : null}
         </div>
       </div>
 
@@ -201,7 +235,7 @@ export default function InboxChatPanel({
           flexDirection: "column",
         }}
       >
-        {manualInputDisabled ? (
+        {activeConversation ? (
           <div
             style={{
               fontSize: 12,
@@ -209,9 +243,9 @@ export default function InboxChatPanel({
               lineHeight: 1.5,
             }}
           >
-            Dieser Chat ist bereits mit dem echten Backend-State verbunden.
-            Manuelles Senden wird später sauber an denselben State angebunden
-            statt lokal daneben zu laufen.
+            Manuelle Nachricht übernimmt den Chat automatisch und pausiert die KI.
+            In Phase 1 wird sie nur im Conversation-State gespeichert; echter
+            externer Versand bleibt bewusst aus.
           </div>
         ) : null}
 
@@ -219,16 +253,12 @@ export default function InboxChatPanel({
           <input
             value={newManualMessage}
             onChange={(e) => onNewManualMessageChange(e.target.value)}
-            placeholder={
-              manualInputDisabled
-                ? "Backend-State verbunden – manuelles Senden aktuell gesperrt"
-                : "Manuelle Nachricht eingeben..."
-            }
+            placeholder="Manuelle Nachricht eingeben..."
             disabled={manualInputDisabled}
             style={{
               ...inputStyle(colors),
               flex: 1,
-              opacity: manualInputDisabled ? 0.6 : 1,
+              opacity: 1,
             }}
           />
           <button

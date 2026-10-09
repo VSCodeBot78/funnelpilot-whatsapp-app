@@ -15,7 +15,7 @@ import { useBackendHealth } from "./hooks/useBackendHealth";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import InboxView from "./inbox/InboxView";
-import CampaignsView from "./campaigns/CampaignsView";
+import CampaignsView from "./campaigns/campaignsView";
 import LeadsView from "./leads/LeadsView";
 import AppointmentsShell from "./appointments/AppointmentsShell";
 import SettingsView from "./settings/SettingsView";
@@ -165,6 +165,8 @@ export default function AppDashboard() {
     openChat,
     closeChatTab,
     sendManualMessage,
+    takeOverActiveConversation,
+    releaseActiveConversationToAi,
     inboxContacts,
     activeInboxContact,
     activeConversation,
@@ -401,6 +403,8 @@ export default function AppDashboard() {
             onNewManualMessageChange={setNewManualMessage}
             onOpenChat={openChat}
             onSendManualMessage={sendManualMessage}
+            onTakeOverConversation={takeOverActiveConversation}
+            onReleaseConversation={releaseActiveConversationToAi}
             onSetActiveContactId={setActiveContactId}
             onCloseChatTab={closeChatTab}
             onReloadInbox={loadInboxData}
