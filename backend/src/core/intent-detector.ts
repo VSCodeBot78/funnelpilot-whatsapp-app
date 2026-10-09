@@ -260,7 +260,7 @@ function buildIntentResult(
  * 1. stop
  * 2. installments
  * 3. long_term_support
- * 4. direct_buy_starter
+ * 4. direct_buy_coaching_entry
  * 5. price_question
  * 6. info_link_only
  * 7. info_only
@@ -289,8 +289,8 @@ export function detectLeadIntent(input: string): IntentDetectionResult {
     return buildIntentResult("long_term_support", 0.97, pricingIntent.matchedText);
   }
 
-  if (pricingIntent.intent === "direct_buy_starter") {
-    return buildIntentResult("direct_buy_starter", 0.96, pricingIntent.matchedText);
+  if (pricingIntent.intent === "direct_buy_coaching_entry") {
+    return buildIntentResult("direct_buy_coaching_entry", 0.96, pricingIntent.matchedText);
   }
 
   const priceSubtype = detectPriceIntentSubtype(normalized);
@@ -339,7 +339,7 @@ export function isHighPriorityIntent(intent: LeadIntent): boolean {
     intent === "stop" ||
     intent === "installments" ||
     intent === "long_term_support" ||
-    intent === "direct_buy_starter" ||
+    intent === "direct_buy_coaching_entry" ||
     intent === "price_question" ||
     intent === "info_link_only" ||
     intent === "info_only" ||
