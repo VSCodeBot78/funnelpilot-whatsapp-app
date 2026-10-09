@@ -2322,10 +2322,15 @@ export async function processIncomingMessage(
 
   if (state.currentStep === "situation_choice") {
     const step = getStepOrThrow(campaign.id, "situation_choice");
-    const allowedKeys = (step.options ?? []).map((option) => option.key.toLowerCase());
+    const mappedChoice = await resolveAdaptiveChoice({
+      stepId: "situation_choice",
+      input: input.messageText,
+      step,
+      leadName: state.answers.name,
+    });
 
-    if (!isChoiceKey(input.messageText, allowedKeys)) {
-      const replyText = buildChoiceValidationReply();
+    if (!mappedChoice) {
+      const replyText = buildHumanChoiceClarifier("situation_choice");
       appendAssistantMessage(state, replyText);
       persistConversationState(state);
 
@@ -2337,7 +2342,10 @@ export async function processIncomingMessage(
       };
     }
 
-    updateAnswer(state, "situationChoice", input.messageText.trim().toLowerCase());
+    patchAnswers(state, {
+      situationChoice: mappedChoice,
+      situationChoiceText: input.messageText.trim(),
+    });
 
     const nextStep = getNextFlowStep(campaign.id, "situation_choice");
     if (!nextStep) {
@@ -2346,7 +2354,10 @@ export async function processIncomingMessage(
 
     setCurrentStep(state, nextStep.id);
 
-    const replyText = buildQuestionReply(campaign.id, nextStep);
+    const replyText =
+      buildNaturalChoiceAcknowledgement("situation_choice", mappedChoice) +
+      "\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
     appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
@@ -2374,30 +2385,17 @@ export async function processIncomingMessage(
       leadName: state.answers.name,
     });
 
-    if (aiBridge?.replyText?.trim()) {
-      patchAnswers(state, {
-        pendingAiFollowUpQuestion: nextQuestion,
-        pendingAiReturnStep: nextStep.id,
-        pendingAiSource: "tried_before_freetext",
-      });
-
-      appendAssistantMessage(state, aiBridge.replyText.trim());
-      persistConversationState(state);
-
-      return {
-        text: aiBridge.replyText.trim(),
-        nextStep: "tried_before_freetext",
-        detectedIntent: "flow_answer",
-        state,
-      };
-    }
-
     setCurrentStep(state, nextStep.id);
-    appendAssistantMessage(state, nextQuestion);
+
+    const replyText = aiBridge?.replyText?.trim()
+      ? aiBridge.replyText.trim() + "\n\n" + nextQuestion
+      : nextQuestion;
+
+    appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
     return {
-      text: nextQuestion,
+      text: replyText,
       nextStep: nextStep.id,
       detectedIntent: "flow_answer",
       state,
@@ -2420,30 +2418,17 @@ export async function processIncomingMessage(
       leadName: state.answers.name,
     });
 
-    if (aiBridge?.replyText?.trim()) {
-      patchAnswers(state, {
-        pendingAiFollowUpQuestion: nextQuestion,
-        pendingAiReturnStep: nextStep.id,
-        pendingAiSource: "consequence_freetext",
-      });
-
-      appendAssistantMessage(state, aiBridge.replyText.trim());
-      persistConversationState(state);
-
-      return {
-        text: aiBridge.replyText.trim(),
-        nextStep: "consequence_freetext",
-        detectedIntent: "flow_answer",
-        state,
-      };
-    }
-
     setCurrentStep(state, nextStep.id);
-    appendAssistantMessage(state, nextQuestion);
+
+    const replyText = aiBridge?.replyText?.trim()
+      ? aiBridge.replyText.trim() + "\n\n" + nextQuestion
+      : nextQuestion;
+
+    appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
     return {
-      text: nextQuestion,
+      text: replyText,
       nextStep: nextStep.id,
       detectedIntent: "flow_answer",
       state,
@@ -2452,10 +2437,15 @@ export async function processIncomingMessage(
 
   if (state.currentStep === "goal_choice") {
     const step = getStepOrThrow(campaign.id, "goal_choice");
-    const allowedKeys = (step.options ?? []).map((option) => option.key.toLowerCase());
+    const mappedChoice = await resolveAdaptiveChoice({
+      stepId: "goal_choice",
+      input: input.messageText,
+      step,
+      leadName: state.answers.name,
+    });
 
-    if (!isChoiceKey(input.messageText, allowedKeys)) {
-      const replyText = buildChoiceValidationReply();
+    if (!mappedChoice) {
+      const replyText = buildHumanChoiceClarifier("goal_choice");
       appendAssistantMessage(state, replyText);
       persistConversationState(state);
 
@@ -2467,7 +2457,10 @@ export async function processIncomingMessage(
       };
     }
 
-    updateAnswer(state, "goalChoice", input.messageText.trim().toLowerCase());
+    patchAnswers(state, {
+      goalChoice: mappedChoice,
+      goalChoiceText: input.messageText.trim(),
+    });
 
     const nextStep = getNextFlowStep(campaign.id, "goal_choice");
     if (!nextStep) {
@@ -2476,7 +2469,10 @@ export async function processIncomingMessage(
 
     setCurrentStep(state, nextStep.id);
 
-    const replyText = buildQuestionReply(campaign.id, nextStep);
+    const replyText =
+      buildNaturalChoiceAcknowledgement("goal_choice", mappedChoice) +
+      "\n\n" +
+      buildQuestionReply(campaign.id, nextStep);
     appendAssistantMessage(state, replyText);
     persistConversationState(state);
 
@@ -2506,7 +2502,10 @@ export async function processIncomingMessage(
       };
     }
 
-    const score = Number(input.messageText.trim());
+    const score = extractScaleValue(input.messageText, minScale, maxScale);
+    if (score === null) {
+      throw new Error("Scale value passed validation but could not be extracted.");
+    }
     updateAnswer(state, "importanceScore", score);
 
     if (score <= 7) {
