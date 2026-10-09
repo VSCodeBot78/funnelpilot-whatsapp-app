@@ -1864,6 +1864,7 @@ export async function processIncomingMessage(
   if (detectedIntent.intent === "direct_buy_coaching_entry") {
     resetPriceFlowState(state);
     patchFlags(state, {
+      wantsDirectBuyCoachingEntry: true,
       wantsDirectBuyStarter: true,
     });
 
