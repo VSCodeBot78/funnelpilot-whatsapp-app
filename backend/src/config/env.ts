@@ -115,6 +115,9 @@ export const env = {
   META_WABA_ID: getOptionalEnv("META_WABA_ID"),
   META_GRAPH_API_VERSION: getMetaGraphApiVersion(),
   META_APP_SECRET: getOptionalEnv("META_APP_SECRET"),
+  INSTAGRAM_APP_SECRET:
+    getOptionalEnv("INSTAGRAM_APP_SECRET") ||
+    getOptionalEnv("META_APP_SECRET"),
   WHATSAPP_SEND_ENABLED: getWhatsappSendEnabled(),
   INSTAGRAM_VERIFY_TOKEN:
     getOptionalEnv("INSTAGRAM_VERIFY_TOKEN") ||
