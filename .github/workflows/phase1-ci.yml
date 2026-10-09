@@ -1,9 +1,9 @@
-name: Phase 1 CI
+name: Funnel Pilot CI
 
 on:
   push:
     branches:
-      - phase1-human-takeover
+      - "phase*"
   pull_request:
     branches:
       - funnel-pilot-current
