@@ -343,7 +343,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     ).length;
     const statAppointments = contacts.filter((contact) => contact.booked).length;
 
-    if (section === "dashboard") {
+    if (section === "dashboard" || section === "onboarding") {
       return (
         <DashboardHome
           colors={colors}
