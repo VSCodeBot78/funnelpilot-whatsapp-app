@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test src/core/human-takeover.test.ts src/config/offer-truth.test.ts src/config/qualification-intelligence.test.ts src/config/instagram-transport.test.ts src/config/prelive-hardening.test.ts src/config/whatsapp-transport.test.ts src/config/prelive-conversation-matrix.test.ts",
+    "test": "tsx --test src/core/human-takeover.test.ts src/config/offer-truth.test.ts src/config/qualification-intelligence.test.ts src/config/instagram-transport.test.ts src/config/manual-outbound.test.ts src/config/prelive-hardening.test.ts src/config/whatsapp-transport.test.ts src/config/prelive-conversation-matrix.test.ts",
     "check": "npm run build && npm run test"
   },
   "dependencies": {
