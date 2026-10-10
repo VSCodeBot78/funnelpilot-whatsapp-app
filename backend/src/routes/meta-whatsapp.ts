@@ -616,6 +616,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
           conversationUpdated = true;
 
           let engineReplyPreview: string | undefined;
+          let skipEngineStatePersist = false;
           try {
             const engineReply = await processIncomingMessage({
               leadId: leadSync.lead.id,
@@ -648,6 +649,10 @@ router.post("/", async (req: RawBodyRequest, res) => {
                 sendSkipped = true;
                 sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
                 outboundStatus = "dry_run";
+
+                // A human takeover may have happened after Pete prepared the
+                // reply. Do not write the older AI-owned state over it.
+                skipEngineStatePersist = true;
               } else {
                 const sendResult = await sendMetaWhatsappTextMessage({
                   to: from,
@@ -744,7 +749,9 @@ router.post("/", async (req: RawBodyRequest, res) => {
               }
             }
 
-            persistConversationState(engineReply.state);
+            if (!skipEngineStatePersist) {
+              persistConversationState(engineReply.state);
+            }
             processed += 1;
           } catch (engineError) {
             failed += 1;
