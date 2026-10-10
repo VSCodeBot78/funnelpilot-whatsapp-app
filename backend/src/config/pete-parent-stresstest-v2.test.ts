@@ -212,6 +212,15 @@ test("Phase 30: 70 roleplayed parent conversations, 210 lead turns, no live API"
               "Explicit affordability concerns must not fall into generic opening");
             assert.match(pete ?? "", /Geld|Preis|leisten|finanz|Budget/i);
           }
+          if (section.focus === "approved_price" && si === 0 && turnIndex === 2) {
+            assert.doesNotMatch(pete ?? "", /\?/,
+              "Browsing a product link must not trigger a new funnel question");
+          }
+          if (section.focus === "unapproved_price" && si === 0 && turnIndex === 1) {
+            assert.match(pete ?? "", /angerechnet|Anrechnung/i,
+              "A credit question should be answered as a credit question");
+            assert.doesNotMatch(pete ?? "", /2\.499|2\.000|2000|2499/);
+          }
           if (section.focus === "approved_price" && si === 0 && turnIndex === 1) {
             assert.match(pete ?? "", /no-bullshit-elternfitness-selbststarter/,
               "Concrete Selfstarter contents question needs grounded product information");
