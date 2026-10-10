@@ -61,6 +61,18 @@ export function useGhostingRuntime({
           sendAt: new Date().toISOString(),
         });
 
+        if (!data.sent) {
+          const reason =
+            data.sendSkipReason ||
+            data.sendError ||
+            "Transport ist noch nicht für echten Versand freigeschaltet.";
+          setGhostingMessage(
+            `Ghosting NICHT gesendet: ${row.name} · ${reason}`,
+          );
+          await loadGhostingData();
+          return;
+        }
+
         if (typeof onContactsChange === "function") {
           onContactsChange((prev) =>
             prev.map((contact) =>
@@ -72,6 +84,9 @@ export function useGhostingRuntime({
                       {
                         id: Date.now(),
                         role: "bot",
+                        actor: "ai",
+                        outboundStatus: "sent",
+                        sent: true,
                         text: data.messageText || "",
                         time: getTimeLabel(),
                       },
