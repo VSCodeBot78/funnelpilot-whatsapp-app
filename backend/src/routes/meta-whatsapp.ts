@@ -14,6 +14,8 @@ import {
   takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { getConversationState } from "../data/store.js";
+import { reconcileAiOutboundReceipt } from "../services/conversation-outbound.service.js";
 import { sendMetaWhatsappTextMessage } from "../services/meta-whatsapp-api.service.js";
 import { syncWhatsappLead } from "../services/whatsapp-lead-sync.service.js";
 import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
@@ -744,6 +746,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
                 messages: engineReply.state.messages,
                 replyText: engineReply.text,
               });
+              const preparedAssistantId = engineReply.state.messages.findLast((message) =>
+                message.actor !== "human" &&
+                message.role === "assistant" &&
+                message.text.trim() === engineReply.text?.trim()
+              )?.id;
 
               const outboundPermission = evaluateLatestAiOutboundPermission({
                 leadId: leadSync.lead.id,
@@ -777,25 +784,32 @@ router.post("/", async (req: RawBodyRequest, res) => {
                 sent = true;
                 outboundStatus = "sent";
                 metaMessageId = sendResult.metaMessageId;
-                updateLatestAssistantMessageSendResult({
-                  messages: engineReply.state.messages,
-                  replyText: engineReply.text,
-                  outboundStatus: "sent",
-                  sentAt: nowIso(),
-                  metaMessageId,
-                });
+                if (preparedAssistantId) {
+                  reconcileAiOutboundReceipt({
+                    leadId: leadSync.lead.id,
+                    campaignId: leadSync.campaignId,
+                    assistantMessageId: preparedAssistantId,
+                    transport: PROVIDER,
+                    outboundStatus: "sent",
+                    sentAt: nowIso(),
+                    metaMessageId,
+                  });
+                }
               } else if (!sendResult.ok) {
                 failed += 1;
                 sent = false;
                 dryRun = false;
                 outboundStatus = "send_failed";
-                updateLatestAssistantMessageSendResult({
-                  messages: engineReply.state.messages,
-                  replyText: engineReply.text,
-                  outboundStatus: "send_failed",
-                  sendError: sendResult.error,
-                });
-                persistConversationState(engineReply.state);
+                if (preparedAssistantId) {
+                  reconcileAiOutboundReceipt({
+                    leadId: leadSync.lead.id,
+                    campaignId: leadSync.campaignId,
+                    assistantMessageId: preparedAssistantId,
+                    transport: PROVIDER,
+                    outboundStatus: "send_failed",
+                    sendError: sendResult.error,
+                  });
+                }
 
                 saveMessageEventLogEntry(
                   buildLogEntry({
@@ -858,7 +872,8 @@ router.post("/", async (req: RawBodyRequest, res) => {
             }
 
             if (!skipEngineStatePersist) {
-              persistConversationState(engineReply.state);
+              const latest = getConversationState(leadSync.lead.id, leadSync.campaignId);
+              if (latest) persistConversationState(latest);
             }
             processed += 1;
           } catch (engineError) {
