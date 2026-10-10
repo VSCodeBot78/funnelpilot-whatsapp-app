@@ -6,6 +6,7 @@ import {
   type SettingsConfig,
 } from "../services/settings-store.js";
 import { env } from "../config/env.js";
+import { parseCoachOnboardingDraft } from "../services/coach-onboarding-draft.js";
 
 const router = Router();
 
@@ -58,6 +59,17 @@ router.post("/settings-config", (req: Request, res: Response) => {
         message:
           "Rechtliche Links müssen leer sein oder mit http:// bzw. https:// beginnen.",
       });
+    }
+
+    if (Object.hasOwn(payload, "coachOnboardingDraft")) {
+      const draft = parseCoachOnboardingDraft(payload.coachOnboardingDraft);
+      if (!draft.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: draft.error,
+          message: "Coach-Entwurf unvollständig oder zu lang. Angebote benötigen einen Namen, FAQs Frage und Antwort und Links HTTPS.",
+        });
+      }
     }
 
     const nextSettings = writeSettings(payload);
