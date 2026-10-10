@@ -2,7 +2,7 @@
   "version": 1,
   "capMicroUsd": 8000000,
   "spentMicroUsd": 88891,
-  "reservedMicroUsd": 0,
+  "reservedMicroUsd": 1500000,
   "completedBatches": [
     {
       "id": "38093371914-1-batch-0",
@@ -15,7 +15,12 @@
       "completedAt": "2026-10-10T23:01:51.196Z"
     }
   ],
-  "activeReservations": {},
+  "activeReservations": {
+    "38093371914-1-batch-2": {
+      "heldMicroUsd": 1500000,
+      "createdAt": "2026-10-10T23:01:52.234Z"
+    }
+  },
   "createdAt": "2026-10-11",
   "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset."
 }
