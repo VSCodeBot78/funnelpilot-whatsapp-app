@@ -72,6 +72,30 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
     assert.notEqual(a.state.providerBooking.status, "booked");
   });
 
+  await t.test("third objection family: past failures are explored not immediately closed", async () => {
+    const a = await send("natural-past", "Ich habe schon alles versucht und wieder aufgehört");
+    assert.match(a.text || "", /Dranbleiben/);
+    assert.match(a.text || "", /Woran/);
+    assert.doesNotMatch(a.text || "", /calendly|Selbststarter|a\)|b\)/i);
+    const b = await send("natural-past", "Ich bin nach der Arbeit meistens zu platt");
+    assert.match(b.text || "", /selbst mit einem klaren Plan/);
+  });
+
+  await t.test("thinking objection is permission-based rather than pressure closing", async () => {
+    const a = await send("natural-think", "Ich muss überlegen");
+    assert.match(a.text || "", /nimm dir die Zeit/);
+    assert.doesNotMatch(a.text || "", /calendly|14,95|499/);
+    const b = await send("natural-think", "Es passt gerade nicht");
+    assert.match(b.text || "", /dann lassen wir das erstmal so/);
+    assert.doesNotMatch(b.text || "", /calendly/);
+  });
+
+  await t.test("no budget and explicit price request do not bypass budget clarification", async () => {
+    const a = await send("natural-price-budget", "Kein Budget, wie teuer ist das?");
+    assert.match(a.text || "", /wirklich der Preis das Problem/);
+    assert.doesNotMatch(a.text || "", /499 €|14,95 €/);
+  });
+
   await t.test("Keto personalized coaching remains normal 499 EUR five-week coaching", async () => {
     const a = await send("natural-keto", "Ich möchte Unterstützung beim Keto-Coaching");
     assert.match(a.text || "", /5-Wochen-Begleitung/);
