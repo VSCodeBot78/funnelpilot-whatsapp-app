@@ -149,6 +149,15 @@ function sanitizeSettings(
     if (!ALLOWED_SETTING_KEYS.has(key)) continue;
     const defaultValue = DEFAULT_SETTINGS[key as keyof SettingsConfig];
     if (typeof rawValue !== typeof defaultValue) continue;
+    if (key === "customerTopObjections") {
+      sanitized[key] = String(rawValue)
+        .split(/\r?\n/)
+        .map((item) => item.trim().slice(0, 220))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join("\n");
+      continue;
+    }
     sanitized[key] = rawValue;
   }
   return sanitized as Partial<SettingsConfig>;
