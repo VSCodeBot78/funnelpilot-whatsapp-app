@@ -2,6 +2,7 @@ import {
   DEFAULT_CAMPAIGN_ID,
   getCampaignById,
 } from "../config/campaigns.js";
+import { env } from "../config/env.js";
 import {
   getLeadById,
   saveLead,
@@ -21,6 +22,7 @@ export type InstagramLeadSyncResult = {
 type SyncInstagramLeadInput = {
   instagramScopedId: string;
   displayName?: string;
+  botEnabledForNewLead?: boolean;
 };
 
 function normalizeString(value: unknown): string {
@@ -41,6 +43,7 @@ function buildNewInstagramLead(input: {
   instagramScopedId: string;
   displayName?: string;
   campaignId: string;
+  botEnabled: boolean;
 }): LeadRecord {
   const now = Date.now();
 
@@ -55,10 +58,12 @@ function buildNewInstagramLead(input: {
     stage: "ask_name",
     resumeStage: null,
     score: null,
-    botEnabled: true,
+    botEnabled: input.botEnabled,
     excluded: false,
     booked: false,
-    note: `Instagram IGSID: ${input.instagramScopedId}`,
+    note: input.botEnabled
+      ? `Instagram IGSID: ${input.instagramScopedId}`
+      : `Instagram IGSID: ${input.instagramScopedId} | Funnel Pilot wartet auf Handoff`,
     isBotTyping: false,
     intent: "",
     readiness: "cold",
@@ -93,6 +98,9 @@ export function syncInstagramLead(
       instagramScopedId,
       displayName: input.displayName,
       campaignId,
+      botEnabled:
+        input.botEnabledForNewLead ??
+        env.INSTAGRAM_AUTO_ENABLE_NEW_LEADS,
     }),
   );
 
