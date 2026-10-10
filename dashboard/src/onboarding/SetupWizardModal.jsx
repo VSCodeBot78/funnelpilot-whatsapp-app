@@ -17,9 +17,13 @@ export function initialSetupStep(search = "") {
 
 export default function SetupWizardModal({
   colors, settings, onSettingsChange, onSaveSettings, onOpenTestChat,
-  onOpenSection, onClose,
+  onOpenSection, onClose, startStep = 0,
 }) {
-  const [stage, setStage] = useState(() => initialSetupStep(window.location.search));
+  const [stage, setStage] = useState(() =>
+    new URLSearchParams(window.location.search).get("setup") === "connections"
+      ? initialSetupStep(window.location.search)
+      : Math.max(0, Math.min(STAGES.length - 1, startStep))
+  );
   const [readiness, setReadiness] = useState(null);
   const [integrations, setIntegrations] = useState(null);
   const [loading, setLoading] = useState(false);
