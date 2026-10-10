@@ -145,3 +145,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Alle 15 vollständigen aktuellen echten **deterministischen Engine-Transkripte** mit einem gekennzeichneten Vorschlag in Jochens gewünschter Sprache sowie simulierter Perspektive des Leads: `docs/PETE_ADVERSARIAL_PARENT_QA_2026-10-10.md`. Ein Style-Vorschlag ist nicht automatisch ein wörtliches Original von Jochen.
 - Letzter grüner CI-Lauf der Testmatrix: 121 Backend-Tests + 5 Relay-/Launcher-Tests + 8 Dashboard-Tests = **134 grün, 0 Fehler**. Finale CI nach Report-Commit gesondert bestätigen.
 - **Wichtig:** Die technische Abnahme betrifft nur isolierte Code-/Engine-Simulationen. Echtes OpenAI/Meta/Calendly/Checkout, reale Leads, menschliche Inbox und finale Stimme bleiben aus. Instagram-/WhatsApp-Sends bleiben deaktiviert. Unbewertete Formulierungen dürfen nicht als freigegeben live gelten.
+
+## Phase 27 – Konkreter Elternkontext, KI-Transparenz und Booking-Nachfrage (10.10.2026)
+
+- PR #49 `phase27-pete-context-and-booking-qa`: gezielte Nacharbeit anhand der offenen Phase-26-Sprachbefunde; kein neues Funnel-Konzept und keine Änderung an zentralen STOP-, Handover- oder Meta-Sendegates.
+- Im **deterministischen Natural-Modus** spiegelt Pete bei ausdrücklich genannten zwei/drei Kindern plus Schichtarbeit beides direkt in einer kurzen Antwort. Andere Elternantworten bleiben erhalten.
+- Auf `Ist das hier wieder so ein Verkaufsbot?` antwortet Pete offen als `Jochens KI-Assistent`, ohne eine ungenannte frühere schlechte Kauf-/Coaching-Erfahrung zu unterstellen.
+- Bei mehrfacher Frage zur angeblich erfolgten Calendly-Buchung formuliert Pete ohne bestätigenden Provider-Webhook nicht zweimal den identischen Satz, sondern benennt weiterhin den ausstehenden Nachweis und die Möglichkeit einer persönlichen Klärung.
+- Neue Regressionen in `backend/src/config/natural-pete-dm.test.ts` für Schichtdienst, fehlende erfundene Vorgeschichte und wiederholte, nicht bestätigte Terminfrage. CI-Nachweis auf Commit `074d61e3`: **124 Backend-Tests + 5 Relay-/Launcher-Tests + 8 Dashboard-Tests = 137 bestanden, 0 fehlgeschlagen**, Backend-/Dashboard-Build grün (GitHub Actions 38053473713 und 38053471402).
+- Weiter offen: Jochens finale Sprachabnahme, unabhängige OpenAI-Modellgespräche, echte Meta-/Calendly-End-to-End-Tests und Windows-Laptop-Abnahme. Kein produktiver Auto-Send.
