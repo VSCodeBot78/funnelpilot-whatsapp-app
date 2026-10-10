@@ -22,8 +22,10 @@ import SettingsView from "./settings/SettingsView";
 import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
+import OnboardingView from "./onboarding/OnboardingView";
 
 const navItems = [
+  { key: "onboarding", label: "Einrichtung" },
   { key: "dashboard", label: "Dashboard" },
   { key: "campaigns", label: "Kampagnen" },
   { key: "leads", label: "Leads" },
@@ -34,8 +36,17 @@ const navItems = [
   { key: "settings", label: "Einstellungen" },
 ];
 
-export default function AppDashboard() {
-  const [section, setSection] = useState("dashboard");
+function firstSection() {
+  try {
+    return window.localStorage.getItem("funnelpilot-onboarding-intro-seen-v1") === "true"
+      ? "dashboard" : "onboarding";
+  } catch {
+    return "onboarding";
+  }
+}
+
+export default function AppDashboard({ onOpenTestChat = () => {} }) {
+  const [section, setSection] = useState(firstSection);
   const [search, setSearch] = useState("");
   const [activeContactId, setActiveContactId] = useState(null);
   const [openChatTabs, setOpenChatTabs] = useState([]);
@@ -204,7 +215,7 @@ export default function AppDashboard() {
   const handleSaveSettings = useCallback(async () => {
     const savedSettings = await saveSettings();
 
-    if (!savedSettings) return;
+    if (!savedSettings) return null;
 
     setCampaigns((prev) =>
       prev.map((campaign) => ({
@@ -231,6 +242,7 @@ export default function AppDashboard() {
         },
       })),
     );
+    return savedSettings;
   }, [saveSettings, setCampaigns]);
 
   const handleResetSettings = useCallback(async () => {
@@ -315,6 +327,23 @@ export default function AppDashboard() {
   }
 
   function renderContent() {
+    if (section === "onboarding") {
+      return (
+        <OnboardingView
+          colors={colors}
+          settings={settings}
+          settingsMessage={settingsMessage}
+          onSettingsChange={setSettings}
+          onSaveSettings={handleSaveSettings}
+          onOpenSection={setSection}
+          onOpenTestChat={onOpenTestChat}
+          onLeave={() => {
+            try { window.localStorage.setItem("funnelpilot-onboarding-intro-seen-v1", "true"); } catch { /* browser privacy mode */ }
+            setSection("dashboard");
+          }}
+        />
+      );
+    }
     const statAll = contacts.length;
     const statHot = contacts.filter((contact) =>
       contact.tags.includes("Heißer Lead"),
