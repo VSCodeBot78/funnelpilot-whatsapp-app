@@ -27,6 +27,19 @@ test("Coach draft validation keeps only bounded, harmless, draft-only strings", 
   const result = parseCoachOnboardingDraft(draft);
   assert.equal(result.ok, true);
   if (result.ok) assert.deepEqual(result.value, draft);
+  const identity = {
+    brandName: "Nord Coaching", coachName: "Coach Ada", niche: "Stress",
+    audience: "Eltern mit wenig Zeit", websiteUrl: "https://example.org",
+    assistantName: "Nora", brandVoice: "ruhig, präzise",
+    escalation: "Bei Kritik übernimmt ein Mensch", noGos: "Keine Diagnosen",
+  };
+  const withIdentity = parseCoachOnboardingDraft({ ...draft, identity });
+  assert.equal(withIdentity.ok, true);
+  if (withIdentity.ok) assert.deepEqual(withIdentity.value.identity, identity);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: {
+    ...identity, workspaceId: "other-coach" } }).ok, false);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: {
+    ...identity, websiteUrl: "http://unsafe.example.org" } }).ok, false);
   assert.equal(parseCoachOnboardingDraft({ ...draft, version: 2 }).ok, false);
   assert.equal(parseCoachOnboardingDraft({ ...draft, adminRole: "superuser" }).ok, false);
   assert.equal(parseCoachOnboardingDraft({ ...draft, offers: Array(5).fill(draft.offers[0]) }).ok, false);
@@ -72,6 +85,38 @@ test("Guided coach draft survives actual HTTP save, reload and unrelated partial
   const persisted = JSON.parse(fs.readFileSync(path.join(temp, "settings.json"), "utf8"));
   assert.deepEqual(persisted.coachOnboardingDraft, draft);
 
+  const activeBefore = readSettings();
+  // Separate endpoint only permits one inert draft, not current owner changes.
+  const newDraft = {
+    ...draft, identity: {
+      brandName: "Other Coach Test", coachName: "Nora Coach",
+      niche: "Organisation", audience: "Berufstätige Eltern",
+      websiteUrl: "https://example.org", assistantName: "Nora",
+      brandVoice: "direkt", escalation: "Mensch übernimmt",
+      noGos: "Keine Diagnosen",
+    },
+  };
+  const isolated = await fetch(base + "/coach-onboarding-draft", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify(newDraft),
+  });
+  assert.equal(isolated.status, 200);
+  const isolatedResponse = await isolated.json() as {
+    ok: boolean; draft: typeof newDraft; activated: boolean
+  };
+  assert.equal(isolatedResponse.activated, false);
+  assert.deepEqual(isolatedResponse.draft, newDraft);
+  const afterDraft = readSettings();
+  for (const key of ["companyName", "adminName", "assistantName", "masterPrompt",
+    "aiEnabled", "testMode", "starterCheckoutUrl", "defaultBookingUrl"]) {
+    assert.equal((afterDraft as any)[key], (activeBefore as any)[key], key);
+  }
+  const attemptedInjection = await fetch(base + "/coach-onboarding-draft", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...newDraft, companyName: "Hacked active brand" }),
+  });
+  assert.equal(attemptedInjection.status, 400);
+  assert.equal(readSettings().companyName, activeBefore.companyName);
   const invalid = await post({ coachOnboardingDraft: {
     ...draft, offers: [{ name: "Bad", priceLabel: "", url: "javascript:alert(1)" }],
   } });
@@ -82,10 +127,10 @@ test("Guided coach draft survives actual HTTP save, reload and unrelated partial
 
   const unrelated = await post({ brandVoice: "ruhig, konkret und menschlich" });
   assert.equal(unrelated.status, 200);
-  assert.deepEqual(unrelated.body.settings?.coachOnboardingDraft, draft);
+  assert.deepEqual(unrelated.body.settings?.coachOnboardingDraft, newDraft);
   const loaded = await fetch(base + "/settings-config").then(r => r.json()) as
     { settings: Record<string, unknown> };
-  assert.deepEqual(loaded.settings.coachOnboardingDraft, draft);
+  assert.deepEqual(loaded.settings.coachOnboardingDraft, newDraft);
 
   // A preview or a draft must never change actual offer truth, campaign
   // mapping, active send flags, or the live master prompt by itself.
