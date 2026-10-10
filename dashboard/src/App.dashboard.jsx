@@ -39,7 +39,7 @@ const navItems = [
 function firstSection() {
   try {
     if (new URLSearchParams(window.location.search).get("setup") === "connections") return "onboarding";
-    return window.localStorage.getItem("funnelpilot-onboarding-intro-seen-v1") === "true"
+    return window.localStorage.getItem("funnelpilot-onboarding-modal-seen-v2") === "true"
       ? "dashboard" : "onboarding";
   } catch {
     return "onboarding";
@@ -328,7 +328,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   }
 
   const handleCloseWizard = useCallback(() => {
-    try { window.localStorage.setItem("funnelpilot-onboarding-intro-seen-v1", "true"); }
+    try { window.localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"); }
     catch { /* private browser mode */ }
     setSection("dashboard");
   }, []);
