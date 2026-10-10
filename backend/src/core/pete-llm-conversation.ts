@@ -7,13 +7,14 @@
 import { containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { readSettings } from "../services/settings-store.js";
+import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
 
 export type PeteLlmResult =
   | { kind: "llm"; text: string }
-  | { kind: "handoff"; reason: "not_authorized" | "provider_unavailable" | "invalid_output" | "model_handoff" };
+  | { kind: "handoff"; reason: "not_authorized" | "provider_unavailable" | "invalid_output" | "model_handoff" | "budget_exhausted" | "budget_unavailable" };
 
 export function isPeteLlmConversationSelected(): boolean {
   return process.env.PETE_LLM_CONVERSATION_ENABLED?.trim().toLowerCase() === "true";
@@ -137,15 +138,8 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
 
   const model = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
   const context = buildPeteContext(state);
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + apiKey,
-      },
-      signal: AbortSignal.timeout(12000),
-      body: JSON.stringify({
+  // Reserve a conservative worst-case charge BEFORE an external call.
+  const requestBody = JSON.stringify({
         model,
         store: false,
         max_output_tokens: 400,
@@ -171,11 +165,31 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
             },
           },
         },
-      }),
+      });
+  let reservation: string;
+  try {
+    reservation = reservePeteBudget({ model, requestBody, maxOutputTokens: 400 });
+  } catch (error) {
+    if (error instanceof PeteBudgetStop && error.reason === "exhausted")
+      return { kind: "handoff", reason: "budget_exhausted" };
+    return { kind: "handoff", reason: "budget_unavailable" };
+  }
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apiKey,
+      },
+      signal: AbortSignal.timeout(12000),
+      body: requestBody,
     });
 
     if (!response.ok) return { kind: "handoff", reason: "provider_unavailable" };
-    const text = readResponseText(await response.json());
+    const payload = await response.json();
+    // No usage means the entire preauthorized amount remains counted.
+    settlePeteBudget(reservation, payload?.usage);
+    const text = readResponseText(payload);
     if (!text) return { kind: "handoff", reason: "invalid_output" };
     let parsed: unknown;
     try { parsed = JSON.parse(text); } catch {

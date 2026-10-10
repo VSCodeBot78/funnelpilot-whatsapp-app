@@ -20,6 +20,7 @@ import oauthIntegrationsRouter from "./routes/oauth-integrations.js";
 import { env } from "./config/env.js";
 import { isPeteLlmConversationSelected, arePeteLlmApiCallsApproved, isPeteLlmReadyForProvider } from "./core/pete-llm-conversation.js";
 import { readSettings } from "./services/settings-store.js";
+import { getPeteBudgetStatusSafe } from "./services/pete-api-budget.service.js";
 import { createProductionAdminGuard } from "./services/production-admin-guard.js";
 
 const app = express();
@@ -215,6 +216,7 @@ app.get("/health/readiness", (_req, res) => {
     peteLlmConversationSelected: isPeteLlmConversationSelected(),
     peteLlmCostGateApproved: arePeteLlmApiCallsApproved(),
     peteLlmProviderReady: isPeteLlmReadyForProvider(),
+    peteLlmTestBudget: getPeteBudgetStatusSafe(),
     timestamp: new Date().toISOString(),
   });
 });
