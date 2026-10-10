@@ -16,7 +16,7 @@ delete process.env.OPENAI_API_KEY;
 const { default: app } = await import("../app.js");
 const {
   emptyCoachOnboardingDraft, readCoachOnboardingDraft,
-  validateCoachOnboardingDraft,
+  validateCoachOnboardingDraft, saveCoachOnboardingDraft,
 } = await import("../services/coach-onboarding-draft.js");
 const { readSettings } = await import("../services/settings-store.js");
 
@@ -28,7 +28,6 @@ test("Inert coach template persists independently of Jochen's active settings an
   const base = "http://127.0.0.1:" + info.port;
   t.after(async () => {
     await new Promise<void>(resolve => server.close(() => resolve()));
-    fs.rmSync(dataDir, { recursive: true, force: true });
   });
   const request = async (body: unknown) => fetch(base + "/coach-onboarding-draft", {
     method: "POST", headers: { "content-type": "application/json" },
@@ -141,24 +140,15 @@ test("Coach draft requires HTTPS links and whitelist; never allows activation, s
   }).ok, false);
 });
 
-test("Corrupt existing draft is never silently overwritten", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fp-draft-corrupt-"));
-  const file = path.join(dir, "coach-onboarding-draft.json");
-  // Isolated module's DATA_DIR was set before import, so manipulate that one.
-  fs.writeFileSync(path.join(dataDir, "coach-onboarding-draft.json"), "{broken", "utf8");
+test("Corrupt existing draft is never silently overwritten", t => {
+  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+  const location = path.join(dataDir, "coach-onboarding-draft.json");
+  fs.writeFileSync(location, "{broken", "utf8");
   assert.throws(() => readCoachOnboardingDraft(), /coach_draft_invalid_restore_required/);
-  const result = emptyCoachOnboardingDraft();
-  const { saveCoachOnboardingDraft } = requireDraftFunctions();
+  const draft = emptyCoachOnboardingDraft();
   assert.throws(() => saveCoachOnboardingDraft({
-    schemaVersion: 1, brand: result.brand, assistant: result.assistant,
-    links: result.links, offers: [],
+    schemaVersion: 1, brand: draft.brand, assistant: draft.assistant,
+    links: draft.links, offers: [],
   }), /coach_draft_invalid_restore_required/);
-  assert.equal(fs.readFileSync(path.join(dataDir, "coach-onboarding-draft.json"), "utf8"), "{broken");
-  fs.rmSync(dir, { recursive: true, force: true });
+  assert.equal(fs.readFileSync(location, "utf8"), "{broken");
 });
-
-// Assigned after ESM import at module scope, no CommonJS require.
-function requireDraftFunctions() {
-  return { saveCoachOnboardingDraft: savedFunction };
-}
-const { saveCoachOnboardingDraft: savedFunction } = await import("../services/coach-onboarding-draft.js");
