@@ -309,3 +309,20 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
   und Checkout-Verhalten. Sie belegen **keine** echte KI-Gesprächsqualität.
 - Live-Stimme, reales OpenAI-Modell und Meta-Sends bleiben ungetestet;
   echte Freigabe weiterhin erst nach Windows-/Provider-Test.
+
+
+## Phase 42 – Mobile Inbox arbeitsfähig vorbereitet (10.10.2026)
+- Auf <=850px: gezielte Auswahl `Chats / Unterhaltung / Infos` statt langer
+  Scrollstrecke durch drei gestapelte Panels. Desktop behält 3 Spalten.
+- Filter `Alle / Heiß / Übernommen` verwenden nur gespeicherte
+  Lead-Kennzeichnung bzw. **tatsächlich geladenen** Backend-Owner;
+  keine fingierten ungelesenen oder wartenden Nachrichten.
+- Handy-Aktion `Pete pausieren · Übernehmen` nutzt bestehende API.
+  Rückgabe an Pete benötigt bewusste Bestätigung; STOP bietet keine Rückgabe.
+- Bei fehlendem Backend-State ist der manuelle Versand im UI gesperrt,
+  statt lokal eine täuschend echt aussehende Bot-Nachricht einzufügen.
+  Entwürfe werden beim Wechsel des aktiven Leads geleert, um
+  Fehladressierung zu vermeiden.
+- Keine neue mobile App/PWA, kein Push, keine Live-Sends und keine
+  Backend-API-Freigabe über das Netz. Reales Android-/Windows-Gerät,
+  mobile Tastatur und Screenreader bleiben gesondert abzunehmen.

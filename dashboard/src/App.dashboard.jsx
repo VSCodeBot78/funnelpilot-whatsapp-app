@@ -43,6 +43,8 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   const [search, setSearch] = useState("");
   const [activeContactId, setActiveContactId] = useState(null);
   const [openChatTabs, setOpenChatTabs] = useState([]);
+  // On small screens one inbox pane is visible at a time. Desktop keeps all.
+  const [mobileInboxPane, setMobileInboxPane] = useState("list");
 
   const {
     settings,
@@ -339,9 +341,10 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           sortedContacts={sortedContacts}
           activeContactId={activeContactId}
           onSelectLead={(id) => {
+            setMobileInboxPane("chat");
             openChat(id);
           }}
-          onOpenInbox={() => setSection("inbox")}
+          onOpenInbox={() => { setMobileInboxPane("list"); setSection("inbox"); }}
           onOpenLeads={() => setSection("leads")}
           onOpenTestChat={onOpenTestChat}
           onRestartOnboarding={() => {
@@ -411,15 +414,17 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
             openTabContacts={openInboxTabContacts}
             activeContactBooking={activeContactBooking}
             activeConversation={activeConversation}
+            mobilePane={mobileInboxPane}
+            onMobilePaneChange={setMobileInboxPane}
             loading={inboxLoading}
             message={inboxMessage}
             newManualMessage={newManualMessage}
             onNewManualMessageChange={setNewManualMessage}
-            onOpenChat={openChat}
+            onOpenChat={(id) => { setMobileInboxPane("chat"); openChat(id); }}
             onSendManualMessage={sendManualMessage}
             onTakeOverConversation={takeOverActiveConversation}
             onReleaseConversation={releaseActiveConversationToAi}
-            onSetActiveContactId={setActiveContactId}
+            onSetActiveContactId={(id) => { setMobileInboxPane("chat"); setActiveContactId(id); }}
             onCloseChatTab={closeChatTab}
             onReloadInbox={loadInboxData}
           />
@@ -438,7 +443,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onReload={loadGhostingData}
           onSendDue={sendGhostingDue}
           onMarkSent={markGhostingSent}
-          onOpenLead={openChat}
+          onOpenLead={(id) => { setMobileInboxPane("chat"); openChat(id); }}
         />
       );
     }
@@ -457,7 +462,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onReloadAvailability={loadAvailabilityConfig}
           onSaveAvailability={saveAvailabilityConfig}
           onResetAvailability={resetAvailabilityConfigForm}
-          onOpenLead={openChat}
+          onOpenLead={(id) => { setMobileInboxPane("chat"); openChat(id); }}
           renderPlaceholder={renderPlaceholder}
         />
       );
@@ -509,7 +514,10 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           colors={colors}
           section={section}
           navItems={navItems}
-          onSectionChange={setSection}
+          onSectionChange={(next) => {
+            if (next === "inbox") setMobileInboxPane("list");
+            setSection(next);
+          }}
           onOpenTestChat={onOpenTestChat}
           darkMode={darkMode}
           onSetDarkMode={setDarkMode}

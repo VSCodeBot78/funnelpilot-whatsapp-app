@@ -16,13 +16,15 @@ export function useInbox({
   openChatTabs = [],
   setActiveContactId,
   setOpenChatTabs,
-  setContacts,
   setSection,
 }) {
   const [inboxConversationMap, setInboxConversationMap] = useState({});
   const [inboxLoading, setInboxLoading] = useState(false);
   const [inboxMessage, setInboxMessage] = useState("");
   const [newManualMessage, setNewManualMessage] = useState("");
+
+  // Never carry a draft into another person's conversation accidentally.
+  useEffect(() => { setNewManualMessage(""); }, [activeContactId]);
 
   useEffect(() => {
     if (!activeContactId) return;
@@ -56,6 +58,8 @@ export function useInbox({
           : contact.lastActivityAt,
         messages: backendMessages.length > 0 ? backendMessages : contact.messages,
         backendStateConnected: true,
+        inboxOwner: state.owner,
+        inboxAiPaused: state.aiPaused === true,
         backendLeadId: state.leadId,
         backendCampaignId: state.campaignId,
         ghostingState: state.ghosting || null,
@@ -202,6 +206,11 @@ export function useInbox({
   const sendManualMessage = useCallback(async () => {
     if (!activeInboxContact || !newManualMessage.trim()) return;
 
+    if (!activeConversation) {
+      setInboxMessage("Kein Backend-State vorhanden. Nachricht NICHT gesendet.");
+      return;
+    }
+
     if (activeConversation) {
       try {
         setInboxMessage("");
@@ -233,41 +242,13 @@ export function useInbox({
       return;
     }
 
-    const newMessage = {
-      id: Date.now(),
-      role: "bot",
-      text: newManualMessage.trim(),
-      time: getTimeLabel(),
-    };
-
-    setContacts((prev) =>
-      prev.map((contact) =>
-        String(contact.id) === String(activeInboxContact.id)
-          ? {
-              ...contact,
-              messages: [...(contact.messages || []), newMessage],
-              lastActivityAt: Date.now(),
-            }
-          : contact,
-      ),
-    );
-
-    setNewManualMessage("");
   }, [
     activeConversation,
     activeInboxContact,
     apiBaseUrl,
     newManualMessage,
     replaceActiveConversation,
-    setContacts,
   ]);
-
-  function getTimeLabel() {
-    return new Date().toLocaleTimeString("de-DE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
 
   return {
     inboxConversationMap,
