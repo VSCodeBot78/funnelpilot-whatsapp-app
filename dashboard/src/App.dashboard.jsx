@@ -52,6 +52,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     setDarkMode,
     loadSettingsConfig,
     saveSettings,
+    saveCoachDraftOnly,
     resetSettings,
     userInitial,
   } = useSettingsConfig();
@@ -580,6 +581,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           settings={settings}
           onSettingsChange={setSettings}
           onSaveSettings={handleSaveSettings}
+          onSaveCoachDraft={saveCoachDraftOnly}
           onOpenTestChat={() => { setSection("dashboard"); onOpenTestChat(); }}
           onOpenSection={setSection}
           onClose={handleCloseWizard}
