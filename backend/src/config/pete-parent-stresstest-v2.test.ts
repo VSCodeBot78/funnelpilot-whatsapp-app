@@ -187,6 +187,12 @@ test("Phase 30: 70 roleplayed parent conversations, 210 lead turns, no live API"
 
           if (pete) {
             totalReplies++;
+            if (turnIndex > 0) {
+              assert.doesNotMatch(pete, /Was ist bei dir gerade der größte Knackpunkt im Alltag\?/,
+                scenario.label + ": specific follow-up must not reset to a generic opener");
+              assert.notEqual(pete, previous?.pete,
+                scenario.label + ": do not repeat the same answer to a new question");
+            }
             assert.ok(pete.length <= 800, scenario.label + " overlong response");
             assert.ok((pete.match(/\?/g) ?? []).length <= 1,
               scenario.label + " asks more than one question: " + pete);
