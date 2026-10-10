@@ -52,6 +52,13 @@ test("Phase 6 pre-live hardening", async (t) => {
 
   await t.test("latest-state outbound guard blocks human takeover", () => {
     clearConversationStore();
+    assert.deepEqual(
+      evaluateLatestAiOutboundPermission({
+        leadId: "phase6-missing",
+        campaignId: DEFAULT_CAMPAIGN_ID,
+      }),
+      { allowed: false, reason: "conversation_missing" },
+    );
     const state = getOrCreateConversationState(
       "phase6-outbound-guard",
       DEFAULT_CAMPAIGN_ID,
@@ -64,6 +71,18 @@ test("Phase 6 pre-live hardening", async (t) => {
       }),
       { allowed: true, reason: null },
     );
+
+    state.aiPaused = true;
+    persistConversationState(state);
+    assert.deepEqual(
+      evaluateLatestAiOutboundPermission({
+        leadId: state.leadId,
+        campaignId: state.campaignId,
+      }),
+      { allowed: false, reason: "ai_paused" },
+    );
+    state.aiPaused = false;
+    persistConversationState(state);
 
     takeOverByHuman(state);
     persistConversationState(state);
@@ -157,6 +176,35 @@ test("Phase 6 pre-live hardening", async (t) => {
     assert.match(reply, /Selbststarter/);
     assert.match(reply, /Elterncheck/);
     assert.match(reply, /Keto Guide/);
+  });
+
+  await t.test("Elterncheck is not confused with a checkout URL in an earlier link", () => {
+    saveCampaign({
+      id: "fit",
+      offerContext: {
+        priceInquiryText: "Test",
+        infoLink1Enabled: true,
+        infoLink1Label: "Eltern Vital Methode",
+        infoLink1Url: "https://example.test/checkout-499",
+        infoLink2Enabled: true,
+        infoLink2Label: "Selbststarter",
+        infoLink2Url: "https://example.test/selbststarter",
+        infoLink3Enabled: true,
+        infoLink3Label: "Elterncheck",
+        infoLink3Url: "https://example.test/custom-resource",
+        infoLink4Enabled: true,
+        infoLink4Label: "Keto Guide",
+        infoLink4Url: "https://example.test/keto-guide",
+        internalNote: "",
+      },
+    });
+    const reply = buildPeteRuntimeInfoLinkReply(
+      "Schick mir den Elterncheck",
+      getCampaignById(DEFAULT_CAMPAIGN_ID),
+    );
+    assert.ok(reply.includes("https://example.test/custom-resource"));
+    assert.ok(!reply.includes("check.jochen-kammerer.de"));
+    assert.doesNotMatch(reply, /check\\.jochen-kammerer\\.de/);
   });
 
   await t.test("disabled dashboard resource does not fall back to a static link", () => {

@@ -651,11 +651,15 @@ function resolveConfiguredResourceLink(
   for (const slot of slots) {
     const label = String(slot.label ?? "").trim();
     const url = String(slot.url ?? "").trim();
-    const haystack = `${normalizeText(label)} ${normalizeUrlForCompare(url)}`;
+    const normalizedLabel = normalizeText(label);
+    const normalizedUrl = normalizeUrlForCompare(url);
+    // Do not treat "checkout" in a purchase URL as an Elterncheck resource.
+    // Resolve by a resource label or a delimited URL segment/domain.
     const isMatch =
       kind === "elterncheck"
-        ? haystack.includes("check")
-        : haystack.includes("keto");
+        ? /\b(?:elterncheck|eltern check|check)\b/u.test(normalizedLabel) ||
+          /(?:^|[./_-])(?:eltern[-_]?check|check)(?=$|[./_?#-])/iu.test(normalizedUrl)
+        : normalizedLabel.includes("keto") || normalizedUrl.includes("keto");
 
     if (!isMatch) {
       continue;
@@ -721,32 +725,19 @@ function getConfiguredInfoLinks(campaign?: CampaignConfig): RuntimeLinkOption[] 
   const offerContext = campaign?.offerContext;
   const links: RuntimeLinkOption[] = [];
 
-  if (offerContext?.infoLink1Enabled && isHttpUrl(offerContext.infoLink1Url)) {
-    links.push({
-      label: offerContext.infoLink1Label?.trim() || "Info-Link",
-      url: offerContext.infoLink1Url.trim(),
-    });
-  }
+  for (const index of [1, 2, 3, 4] as const) {
+    if (!offerContext) break;
+    const enabledKey = `infoLink${index}Enabled` as const;
+    const labelKey = `infoLink${index}Label` as const;
+    const urlKey = `infoLink${index}Url` as const;
+    const url = offerContext[urlKey];
 
-  if (offerContext?.infoLink2Enabled && isHttpUrl(offerContext.infoLink2Url)) {
-    links.push({
-      label: offerContext.infoLink2Label?.trim() || "Info-Link",
-      url: offerContext.infoLink2Url.trim(),
-    });
-  }
-
-  if (offerContext?.infoLink3Enabled && isHttpUrl(offerContext.infoLink3Url)) {
-    links.push({
-      label: offerContext.infoLink3Label?.trim() || "Info-Link",
-      url: offerContext.infoLink3Url.trim(),
-    });
-  }
-
-  if (offerContext?.infoLink4Enabled && isHttpUrl(offerContext.infoLink4Url)) {
-    links.push({
-      label: offerContext.infoLink4Label?.trim() || "Info-Link",
-      url: offerContext.infoLink4Url.trim(),
-    });
+    if (offerContext[enabledKey] && isHttpUrl(url)) {
+      links.push({
+        label: offerContext[labelKey]?.trim() || "Info-Link",
+        url: url.trim(),
+      });
+    }
   }
 
   if (
