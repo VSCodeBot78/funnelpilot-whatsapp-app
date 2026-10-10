@@ -29,21 +29,21 @@ export const LONG_TERM_PRICE_UNVERIFIED_REPLY =
 
 /** A direct price query about the unapproved long-term offer. */
 export function isUnverifiedLongTermPriceQuestion(text: string): boolean {
-  const input = text.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/ß/g, "ss");
-  return /\\b(6[\\s-]*monat(?:e|s|ige|igen)?|sechs[\\s-]*monat(?:e|s|ige|igen)?|langere begleitung|langfristige begleitung|premium|advanced)\\b/.test(input) &&
-    /\\b(preis|kostet|kosten|teuer|gebuhr|monatlich|zahlung|investition)\\b/.test(input);
+  const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
+  return /\b(6[\s-]*monat(?:e|s|ige|igen)?|sechs[\s-]*monat(?:e|s|ige|igen)?|langere begleitung|langfristige begleitung|premium|advanced)\b/.test(input) &&
+    /\b(preis|kostet|kosten|teuer|gebuhr|monatlich|zahlung|investition)\b/.test(input);
 }
 
 /** Historical upgrade figures must never appear in a customer-visible reply. */
 export function hasUnapprovedOfferPrice(text: string): boolean {
-  if (/(?:^|\\D)(?:2[.\\s]?499|2[.\\s]?000)(?:\\D|$)/.test(text)) return true;
-  const money = text.match(/\\b\\d+(?:[.\\s]\\d{3})*(?:[,.]\\d{1,2})?\\s*(?:€|EUR|Euro)\\b?/gi) ?? [];
-  return money.some(value => !/^(?:499(?:[,.]00)?|14[,.]95)\\s*(?:€|EUR|Euro)$/i.test(value.trim()));
+  if (/(?:^|\D)(?:2[.\s]?499|2[.\s]?000)(?=\D|$)/.test(text)) return true;
+  const money = text.match(/\b\d+(?:[.\s]\d{3})*(?:[,.]\d{1,2})?\s*(?:€|\bEUR\b|\bEuro\b)/gi) ?? [];
+  return money.some(value => !/^(?:499(?:[,.]00)?|14[,.]95)\s*(?:€|EUR|Euro)$/i.test(value.trim()));
 }
 
 /** The LLM may explain, but must not manufacture even approved prices. */
 export function containsGeneratedPrice(text: string): boolean {
-  return hasUnapprovedOfferPrice(text) || /\\d[\\d.,\\s]*\\s*(?:€|\\bEUR\\b|\\bEuro\\b)/i.test(text);
+  return hasUnapprovedOfferPrice(text) || /\d[\d.,\s]*\s*(?:€|\bEUR\b|\bEuro\b)/i.test(text);
 }
 
 export type ResourceTruthItem = {
