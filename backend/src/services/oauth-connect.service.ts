@@ -18,6 +18,7 @@ type AuthRecord = {
   authorizedAt: string;
   expiresAt?: number;
   scopes?: string;
+  verifiedAt?: string;
 };
 type ProviderConfig = {
   id: string;
@@ -50,7 +51,7 @@ function config(provider: OAuthProvider): ProviderConfig {
     calendly: {
       authorizationUrl: "https://auth.calendly.com/oauth/authorize",
       tokenUrl: "https://auth.calendly.com/oauth/token",
-      scope: "scheduled_events:read availability:read",
+      scope: "users:read scheduled_events:read availability:read",
     },
     hubspot: {
       authorizationUrl: "https://app.hubspot.com/oauth/authorize",
@@ -138,10 +139,12 @@ export function listConnectionStatuses() {
       provider,
       status: !ready ? "setup_required" :
         !record ? "ready_to_connect" :
-        record.expiresAt && record.expiresAt <= Date.now() && !record.refreshToken
+        record.expiresAt && record.expiresAt <= Date.now()
           ? "reauthorization_required"
+          : record.verifiedAt ? "api_verified_no_sync"
           : "authorized_not_synced",
       authorizedAt: record?.authorizedAt || null,
+      verifiedAt: record?.verifiedAt || null,
       // The token was issued by the provider. This does not establish that
       // Funnel Pilot is already synchronizing calendars or CRM contacts.
       syncActive: false,
@@ -219,6 +222,60 @@ export async function exchangeAuthorization(provider: OAuthProvider, code: strin
     scopes: typeof tokens.scope === "string" ? tokens.scope : undefined,
   };
   persistRecords(existing);
+}
+
+export async function verifyProviderConnection(provider: OAuthProvider): Promise<{
+  provider: OAuthProvider;
+  status: "api_verified_no_sync" | "not_authorized" | "reauthorization_required" | "provider_unreachable";
+  verifiedAt?: string;
+  syncActive: false;
+}> {
+  const records = readRecords();
+  const record = records[provider];
+  if (!record?.accessToken) {
+    return { provider, status: "not_authorized", syncActive: false };
+  }
+  if (record.expiresAt && record.expiresAt <= Date.now()) {
+    return { provider, status: "reauthorization_required", syncActive: false };
+  }
+
+  // Read-only probes, fixed first-party hosts, never constructed from user data.
+  // We neither return nor persist contact/calendar contents.
+  const probeUrls: Record<OAuthProvider, string> = {
+    google_calendar: "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1",
+    calendly: "https://api.calendly.com/users/me",
+    hubspot: "https://api.hubapi.com/crm/v3/objects/contacts?limit=1",
+  };
+
+  try {
+    const response = await fetch(probeUrls[provider], {
+      method: "GET",
+      headers: {
+        authorization: "Bearer " + record.accessToken,
+        accept: "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        record.verifiedAt = undefined;
+        persistRecords(records);
+        return { provider, status: "reauthorization_required", syncActive: false };
+      }
+      return { provider, status: "provider_unreachable", syncActive: false };
+    }
+    // A 200 status only proves read access at this instant. No synchronization.
+    record.verifiedAt = new Date().toISOString();
+    persistRecords(records);
+    return {
+      provider, status: "api_verified_no_sync",
+      verifiedAt: record.verifiedAt,
+      syncActive: false,
+    };
+  } catch {
+    return { provider, status: "provider_unreachable", syncActive: false };
+  }
 }
 
 export function disconnectProvider(provider: OAuthProvider) {
