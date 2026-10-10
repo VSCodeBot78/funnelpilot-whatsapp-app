@@ -95,7 +95,7 @@ export function getNaturalConversationReply(params: {
     };
   }
   if (phase === "info" && matches(input,
-      /\b(danke|vielleicht spater|alles klar|passt so|ok danke)\b/)) {
+      /\b(danke|vielleicht spater|vielleicht melde ich mich spater|alles klar|passt so|passt fur mich|ok danke|ich lese nur|erstmal nur lesen|erst mal nur lesen)\b/)) {
     return { text: "Gerne. Meld dich einfach, wenn du noch eine Frage hast.",
       phase: "info", infoOnly: true };
   }
@@ -143,12 +143,6 @@ export function getNaturalConversationReply(params: {
     return {
       text: "Das musst du nicht blind glauben. Jochen kann dir konkret erklären, wie er arbeitet und was die Begleitung beinhaltet. Du kannst dann in Ruhe entscheiden.\nWas wäre dir dabei am wichtigsten?",
       phase: "trust_clarify",
-    };
-  }
-  if (phase === "trust_clarify") {
-    return {
-      text: "Kann ich verstehen. Du musst hier keine Entscheidung treffen.\nWas wäre dir wichtig, damit du dich bei einer Begleitung gut aufgehoben fühlst?",
-      phase: "info",
     };
   }
   // A question about being a sales bot is NOT evidence of a previous bad offer.
@@ -221,6 +215,25 @@ export function getNaturalConversationReply(params: {
       infoOnly: true };
   }
 
+  // A concrete question about an already shown product is not a reason to
+  // restart the qualification flow. No invented product contents.
+  if (phase === "selfstarter_offered" &&
+      matches(input, /\b(was bekomme ich|was ist da drin|was beinhaltet|was ist enthalten|umfang)\b/)) {
+    return { text: "Der Selbststarter ist für den eigenständigen Einstieg gedacht. Die genauen Inhalte findest du auf der Produktseite:\n" +
+        OFFER_TRUTH.selfstarter.productUrl,
+      phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
+  }
+
+  if (phase === "longterm_unverified") {
+    if (matches(input, /\b(anrechnung|angerechnet|verrechnen|gutschrift|rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer)\b/)) {
+      return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(danke|verstanden|frage ich jochen|jochen direkt|alles klar)\b/)) {
+      return { text: "Genau. Jochen kann dir die aktuellen Konditionen persönlich erklären.",
+        phase: "info", infoOnly: true };
+    }
+  }
+
   if (phase === "budget_clarify") {
     if (matches(input, /\b(preis|geld|budget|finanziell|kann ich nicht|zu teuer|kita[\s-]*kosten|wirklich das geld)\b/) &&
         !matches(input, /\b(unsicher|zweifel|weis nicht|weiss nicht)\b/)) {
@@ -248,7 +261,7 @@ export function getNaturalConversationReply(params: {
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
       !matches(input, /\b(nicht leisten|zu teuer|kein geld|kein budget|budget problem|finanziell nicht)\b/)) {
     if (isUnverifiedLongTermPriceQuestion(input)) {
-      return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "info", infoOnly: true };
+      return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "longterm_unverified", infoOnly: true };
     }
     if (matches(input, /\b(selbststarter|buch)\b/) || lastTrack === "selfstarter") {
       return { text: "Der Selbststarter liegt bei " + OFFER_TRUTH.selfstarter.priceText + ".",
@@ -265,7 +278,7 @@ export function getNaturalConversationReply(params: {
     };
   }
 
-  if (matches(input, /\b(kann ich mir nicht leisten|zu teuer|kein budget|kein geld|zu viel geld|geht finanziell nicht)\b/)) {
+  if (matches(input, /\b(nicht leisten|zu teuer|kein budget|kein geld|zu viel geld|geht finanziell nicht)\b/)) {
     return {
       text: "Verstanden. Ist gerade wirklich der Preis das Problem oder bist du noch unsicher, ob die Begleitung das Richtige für dich ist?",
       phase: "budget_clarify",
@@ -363,6 +376,21 @@ export function getNaturalConversationReply(params: {
       text: "Die 5-Wochen-Startphase kann Jochen auf deine Situation abstimmen.\n" +
         "Möchtest du persönlich darüber sprechen oder direkt starten?",
       phase: "coaching_close", track: ketoInConversation ? "keto" : "coaching",
+    };
+  }
+
+  // Answer a specific trust question with what Jochen actually does,
+  // instead of restarting from "largest everyday problem" or pushing a call.
+  if (matches(input, /\b(was ist bei jochen anders|was macht jochen anders|was macht ihr anders)\b/)) {
+    return { text: "Jochen verbindet kurze, alltagstaugliche Bewegung mit familienkompatibler Ernährung und schaut auch auf Schlaf und Stress. Das ist keine Erfolgsgarantie, und du musst hier nichts überstürzen.",
+      phase: "info", infoOnly: true };
+  }
+  // A past objection must never swallow a new explicit guide, product,
+  // price, booking or other context-switch request from the lead.
+  if (phase === "trust_clarify") {
+    return {
+      text: "Kann ich verstehen. Du musst hier keine Entscheidung treffen.\nWas wäre dir wichtig, damit du dich bei einer Begleitung gut aufgehoben fühlst?",
+      phase: "info",
     };
   }
 
