@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { BookingData } from "../types/types.js";
 
 type LeadRecord = {
@@ -69,7 +70,7 @@ function readLeadsFile(): LeadRecord[] {
 
 function writeLeadsFile(leads: LeadRecord[]): void {
   ensureDataDir();
-  fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), "utf8");
+  writePrivateJsonAtomic(LEADS_FILE, leads);
 }
 
 function persistLeadsStore(): void {
