@@ -212,6 +212,13 @@ function mergeRuntimeOfferContext(
 
   const merged = { ...baseContext };
 
+  if (
+    typeof saved.priceInquiryText === "string" &&
+    saved.priceInquiryText.trim()
+  ) {
+    merged.priceInquiryText = saved.priceInquiryText.trim();
+  }
+
   for (const index of [1, 2, 3, 4] as const) {
     const urlKey = `infoLink${index}Url` as const;
     const labelKey = `infoLink${index}Label` as const;
