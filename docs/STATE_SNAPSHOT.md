@@ -126,3 +126,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Entdeckter Fehler `Ich bin Papa von zwei Kindern ...` als angeblich mehrere Chatteilnehmer beseitigt. Nun fragt Pete nach Vornamen und merkt sich vorhandenen Elternkontext. Regressionstest bestätigt.
 - Vor echtem Liveversand: 6-Monats-Angebot/Preis aus Repository (2.499 €) gegen den aktuell freigegebenen Geschäftsstand prüfen; Sprache der starren Mehrfachauswahl mit Betreiber abstimmen.
 - Letzter GitHub-CI-Lauf: Backend- und Dashboard-Build grün; 94 Backend-Tests + 5 Relay/Launcher-Tests + 8 Dashboard-Tests = 107 Prüfungen grün.
+
+
+## Phase 24 – Natürliche Pete-DMs und individuelle Top-3-Einwände (10.10.2026)
+
+- Testchat und Instagram bekommen einen konfigurierbaren natürlichen Gesprächsmodus: Aussage aufgreifen, eine passende Frage, 3–4 Schritte; klassischer A-B-C-D-Flow bleibt als wählbarer Altmodus. Der WhatsApp-Pfad bleibt zunächst unverändert.
+- Grundregeln und founder-spezifischer Master-Prompt: Ethik und fundierte Verkaufspsychologie, Keto als optionale individuell angepasste 5-Wochen-Begleitung (499 €), 6-Monats-Preis vor Freigabe nicht ausspielen, Zeit/Preis/Vorerfahrung fokussieren.
+- Human Takeover im Chat ist von ausdrücklicher Strategiegesprächsbuchung getrennt; medizinische, Stop- und Datenschutzfälle werden vor Verkauf behandelt. Kein echter Versand aktiviert.
+- Neues optionales Feld `customerTopObjections` für maximal drei häufige Kundeneinwände, ein Einwand pro Zeile, für den aktuellen Gründer-Testworkspace mit Zeit/Budget/Vorerfahrung belegt; später jederzeit im Pete-Panel änderbar oder leerbar.
+- Die drei individuellen Einwände werden im derzeitigen KI-Brückenprompt als Kontext behandelt, **nicht als Aussagen über einzelne Leads**. Vollständig individuelle regelbasierte Antwortpfade sind noch nicht generisch/multi-tenant; entsprechende SaaS-Entwicklung offen.
+- Neue Tests decken u.a. spontane Preisfragen, Budgetklärung, kurze Elternchats, Keto-Begleitung, verzweigten Chat-Handover und kritische medizinische Stichworte ab. Zusätzlich werden 15 vollständige deterministische Beispieldialoge protokolliert; kein echter OpenAI-Live-Test.
