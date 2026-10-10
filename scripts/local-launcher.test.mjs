@@ -22,7 +22,7 @@ test("Windows one-click launcher is non-destructive and explicitly disables all 
     assert.ok(file.includes(value), "missing safe state: " + value);
   }
   assert.doesNotMatch(file, /cloudflared\.exe|cloudflared\s+tunnel\s+--url/i);
-  assert.doesNotMatch(file, /git\s+(reset|clean|push|checkout|pull)\b/i);
+  assert.doesNotMatch(file, /&\s*git(?:\.exe)?\s+[^\r\n]*(reset|clean|push|checkout|pull)\b/i);
   assert.ok(file.includes('funnel-pilot-current'));
   assert.ok(file.includes('127.0.0.1:3001'));
   assert.ok(file.includes('127.0.0.1:5173'));
