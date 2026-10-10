@@ -191,6 +191,7 @@ app.get("/health/readiness", (_req, res) => {
     instagramEngineEnabled: env.INSTAGRAM_ENGINE_ENABLED,
     instagramAllowedSenderCount: env.INSTAGRAM_ALLOWED_SENDER_IDS.length,
     instagramAllowAllSenders: env.INSTAGRAM_ALLOW_ALL_SENDERS,
+    instagramAutoEnableNewLeads: env.INSTAGRAM_AUTO_ENABLE_NEW_LEADS,
     instagramSendEnabled: env.INSTAGRAM_SEND_ENABLED,
     instagramSendConfigured,
     privacyPolicyUrlConfigured,
