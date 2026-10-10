@@ -80,7 +80,7 @@ function validateIntegrationMetadata(value: unknown): void {
   }
   if (record.lastCheckedAt !== undefined &&
       (typeof record.lastCheckedAt !== "string" ||
-       !/^\\d{4}-\\d{2}-\\d{2}T/.test(record.lastCheckedAt) ||
+       Number.isNaN(Date.parse(record.lastCheckedAt)) ||
        record.lastCheckedAt.length > 40)) {
     throw new Error("workspace_sandbox_invalid_integration_metadata");
   }
