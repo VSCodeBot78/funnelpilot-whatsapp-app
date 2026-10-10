@@ -96,3 +96,19 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Belegte Ports führen zum Abbruch, damit nicht versehentlich eine fremde/alte Instanz wiederverwendet wird. Cloudflare/Hetzner oder echte Nachrichten werden nicht automatisch gestartet.
 - `-CheckOnly` prüft die lokale Installation vollständig, ohne Server zu starten.
 - Statische Sicherheits- und Reihenfolge-Tests als Teil von `backend npm test`; echter PowerShell-Lauf **nur auf Windows** noch nicht abgenommen.
+
+
+## Phase 21 – Sichere Onboarding-Speicherung (10.10.2026)
+
+- Wiederholte oder teilweise Onboarding-Änderungen bewahren andere gespeicherte Einstellungen (Marke, Pete, Buchungslinks).
+- Unbekannte Felder, Readiness-Pseudofelder und ungültige Datentypen werden nicht persistiert.
+- HTTP-Regression für Speichern, Teiländerung, erneutes Laden. PR #43 bereits integriert.
+
+## Phase 22 – Ehrliche Setup-Diagnose im Onboarding (10.10.2026)
+
+- Im letzten Schritt des Onboarding-Pop-ups erscheint eine Checkliste: lokales Backend, sichere Kanal-Flags, Marke, Pete, Buchungslink, Kalender-API, HubSpot und Meta-Livebetrieb.
+- Lokale Testbereitschaft ist nicht gleich produktive Freigabe; echte Sends werden nicht aktiviert.
+- Lesender Google-/Calendly-/HubSpot-API-Zugriff bedeutet ausdrücklich keine automatische Synchronisierung.
+- Instagram und WhatsApp bleiben offen, bis echte Anbieter-End-to-End-Tests vorliegen.
+- Drei neue Dashboard-Tests gegen Fehlklassifikation bei OAuth, Meta- und Sendestatus.
+- Echter Windows- und Browser-Test bleibt offen.
