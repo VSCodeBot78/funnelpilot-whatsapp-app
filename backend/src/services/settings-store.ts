@@ -108,22 +108,21 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
 
 const DATA_DIR = env.DATA_DIR;
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
-const READ_ONLY_SETTING_KEYS = new Set([
-  "openAiApiKeyConfigured",
-  "openAiModelConfigured",
-  "aiBotSettingsConfigured",
-]);
+// The dashboard sends full settings today, but integrations and onboarding may
+// send partial updates later. Only persisted, typed settings may be changed.
+const ALLOWED_SETTING_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
 
 function sanitizeSettings(
   value: Partial<SettingsConfig> & Record<string, unknown>,
 ): Partial<SettingsConfig> {
-  const sanitized = { ...value };
-
-  for (const key of READ_ONLY_SETTING_KEYS) {
-    delete sanitized[key];
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, rawValue] of Object.entries(value)) {
+    if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+    const defaultValue = DEFAULT_SETTINGS[key as keyof SettingsConfig];
+    if (typeof rawValue !== typeof defaultValue) continue;
+    sanitized[key] = rawValue;
   }
-
-  return sanitized;
+  return sanitized as Partial<SettingsConfig>;
 }
 
 function ensureDataDir(): void {
@@ -170,7 +169,7 @@ export function writeSettings(
   ensureSettingsFile();
 
   const merged: SettingsConfig = {
-    ...DEFAULT_SETTINGS,
+    ...readSettings(),
     ...sanitizeSettings(
       nextSettings as Partial<SettingsConfig> & Record<string, unknown>,
     ),
