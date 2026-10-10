@@ -432,6 +432,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       conversationUpdated = true;
 
       let engineReplyPreview: string | undefined;
+      let skipEngineStatePersist = false;
 
       try {
         const engineReply = await processIncomingMessage({
@@ -470,7 +471,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
             sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
             outboundStatus = "dry_run";
             ignoredAutomationPaused += 1;
-            persistConversationState(engineReply.state);
+
+            // The guard reads the latest persisted state. If a human takeover
+            // happened after Pete prepared this reply, persisting the older
+            // engineReply.state here would overwrite that newer ownership.
+            skipEngineStatePersist = true;
           } else {
             const sendResult = await sendMetaInstagramTextMessage({
               to: event.senderId,
@@ -556,7 +561,9 @@ router.post("/", async (req: RawBodyRequest, res) => {
           }
         }
 
-        persistConversationState(engineReply.state);
+        if (!skipEngineStatePersist) {
+          persistConversationState(engineReply.state);
+        }
         processed += 1;
       } catch (engineError) {
         failed += 1;
