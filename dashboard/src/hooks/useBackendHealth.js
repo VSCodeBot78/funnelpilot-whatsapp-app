@@ -4,6 +4,7 @@ import { checkBackendHealth } from "../services/healthApi";
 export function useBackendHealth({ apiBaseUrl }) {
   const [backendHealthy, setBackendHealthy] = useState(null);
   const [backendHealthMessage, setBackendHealthMessage] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -31,7 +32,7 @@ export function useBackendHealth({ apiBaseUrl }) {
         console.error("backend health check failed", error);
         setBackendHealthy(false);
         setBackendHealthMessage(
-          "Backend-Verbindung fehlgeschlagen. Prüfe, ob der Backend-Server erreichbar ist.",
+          "Backend nicht erreichbar. Das Fenster „Funnel Pilot Backend“ prüfen; danach über „Erneut prüfen“ den Status abfragen. Keine Demo-Leads oder Live-Sends starten.",
         );
       }
     }
@@ -41,10 +42,11 @@ export function useBackendHealth({ apiBaseUrl }) {
     return () => {
       mounted = false;
     };
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, retryKey]);
 
   return {
     backendHealthy,
     backendHealthMessage,
+    retryBackendHealth: () => setRetryKey(value => value + 1),
   };
 }

@@ -71,3 +71,10 @@ Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „P
 - **Priorität 4 (Dashboard vereinfachen): im GitHub-Code umgesetzt.** Fokussierte tägliche Navigation und Startseite, zugänglicher Pete-Testchat, mobile Inbox und kein irreführender Dummy-Lead-Fallback. Technischer Bericht: `docs/PHASE34_DASHBOARD_FOKUS_2026-10-10.md`. Echte Geräteabnahme steht aus.
 - **Als Nächstes offen:** Priorität 5 Startdiagnose, Priorität 6 Datenschutz/Betrieb, Priorität 7 Coach-Onboarding.
 - ManyChat-Ersatz M-01 bleibt später; in dieser Phase weder Buttons noch API-Trigger neu aktiviert.
+
+## Umsetzung Priorität 5 – 10.10.2026
+
+- **Startdiagnose im GitHub-Code umgesetzt:** Read-only Systemcheck auf der Übersicht, manuell wiederholbar, Sicherheits-STOP mit konkreten Handlungsschritten, kein falsches GRÜN bei fehlenden Flags; Backend-Offlinemeldung mit Retry.
+- **Wizard und Alt-Einrichtung** verwenden strengere Prüfungen; OAuth-Statusausfälle werden von Backend-Status getrennt behandelt. Relay und echte Meta-/Calendly-/Payment-Zustellung bleiben **immer separat offen**.
+- Technischer Ablauf und lokale Abnahme: `docs/PHASE35_STARTDIAGNOSE_2026-10-10.md`.
+- **Als Nächstes:** Priorität 6 Datenschutz/Betrieb, dann Priorität 7 Coach-Onboarding. M-01 ManyChat-Miniflows und M-02 mobile Coach-PWA bleiben spätere Produktbausteine; keine Zusatzkosten und kein Live-Schalten durch Priorität 5.

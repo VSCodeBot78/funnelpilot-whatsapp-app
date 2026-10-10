@@ -1,5 +1,6 @@
 import React from "react";
 import LeadList from "../leads/LeadList";
+import SystemStatusPanel from "../diagnostics/SystemStatusPanel";
 import { getWorkSummary } from "../navigation/dashboardNavigation";
 
 export default function DashboardHome({
@@ -11,6 +12,7 @@ export default function DashboardHome({
   onOpenInbox = () => {},
   onOpenLeads = () => {},
   onOpenTestChat = () => {},
+  apiBaseUrl = "",
   onRestartOnboarding,
   onEditConnections,
 }) {
@@ -64,6 +66,9 @@ export default function DashboardHome({
           {action("Pete testen", "Neuen lokalen Testchat öffnen", onOpenTestChat)}
         </div>
       </section>
+
+      <SystemStatusPanel colors={colors} apiBaseUrl={apiBaseUrl}
+        onEditConnections={onEditConnections} />
 
       <section aria-label="Lead-Überblick" className="fp-home-stats">
         {metric("Kontakte", stats.total)}

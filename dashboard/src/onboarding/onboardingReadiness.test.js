@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getOnboardingReadiness, getSetupDiagnostics, ONBOARDING_LABELS } from "./onboardingReadiness.js";
 
+const safeLocalFlags = {
+  ok: true, service: "funnel-pilot-backend", status: "ready",
+  nodeEnv: "development",
+  instagramSendEnabled: false, whatsappSendEnabled: false,
+  instagramEngineEnabled: false, instagramAllowAllSenders: false,
+  instagramAutoEnableNewLeads: false, instagramAllowedSenderCount: 0,
+  destructiveRoutesDisabled: true, genericWebhooksEnabled: false,
+};
+
 test("unreachable backend is never treated as configured or safely locked", () => {
   const state = getOnboardingReadiness(null);
   assert.equal(state.backendReachable, false);
@@ -14,6 +23,7 @@ test("unreachable backend is never treated as configured or safely locked", () =
 
 test("configured credentials are never a live Meta verification", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramVerifyTokenConfigured: true,
     instagramAppSecretConfigured: true,
@@ -34,6 +44,7 @@ test("configured credentials are never a live Meta verification", () => {
 
 test("missing app secret prevents configured Instagram status", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramVerifyTokenConfigured: true,
     instagramAppSecretConfigured: false,
@@ -46,6 +57,7 @@ test("missing app secret prevents configured Instagram status", () => {
 
 test("enabled channel send is flagged as unsafe during initial laptop test", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramSendEnabled: true,
     whatsappSendEnabled: false,
@@ -65,6 +77,7 @@ test("onboarding has four distinct functional stages", () => {
 test("setup diagnostics distinguishes safe local tests from unverified external providers", () => {
   const diagnostics = getSetupDiagnostics({
     readiness: {
+      ...safeLocalFlags,
       ok: true,
       instagramSendEnabled: false,
       whatsappSendEnabled: false,
@@ -95,6 +108,7 @@ test("setup diagnostics distinguishes safe local tests from unverified external 
 test("verified read-only OAuth status does not falsely claim live synchronization", () => {
   const checks = getSetupDiagnostics({
     readiness: {
+      ...safeLocalFlags,
       ok: true,
       instagramSendEnabled: false,
       whatsappSendEnabled: false,
@@ -119,6 +133,7 @@ test("unsafe send flags and unavailable backend block local-test readiness", () 
   const unsafe = getSetupDiagnostics({
     settings,
     readiness: {
+      ...safeLocalFlags,
       ok: true,
       instagramEngineEnabled: true,
       instagramSendEnabled: false,
@@ -132,4 +147,24 @@ test("unsafe send flags and unavailable backend block local-test readiness", () 
   const disconnected = getSetupDiagnostics({ settings, readiness: null });
   assert.equal(disconnected.localTestReady, false);
   assert.equal(disconnected.checks.find(x => x.id === "backend")?.status, "attention");
+});
+
+test("the setup wizard refuses a green local-test status if advanced safety flags are missing", () => {
+  const settings = { companyName: "Coach", adminName: "Admin",
+    assistantName: "Pete" };
+  const base = { settings, readiness: { ...safeLocalFlags,
+    aiBotSettingsConfigured: true } };
+  assert.equal(getSetupDiagnostics(base).localTestReady, true);
+  const unsafe = getSetupDiagnostics({ settings, readiness: { ...base.readiness,
+    instagramAutoEnableNewLeads: true } });
+  assert.equal(unsafe.localTestReady, false);
+  assert.equal(unsafe.localSafetyState, "blocked");
+  const send = unsafe.checks.find(item => item.id === "send");
+  assert.equal(send.status, "attention");
+  assert.match(send.nextStep, /Auto-Enable|Backend|Allow-all|neu starten/i);
+  const unknown = { ...base.readiness };
+  delete unknown.genericWebhooksEnabled;
+  assert.equal(getSetupDiagnostics({ settings, readiness: unknown }).localTestReady, false);
+  assert.equal(getSetupDiagnostics(base).relayVerified, false);
+  assert.equal(getSetupDiagnostics(base).liveIntegrationVerified, false);
 });

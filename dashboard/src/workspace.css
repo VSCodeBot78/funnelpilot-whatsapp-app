@@ -170,3 +170,67 @@
   .fp-home-hero h1 { font-size: 20px; }
   .fp-home-metric strong { font-size: 23px; }
 }
+
+/* Phase 35: compact, clear read-only system state on the daily workspace. */
+.fp-system-check {
+  border-radius: 12px;
+  padding: 16px;
+  line-height: 1.45;
+}
+.fp-system-check-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.fp-system-check-heading h2 {
+  font-size: 17px;
+  margin: 0 0 5px;
+  line-height: 1.2;
+}
+.fp-system-check-heading p {
+  max-width: 690px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0;
+}
+.fp-system-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fp-system-actions button {
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 650;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fp-system-actions button:disabled { cursor: wait; opacity: 0.65; }
+.fp-system-actions button:focus-visible,
+.fp-system-check summary:focus-visible {
+  outline: 2px solid #ff914d;
+  outline-offset: 3px;
+}
+.fp-system-check-details {
+  margin-top: 13px;
+  border-top: 1px solid;
+  border-color: inherit;
+  padding-top: 11px;
+}
+.fp-system-check-rows { margin-top: 10px; }
+.fp-system-check-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  padding: 10px 0;
+}
+.fp-system-check-row strong { font-size: 12px; }
+.fp-system-check-row p { margin: 4px 0 0; line-height: 1.5; font-size: 12px; }
+@media (max-width: 520px) {
+  .fp-system-check { padding: 12px; }
+  .fp-system-actions { width: 100%; }
+  .fp-system-actions button { flex: 1; }
+}
