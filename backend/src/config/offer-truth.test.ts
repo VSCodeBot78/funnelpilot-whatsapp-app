@@ -192,7 +192,7 @@ test("Unapproved pricing is guarded consistently", async (t) => {
     const campaign = {
       ...campaigns[DEFAULT_CAMPAIGN_ID],
       offerContext: {
-        ...campaigns[DEFAULT_CAMPAIGN_ID].offerContext,
+        ...campaigns[DEFAULT_CAMPAIGN_ID].offerContext!,
         priceInquiryText: "Unsere sechsmonatige Begleitung kostet 2.499 €.",
       },
     };
