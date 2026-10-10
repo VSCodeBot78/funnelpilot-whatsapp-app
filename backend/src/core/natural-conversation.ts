@@ -144,7 +144,7 @@ export function getNaturalConversationReply(params: {
 
   // Price reference: first use the present chat context, never a three-product list.
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
-      !matches(input, /\b(nicht leisten|zu teuer|kein geld|budget problem)\b/)) {
+      !matches(input, /\b(nicht leisten|zu teuer|kein geld|kein budget|budget problem|finanziell nicht)\b/)) {
     if (matches(input, /\b(6[\s-]*monat(?:e|s)|sechs[\s-]*monat(?:e|s)|premium|advanced)\b/)) {
       return {
         text: "Den konkreten Preis und Umfang der längeren Begleitung klärt Jochen aktuell persönlich. Ich möchte dir hier nichts Falsches nennen.\nMöchtest du dazu direkt mit ihm sprechen?",
@@ -172,6 +172,21 @@ export function getNaturalConversationReply(params: {
       phase: "budget_clarify",
     };
   }
+  if (phase === "think_clarify") {
+    if (matches(input, /\b(nur informieren|erstmal informieren|nicht der richtige zeitpunkt|gerade nicht)\b/)) {
+      return { text: "Alles gut, dann lassen wir das erstmal so. Wenn es wieder aktuell wird, kannst du dich melden.",
+        phase: "info", infoOnly: true };
+    }
+    return { text: "Verstanden. Was wäre für dich gerade der wichtigste Punkt, damit du entscheiden kannst, ob die Begleitung sinnvoll ist?",
+      phase: "coaching_next", track: "coaching" };
+  }
+  if (matches(input, /\b(ich muss uberlegen|muss ich uberlegen|ich uberlege es mir|bin noch unsicher|ich weiss nicht|ich weiß nicht|brauche bedenkzeit|noch nicht sicher)\b/)) {
+    return {
+      text: "Klar, nimm dir die Zeit. Ist noch etwas zur Begleitung offen oder passt der Zeitpunkt gerade nicht?",
+      phase: "think_clarify",
+    };
+  }
+
   if (phase === "price_clarify") {
     if (matches(input, /\b(selbst|buch)\b/)) return {
       text: "Der Selbststarter liegt bei " + OFFER_TRUTH.selfstarter.priceText + ".",
@@ -277,9 +292,17 @@ export function getNaturalConversationReply(params: {
     };
   }
 
+  if (phase === "opening" && matches(input,
+      /\b(schon alles versucht|schon viel probiert|mehrfach angefangen|zweimal angefangen|wieder aufgehort|immer wieder aufgehort|nicht drangeblieben|durchhalten klappt nicht)\b/)) {
+    return {
+      text: "Klingt, als wäre Dranbleiben bisher der Knackpunkt. Woran ist es meistens gescheitert?",
+      phase: "blocker",
+    };
+  }
+
   if (phase === "attempts") {
     return {
-      text: "Dann fehlt dir wahrscheinlich nicht noch mehr Wissen, sondern etwas, das im Alltag wirklich funktioniert.\n" +
+      text: "Du hast also schon etwas probiert, aber es hat nicht dauerhaft gepasst.\n" +
         "Woran ist es bisher meistens gescheitert?",
       phase: "blocker", track: ketoInConversation ? "keto" : undefined,
     };
