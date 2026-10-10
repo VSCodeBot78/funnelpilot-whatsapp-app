@@ -177,3 +177,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Neue Regressionen: textloser Instagram-Echo-Handover, gleiche Texte bei noch unbekannter AI-MID, manuelle API-Zuordnung nur mit **gemocktem** Fetch, vorab gespeicherter manueller Echo-Eintrag, verzögertes Meta-Ack/Fehler nach menschlicher Übernahme auf beiden Kanälen.
 - **CI:** GitHub Actions `38057198357`, 134 Backend + 5 Relay-/Launcher-Tests + 8 Dashboard = **147 bestanden, 0 Fehler**, Backend und Dashboard erfolgreich. **Nicht** geprüft: wirklicher Meta-/ManyChat-Parallelbetrieb, echte Meta-Provider-Antwort, Mehrprozess-/SaaS-Nebenläufigkeit, Live-Handover und Gerätestart.
 - Lokales Test-/Live-Send-Opt-in bleibt erforderlich; keine APIs kostenpflichtig benutzt, keine echte Instagram- oder WhatsApp-Nachricht gesendet.
+
+## Phase 30 – Eltern-Stresstest 2.0 (10.10.2026)
+
+- **70 synthetische, mehrstufige Eltern-Personas** mit insgesamt 210 Lead-Eingaben, verteilt auf 14 Felder (Elternalltag, Zeitmangel, Freebies, Keto, Ablehnung, Budget, Angebotspreise, unfreigegebene Langzeitkonditionen, Mensch, medizinische Risiken, Buchung, Vertrauen, Themenwechsel, STOP).
+- Vollständige Chat-Protokolle aller 70 Fälle werden als CI-Testausgaben vorgehalten; kein echter OpenAI-/Meta-Durchlauf. Quelle und konkrete Fehler-/Korrekturergebnisse: `docs/PETE_ELTERN_STRESSTEST_V2_2026-10-10.md`.
+- Behoben: zuvor übersehener STOP-Satz „Schreib mich nicht mehr an“, neue Freebie-Frage nach Skepsis, Infowunsch nach ablehnendem Feedback, unbeantwortete Produktdetails, Budgetphrasen, falsche Pete-Eigentümerschaft am Guide, Kontext von unbestätigten Langzeit-Zahlungsfragen, unbestätigte Termine, starre Standard-Fragen nach Abschlussformulierungen.
+- Strikte Regressionen gegen generische Neuqualifizierung und identische Folgeantwort nach neuen Lead-Aussagen. Qualitative Gesamtauswertung 70 Szenarien: **vorher 33 generische Wiederstarts / 17 unmittelbar identische Antworten**, danach **jeweils 0** bei gleichem Testmaterial (CI 38058760602).
+- **Automatische CI-Prüfung:** 205 Backend + 5 Relay/Launcher + 8 Dashboard = **218 Tests bestanden, 0 Fehler**, beide Builds grün auf Commit `8b81d3d3`. Hinzugefügter ausführlicher QA-Bericht ändert nur Dokumentation; finalen PR-HEAD gesondert prüfen.
+- Noch offen: lebendige LLM-Ausgaben mit freigegebenem Kostenbudget, Jochens endgültige Sprachfreigabe, reale Leads, echte Meta-/Calendly-Antworten, vollständige 4-Farben-Evaluierung; keine Live-Sends aktiviert. Phase 31 und 32 weiterhin ausstehend.
