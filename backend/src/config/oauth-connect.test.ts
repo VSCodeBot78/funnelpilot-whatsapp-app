@@ -73,6 +73,35 @@ test("Provider one-click foundation: PKCE, CSRF, encryption and truthful status"
     const google = service.listConnectionStatuses().find(x => x.provider === "google_calendar");
     assert.equal(google?.status, "authorized_not_synced");
     assert.equal(google?.syncActive, false);
+    assert.equal((await service.verifyProviderConnection("hubspot")).status, "not_authorized");
+
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async (url, options) => {
+      assert.equal(
+        String(url),
+        "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1",
+      );
+      assert.equal(options?.method, "GET");
+      assert.equal(options?.headers?.authorization, "Bearer " + simulatedToken);
+      return new Response(JSON.stringify({ items: [{ id: "primary", summary: "Private Calendar" }] }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const checked = await service.verifyProviderConnection("google_calendar");
+      assert.equal(checked.status, "api_verified_no_sync");
+      assert.equal(checked.syncActive, false);
+      assert.ok(checked.verifiedAt);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+    const checkedStatus = service.listConnectionStatuses().find(x => x.provider === "google_calendar");
+    assert.equal(checkedStatus?.status, "api_verified_no_sync");
+    assert.equal(checkedStatus?.syncActive, false);
+    const encryptedAfterCheck = fs.readFileSync(path.join(temp, "oauth-connections.enc.json"), "utf8");
+    assert.ok(!encryptedAfterCheck.includes("Private Calendar"));
+    assert.ok(!encryptedAfterCheck.includes(simulatedToken));
+
     service.disconnectProvider("google_calendar");
     assert.equal(
       service.listConnectionStatuses().find(x => x.provider === "google_calendar")?.status,
@@ -87,6 +116,10 @@ test("Provider one-click foundation: PKCE, CSRF, encryption and truthful status"
       const address = server.address();
       assert.ok(address && typeof address !== "string");
       const base = "http://127.0.0.1:" + address.port;
+      const blocked = await fetch(base + "/integrations/oauth/google_calendar/verify", {
+        method: "POST",
+      });
+      assert.equal(blocked.status, 403, "API checks require the local dashboard origin");
       const status = await fetch(base + "/integrations/oauth/status");
       assert.equal(status.status, 200);
       const body = await status.text();
