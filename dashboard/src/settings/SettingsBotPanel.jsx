@@ -164,6 +164,26 @@ export default function SettingsBotPanel({
 
             <div style={{ marginTop: 12 }}>
               <FieldLabelWithInfo
+                label="Master-Prompt für Pete"
+                title="Marken- und Zielgruppenprompt"
+                text="Eigene Sprache, Zielgruppe, Coach-Angebote, Gesprächsführung und Tabus. Der Text fließt in die OpenAI-Antwortschicht ein; feste Funnel-Antworten und Sicherheitsregeln gelten zusätzlich."
+                placement="right"
+              />
+              <textarea
+                rows={9}
+                style={baseTextareaStyle(colors, 200)}
+                value={safeSettings.masterPrompt || ""}
+                onChange={(event) => updateField("masterPrompt", event.target.value)}
+                placeholder="Zielgruppe, Markenstimme, Umgang mit Einwänden und zulässige Aussagen"
+              />
+              <div style={{ color: colors.sub, fontSize: 12, marginTop: 5 }}>
+                Ein Standardtext ist für die aktuelle Eltern-fit-&amp;-vital-Testumgebung bereits im Backend vorbereitet.
+                Spätere Kunden passen diesen Prompt im eigenen Bereich an.
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
                 label="Eskalationsregel"
                 title="Eskalationsregel"
                 text="Legt fest, wann Pete nicht weiter automatisiert antworten soll und Jochen \u00fcbernehmen muss."
