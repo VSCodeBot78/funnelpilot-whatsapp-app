@@ -48,8 +48,12 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
     assert.match(a.text || "", /wirklich der Preis das Problem/);
     assert.doesNotMatch(a.text || "", /14,95/);
     const b = await send("natural-budget", "Ja, finanziell geht das gerade nicht.");
-    assert.match(b.text || "", /Selbststarter/);
+    assert.match(b.text || "", /selbstständiger Einstieg/);
     assert.match(b.text || "", /14,95/);
+    assert.doesNotMatch(b.text || "", /produkt\/no-bullshit/);
+    const c = await send("natural-budget", "Das würde ich mir anschauen");
+    assert.match(c.text || "", /Selbststarter/);
+    assert.match(c.text || "", /jochen-kammerer/);
   });
 
   await t.test("human takeover means Inbox, not Calendly without agreement", async () => {
