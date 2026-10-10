@@ -18,6 +18,34 @@ export type OfferTruthItem = {
   upgradeBalanceEur?: number;
 };
 
+// Long-term terms are deliberately not sellable until Jochen has approved them.
+export type UnverifiedLongTermOffer = Pick<
+  OfferTruthItem,
+  "id" | "name" | "role" | "requiresHumanDecision"
+> & { verificationStatus: "pending_founder_approval" };
+
+export const LONG_TERM_PRICE_UNVERIFIED_REPLY =
+  "Den aktuellen Preis und Umfang der längeren Begleitung klärt Jochen persönlich. Ich möchte dir hier keine veralteten Angaben nennen.";
+
+/** A direct price query about the unapproved long-term offer. */
+export function isUnverifiedLongTermPriceQuestion(text: string): boolean {
+  const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
+  return /\b(6[\s-]*monat(?:e|s|ige|igen)?|sechs[\s-]*monat(?:e|s|ige|igen)?|langere begleitung|langfristige begleitung|premium|advanced)\b/.test(input) &&
+    /\b(preis|kostet|kosten|teuer|gebuhr|monatlich|zahlung|investition)\b/.test(input);
+}
+
+/** Historical upgrade figures must never appear in a customer-visible reply. */
+export function hasUnapprovedOfferPrice(text: string): boolean {
+  if (/(?:^|\D)(?:2[.\s]?499|2[.\s]?000)(?=\D|$)/.test(text)) return true;
+  const money = text.match(/\b\d+(?:[.\s]\d{3})*(?:[,.]\d{1,2})?\s*(?:€|\bEUR\b|\bEuro\b)/gi) ?? [];
+  return money.some(value => !/^(?:499(?:[,.]00)?|14[,.]95)\s*(?:€|EUR|Euro)$/i.test(value.trim()));
+}
+
+/** The LLM may explain, but must not manufacture even approved prices. */
+export function containsGeneratedPrice(text: string): boolean {
+  return hasUnapprovedOfferPrice(text) || /\d[\d.,\s]*\s*(?:€|\bEUR\b|\bEuro\b)/i.test(text);
+}
+
 export type ResourceTruthItem = {
   id: "elterncheck" | "keto_guide";
   name: string;
@@ -51,11 +79,8 @@ export const OFFER_TRUTH = {
     id: "long_term_6m",
     name: "6-Monats-Begleitung",
     role: "long_term_continuation",
-    priceEur: 2499,
-    priceText: "2.499 €",
     requiresHumanDecision: true,
-    creditedEntryAmountEur: 499,
-    upgradeBalanceEur: 2000,
+    verificationStatus: "pending_founder_approval",
   },
   resources: {
     elterncheck: {
@@ -78,7 +103,7 @@ export const OFFER_TRUTH = {
 } as const satisfies {
   selfstarter: OfferTruthItem;
   coachingEntry: OfferTruthItem;
-  longTerm: OfferTruthItem;
+  longTerm: UnverifiedLongTermOffer;
   resources: {
     elterncheck: ResourceTruthItem;
     ketoGuide: ResourceTruthItem;
@@ -94,6 +119,6 @@ export function getCoachingEntryOffer(): OfferTruthItem {
   return OFFER_TRUTH.coachingEntry;
 }
 
-export function getLongTermOffer(): OfferTruthItem {
+export function getLongTermOffer(): UnverifiedLongTermOffer {
   return OFFER_TRUTH.longTerm;
 }

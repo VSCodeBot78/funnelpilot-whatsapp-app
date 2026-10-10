@@ -134,7 +134,7 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
   await t.test("explicit long-term price is never answered with stale 2499 EUR", async () => {
     const a = await send("natural-longterm", "Was kostet die 6-Monats-Begleitung?");
     assert.doesNotMatch(a.text || "", /2\.499|499 €/);
-    assert.match(a.text || "", /klärt Jochen aktuell persönlich/);
+    assert.match(a.text || "", /klärt Jochen persönlich/);
   });
 
   for (const msg of [

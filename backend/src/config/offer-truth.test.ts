@@ -4,6 +4,10 @@ import test from "node:test";
 import { campaigns, DEFAULT_CAMPAIGN_ID } from "./campaigns.js";
 import {
   OFFER_TRUTH,
+  LONG_TERM_PRICE_UNVERIFIED_REPLY,
+  hasUnapprovedOfferPrice,
+  containsGeneratedPrice,
+  isUnverifiedLongTermPriceQuestion,
   getCoachingEntryOffer,
   getLongTermOffer,
   getSelfstarterOffer,
@@ -15,6 +19,7 @@ import {
   getSelfstarterReply,
 } from "../domain/pricing-rules.js";
 import { detectLeadIntent } from "../core/intent-detector.js";
+import { composePeteResponse } from "../core/pete-response-composer.js";
 import {
   buildPeteRuntimeInfoLinkReply,
   evaluatePeteRuntimeSafety,
@@ -44,14 +49,14 @@ test("Offer Truth is unambiguous", async (t) => {
     assert.ok(offer.checkoutUrl);
   });
 
-  await t.test("long-term continuation has the correct credit logic", () => {
+  await t.test("long-term continuation is pending approval, without old numerical fields", () => {
     const offer = getLongTermOffer();
-
-    assert.equal(offer.priceEur, 2499);
-    assert.equal(offer.priceText, "2.499 €");
-    assert.equal(offer.creditedEntryAmountEur, 499);
-    assert.equal(offer.upgradeBalanceEur, 2000);
+    assert.equal(offer.id, "long_term_6m");
+    assert.equal(offer.verificationStatus, "pending_founder_approval");
     assert.equal(offer.requiresHumanDecision, true);
+    for (const field of ["priceEur", "priceText", "creditedEntryAmountEur", "upgradeBalanceEur"]) {
+      assert.equal(Object.hasOwn(offer, field), false, field);
+    }
   });
 
   await t.test("App-Starter and Umsetzungs-Bundle remain post-purchase only", () => {
@@ -99,12 +104,11 @@ test("Pricing and intent routing use the current offer truth", async (t) => {
     assert.match(reply, /14,95 €/);
   });
 
-  await t.test("long-term answer states 2499 total and 2000 balance after credit", () => {
+  await t.test("legacy long-term reply defers terms to Jochen without old amounts", () => {
     const reply = getLongTermReply(DEFAULT_CAMPAIGN_ID);
-
-    assert.match(reply, /2\.499 €/);
-    assert.match(reply, /499 €/);
-    assert.match(reply, /2\.000 €/);
+    assert.equal(reply, LONG_TERM_PRICE_UNVERIFIED_REPLY);
+    assert.match(reply, /Jochen persönlich/);
+    assert.doesNotMatch(reply, /2\.499|2499|2\.000|2000|499 €/);
   });
 
   await t.test("Pete runtime direct price answer uses current offer truth", () => {
@@ -118,7 +122,7 @@ test("Pricing and intent routing use the current offer truth", async (t) => {
     assert.match(result.replyText ?? "", /499 €/);
     assert.match(result.replyText ?? "", /Selbststarter/);
     assert.match(result.replyText ?? "", /14,95 €/);
-    assert.match(result.replyText ?? "", /2\.499 €/);
+    assert.doesNotMatch(result.replyText ?? "", /2\.499|2499|2\.000|2000/);
     assert.doesNotMatch(result.replyText ?? "", /Eltern-Energie-Startphase/);
   });
 
@@ -150,5 +154,62 @@ test("Pricing and intent routing use the current offer truth", async (t) => {
       OFFER_TRUTH.selfstarter.productUrl,
     );
     assert.equal(campaign.offerContext?.infoLink2Enabled, true);
+  });
+});
+
+test("Unapproved pricing is guarded consistently", async (t) => {
+  await t.test("legacy and alternate names for six-month prices are recognized", () => {
+    for (const input of [
+      "Was kostet die 6-Monats-Begleitung?",
+      "Wie teuer sind sechs Monate Coaching?",
+      "Preis Premium?",
+      "Was kostet die längere Begleitung?",
+    ]) {
+      assert.equal(isUnverifiedLongTermPriceQuestion(input), true, input);
+    }
+    assert.equal(isUnverifiedLongTermPriceQuestion("Was kostet der Selbststarter?"), false);
+  });
+
+  await t.test("old and invented EUR amounts are rejected, approved short offers preserved", () => {
+    for (const input of ["2.499 €", "2499 Euro", "2.000 €", "2000 EUR", "3.500 €", "3500 €"]) {
+      assert.equal(hasUnapprovedOfferPrice(input), true, input);
+    }
+    assert.equal(hasUnapprovedOfferPrice("5 Wochen 499 € oder Selbststarter 14,95 €"), false);
+    assert.equal(containsGeneratedPrice("Das 5-Wochen-Coaching liegt bei 499 €."), true);
+    assert.equal(containsGeneratedPrice("Du musst heute nichts entscheiden."), false);
+  });
+
+  await t.test("legacy safety intercept defers specifically requested longer-term prices", () => {
+    const campaign = campaigns[DEFAULT_CAMPAIGN_ID];
+    const r = evaluatePeteRuntimeSafety("Was kostet die 6-Monats-Begleitung?", {
+      campaign, askedPrice: true,
+    });
+    assert.equal(r.category, "price");
+    assert.equal(r.replyText, LONG_TERM_PRICE_UNVERIFIED_REPLY);
+    assert.doesNotMatch(r.replyText ?? "", /499 €|14,95 €/);
+  });
+
+  await t.test("Pete composer refuses unapproved long-term prices in both direct and normal paths", () => {
+    for (const directPrice of [false, true]) {
+      const reply = composePeteResponse(
+        { decisionType: "price_question", action: "answer_price", priority: 5, metadata: { directPrice } },
+        { campaign: campaigns[DEFAULT_CAMPAIGN_ID], userText: "Was kostet die 6-Monats-Begleitung?" },
+      );
+      assert.equal(reply?.text, LONG_TERM_PRICE_UNVERIFIED_REPLY);
+    }
+  });
+
+  await t.test("operator-customized obsolete offer text is not reused", () => {
+    const campaign = {
+      ...campaigns[DEFAULT_CAMPAIGN_ID],
+      offerContext: {
+        ...campaigns[DEFAULT_CAMPAIGN_ID].offerContext!,
+        priceInquiryText: "Unsere sechsmonatige Begleitung kostet 2.499 €.",
+      },
+    };
+    const r = evaluatePeteRuntimeSafety("Wie teuer ist das?", { campaign, askedPrice: false });
+    assert.equal(r.category, "price");
+    assert.doesNotMatch(r.replyText ?? "", /2\.499|2499|2\.000|2000/);
+    assert.match(r.replyText ?? "", /499 €/);
   });
 });
