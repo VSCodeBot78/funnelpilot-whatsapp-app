@@ -62,6 +62,24 @@ function getCsvEnv(name: string): string[] {
     .filter(Boolean);
 }
 
+function getPositiveIntEnv(
+  name: string,
+  fallback: number,
+  minimum = 1,
+): number {
+  const raw = getOptionalEnv(name);
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < minimum) {
+    throw new Error(`${name} muss eine ganze Zahl >= ${minimum} sein.`);
+  }
+
+  return parsed;
+}
+
 function getMetaGraphApiVersion(): string {
   return getOptionalEnv("META_GRAPH_API_VERSION") || "v20.0";
 }
@@ -139,6 +157,13 @@ export const env = {
   INSTAGRAM_ALLOW_ALL_SENDERS: getInstagramAllowAllSenders(),
   INSTAGRAM_AUTO_ENABLE_NEW_LEADS: getInstagramAutoEnableNewLeads(),
   ENABLE_GENERIC_WEBHOOKS: getBooleanEnv("ENABLE_GENERIC_WEBHOOKS"),
+  FOLLOWUP_RUNNER_ENABLED: getBooleanEnv("FOLLOWUP_RUNNER_ENABLED"),
+  FOLLOWUP_RUNNER_INTERVAL_MS: getPositiveIntEnv(
+    "FOLLOWUP_RUNNER_INTERVAL_MS",
+    60_000,
+    15_000,
+  ),
+  FOLLOWUP_TIMEZONE: getOptionalEnv("FOLLOWUP_TIMEZONE") || "Europe/Berlin",
   OPENAI_MODEL: getOptionalEnv("OPENAI_MODEL"),
   OPENAI_API_KEY_CONFIGURED: Boolean(getOptionalEnv("OPENAI_API_KEY")),
 };
