@@ -19,6 +19,7 @@ import {
   getSelfstarterReply,
 } from "../domain/pricing-rules.js";
 import { detectLeadIntent } from "../core/intent-detector.js";
+import { composePeteResponse } from "../core/pete-response-composer.js";
 import {
   buildPeteRuntimeInfoLinkReply,
   evaluatePeteRuntimeSafety,
@@ -186,6 +187,16 @@ test("Unapproved pricing is guarded consistently", async (t) => {
     assert.equal(r.category, "price");
     assert.equal(r.replyText, LONG_TERM_PRICE_UNVERIFIED_REPLY);
     assert.doesNotMatch(r.replyText ?? "", /499 €|14,95 €/);
+  });
+
+  await t.test("Pete composer refuses unapproved long-term prices in both direct and normal paths", () => {
+    for (const directPrice of [false, true]) {
+      const reply = composePeteResponse(
+        { decisionType: "price_question", action: "answer_price", priority: 5, metadata: { directPrice } },
+        { campaign: campaigns[DEFAULT_CAMPAIGN_ID], userText: "Was kostet die 6-Monats-Begleitung?" },
+      );
+      assert.equal(reply?.text, LONG_TERM_PRICE_UNVERIFIED_REPLY);
+    }
   });
 
   await t.test("operator-customized obsolete offer text is not reused", () => {
