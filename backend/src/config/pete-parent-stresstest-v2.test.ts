@@ -264,17 +264,15 @@ test("Phase 30: 70 roleplayed parent conversations, 210 lead turns, no live API"
             assert.equal(result.state.flags.stopped, true);
           }
         }
-        // A bounded evidence sample of complete transcripts for actual language review:
-        // one full conversation from each major segment, not just passing counters.
-        if (si === 0) {
-          console.log("PETE_PARENT_STRESS_V2 " + JSON.stringify({
-            label: scenario.label,
-            focus: section.focus,
-            source: "synthetic parent script; actual deterministic engine outputs; no LLM or Meta",
-            turns: replies,
-          }));
-          logged++;
-        }
+        // Keep all 70 complete deterministic transcripts available in CI
+        // so qualitative review can inspect actual language, not only assertions.
+        console.log("PETE_PARENT_STRESS_V2 " + JSON.stringify({
+          label: scenario.label,
+          focus: section.focus,
+          source: "synthetic parent script; actual deterministic engine outputs; no LLM or Meta",
+          turns: replies,
+        }));
+        logged++;
         assert.equal(replies.length, scenario.turns.length);
       });
     }
