@@ -47,7 +47,8 @@ function getModel(): string {
 }
 
 function isAiEnabled(): boolean {
-  return Boolean(getApiKey());
+  // A configured API key alone must never activate paid AI requests.
+  return Boolean(getApiKey()) && readSettings().aiEnabled === true;
 }
 
 function extractOutputText(responseJson: any): string | null {
