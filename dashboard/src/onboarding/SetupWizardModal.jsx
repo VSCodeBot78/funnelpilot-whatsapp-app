@@ -324,6 +324,8 @@ export default function SetupWizardModal({
                     "masterPrompt", { multiline: true, rows: 9,
                     placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
                   <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    Standard ist der natürliche Instagram-DM-Dialog: zuhören, spiegeln,
+                    eine Frage, dann passender nächster Schritt. A-B-C-D gibt es nur noch als Altmodus.
                     Für Eltern fit &amp; vital ist eine Startvorlage hinterlegt.
                     Andere Unternehmen tragen später ihren eigenen Master-Prompt ein.
                     Der Prompt steuert die freie KI-Antwortschicht; feste Sicherheits-
