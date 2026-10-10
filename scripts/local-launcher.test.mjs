@@ -13,9 +13,9 @@ test("Windows one-click launcher is non-destructive and explicitly disables all 
     'INSTAGRAM_SEND_ENABLED = "false"',
     'INSTAGRAM_ALLOW_ALL_SENDERS = "false"',
     'INSTAGRAM_AUTO_ENABLE_NEW_LEADS = "false"',
-    'INSTAGRAM_ALLOWED_SENDER_IDS = ""',
+    'INSTAGRAM_ALLOWED_SENDER_IDS = " "',
     'WHATSAPP_SEND_ENABLED = "false"',
-    'WHATSAPP_ALLOWED_RECIPIENT_IDS = ""',
+    'WHATSAPP_ALLOWED_RECIPIENT_IDS = " "',
     'WHATSAPP_ALLOW_ALL_RECIPIENTS = "false"',
     'ENABLE_GENERIC_WEBHOOKS = "false"',
     'DISABLE_DESTRUCTIVE_ROUTES = "true"',
@@ -61,4 +61,23 @@ test("Windows PowerShell 5.1 launcher is ASCII-only even without UTF-8 BOM", () 
   assert.equal(file.charCodeAt(0), 35, "Launcher must begin with '#' comment");
   assert.ok(file.includes('Write-Warning "Lokale Aenderungen gefunden.'));
   assert.ok(file.includes("local-webhook-relay.mjs"));
+});
+
+test("Windows PowerShell 5.1 cannot erase strict local recipient lists via empty-string assignment", () => {
+  // WinPS 5.1: $env:KEY = "" removes KEY, allowing dotenv.config() to re-read
+  // potentially nonempty allowlists from a local .env. A literal space exists
+  // in the process environment but trims to zero recipient/sender IDs.
+  for (const name of ["INSTAGRAM_ALLOWED_SENDER_IDS", "WHATSAPP_ALLOWED_RECIPIENT_IDS"]) {
+    const expected = `'$env:${name} = " "'`;
+    assert.ok(file.includes(expected), name + " must use the whitespace sentinel");
+    assert.ok(!file.includes(`'$env:${name} = ""'`),
+      name + " must not disappear from the Windows PowerShell child environment");
+    const value = " ";
+    assert.equal(value.trim(), "", "backend local safe mode sees an empty list");
+    assert.deepEqual(value.split(",").map(x => x.trim()).filter(Boolean), [],
+      "backend CSV parsing must keep the allowlist empty");
+  }
+  assert.match(file, /FUNNELPILOT_LOCAL_TEST_MODE = "true"/);
+  assert.match(file, /INSTAGRAM_SEND_ENABLED = "false"/);
+  assert.match(file, /WHATSAPP_SEND_ENABLED = "false"/);
 });
