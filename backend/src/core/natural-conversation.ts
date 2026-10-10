@@ -67,7 +67,10 @@ export function getNaturalConversationReply(params: {
     // Only a signed provider callback can mark a booking as confirmed.
     return state.providerBooking?.status === "booked"
       ? { text: "Ja, dein Termin ist im Buchungssystem bestätigt.", phase: "booking_confirmed" }
-      : { text: "Ich kann den Termin hier noch nicht als bestätigt sehen. Bitte prüf, ob du von Calendly eine Bestätigung erhalten hast.",
+      : { text: state.messages.some(m => m.role === "assistant" &&
+            m.text.includes("Ich kann den Termin hier noch nicht als bestätigt sehen."))
+          ? "Ich sehe weiterhin keine bestätigte Buchung. Falls du schon eine Calendly-Mail bekommen hast, klär das bitte direkt mit Jochen."
+          : "Ich kann den Termin hier noch nicht als bestätigt sehen. Bitte prüf, ob du von Calendly eine Bestätigung erhalten hast.",
           phase: "booking_offered" };
   }
 
@@ -144,19 +147,20 @@ export function getNaturalConversationReply(params: {
       phase: "info",
     };
   }
-  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+  // A question about being a sales bot is NOT evidence of a previous bad offer.
+  // Identify Pete plainly before interpreting any objections or experiences.
+  if (matches(input, /\b(verkaufsbot|bist du eine ki|schreibt jochen|bist du ein bot)\b/)) {
+    return {
+      text: "Ja, ich bin Pete, Jochens KI-Assistent. Hier muss niemand etwas kaufen. Was möchtest du gerade wissen?",
+      phase: "info", infoOnly: true,
+    };
+  }
+  if (matches(input, /\b(wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
     return {
       text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
       phase: "trust_clarify",
     };
   }
-  if (matches(input, /\b(bist du eine ki|schreibt jochen|bist du ein bot)\b/)) {
-    return {
-      text: "Ich bin Pete, Jochens KI-Assistent. Ich helfe hier bei der ersten Einordnung. Wenn es persönlicher wird, übernimmt Jochen.",
-      phase,
-    };
-  }
-
   if (matches(input, /\b(ernahrungsplan|essensplan|speiseplan|meal plan)\b/)) {
     return {
       text: "Einen isolierten Ernährungsplan verkauft Jochen nicht.\n" +
@@ -450,6 +454,17 @@ export function getNaturalConversationReply(params: {
       "Was hast du bisher versucht, um daran etwas zu ändern?", phase: "attempts" };
   }
 
+  // Reflect concrete shift-work context instead of the generic "kids + job" line.
+  if (matches(input, /\b(schichtdienst|schichtarbeit|schichten|nachtschicht|fruhschicht|spatschicht)\b/) &&
+      matches(input, /\b(papa|mama|vater|mutter|kinder|kindern)\b/) &&
+      matches(input, /\b(platt|mude|erschopft|leer|keine energie|kaputt|fertig)\b/)) {
+    const children = matches(input, /\b(drei|3) (?:kinder|kindern)\b/) ? "Drei Kinder" :
+      matches(input, /\b(zwei|2) (?:kinder|kindern)\b/) ? "Zwei Kinder" : "Kinder";
+    return {
+      text: children + ", Schichtdienst und abends völlig platt. Was schlaucht dich gerade mehr: der Schlaf oder die Arbeit?",
+      phase: "energy_source",
+    };
+  }
   if (matches(input, /\b(papa|mama|vater|mutter|kinder|kindern|schichtdienst|schichtarbeit)\b/) &&
       matches(input, /\b(platt|mude|erschopft|leer|keine energie|kaputt|fertig)\b/)) {
     return {
