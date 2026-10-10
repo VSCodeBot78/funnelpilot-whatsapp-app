@@ -306,8 +306,17 @@ export default function SetupWizardModal({
                   </a>
                 : <p style={small}>🎬 Setup-Video ist noch nicht hinterlegt. Du kannst direkt starten.</p>}
               <div><button type="button" style={primary} onClick={() => setStage(1)}>
-                Direkt einrichten →
+                Bestehenden Arbeitsbereich einrichten →
               </button></div>
+              <div style={{ marginTop: 12 }}>
+                <button type="button" style={btn} onClick={() => onOpenSection("coach-draft")}>
+                  Neue Coach-Vorlage vorbereiten →
+                </button>
+              </div>
+              <p style={small}>
+                Coach-Vorlagen sind separate Entwürfe. Sie verändern nicht den bestehenden
+                Pete oder laufende Kampagnen. Es werden keine neuen Benutzerkonten erstellt.
+              </p>
               <div style={{ ...small, marginTop: 24 }}>
                 Einrichtung in idealerweise 20–30 Minuten. Anbieterfreigaben können zusätzlich Zeit beanspruchen.
               </div>
