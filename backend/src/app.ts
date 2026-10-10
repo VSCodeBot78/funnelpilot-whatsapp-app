@@ -19,6 +19,7 @@ import metaInstagramRouter from "./routes/meta-instagram.js";
 import oauthIntegrationsRouter from "./routes/oauth-integrations.js";
 import { env } from "./config/env.js";
 import { readSettings } from "./services/settings-store.js";
+import { createProductionAdminGuard } from "./services/production-admin-guard.js";
 
 const app = express();
 
@@ -132,6 +133,10 @@ function destructiveRouteGuard(
 
   next();
 }
+
+// Deny production control-plane requests before reaching any admin router.
+// A correctly authenticated reverse proxy must inject the internal secret.
+app.use(createProductionAdminGuard());
 
 app.use(
   cors({
