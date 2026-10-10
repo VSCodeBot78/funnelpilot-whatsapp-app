@@ -24,6 +24,7 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
   try {
     const raw = fs.readFileSync(BOOKING_EVENTS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_booking_events_store");
       return [];
     }
 
@@ -34,7 +35,9 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
           item && typeof item === "object" && typeof (item as any).id === "string",
       );
     }
+    if (env.NODE_ENV === "production") throw new Error("invalid_booking_events_store_shape");
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("booking_events_store_invalid_stop_restore", { cause: error });
     console.error("booking events store read error:", error);
   }
 
