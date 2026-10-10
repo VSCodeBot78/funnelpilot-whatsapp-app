@@ -29,7 +29,8 @@ function providerWebhookGuard(
   res: Response,
   next: NextFunction,
 ): void {
-  if (env.NODE_ENV === "production" && !env.ENABLE_GENERIC_WEBHOOKS) {
+  if (!env.ENABLE_GENERIC_WEBHOOKS &&
+    (env.NODE_ENV === "production" || env.LOCAL_LAPTOP_TEST_MODE)) {
     res.status(404).json({
       ok: false,
       error: "provider_webhook_disabled",

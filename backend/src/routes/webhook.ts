@@ -26,7 +26,8 @@ function genericWebhookGuard(
   res: Response,
   next: NextFunction,
 ): void {
-  if (env.NODE_ENV === "production" && !env.ENABLE_GENERIC_WEBHOOKS) {
+  if (!env.ENABLE_GENERIC_WEBHOOKS &&
+    (env.NODE_ENV === "production" || env.LOCAL_LAPTOP_TEST_MODE)) {
     res.status(404).json({
       ok: false,
       error: "generic_webhook_disabled",
@@ -350,7 +351,7 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
  * Calendly Webhook Phase B
  * Nutzt tracking.utm_content als leadId und tracking.utm_campaign als campaignId.
  */
-router.post("/calendly", (req, res) => {
+router.post("/calendly", genericWebhookGuard, (req, res) => {
   try {
     const result = processCalendlyWebhook(req.body);
 
