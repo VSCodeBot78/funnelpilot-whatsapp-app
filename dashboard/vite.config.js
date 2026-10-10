@@ -14,6 +14,7 @@ export default defineConfig({
       "/ghosting": "http://localhost:3001",
       "/ghosting-config": "http://localhost:3001",
       "/health": "http://localhost:3001",
+      "/integrations": "http://localhost:3001",
       "/webhook": "http://localhost:3001",
       "/provider-booking": "http://localhost:3001",
       "/leads": "http://localhost:3001",
