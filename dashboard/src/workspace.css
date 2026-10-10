@@ -1,0 +1,172 @@
+/* Phase 34: operator-first layout. Styles only; no transport or automation logic. */
+.fp-workspace { font-size: 14px; }
+.fp-app-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100%;
+}
+.fp-sidebar {
+  min-width: 0;
+  padding: 14px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fp-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px 14px;
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 0;
+}
+.fp-brand-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fp-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fp-nav-caption {
+  padding: 8px 11px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+}
+.fp-sidebar-link {
+  width: 100%;
+  text-align: left;
+  padding: 10px 11px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  min-height: 39px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.fp-sidebar-link:focus-visible, .fp-quick-action:focus-visible,
+.fp-home button:focus-visible, .fp-test-back:focus-visible {
+  outline: 3px solid #ff914d;
+  outline-offset: 2px;
+}
+.fp-sidebar-test { margin-top: 9px; }
+.fp-advanced-toggle { margin-top: 9px; font-size: 12px; }
+.fp-advanced-navigation { display: flex; flex-direction: column; gap: 3px; }
+.fp-sidebar-footer { padding: 14px 8px 2px; margin-top: auto; }
+.fp-theme-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.fp-operator { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.fp-operator span { font-size: 11px; }
+.fp-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 15px 18px;
+}
+.fp-topbar-title { font-size: 21px; font-weight: 750; line-height: 1.2; }
+.fp-topbar-tools { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.fp-search-label { display: block; width: min(260px, 38vw); }
+.fp-sr-only {
+  position: absolute;
+  width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.fp-user-initial {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 12px;
+  flex: 0 0 34px; border-radius: 9px;
+}
+.fp-home { display: flex; flex-direction: column; gap: 16px; }
+.fp-home-hero { border-radius: 12px; padding: 19px; }
+.fp-home-hero h1 { font-size: 23px; font-weight: 750; margin: 0 0 6px; letter-spacing: 0; }
+.fp-home-hero p, .fp-home-section-heading p {
+  font-size: 12px; line-height: 1.55; margin: 0;
+}
+.fp-home-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 17px; }
+.fp-quick-action {
+  min-width: 0; padding: 15px; display: flex;
+  flex-direction: column; text-align: left;
+  cursor: pointer; gap: 7px; line-height: 1.4;
+}
+.fp-quick-action strong { font-size: 15px; display: flex; justify-content: space-between; gap: 12px; }
+.fp-quick-action span { font-size: 12px; }
+.fp-home-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.fp-home-metric { border-radius: 10px; padding: 13px; display: flex; flex-direction: column; gap: 8px; }
+.fp-home-metric span { font-size: 11px; line-height: 1.35; }
+.fp-home-metric strong { font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.fp-home-section-heading {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.fp-home-section-heading h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; letter-spacing: 0; }
+.fp-home-section-heading button { cursor: pointer; }
+.fp-home-setup { padding: 15px; }
+.fp-home-setup p { line-height: 1.5; margin: 10px 0; }
+.fp-home-setup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fp-home-setup-actions button { cursor: pointer; padding: 9px 12px; }
+.fp-inbox-grid {
+  grid-template-columns: 245px minmax(0, 1fr) 280px;
+}
+.fp-test-header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+  padding: 13px 20px;
+  background: #161d2a; border-bottom: 1px solid #334155;
+  font-size: 14px;
+}
+.fp-test-back {
+  background: #334155; color: #fff; border: 1px solid #475569;
+  cursor: pointer; border-radius: 8px; padding: 9px 13px;
+}
+
+@media (max-width: 1320px) {
+  .fp-inbox-grid { grid-template-columns: 240px minmax(0, 1fr); }
+  .fp-inbox-context-column {
+    grid-column: 1 / -1;
+    border-top: 1px solid;
+    border-color: inherit;
+  }
+}
+
+@media (max-width: 850px) {
+  .fp-app-shell { display: flex; flex-direction: column; }
+  .fp-sidebar { border-right: 0 !important; border-bottom: 1px solid; }
+  .fp-sidebar-brand { padding: 2px 8px 4px; font-size: 16px; }
+  .fp-sidebar-nav { flex-direction: row; flex-wrap: wrap; gap: 5px; }
+  .fp-nav-caption { display: none; }
+  .fp-sidebar-link { width: auto; padding: 8px 10px; min-height: 36px; font-size: 12px; }
+  .fp-sidebar-test, .fp-advanced-toggle { margin-top: 0; }
+  .fp-advanced-toggle { border-top: 0 !important; }
+  .fp-advanced-navigation { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  .fp-sidebar-footer { margin: 0; padding: 3px 6px; display: flex; align-items: center; justify-content: space-between; }
+  .fp-theme-controls { margin: 0; }
+  .fp-topbar { padding: 12px; }
+  .fp-home-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fp-home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fp-inbox-grid { grid-template-columns: minmax(0, 1fr); }
+  .fp-inbox-lead-column {
+    max-height: 275px; min-height: 200px; overflow: auto;
+    border-right: 0 !important; border-bottom: 1px solid;
+    border-color: inherit;
+  }
+  .fp-inbox-chat-column { border-right: 0 !important; }
+  .fp-inbox-context-column { grid-column: 1; }
+}
+@media (max-width: 480px) {
+  .fp-home-actions { grid-template-columns: minmax(0, 1fr); }
+  .fp-work-content { padding: 10px !important; }
+  .fp-topbar-title { font-size: 18px; }
+  .fp-search-label { width: min(240px, 65vw); }
+  .fp-home-hero { padding: 14px; }
+  .fp-home-hero h1 { font-size: 20px; }
+  .fp-home-metric strong { font-size: 23px; }
+}
