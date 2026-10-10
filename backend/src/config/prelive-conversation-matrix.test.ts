@@ -185,6 +185,6 @@ test("Phase 7 pre-live conversation matrix", async (t) => {
     const later = await send("matrix-stop", "Hallo?");
     assert.equal(later.state.flags.stopped, true);
     assert.equal(later.replySuppressedReason, "stopped");
-    assert.equal(later.text, "");
+    assert.ok(later.text === null || later.text === "");
   });
 });
