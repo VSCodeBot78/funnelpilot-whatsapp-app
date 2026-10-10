@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 
 export type MessageEventStatus =
   | "received"
@@ -70,11 +71,7 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
 
 function writeMessageEventsFile(events: MessageEventLogEntry[]): void {
   ensureDataDir();
-  fs.writeFileSync(
-    MESSAGE_EVENTS_FILE,
-    JSON.stringify(events.slice(-MAX_EVENTS), null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(MESSAGE_EVENTS_FILE, events.slice(-MAX_EVENTS));
 }
 
 function persistMessageEventsStore(): void {
