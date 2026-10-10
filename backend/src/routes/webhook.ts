@@ -273,6 +273,13 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
     }
 
     const now = new Date().toISOString();
+    // Checkout metadata belongs to the business record; a customer-facing
+    // onboarding draft must respect an existing STOP or Jochen's active chat.
+    const canPrepareOnboarding =
+      state.owner !== "human" &&
+      state.aiPaused !== true &&
+      !state.flags.stopped &&
+      !state.flags.peteRuntimeHandoffActive;
     const onboardingBookingUrl =
       payload.onboardingBookingUrl?.trim() ||
       campaign.texts.onboardingBookingUrl;
@@ -290,8 +297,8 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
       starterProductId: payload.productId?.trim(),
 
       onboardingBookingUrl,
-      // Checkout only prepares the message; it does not send via Meta.
-      onboardingPromptPreparedAt: now,
+      // "Prepared" is meaningful only if a bot draft was actually created.
+      ...(canPrepareOnboarding ? { onboardingPromptPreparedAt: now } : {}),
     });
 
     patchFlags(state, {
@@ -307,7 +314,9 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
       successReply: payload.successReply,
     });
 
-    appendAssistantMessage(state, replyText);
+    if (canPrepareOnboarding) {
+      appendAssistantMessage(state, replyText);
+    }
     persistConversationState(state);
 
     const response: CheckoutWebhookResponse = {
@@ -315,8 +324,10 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
       leadId: payload.leadId,
       campaignId: payload.campaignId,
       status: "paid",
-      reply: replyText,
-      message: "Checkout erfolgreich verarbeitet und Onboarding-Nachricht vorbereitet.",
+      reply: canPrepareOnboarding ? replyText : undefined,
+      message: canPrepareOnboarding
+        ? "Checkout erfolgreich verarbeitet und Onboarding-Nachricht vorbereitet; kein Versand."
+        : "Checkout verarbeitet, aber wegen STOP/Human-Handover keine automatische Onboarding-Nachricht vorbereitet.",
     };
 
     return res.json(response);

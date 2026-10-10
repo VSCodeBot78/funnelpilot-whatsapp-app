@@ -165,6 +165,12 @@ export function appendHumanMessage(state: ConversationState, text: string): void
 
 export function releaseToAi(state: ConversationState): void {
   ensureOwnershipState(state);
+  // Explicit manual release must clear the legacy/natural handover latch too.
+  // Otherwise the next incoming lead message immediately takes human ownership
+  // again, even though Jochen deliberately handed the chat back to Pete.
+  // STOP is independent: release never removes the lead's opt-out.
+  state.flags.peteRuntimeHandoffRequested = false;
+  state.flags.peteRuntimeHandoffActive = false;
   state.owner = "ai";
   state.aiPaused = false;
   state.updatedAt = nowIso();
