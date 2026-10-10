@@ -160,3 +160,24 @@ Lokale OAuth-Callbacks nutzen `http://localhost:3001/integrations/oauth/<provide
 Der aktuelle Speicher ist **einzel-Workspace**, nicht mandantenfähig. Für spätere zahlende Softwarekunden sind Benutzerkonten, Tenant-Isolation, Admin-Authentifizierung, anbieterbezogene Refresh-/Revoke-Prozesse, vollständige Sync-Dienste, echte Meta-Ein-Klick-Anbindung und Anbieterprüfungen erforderlich.
 
 **Wichtig:** Ein Pop-up zur Einrichtung und eine erfolgte OAuth-Autorisierung ersetzen **keinen** echten End-to-End-Test der angebundenen Dienste. Keine Aktivierung fremder Leads oder echten Sends beim Schließen des Wizards.
+
+
+## 9. Terminbuchung aus Testchat inkl. Google-Kalender-Link (Phase 17)
+
+**Unverändert nutzbar:** Im Testchat durchläuft Pete die Terminanbahnung, schickt den Calendly-Buchungslink, der Kunde bestätigt den Termin auf Calendly. Calendly kann selbst eine E-Mail-/Kalenderbestätigung erzeugen. Funnel Pilot erzeugt zusätzlich einen **Google-Kalender-Vorlagenlink** mit den bestätigten Start-/Endzeiten. Der Kunde kann durch Anklicken den Eintrag in seinem eigenen Kalender speichern. Das ist keine automatische Google-Calendar-API-Event-Erstellung.
+
+**Ab jetzt ebenfalls getestet:** Ein signierter `invitee.created`-Webhook über `/booking-events/calendly` übernimmt den gebuchten Termin in den Testchat-Conversation-State, selbst wenn dort noch kein Dashboard-Lead angelegt ist. Er aktualisiert den Booking-Status, stoppt Termin- und Ghosting-Nachfassaktionen, erzeugt den Google-Vorlagenlink und bereitet die Bestätigung **ohne Meta-Versand** vor. `invitee.canceled` storniert die Buchung. Duplikate werden abgewiesen. Ein Chat-Text wie „Hab gebucht“ allein reicht ausdrücklich nicht als verbindliche Buchungsbestätigung.
+
+**Calendly-Signatur:** Offizielles Format `Calendly-Webhook-Signature: t=<unix_seconds>,v1=<hex-hmac>`; Signaturbasis ist `timestamp + "." + originalRawBody`, Toleranz 180 Sekunden. In Production wird diese Prüfung zwangsweise verlangt, auch wenn die alte Umgebungsvariable versehentlich `off` wäre.
+
+**Lokaler Quick-Tunnel-Test eines echten Calendly-Callbacks:** In Fenster A (Backend) `CALENDLY_WEBHOOK_VERIFY_MODE=strict` setzen und einen echten `CALENDLY_WEBHOOK_SECRET` aus der Calendly-Webhook-Subscription nur lokal in `backend/.env` hinterlegen. Im Relay-Fenster C vor dem Start:
+
+```powershell
+$env:LOCAL_ALLOW_CALENDLY_WEBHOOK="true"
+$env:CALENDLY_WEBHOOK_VERIFY_MODE="strict"
+node .\scripts\local-webhook-relay.mjs
+```
+
+Erst dann erlaubt der Relay **zusätzlich** ausschließlich `POST /booking-events/calendly` auf Port 3002. Alle anderen Booking-, Admin-, Testchat- und Settings-Routen bleiben dort gesperrt. Im Calendly-Testkonto den Callback auf `https://<quick-tunnel-domain>/booking-events/calendly` konfigurieren und ausschließlich einen eigenen Testtermin buchen/stornieren. Nach Neustart des Quick Tunnels ändert sich die Domain und die Subscription muss angepasst werden.
+
+**Wichtig für die Abnahme:** Ohne tatsächlich verbundenes Calendly-Konto / korrekte Subscription können wir mit HTTP-Tests die komplette lokale Verarbeitung nachweisen, aber keine echte Zustellung des externen Webhooks oder automatisch angelegte Google-Termine behaupten. Das Testchat-Backend markiert vorbereitete Bot-Nachrichten nicht als tatsächlich versendet. Der lokale Schnelltest benötigt keine Hetzner-Maschine.
