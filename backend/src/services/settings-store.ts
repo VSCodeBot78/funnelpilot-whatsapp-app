@@ -27,6 +27,7 @@ export type SettingsConfig = {
   defaultLanguage: string;
   brandVoice: string;
   masterPrompt: string;
+  dmConversationMode: "natural" | "legacy";
   answerLength: "kurz" | "mittel" | string;
   fallbackReply: string;
   qualificationPrompt: string;
@@ -101,6 +102,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   defaultLanguage: "Deutsch",
   brandVoice: "Jochen-Sprache",
   masterPrompt: DEFAULT_MASTER_PROMPT,
+  dmConversationMode: "natural",
   answerLength: "kurz",
   fallbackReply: DEFAULT_FALLBACK_TEXT,
   qualificationPrompt: "",
