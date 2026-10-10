@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ghostButtonStyle } from "../../theme/dashboardTheme";
 import { DAILY_NAV, ADMIN_NAV, isAdminSection } from "../../navigation/dashboardNavigation";
 
@@ -14,8 +14,11 @@ export default function Sidebar({
   adminRole = "Admin",
 }) {
   // Advanced sections are reachable without hiding the currently open page.
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const advancedOpen = showAdvanced || isAdminSection(section);
+  const [showAdvanced, setShowAdvanced] = useState(() => isAdminSection(section));
+  useEffect(() => {
+    if (isAdminSection(section)) setShowAdvanced(true);
+  }, [section]);
+  const advancedOpen = showAdvanced;
 
   function navButton(item) {
     const active = section === item.key;
