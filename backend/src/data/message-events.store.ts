@@ -46,11 +46,13 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
   try {
     const raw = fs.readFileSync(MESSAGE_EVENTS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_message_events_store");
       return [];
     }
 
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
+      if (env.NODE_ENV === "production") throw new Error("invalid_message_events_store_shape");
       return [];
     }
 
@@ -64,6 +66,7 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
         typeof item.status === "string",
     );
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("message_events_store_invalid_stop_restore", { cause: error });
     console.error("message events store read error:", error);
     return [];
   }
