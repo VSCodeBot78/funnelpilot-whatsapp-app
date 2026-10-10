@@ -120,6 +120,7 @@ export default function SetupWizardModal({
       setup_required: "Anbieter-App noch einzurichten",
       ready_to_connect: "Bereit zur Anmeldung",
       authorized_not_synced: "Autorisierung vorhanden, Sync noch nicht aktiv",
+      api_verified_no_sync: "API-Zugriff geprüft, Synchronisierung noch nicht aktiv",
       reauthorization_required: "Erneute Anmeldung erforderlich",
     };
     return { label: labels[item.status] || "Unbekannter Status", status: item.status };
@@ -130,6 +131,28 @@ export default function SetupWizardModal({
     const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     const service = base || (local ? "http://localhost:3001" : window.location.origin);
     window.location.assign(service + "/integrations/oauth/" + provider + "/start");
+  }
+
+  async function verifyConnection(provider) {
+    setMessage("");
+    try {
+      const response = await fetch(
+        buildApiUrl("/integrations/oauth/" + provider + "/verify", settings.apiBaseUrl),
+        { method: "POST" },
+      );
+      if (!response.ok) throw new Error("Verbindungsprüfung fehlgeschlagen");
+      const result = await response.json();
+      const labels = {
+        api_verified_no_sync: "API-Verbindung geprüft. Kalender-/CRM-Synchronisierung ist noch nicht aktiv.",
+        not_authorized: "Zuerst das Konto autorisieren.",
+        reauthorization_required: "Anmeldung abgelaufen oder Berechtigung fehlt. Bitte neu verbinden.",
+        provider_unreachable: "Anbieter nicht erreichbar. Bitte später erneut prüfen.",
+      };
+      setMessage(labels[result.status] || "Verbindungsstatus unklar.");
+      await reload();
+    } catch {
+      setMessage("Verbindungsprüfung fehlgeschlagen. Serverstatus kontrollieren.");
+    }
   }
 
   async function disconnect(provider) {
@@ -174,7 +197,7 @@ export default function SetupWizardModal({
 
   function connectTile(p) {
     const current = providerStatus(p.id);
-    const active = ["ready_to_connect", "reauthorization_required", "authorized_not_synced"].includes(current.status);
+    const active = ["ready_to_connect", "reauthorization_required", "authorized_not_synced", "api_verified_no_sync"].includes(current.status);
     return <div key={p.id} style={{ ...box, background: "#ffffff" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span aria-hidden style={{ fontSize: 23, width: 30, color: "#1261ed" }}>{p.symbol}</span>
@@ -183,10 +206,18 @@ export default function SetupWizardModal({
       <div style={{ ...small, margin: "9px 0", minHeight: 37 }}>{current.label}</div>
       {active ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button type="button" style={btn} onClick={() => authStart(p.id)}>
-          {current.status === "authorized_not_synced" ? "Neu autorisieren" : "Konto verbinden"}
+          {["authorized_not_synced", "api_verified_no_sync"].includes(current.status) ? "Neu autorisieren" : "Konto verbinden"}
         </button>
-        {current.status === "authorized_not_synced" &&
-          <button type="button" style={btn} onClick={() => disconnect(p.id)}>Trennen</button>}
+        {["authorized_not_synced", "api_verified_no_sync"].includes(current.status) && (
+          <>
+            <button type="button" style={btn} onClick={() => verifyConnection(p.id)}>
+              API-Zugriff prüfen
+            </button>
+            <button type="button" style={btn} onClick={() => disconnect(p.id)}>
+              Trennen
+            </button>
+          </>
+        )}
       </div>
       : <div style={{ ...small, fontWeight: 600 }}>
         {current.status === "external"
