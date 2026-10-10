@@ -67,3 +67,24 @@ export function updateLatestAssistantMessageSendResult(params: {
 
   return false;
 }
+
+
+export function isKnownAiOutboundEcho(params: {
+  messages: ConversationMessage[];
+  messageId: string;
+  transport: string;
+}): boolean {
+  const messageId = normalizeString(params.messageId);
+  if (!messageId) {
+    return false;
+  }
+
+  return params.messages.some(
+    (message) =>
+      message.role === "assistant" &&
+      message.actor !== "human" &&
+      message.transport === params.transport &&
+      message.sent === true &&
+      normalizeString(message.metaMessageId) === messageId,
+  );
+}
