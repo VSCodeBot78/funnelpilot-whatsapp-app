@@ -217,7 +217,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     );
   });
 
-  await t.test("pending AI outbound protects the short echo race before Meta message id is stored", () => {
+  await t.test("unknown same-text echo cannot be mistaken for Pete before Meta confirms its id", () => {
     clearPendingAiInstagramOutboundRegistry();
 
     registerPendingAiInstagramOutbound({
@@ -231,7 +231,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
         messageId: "echo-before-meta-response",
         text: "Pete Antwort",
       }),
-      true,
+      false, // fail closed: manual text could be identical to pending Pete text
     );
 
     clearPendingAiInstagramOutboundRegistry();
@@ -641,6 +641,52 @@ test("Phase 4 Instagram transport foundation", async (t) => {
         humanOwnedState.messages.at(-1)?.text,
         "Ich übernehme hier kurz.",
       );
+
+
+      assert.equal(humanOwnedState.messages.at(-1)?.metaMessageId, "manual-human-echo-1");
+
+      // Attachment-only manual echoes must pause Pete, without fake chat text.
+      const attachmentEchoPayload = {
+        object: "instagram",
+        entry: [{
+          id: "17841400000000000",
+          messaging: [{
+            sender: { id: "17841400000000000" },
+            recipient: { id: "route-test-attachment-igsid" },
+            timestamp: Date.now(),
+            message: {
+              mid: "manual-attachment-only-echo-1",
+              is_echo: true,
+              attachments: [{ type: "image" }],
+            },
+          }],
+        }],
+      };
+      const attachmentRaw = JSON.stringify(attachmentEchoPayload);
+      const attachmentSignature = "sha256=" + crypto
+        .createHmac("sha256", "test-instagram-app-secret")
+        .update(Buffer.from(attachmentRaw, "utf8")).digest("hex");
+      const attachmentResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Hub-Signature-256": attachmentSignature },
+          body: attachmentRaw,
+        },
+      );
+      assert.equal(attachmentResponse.status, 200);
+      const attachmentResult = (await attachmentResponse.json()) as {
+        conversationUpdated?: boolean;
+        messageAppended?: boolean;
+      };
+      assert.equal(attachmentResult.conversationUpdated, true);
+      assert.equal(attachmentResult.messageAppended, false);
+      const attachmentState = getConversationState(
+        "instagram:route-test-attachment-igsid", DEFAULT_CAMPAIGN_ID,
+      );
+      assert.ok(attachmentState);
+      assert.equal(attachmentState.owner, "human");
+      assert.equal(attachmentState.aiPaused, true);
+      assert.equal(attachmentState.messages.length, 0);
 
       const afterTakeoverSigned = buildSignedPayload(
         "route-test-mid-after-human-takeover",
