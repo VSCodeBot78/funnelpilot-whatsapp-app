@@ -19,7 +19,7 @@ export function initialSetupStep(search = "") {
 }
 
 export default function SetupWizardModal({
-  colors, settings, onSettingsChange, onSaveSettings, onOpenTestChat,
+  colors, settings, onSettingsChange, onSaveSettings, onSaveCoachDraft, onOpenTestChat,
   onOpenSection, onClose, startStep = 0,
 }) {
   const [stage, setStage] = useState(() =>
@@ -100,7 +100,7 @@ export default function SetupWizardModal({
     setMessage("");
     setSaving(true);
     try {
-      const saved = await onSaveSettings();
+      const saved = await onSaveCoachDraft(settings.coachOnboardingDraft);
       setMessage(saved
         ? "Coach-Entwurf im bestehenden Workspace gespeichert. Kein neuer Coach-Zugang und keine Live-Freigabe."
         : "Coach-Entwurf konnte nicht gespeichert werden. Felder und HTTPS-Links kontrollieren.");
@@ -403,6 +403,13 @@ export default function SetupWizardModal({
               { placeholder: "https://calendly.com/..." })}
             {input("Kauf-Link für dein Haupteinstiegsangebot", "starterCheckoutUrl",
               { placeholder: "https://..." })}
+            <p style={{ ...small, background: "#eff6ff", border: "1px solid #bfdbfe",
+              padding: 10, borderRadius: 8 }}>
+              „Coach-Entwurf speichern“ sichert ausschließlich die unten erfassten
+              Angebotsentwürfe und FAQs. Andere Änderungen im Einrichtungsformular
+              werden dadurch nicht gespeichert. „Weiter“ speichert weiterhin
+              die gesamten aktuellen Einstellungen dieses einen Arbeitsbereichs.
+            </p>
             <CoachDraftEditor
               value={settings.coachOnboardingDraft}
               onChange={value => update("coachOnboardingDraft", value)}
