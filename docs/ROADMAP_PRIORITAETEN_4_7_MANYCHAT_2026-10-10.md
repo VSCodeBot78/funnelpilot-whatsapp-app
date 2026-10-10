@@ -86,3 +86,10 @@ Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „P
 - **Geplantes Hetzner-Betriebshandbuch** einschließlich Zugriffsschutz, TLS, Server-/Gateway-Geheimnissen, Backups, Restore, Löschfristen, Transparenz, Rollen und Multi-Tenant-Go-/No-Go: `docs/PHASE36_HETZNER_DATENSCHUTZ_BETRIEB_2026-10-10.md`.
 - **Als Nächstes:** Priorität 7 Coach-Onboarding vorbereiten. Echte Benutzeranmeldung, verschlüsselte Backups, Tenant-Isolation, DSGVO-Vertragsprüfung, Sicherheitsabnahme und Hetzner-Deployment bleiben **separat offen**.
 - Die späteren Produktmodule M-01 (ManyChat-Miniflows) und M-02 (mobile Coach-PWA) bleiben nachgelagert. Keine bezahlten Dienste eingerichtet und kein echter Sendebetrieb aktiviert.
+
+## Umsetzung Priorität 7 – 10.10.2026
+
+- **Coach-Onboarding-Vorlage im Code umgesetzt:** Eigene Verwaltungsansicht mit vier geführten Schritten (Marke/Zielgruppe; Assistent/Stimme, Handover und Grenzen; maximal drei Angebote/Preis-Schreibweisen/HTTPS-Links; statische Vorschau), manuelles Speichern und Laden.
+- **Nur sichere Single-Workspace-Vorarbeit:** Profile bleiben im separaten `coach-onboarding-draft.json` als `draft` ohne Runtime- oder KI-Aktivierung. Die aktuellen Eltern-fit-&-vital-Preise, Live-Links, Pete-Regeln und Meta-Schalter werden beim Speichern **nicht verändert**. Serverseitige Feld-/Typ-/URL-Validierung und Fail-Closed gegen bestehende beschädigte Datei.
+- **Nachweis:** `docs/PHASE37_COACH_ONBOARDING_VORLAGE_2026-10-10.md`. Echte Benutzerkonten, unterschiedliche Coach-Workspaces, rollenbasierte Authentisierung, serverseitige Mandantentrennung, rechtskonformer Betrieb und mobile/PWA-Abnahme **weiterhin nicht fertig**.
+- **Reihenfolge nach Abschluss der sieben Vorbereitungsprioritäten:** Sicherer Windows-Laptop-Test aus Phase 32; getrennt davon echte Meta-Provider-Kanaltests erst nach expliziter Freigabe; als eigene Produktarbeit Auth/Workspaces/Backups/Hetzner/Coach-Beta sowie später M-01 ManyChat-Ersatz und M-02 mobile Coach-PWA. Kein unbelegtes „SaaS fertig“.
