@@ -1,5 +1,10 @@
 import { env } from "../config/env.js";
 import { isInstagramRecipientAllowed } from "./instagram-automation-gate.service.js";
+import {
+  clearPendingAiInstagramOutbound,
+  confirmPendingAiInstagramOutbound,
+  registerPendingAiInstagramOutbound,
+} from "./instagram-outbound-echo.service.js";
 
 export type MetaInstagramSendResult =
   | {
@@ -107,6 +112,11 @@ export async function sendMetaInstagramTextMessage(
     };
   }
 
+  const pendingToken = registerPendingAiInstagramOutbound({
+    recipientId: to,
+    text: body,
+  });
+
   try {
     const response = await fetch(buildInstagramSendUrl(), {
       method: "POST",
@@ -127,6 +137,7 @@ export async function sendMetaInstagramTextMessage(
     const responseBody = await response.json().catch(() => null);
 
     if (!response.ok) {
+      clearPendingAiInstagramOutbound(pendingToken);
       const metaError =
         responseBody &&
         typeof responseBody === "object" &&
@@ -143,14 +154,21 @@ export async function sendMetaInstagramTextMessage(
       };
     }
 
+    const metaMessageId = getMetaMessageId(responseBody);
+    confirmPendingAiInstagramOutbound({
+      token: pendingToken,
+      metaMessageId,
+    });
+
     return {
       ok: true,
       sent: true,
       dryRun: false,
       sendSkipped: false,
-      metaMessageId: getMetaMessageId(responseBody),
+      metaMessageId,
     };
   } catch (error) {
+    clearPendingAiInstagramOutbound(pendingToken);
     return {
       ok: false,
       sent: false,
