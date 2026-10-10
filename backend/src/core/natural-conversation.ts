@@ -201,7 +201,7 @@ export function getNaturalConversationReply(params: {
   }
   if (guideRequest) {
     return {
-      text: "Klar 😊 Mein Keto Guide ist kostenlos. Du bekommst ihn als PDF und als Hörversion.\n" +
+      text: "Klar 😊 Jochens Keto Guide ist kostenlos. Du bekommst ihn als PDF und als Hörversion.\n" +
         "Hier findest du ihn: " + OFFER_TRUTH.resources.ketoGuide.url,
       phase: "info", infoOnly: true,
     };
