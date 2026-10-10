@@ -181,3 +181,17 @@ node .\scripts\local-webhook-relay.mjs
 Erst dann erlaubt der Relay **zusätzlich** ausschließlich `POST /booking-events/calendly` auf Port 3002. Alle anderen Booking-, Admin-, Testchat- und Settings-Routen bleiben dort gesperrt. Im Calendly-Testkonto den Callback auf `https://<quick-tunnel-domain>/booking-events/calendly` konfigurieren und ausschließlich einen eigenen Testtermin buchen/stornieren. Nach Neustart des Quick Tunnels ändert sich die Domain und die Subscription muss angepasst werden.
 
 **Wichtig für die Abnahme:** Ohne tatsächlich verbundenes Calendly-Konto / korrekte Subscription können wir mit HTTP-Tests die komplette lokale Verarbeitung nachweisen, aber keine echte Zustellung des externen Webhooks oder automatisch angelegte Google-Termine behaupten. Das Testchat-Backend markiert vorbereitete Bot-Nachrichten nicht als tatsächlich versendet. Der lokale Schnelltest benötigt keine Hetzner-Maschine.
+
+## 10. One-Click-Integration: Echtes Berechtigungs-Checking (Phase 18)
+
+Nach einer erfolgreichen OAuth-Autorisierung bei Google Calendar, Calendly oder HubSpot erscheint im modalen Einrichtungsassistenten der Button **API-Zugriff prüfen**. Dieser führt einen rein lesenden API-Test gegen die feste URL des jeweiligen Anbieters aus:
+
+- Google Calendar: `GET https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1`
+- Calendly: `GET https://api.calendly.com/users/me` (OAuth-App benötigt `users:read`)
+- HubSpot: `GET https://api.hubapi.com/crm/v3/objects/contacts?limit=1`
+
+Das Backend speichert nach einer erfolgreichen Antwort nur den Zeitstempel der Berechtigungsprüfung verschlüsselt im OAuth-Token-Speicher. Es kopiert keine Kalendereinträge oder CRM-Kontaktdaten, erstellt keine Termine und sendet keine Nachrichten.
+
+**Anzeigen:** `api_verified_no_sync` heißt **API-Zugriff geprüft, Synchronisierung noch nicht aktiv**. Bei 401/403 wird erneute Autorisierung empfohlen; bei Netzwerkproblemen bleibt der vorherige Status erhalten. Abgelaufene Zugriffs-Tokens werden nicht als aktuell erfolgreich geprüft behandelt; automatische Token-Erneuerung ist noch nicht implementiert. Der API-Prüf-Endpunkt akzeptiert Anfragen nur vom autorisierten lokalen Dashboard-Ursprung bzw. später vom produktiven Dashboard-Ursprung.
+
+Dieser Check kann auf dem Laptop mit echten OAuth-Testkonten erst nach Registrierung der Anbieter-Apps und Hinterlegung der Secrets ausgeführt werden. Die Funktionslogik ist zusätzlich mit rein synthetischen Tokens und gemockten Anbieter-Antworten automatisiert getestet. Er ersetzt keinen End-to-End-Test für tatsächliche Event-/Kontakt-Synchronisierung.
