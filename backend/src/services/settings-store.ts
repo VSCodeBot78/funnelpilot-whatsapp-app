@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 export type SettingsConfig = {
   productName: string;
@@ -173,11 +174,7 @@ function ensureSettingsFile(): void {
   ensureDataDir();
 
   if (!fs.existsSync(SETTINGS_FILE)) {
-    fs.writeFileSync(
-      SETTINGS_FILE,
-      JSON.stringify(DEFAULT_SETTINGS, null, 2),
-      "utf8",
-    );
+    writePrivateJsonAtomic(SETTINGS_FILE, DEFAULT_SETTINGS);
   }
 }
 
@@ -213,11 +210,7 @@ export function writeSettings(
     ),
   };
 
-  fs.writeFileSync(
-    SETTINGS_FILE,
-    JSON.stringify(merged, null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(SETTINGS_FILE, merged);
 
   return merged;
 }
@@ -225,11 +218,7 @@ export function writeSettings(
 export function resetSettings(): SettingsConfig {
   ensureSettingsFile();
 
-  fs.writeFileSync(
-    SETTINGS_FILE,
-    JSON.stringify(DEFAULT_SETTINGS, null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(SETTINGS_FILE, DEFAULT_SETTINGS);
 
   return { ...DEFAULT_SETTINGS };
 }
