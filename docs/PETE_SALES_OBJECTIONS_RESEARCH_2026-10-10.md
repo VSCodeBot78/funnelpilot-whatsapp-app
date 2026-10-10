@@ -60,3 +60,11 @@ Quellen: https://instituteofpersonaltrainers.com/blog/personal-trainer-sales-obj
 - Regressionen unter `backend/src/config/natural-pete-dm.test.ts`: Zeit, Budget, Unsicherheit/Vorerfahrung, Keto, Direktpreis, persönlich im Chat vs Termin, Medizin, STOP und Legacy-Modus.
 - Reale OpenAI-Konto-Tests mit 10–15 kompletten frei generierten Chats noch ausstehend; deterministische Testtexte dürfen nicht als modellgenerierte Antworten präsentiert werden.
 - Founder muss Stil, Angebotsstand und direkte Coaching-Checkout-Freigabe vor jeglicher Meta-Aktivierung prüfen.
+
+## Onboarding-Feld: pro Coach frei wählbar
+
+- `customerTopObjections`: optionale Eingabe, **maximal drei Zeilen**, jede Zeile beschreibt einen häufigen Einwand aus der eigenen Praxis. Kein Pflichtfeld.
+- Der derzeitige Gründer-Testworkspace startet mit den drei Einwandfamilien Zeit, Budget und schlechte Vorerfahrungen. Ein fremder Coach kann stattdessen eigene Einwände speichern oder das Feld leer lassen.
+- Speicherung über Backend-Settings, erneute Bearbeitung über Pete-Einstellungen und Weitergabe als **Kontext** an die OpenAI-Antwortschicht. Nie als sichere Diagnose eines konkreten Leads interpretieren.
+- In der aktuellen, kostensicher regelbasierten Natural-Engine steuern zunächst drei definierte Einwandfamilien die Antwortfolge. Vollständig individuelle Einwand-Routings benötigen später zusätzlich eine mandantenfähige Engine und modellgestützte, abgesicherte Interpretation.
+- Bis zur SaaS-Freigabe bleiben alle Kundendaten in einer einzigen lokalen Arbeitsumgebung; dieses Feld allein schafft keine Multi-Tenant-Trennung.
