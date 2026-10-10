@@ -107,6 +107,8 @@ $backendCommands = @(
   '$env:INSTAGRAM_ALLOW_ALL_SENDERS = "false"',
   '$env:INSTAGRAM_AUTO_ENABLE_NEW_LEADS = "false"',
   '$env:WHATSAPP_SEND_ENABLED = "false"',
+  '$env:WHATSAPP_ALLOWED_RECIPIENT_IDS = ""',
+  '$env:WHATSAPP_ALLOW_ALL_RECIPIENTS = "false"',
   '$env:ENABLE_GENERIC_WEBHOOKS = "false"',
   '$env:DISABLE_DESTRUCTIVE_ROUTES = "true"',
   'npm.cmd run dev'

@@ -133,6 +133,9 @@ export const env = {
     getOptionalEnv("INSTAGRAM_APP_SECRET") ||
     getOptionalEnv("META_APP_SECRET"),
   WHATSAPP_SEND_ENABLED: getWhatsappSendEnabled(),
+  // Allowlist applies to ALL real WhatsApp sends, including manual Dashboard replies.
+  WHATSAPP_ALLOWED_RECIPIENT_IDS: getCsvEnv("WHATSAPP_ALLOWED_RECIPIENT_IDS"),
+  WHATSAPP_ALLOW_ALL_RECIPIENTS: getBooleanEnv("WHATSAPP_ALLOW_ALL_RECIPIENTS"),
   INSTAGRAM_VERIFY_TOKEN:
     getOptionalEnv("INSTAGRAM_VERIFY_TOKEN") ||
     getOptionalEnv("META_VERIFY_TOKEN"),

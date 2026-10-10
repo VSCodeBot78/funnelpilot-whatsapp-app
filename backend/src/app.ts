@@ -187,6 +187,8 @@ app.get("/health/readiness", (_req, res) => {
     nodeEnv: env.NODE_ENV,
     localLaptopSafeMode: env.LOCAL_LAPTOP_TEST_MODE,
     whatsappSendEnabled: env.WHATSAPP_SEND_ENABLED,
+    whatsappAllowedRecipientCount: env.WHATSAPP_ALLOWED_RECIPIENT_IDS.length,
+    whatsappAllowAllRecipients: env.WHATSAPP_ALLOW_ALL_RECIPIENTS,
     publicBackendUrlConfigured: Boolean(env.PUBLIC_BACKEND_URL),
     webhookBaseUrlConfigured: Boolean(env.WEBHOOK_BASE_URL),
     dataDir: env.DATA_DIR,

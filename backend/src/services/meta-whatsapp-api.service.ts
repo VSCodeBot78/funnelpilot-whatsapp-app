@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { isWhatsappRecipientAllowed } from "./whatsapp-recipient-gate.service.js";
 
 export type MetaWhatsappSendResult =
   | {
@@ -13,7 +14,7 @@ export type MetaWhatsappSendResult =
       sent: false;
       dryRun: true;
       sendSkipped: true;
-      reason: "WHATSAPP_SEND_ENABLED=false";
+      reason: "WHATSAPP_SEND_ENABLED=false" | "recipient_not_allowlisted";
     }
   | {
       ok: false;
@@ -74,6 +75,17 @@ export async function sendMetaWhatsappTextMessage(
 
   const to = normalizeString(input.to);
   const body = normalizeString(input.body);
+  // Check before credentials and before the first outbound HTTP call.
+  // WHATSAPP_SEND_ENABLED=true is not enough to contact arbitrary numbers.
+  if (!isWhatsappRecipientAllowed(to)) {
+    return {
+      ok: true,
+      sent: false,
+      dryRun: true,
+      sendSkipped: true,
+      reason: "recipient_not_allowlisted",
+    };
+  }
 
   if (!env.META_ACCESS_TOKEN || !env.META_PHONE_NUMBER_ID) {
     return {

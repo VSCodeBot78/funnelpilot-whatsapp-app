@@ -278,3 +278,19 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Preflight prüft zusätzlich den Lock und deaktivierte generische Webhooks.
 - Negative CI-Tests und Anleitung für zugeklappten Windows-Laptop ergänzt.
 - Noch KEIN Windows-Gerät, Meta-Send, Tunnel, Fernzugriff oder 24/7-Betrieb getestet.
+
+
+## Phase 40 – Meta-Provider-Test abgesichert (10.10.2026)
+- WhatsApp erhält dieselbe Art fail-closed Recipient-Allowlist wie IG:
+  `WHATSAPP_ALLOWED_RECIPIENT_IDS` leer und
+  `WHATSAPP_ALLOW_ALL_RECIPIENTS=false` sind die Voreinstellungen.
+  Jeder tatsächliche WA-Sendeweg wird zentral vor Provider-HTTP geprüft.
+- Windows-Local-Lock/Preflight/Relay berücksichtigen beide neuen WA-Gates.
+- Neue synthetische `provider-cutover-safety`-Tests überprüfen Empfängergrenzen,
+  fehlenden Provider-Aufruf bei gesperrtem Ziel, ausschließlich gemocktes
+  `fetch` bei Testnummern und die bestehende Instagram-Sperre.
+- `docs/PHASE40_META_PROVIDER_TEST_2026-10-10.md`: isolierter späterer
+  IG-/WhatsApp-Test mit ManyChat-Ausnahme, Signaturen, STOP, Echo,
+  Handübernahme und ausdrücklicher Live-Freigabe.
+- Keine echte Meta-Verbindung, ManyChat-Änderung, Live-Nachricht, Remote-Test
+  oder echte Provider-Zustellbestätigung vorgenommen.

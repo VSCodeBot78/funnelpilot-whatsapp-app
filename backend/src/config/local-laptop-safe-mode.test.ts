@@ -8,6 +8,8 @@ const locked = {
   INSTAGRAM_ENGINE_ENABLED: "false",
   INSTAGRAM_SEND_ENABLED: "false",
   WHATSAPP_SEND_ENABLED: "false",
+  WHATSAPP_ALLOWED_RECIPIENT_IDS: "",
+  WHATSAPP_ALLOW_ALL_RECIPIENTS: "false",
   INSTAGRAM_ALLOW_ALL_SENDERS: "false",
   INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false",
   ENABLE_GENERIC_WEBHOOKS: "false",
@@ -19,7 +21,7 @@ test("Phase 39 startup lock accepts only explicit safe laptop test configuration
   assert.doesNotThrow(() => assertSafeLocalLaptopEnvironment(locked));
   for (const key of [
     "INSTAGRAM_ENGINE_ENABLED", "INSTAGRAM_SEND_ENABLED",
-    "WHATSAPP_SEND_ENABLED", "INSTAGRAM_ALLOW_ALL_SENDERS",
+    "WHATSAPP_SEND_ENABLED", "WHATSAPP_ALLOW_ALL_RECIPIENTS", "INSTAGRAM_ALLOW_ALL_SENDERS",
     "INSTAGRAM_AUTO_ENABLE_NEW_LEADS", "ENABLE_GENERIC_WEBHOOKS",
   ]) {
     assert.throws(
@@ -29,6 +31,9 @@ test("Phase 39 startup lock accepts only explicit safe laptop test configuration
       () => assertSafeLocalLaptopEnvironment({ ...locked, [key]: undefined }),
       new RegExp(key), "missing "+key);
   }
+  assert.throws(() => assertSafeLocalLaptopEnvironment({
+    ...locked, WHATSAPP_ALLOWED_RECIPIENT_IDS: "491701234567",
+  }), /empty_whatsapp_allowlist/);
   assert.throws(() => assertSafeLocalLaptopEnvironment({
     ...locked, INSTAGRAM_ALLOWED_SENDER_IDS: "test-id",
   }), /empty_instagram_allowlist/);

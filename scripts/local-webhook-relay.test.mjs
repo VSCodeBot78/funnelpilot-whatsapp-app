@@ -149,6 +149,7 @@ test("Phase 39 local relay denies callbacks after backend restart without safe l
     ok: true, service: "funnel-pilot-backend", status: "ready",
     nodeEnv: "development", localLaptopSafeMode: true,
     instagramSendEnabled: false, whatsappSendEnabled: false,
+    whatsappAllowAllRecipients: false, whatsappAllowedRecipientCount: 0,
     instagramEngineEnabled: false, instagramAllowAllSenders: false,
     instagramAutoEnableNewLeads: false, instagramAllowedSenderCount: 0,
     genericWebhooksEnabled: false, destructiveRoutesDisabled: true,

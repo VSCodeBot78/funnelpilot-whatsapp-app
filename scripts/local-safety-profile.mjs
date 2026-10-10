@@ -13,6 +13,8 @@ export function evaluateSafeReadiness(status) {
     ["localLaptopSafeMode", true],
     ["instagramSendEnabled", false],
     ["whatsappSendEnabled", false],
+    ["whatsappAllowAllRecipients", false],
+    ["whatsappAllowedRecipientCount", 0],
     ["instagramEngineEnabled", false],
     ["instagramAllowAllSenders", false],
     ["instagramAutoEnableNewLeads", false],
