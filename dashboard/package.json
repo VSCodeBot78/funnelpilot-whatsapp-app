@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "npm run test && vite build",
     "preview": "vite preview",
-    "test": "node --test src/onboarding/onboardingReadiness.test.js src/navigation/dashboardNavigation.test.js src/diagnostics/systemDiagnostics.test.js src/onboarding/coachOnboardingPreview.test.js"
+    "test": "node --test src/onboarding/onboardingReadiness.test.js src/navigation/dashboardNavigation.test.js src/diagnostics/systemDiagnostics.test.js src/onboarding/coachOnboardingPreview.test.js src/services/coachDraftSave.test.js"
   },
   "dependencies": {
     "react": "^18.3.1",
