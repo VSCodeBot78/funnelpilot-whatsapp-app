@@ -86,3 +86,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Die UI zeigt unterschiedliche Fehler für fehlende Autorisierung, abgelaufene/ungültige Tokens und nicht erreichbaren Anbieter. Der Prüf-Endpunkt benötigt den Dashboard-Origin; der Token bleibt verschlüsselt im Backend.
 - Automatischer Token-Refresh und vollständiger Kalender/CRM-Sync bleiben ausdrücklich offen. Zur Durchführung mit echten Konten müssen Entwickler-Apps/OAuth-Redirects eingerichtet sein.
 - PR #40, CI: Backend + Dashboard erfolgreich (synthetische OAuth-Tokens und gemockter Google-API-Response, keine echten Anbieterzugriffe).
+
+
+## Phase 20 – Sicherer Windows-Schnellstart (10.10.2026)
+
+- Neuer `scripts/start-local.ps1`: Ein-Befehl-Start für den geplanten Laptop-Abnahmetest. Vor dem Start: Branch-/Node-Check, fehlende `backend/.env` nur aus Vorlage anlegen (keine vorhandenen Secrets überschreiben), fehlende Dependencies installieren, sämtliche Backend-/Dashboard-Tests und Builds ausführen.
+- Startet drei lokale PowerShell-Fenster: Backend 127.0.0.1:3001, Dashboard 127.0.0.1:5173, Relay 127.0.0.1:3002. Öffnet Browser erst nach Gesundheitsprüfung.
+- Erzwungen: Instagram Engine/Sends AUS, WhatsApp Sends AUS, keine Autoaktivierung neuer Leads, globale Senderfreigabe AUS, generische Webhooks AUS und destruktive Routes gesperrt.
+- Belegte Ports führen zum Abbruch, damit nicht versehentlich eine fremde/alte Instanz wiederverwendet wird. Cloudflare/Hetzner oder echte Nachrichten werden nicht automatisch gestartet.
+- `-CheckOnly` prüft die lokale Installation vollständig, ohne Server zu starten.
+- Statische Sicherheits- und Reihenfolge-Tests als Teil von `backend npm test`; echter PowerShell-Lauf **nur auf Windows** noch nicht abgenommen.

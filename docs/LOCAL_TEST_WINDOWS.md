@@ -1,5 +1,26 @@
 # Funnel Pilot – Laptop-Abnahme vor Hetzner (Windows)
 
+## Neuer Kurzstart: sicherer Ein-Kommando-Test (Phase 20)
+
+**Alternative zu den drei manuellen PowerShell-Fenstern unten.** Der neue Launcher liegt in `scripts/start-local.ps1`. Bei gültigem Branch `funnel-pilot-current` prüft er Node.js/Git, erzeugt `backend/.env` nur dann aus der Vorlage, wenn sie noch fehlt, installiert fehlende Node-Abhängigkeiten und führt **alle** Backend-/Dashboard-Tests und Builds durch. Erst danach startet er drei **lokale** PowerShell-Fenster für Backend, Dashboard und den eingeschränkten Relay und öffnet das Dashboard im Browser:
+
+```powershell
+git switch funnel-pilot-current
+git pull --ff-only
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+**Nur Diagnose, ohne Dienste zu starten:**
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1 -CheckOnly
+```
+
+**Sicherheitsregeln:** Der Launcher überschreibt keine vorhandenen Secrets, verändert keine Git-Historie und aktiviert niemals Instagram-/WhatsApp-Sends. `INSTAGRAM_ENGINE_ENABLED=false`, beide Send-Flags `false`, `INSTAGRAM_ALLOW_ALL_SENDERS=false`, `ENABLE_GENERIC_WEBHOOKS=false` und `DISABLE_DESTRUCTIVE_ROUTES=true` werden für das Backend erzwungen. Bereits belegte Testports führen zum Abbruch, damit keine alte versehentlich aktive Instanz verwechselt wird. Er öffnet **keinen** Cloudflare-Tunnel, erstellt keine Hetzner-Ressourcen und führt keine echten Nachrichten aus. Für echte Meta-/Calendly-Tests braucht es später zusätzlich die separat beschriebenen Freigaben.
+
+**Status:** Der PowerShell-Launcher ist im GitHub-Repository und über statische Sicherheitsprüfungen in CI abgesichert. Er wurde **noch nicht auf deinem echten Windows-Laptop ausgeführt**. Die ausführlichen manuellen Schritte darunter bleiben als Diagnose- und Fallback-Anleitung bestehen.
+
+
 **Stand:** 10.10.2026. Erst interne Tests, dann kontrollierter Meta-Testaccount, dann erst Hetzner. Keine Meta-App-Review in dieser Phase.
 
 ## 1. Voraussetzungen
