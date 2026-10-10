@@ -76,3 +76,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Lokaler Cloudflare-Relay erlaubt Calendly `POST /booking-events/calendly` ausschließlich per **explizitem Opt-in** und bei aktiviertem Signaturmodus `strict`. Kein Zugriff auf Admin-Routen. Runbook: `docs/LOCAL_TEST_WINDOWS.md`.
 - CI-Prüfung PR #39: 89 Backend-Tests + 3 Relay-Tests + 5 Dashboard-Tests = **97 bestanden, 0 Fehler**, Backend-/Dashboard-Build grün.
 - Weiterhin offen: echter Calendly-Anbieter-Webhook von einem Testkonto an die aktuell konfigurierte Callback-URL; Nachweis einer wirklichen E-Mail-/Google-Kalender-Eintragung beim Testkunden; OAuth-Abschluss und synchronisierte Kalender-/CRM-Daten. Ohne diesen externen Nachweis keine Live-Freigabe und kein Hetzner.
+
+
+## Phase 18 – Read-only Provider-Verbindungsprüfung (10.10.2026)
+
+- In der modalen Kunden-Ersteinrichtung: nach Google Calendar, Calendly oder HubSpot OAuth-Login zeigt der Button **API-Zugriff prüfen** einen echten, ausschließlich lesenden Verbindungstest.
+- Feste Provider-URLs: Google Calendar List, Calendly /users/me, HubSpot Contacts limit 1.
+- Ein bestätigter API-Zugriff wird nur als `api_verified_no_sync` gemeldet; **kein** Kundendaten-/Kalenderabgleich, keine API-Schreibaktion und kein Nachrichtenversand.
+- Die UI zeigt unterschiedliche Fehler für fehlende Autorisierung, abgelaufene/ungültige Tokens und nicht erreichbaren Anbieter. Der Prüf-Endpunkt benötigt den Dashboard-Origin; der Token bleibt verschlüsselt im Backend.
+- Automatischer Token-Refresh und vollständiger Kalender/CRM-Sync bleiben ausdrücklich offen. Zur Durchführung mit echten Konten müssen Entwickler-Apps/OAuth-Redirects eingerichtet sein.
+- PR #40, CI: Backend + Dashboard erfolgreich (synthetische OAuth-Tokens und gemockter Google-API-Response, keine echten Anbieterzugriffe).
