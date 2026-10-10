@@ -598,6 +598,69 @@ function hasKetoGuideIntent(normalized: string): boolean {
   );
 }
 
+type ConfiguredResourceKind = "elterncheck" | "keto";
+
+function resolveConfiguredResourceLink(
+  campaign: CampaignConfig | undefined,
+  kind: ConfiguredResourceKind,
+): { matched: boolean; link?: RuntimeLinkOption } {
+  const context = campaign?.offerContext;
+  if (!context) {
+    return { matched: false };
+  }
+
+  const slots = [
+    {
+      enabled: context.infoLink1Enabled,
+      label: context.infoLink1Label,
+      url: context.infoLink1Url,
+    },
+    {
+      enabled: context.infoLink2Enabled,
+      label: context.infoLink2Label,
+      url: context.infoLink2Url,
+    },
+    {
+      enabled: context.infoLink3Enabled,
+      label: context.infoLink3Label,
+      url: context.infoLink3Url,
+    },
+    {
+      enabled: context.infoLink4Enabled,
+      label: context.infoLink4Label,
+      url: context.infoLink4Url,
+    },
+  ];
+
+  for (const slot of slots) {
+    const label = String(slot.label ?? "").trim();
+    const url = String(slot.url ?? "").trim();
+    const haystack = `${normalizeText(label)} ${normalizeUrlForCompare(url)}`;
+    const isMatch =
+      kind === "elterncheck"
+        ? haystack.includes("check")
+        : haystack.includes("keto");
+
+    if (!isMatch) {
+      continue;
+    }
+
+    if (slot.enabled !== true || !isHttpUrl(url)) {
+      return { matched: true };
+    }
+
+    return {
+      matched: true,
+      link: {
+        label: label || "Info-Link",
+        url,
+      },
+    };
+  }
+
+  return { matched: false };
+}
+
 function hasVideoGuideIntent(normalized: string): boolean {
   return (
     normalized.includes("video") ||
@@ -754,6 +817,33 @@ export function buildPeteRuntimeInfoLinkReply(
   const normalizedLinkContext = [normalized, normalizeText(context?.lastAssistantText)]
     .filter(Boolean)
     .join(" ");
+
+  const requestedResource: ConfiguredResourceKind | null =
+    hasElterncheckIntent(normalizedLinkContext)
+      ? "elterncheck"
+      : hasKetoGuideIntent(normalizedLinkContext)
+        ? "keto"
+        : null;
+
+  if (requestedResource) {
+    const configuredResource = resolveConfiguredResourceLink(
+      campaign,
+      requestedResource,
+    );
+
+    if (configuredResource.matched) {
+      if (!configuredResource.link) {
+        return LINK_CLARIFICATION_REPLY;
+      }
+
+      return (
+        "Klar, hier ist der Link:\n" +
+        `${configuredResource.link.label}\n` +
+        configuredResource.link.url
+      );
+    }
+  }
+
   const matchingLinks = getMatchingInfoLinks(
     getConfiguredInfoLinks(campaign),
     normalizedLinkContext,
