@@ -1,4 +1,9 @@
-import { OFFER_TRUTH } from "../config/offer-truth.js";
+import {
+  OFFER_TRUTH,
+  LONG_TERM_PRICE_UNVERIFIED_REPLY,
+  hasUnapprovedOfferPrice,
+  isUnverifiedLongTermPriceQuestion,
+} from "../config/offer-truth.js";
 import type { CampaignConfig, FlowStepId } from "../types/types.js";
 import { getNextFlowStep } from "./flow-definition.js";
 import type { PeteDecision } from "./pete-decision-layer.js";
@@ -72,7 +77,8 @@ function getSafeOfferPriceText(campaign: CampaignConfig): string {
   if (
     priceInquiryText &&
     !hasAggressiveClosingText(priceInquiryText) &&
-    !looksMojibake(priceInquiryText)
+    !looksMojibake(priceInquiryText) &&
+    !hasUnapprovedOfferPrice(priceInquiryText)
   ) {
     return priceInquiryText;
   }
@@ -87,8 +93,7 @@ function getCoachingEntryPriceText(_campaign: CampaignConfig): string {
 function buildDirectPriceReply(campaign: CampaignConfig): string {
   return (
     `Das 5-Wochen-Coaching liegt bei ${getCoachingEntryPriceText(campaign)}.\n` +
-    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
-    `Die 6-Monats-Begleitung liegt regulär bei ${OFFER_TRUTH.longTerm.priceText}; nach dem 5-Wochen-Coaching bleiben durch die Anrechnung noch ${OFFER_TRUTH.longTerm.upgradeBalanceEur?.toLocaleString("de-DE")} € offen.`
+    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.`
   );
 }
 
@@ -338,7 +343,9 @@ export function composePeteResponse(
     }
     case "price_question":
       return {
-        text: decision.metadata?.directPrice
+        text: isUnverifiedLongTermPriceQuestion(context.userText ?? "")
+          ? LONG_TERM_PRICE_UNVERIFIED_REPLY
+          : decision.metadata?.directPrice
           ? buildDirectPriceReply(context.campaign)
           : buildPriceQuestionReply(context.campaign),
       };
