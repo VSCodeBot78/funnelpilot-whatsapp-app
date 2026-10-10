@@ -50,11 +50,13 @@ function readLeadsFile(): LeadRecord[] {
   try {
     const raw = fs.readFileSync(LEADS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_leads_store");
       return [];
     }
 
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
+      if (env.NODE_ENV === "production") throw new Error("invalid_leads_store_shape");
       return [];
     }
 
@@ -63,6 +65,7 @@ function readLeadsFile(): LeadRecord[] {
         item && typeof item === "object" && typeof (item as any).id === "string",
     );
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("leads_store_invalid_stop_restore", { cause: error });
     console.error("lead store read error:", error);
     return [];
   }
