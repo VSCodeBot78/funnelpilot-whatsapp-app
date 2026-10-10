@@ -17,6 +17,7 @@ export type PeteRuntimeSafetyCategory =
   | "distrust_aggression"
   | "human_request"
   | "identity_question"
+  | "scope_boundary"
   | "info_link"
   | "booking_link"
   | "link_clarification"
@@ -139,6 +140,21 @@ const LEGAL_PRIVACY_KEYWORDS = [
   "agb",
   "rechtlich",
 ];
+
+const NUTRITION_PLAN_KEYWORDS = [
+  "ernährungsplan",
+  "ernaehrungsplan",
+  "essensplan",
+  "speiseplan",
+  "meal plan",
+  "individueller ernährungsplan",
+  "individueller ernaehrungsplan",
+];
+
+const NUTRITION_PLAN_SCOPE_REPLY =
+  "Einen individuellen Ernährungsplan gebe ich hier nicht einfach raus und ich verkaufe auch keinen isolierten Plan.\n" +
+  "Bei mir geht es um Begleitung mit Struktur, Umsetzung und Anpassung an deinen echten Alltag.\n" +
+  "Wenn das grundsätzlich interessant ist, machen wir hier mit deiner Situation weiter.";
 
 const PRICE_KEYWORDS = [
   "was kostet",
@@ -989,6 +1005,21 @@ export function evaluatePeteRuntimeSafety(
       shouldHandoffToJochen: false,
       shouldStopAutomation: false,
       reason: `matched "${identityQuestionMatch}"; honest bot identity answer`,
+    });
+  }
+
+  const nutritionPlanMatch = includesAnyKeyword(
+    normalized,
+    NUTRITION_PLAN_KEYWORDS,
+  );
+  if (nutritionPlanMatch) {
+    return result({
+      category: "scope_boundary",
+      leadTemperature: "warm",
+      replyText: NUTRITION_PLAN_SCOPE_REPLY,
+      shouldHandoffToJochen: false,
+      shouldStopAutomation: false,
+      reason: `scope_boundary_nutrition_plan:${nutritionPlanMatch}`,
     });
   }
 
