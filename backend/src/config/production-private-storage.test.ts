@@ -48,3 +48,28 @@ test("Storage modules use private atomic writes; production does not seed demons
   assert.match(server, /const listenHost = "127.0.0.1"/);
   assert.doesNotMatch(server, /0\.0\.0\.0.*listen/);
 });
+
+test("production refuses to silently reset corrupted persisted customer data", async t => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "funnelpilot-prod-corrupt-"));
+  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+  process.env.NODE_ENV = "production";
+  process.env.DATA_DIR = dataDir;
+  fs.writeFileSync(path.join(dataDir, "conversations.json"), "{broken", "utf8");
+  await assert.rejects(() => import("../data/store.js"), /conversation_store_invalid_stop_restore/);
+  fs.writeFileSync(path.join(dataDir, "leads.json"), "{broken", "utf8");
+  await assert.rejects(() => import("../data/leads.store.js"), /leads_store_invalid_stop_restore/);
+  fs.writeFileSync(path.join(dataDir, "message-events.json"), "{broken", "utf8");
+  await assert.rejects(() => import("../data/message-events.store.js"),
+    /message_events_store_invalid_stop_restore/);
+  fs.writeFileSync(path.join(dataDir, "booking-events.json"), "{broken", "utf8");
+  await assert.rejects(() => import("../data/booking-events.store.js"),
+    /booking_events_store_invalid_stop_restore/);
+  fs.writeFileSync(path.join(dataDir, "settings.json"), "{broken", "utf8");
+  const { readSettings } = await import("../services/settings-store.js");
+  assert.throws(() => readSettings(), /settings_store_invalid_stop_restore/);
+  // Import failure and read errors must not alter or delete the damaged input.
+  for (const file of ["conversations.json", "leads.json", "message-events.json",
+    "booking-events.json", "settings.json"]) {
+    assert.equal(fs.readFileSync(path.join(dataDir, file), "utf8"), "{broken");
+  }
+});
