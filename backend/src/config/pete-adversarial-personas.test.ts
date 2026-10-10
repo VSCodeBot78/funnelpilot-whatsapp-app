@@ -197,6 +197,30 @@ test("Adversarial founder QA: realistic mother/father scripts recorded for revie
     if (index === 7 || index === 9 || index === 11) {
       assert.equal(transcript.at(-1)?.pete, null, scenario.persona);
     }
+    if (index === 0) assert.match(transcript[0].pete ?? "", /Kinder|Schicht|kaputt/i);
+    if (index === 1) {
+      assert.match(transcript[0].pete ?? "", /KI|Verkaufsbot|kaufen/i);
+      assert.match(transcript[1].pete ?? "", /Kein Verkaufsgespräch/i);
+      assert.doesNotMatch(transcript[2].pete ?? "", /Knackpunkt|Coaching|499 €/);
+    }
+    if (index === 3) {
+      assert.doesNotMatch(transcript[1].pete ?? "", /Die 5-Wochen-Startphase liegt/);
+      assert.doesNotMatch(transcript[1].pete ?? "", /produkt\/no-bullshit/);
+    }
+    if (index === 4) assert.doesNotMatch(transcript[1].pete ?? "", /Woran hakt es bei Keto bisher/);
+    if (index === 5) assert.doesNotMatch(transcript[1].pete ?? "", /Knackpunkt|499 €/);
+    if (index === 8) {
+      assert.match(transcript[1].pete ?? "", /portal\.nutrilize/);
+      assert.doesNotMatch(transcript[1].pete ?? "", /calendly/);
+    }
+    if (index === 10) {
+      assert.match(transcript[0].pete ?? "", /calendly/);
+      assert.doesNotMatch(transcript[1].pete ?? "", /bestätigt\./);
+      assert.equal(transcript[1].phase, "booking_offered");
+    }
+    if (index === 12) assert.match(transcript[0].pete ?? "", /10–20 Minuten/);
+    if (index === 13) assert.doesNotMatch(transcript[1].pete ?? "", /schon etwas probiert/);
+    if (index === 14) assert.doesNotMatch(transcript[0].pete ?? "", /größte Knackpunkt/);
     console.log("PETE_ADVERSARIAL_PERSONA " + JSON.stringify({
       persona: scenario.persona,
       motive: scenario.motive,
