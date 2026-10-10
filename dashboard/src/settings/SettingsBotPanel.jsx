@@ -37,6 +37,7 @@ export default function SettingsBotPanel({
     defaultBotTone: "ruhig",
     defaultLanguage: "Deutsch",
     brandVoice: "Jochen-Sprache",
+    masterPrompt: "",
     answerLength: "kurz",
     fallbackReply: DEFAULT_FALLBACK_TEXT,
     qualificationPrompt: "",
