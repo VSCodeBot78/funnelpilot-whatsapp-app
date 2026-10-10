@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { appendAssistantMessage } from "../core/state-manager.js";
+import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
+import { sendConversationTextOutbound } from "../services/manual-outbound.service.js";
+import { updateLatestAssistantMessageSendResult } from "../services/conversation-outbound.service.js";
 import {
   applyGhostingEvaluationToState,
   evaluateGhostingState,
@@ -131,7 +134,7 @@ router.post("/mark-sent/:campaignId/:leadId", (req, res) => {
   }
 });
 
-router.post("/send-due/:campaignId/:leadId", (req, res) => {
+router.post("/send-due/:campaignId/:leadId", async (req, res) => {
   try {
     const { campaignId, leadId } = req.params;
     const sendAt = typeof req.body?.sendAt === "string" ? req.body.sendAt : undefined;
@@ -173,8 +176,62 @@ router.post("/send-due/:campaignId/:leadId", (req, res) => {
       });
     }
 
-    state.ghosting = applyGhostingEvaluationToState(state.ghosting, evaluation);
+    const outboundPermission = evaluateLatestAiOutboundPermission({
+      leadId,
+      campaignId,
+    });
+
+    if (!outboundPermission.allowed) {
+      return res.json({
+        ok: true,
+        leadId,
+        campaignId,
+        sent: false,
+        dryRun: true,
+        sendSkipped: true,
+        sendSkipReason: `outbound_guard_${outboundPermission.reason}`,
+        messageText,
+        evaluation,
+        ghostingState: state.ghosting,
+      });
+    }
+
+    const outbound = await sendConversationTextOutbound({
+      state,
+      messageText,
+    });
+
+    if (!outbound.ok || !outbound.sent) {
+      return res.json({
+        ok: true,
+        leadId,
+        campaignId,
+        sent: false,
+        dryRun: outbound.dryRun,
+        sendSkipped: outbound.sendSkipped,
+        sendSkipReason: outbound.reason,
+        sendError: outbound.error,
+        outboundTransport: outbound.transport,
+        messageText,
+        evaluation,
+        ghostingState: state.ghosting,
+      });
+    }
+
+    state.ghosting = applyGhostingEvaluationToState(
+      state.ghosting,
+      evaluation,
+    );
     appendAssistantMessage(state, messageText);
+    updateLatestAssistantMessageSendResult({
+      messages: state.messages,
+      replyText: messageText,
+      transport: outbound.transport,
+      outboundStatus: "sent",
+      sentAt: new Date().toISOString(),
+      metaMessageId: outbound.metaMessageId ?? null,
+    });
+
     state.ghosting = markGhostingStageAsSent(
       {
         ...state.ghosting,
@@ -190,6 +247,11 @@ router.post("/send-due/:campaignId/:leadId", (req, res) => {
       ok: true,
       leadId,
       campaignId,
+      sent: true,
+      dryRun: false,
+      sendSkipped: false,
+      outboundTransport: outbound.transport,
+      metaMessageId: outbound.metaMessageId ?? undefined,
       sentStage: evaluation.stage,
       sentAt: now.toISOString(),
       messageText,
