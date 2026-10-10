@@ -42,7 +42,7 @@ export default function InboxView({
         <div>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Inbox</div>
           <div style={{ color: colors.sub, fontSize: 12, marginTop: 4 }}>
-            Chatverlauf und Funnel-Status werden hier schrittweise an echte Backend-Conversations gekoppelt.
+            Gespräche ansehen, übernehmen und bei Bedarf wieder an Pete zurückgeben.
           </div>
         </div>
 
@@ -66,9 +66,9 @@ export default function InboxView({
       ) : null}
 
       <div
+        className="fp-inbox-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "280px minmax(0, 2.6fr) 300px",
           gap: 0,
           alignItems: "stretch",
           width: "100%",
@@ -78,6 +78,7 @@ export default function InboxView({
         }}
       >
         <div
+          className="fp-inbox-lead-column"
           style={{
             minWidth: 0,
             borderRight: `1px solid ${colors.border}`,
@@ -93,6 +94,7 @@ export default function InboxView({
         </div>
 
         <div
+          className="fp-inbox-chat-column"
           style={{
             minWidth: 0,
             borderRight: `1px solid ${colors.border}`,
@@ -116,6 +118,7 @@ export default function InboxView({
         </div>
 
         <div
+          className="fp-inbox-context-column"
           style={{
             minWidth: 0,
           }}

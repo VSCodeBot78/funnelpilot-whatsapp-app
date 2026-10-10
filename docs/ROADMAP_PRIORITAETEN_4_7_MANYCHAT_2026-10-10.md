@@ -47,3 +47,9 @@ Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „P
 - **Native ManyChat-Ablösung:** nur **vorgemerkt; fachliche Konzeption begonnen**, noch **keine** validierte native Button-/Link-Engine. Eine exakte Fertigstellungszahl wäre irreführend.
 
 **Wichtig:** Phase 30 (Pete synthetisch), Phase 31 (Funnelketten synthetisch) und Phase 32 (lokaler Teststart vorbereitet) sind abgeschlossen; echte Windows-, Meta-, Calendly-/Payment- und Multi-Tenant-Abnahmen **sind weiterhin offen**.
+
+## Umsetzung nach Roadmap-Freigabe – 10.10.2026
+
+- **Priorität 4 (Dashboard vereinfachen): im GitHub-Code umgesetzt.** Fokussierte tägliche Navigation und Startseite, zugänglicher Pete-Testchat, mobile Inbox und kein irreführender Dummy-Lead-Fallback. Technischer Bericht: `docs/PHASE34_DASHBOARD_FOKUS_2026-10-10.md`. Echte Geräteabnahme steht aus.
+- **Als Nächstes offen:** Priorität 5 Startdiagnose, Priorität 6 Datenschutz/Betrieb, Priorität 7 Coach-Onboarding.
+- ManyChat-Ersatz M-01 bleibt später; in dieser Phase weder Buttons noch API-Trigger neu aktiviert.

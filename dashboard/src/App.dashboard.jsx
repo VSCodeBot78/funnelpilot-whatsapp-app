@@ -13,6 +13,7 @@ import { useSettingsConfig, defaultSettings } from "./hooks/useSettingsConfig";
 import { useGhostingRuntime } from "./hooks/useGhostingRuntime";
 import { useBackendHealth } from "./hooks/useBackendHealth";
 import Sidebar from "./components/layout/Sidebar";
+import { ALL_NAV } from "./navigation/dashboardNavigation";
 import Topbar from "./components/layout/Topbar";
 import InboxView from "./inbox/InboxView";
 import CampaignsView from "./campaigns/campaignsView";
@@ -24,17 +25,7 @@ import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
 
-const navItems = [
-  { key: "onboarding", label: "Einrichtung" },
-  { key: "dashboard", label: "Dashboard" },
-  { key: "campaigns", label: "Kampagnen" },
-  { key: "leads", label: "Leads" },
-  { key: "inbox", label: "Inbox" },
-  { key: "ghosting", label: "Ghosting" },
-  { key: "appointments", label: "Termine" },
-  { key: "booking-events", label: "Booking Events" },
-  { key: "settings", label: "Einstellungen" },
-];
+const navItems = ALL_NAV;
 
 function firstSection() {
   try {
@@ -336,15 +327,6 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   }, []);
 
   function renderContent() {
-    const statAll = contacts.length;
-    const statHot = contacts.filter((contact) =>
-      contact.tags.includes("Heißer Lead"),
-    ).length;
-    const statRunning = contacts.filter((contact) =>
-      contact.tags.includes("Gespräch läuft"),
-    ).length;
-    const statAppointments = contacts.filter((contact) => contact.booked).length;
-
     if (section === "dashboard" || section === "onboarding") {
       return (
         <DashboardHome
@@ -354,9 +336,11 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           sortedContacts={sortedContacts}
           activeContactId={activeContactId}
           onSelectLead={(id) => {
-            setActiveContactId(id);
-            setSection("inbox");
+            openChat(id);
           }}
+          onOpenInbox={() => setSection("inbox")}
+          onOpenLeads={() => setSection("leads")}
+          onOpenTestChat={onOpenTestChat}
           onRestartOnboarding={() => {
             setOnboardingStartStep(0);
             setSection("onboarding");
@@ -412,8 +396,6 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         <div
           style={{
             width: "100%",
-            marginLeft: -16,
-            marginRight: -16,
             marginBottom: -16,
           }}
         >
@@ -509,6 +491,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
 
   return (
     <div
+      className="fp-workspace"
       style={{
         minHeight: "100vh",
         width: "100%",
@@ -518,19 +501,13 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           '"Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
       }}
     >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "240px minmax(0, 1fr)",
-          minHeight: "100vh",
-          width: "100%",
-        }}
-      >
+      <div className="fp-app-shell">
         <Sidebar
           colors={colors}
           section={section}
           navItems={navItems}
           onSectionChange={setSection}
+          onOpenTestChat={onOpenTestChat}
           darkMode={darkMode}
           onSetDarkMode={setDarkMode}
           productName={settings.productName}
@@ -539,6 +516,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         />
 
         <main
+          className="fp-work-main"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -574,6 +552,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           )}
 
           <div
+            className="fp-work-content"
             style={{
               padding: 16,
               width: "100%",

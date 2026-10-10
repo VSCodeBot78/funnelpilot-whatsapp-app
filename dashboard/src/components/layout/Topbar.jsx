@@ -1,65 +1,52 @@
 import React from "react";
 import { inputStyle } from "../../theme/dashboardTheme";
+import { getSectionLabel } from "../../navigation/dashboardNavigation";
 
 export default function Topbar({
   colors,
   section,
-  navItems,
   search,
   onSearchChange,
-  subtitle = "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
   userInitial = "J",
+  subtitle = "",
 }) {
-  const activeLabel =
-    navItems.find((n) => n.key === section)?.label || "Dashboard";
-
+  const showSearch = section === "dashboard" || section === "leads" || section === "inbox";
+  const customSubtitle = String(subtitle).trim();
+  const hasCustomSubtitle = customSubtitle &&
+    customSubtitle !== "Produktstruktur mit Sidebar, Topbar und getrennten Modulen";
   return (
-    <div
-      style={{
-        borderBottom: `1px solid ${colors.border}`,
-        padding: "10px 16px",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 16,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
+    <header className="fp-topbar"
+      style={{ borderBottom: `1px solid ${colors.border}` }}>
       <div>
-        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1 }}>
-          {activeLabel}
+        <div className="fp-topbar-title" style={{ color: colors.text }}>
+          {getSectionLabel(section)}
         </div>
         <div style={{ color: colors.sub, marginTop: 4, fontSize: 12 }}>
-          {subtitle}
+          {hasCustomSubtitle ? customSubtitle :
+           section === "inbox" ? "Gespräche und persönliche Übernahme" :
+           section === "dashboard" ? "Tagesübersicht · Live-Zustellung separat prüfen" :
+           "Funnel Pilot · Arbeitsbereich"}
         </div>
       </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <input
-          placeholder="Suchen..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          style={{
-            ...inputStyle(colors),
-            width: 280,
-            maxWidth: "40vw",
-          }}
-        />
-        <div
-          style={{
-            width: 34,
-            height: 34,
-            border: `1px solid ${colors.border}`,
-            background: colors.panel,
-            display: "grid",
-            placeItems: "center",
-            fontWeight: 700,
-            fontSize: 12,
-          }}
-        >
+      <div className="fp-topbar-tools">
+        {showSearch && (
+          <label className="fp-search-label" style={{ color: colors.sub }}>
+            <span className="fp-sr-only">Leads durchsuchen</span>
+            <input
+              aria-label="Leads durchsuchen"
+              placeholder="Leads durchsuchen …"
+              value={search}
+              onChange={event => onSearchChange(event.target.value)}
+              style={{ ...inputStyle(colors), width: "100%", borderRadius: 8 }}
+            />
+          </label>
+        )}
+        <div className="fp-user-initial" aria-label="Arbeitsbereich"
+          style={{ border: `1px solid ${colors.border}`, background: colors.panel,
+            color: colors.text }}>
           {userInitial}
         </div>
       </div>
-    </div>
+    </header>
   );
 }
