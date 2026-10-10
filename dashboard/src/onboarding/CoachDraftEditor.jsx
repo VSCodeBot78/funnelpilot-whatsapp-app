@@ -19,6 +19,13 @@ export default function CoachDraftEditor({ value = EMPTY_COACH_DRAFT, onChange }
   function change(key, next) {
     onChange({ ...draft, version: 1, [key]: next });
   }
+  function changeIdentity(key, next) {
+    change("identity", {
+      brandName: "", operatorName: "", assistantName: "", audience: "", tone: "",
+      ...(draft.identity || {}),
+      [key]: next,
+    });
+  }
   function editRow(key, idx, field, next) {
     const rows = key === "offers" ? offers : faqs;
     change(key, rows.map((row, i) => i === idx ? { ...row, [field]: next } : row));
@@ -28,7 +35,28 @@ export default function CoachDraftEditor({ value = EMPTY_COACH_DRAFT, onChange }
     change(key, rows.filter((_, i) => i !== idx));
   }
   return (
-    <section aria-label="Coach-Angebote und häufige Fragen" style={{ display: "grid", gap: 18 }}>
+    <section aria-label="Coach-Identität, Angebote und häufige Fragen" style={{ display: "grid", gap: 18 }}>
+      <div style={{ padding: 14, border: "1px solid #dbe4ee", borderRadius: 12 }}>
+        <h4 style={{ margin: "0 0 7px" }}>Coach-Identität als Entwurf</h4>
+        <p style={{ fontSize: 12, color: "#64748b" }}>
+          Nur für die Vorschau. Diese Felder ändern weder Jochens aktive Marke
+          noch Pete, bestehende Leads oder versendete Nachrichten.
+        </p>
+        {[
+          ["brandName", "Markenname", 120],
+          ["operatorName", "Name des Coaches / Betreibers", 120],
+          ["assistantName", "Name des KI-Assistenten", 80],
+          ["audience", "Zielgruppe", 240],
+          ["tone", "Markenstimme und Antwortstil", 420],
+        ].map(([key, label, max]) => (
+          <label key={key} style={{ display: "block", marginTop: 9, fontSize: 12, fontWeight: 700 }}>
+            {label}
+            <input style={fieldStyle} maxLength={max}
+              value={draft.identity?.[key] || ""}
+              onChange={e => changeIdentity(key, e.target.value)} />
+          </label>
+        ))}
+      </div>
       <div style={{ padding: 14, border: "1px solid #dbe4ee", borderRadius: 12 }}>
         <h4 style={{ margin: "0 0 7px" }}>Kontakt und persönliche Begrüßung</h4>
         <p style={{ fontSize: 12, color: "#64748b" }}>Optionaler Entwurf für die spätere Coach-Einrichtung, noch keine automatische Nachricht.</p>

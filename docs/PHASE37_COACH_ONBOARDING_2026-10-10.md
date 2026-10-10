@@ -92,3 +92,26 @@ Nach dem Merge von Phase 37 wurde überprüft, dass der bisherige Knopf **„Coa
 Die Schaltfläche **„Weiter“** in den Schritten 1 und 2 ist nach wie vor die reguläre **Speichern-und-Weiter-Funktion des aktuellen Single-Workspace**; darauf weist die Oberfläche ausdrücklich hin. Das ist **keine** separate Coach-Isolation. Für fremde Coach-Personas weiterhin nur synthetische Daten und eine getrennte lokale Testinstanz nutzen. Der Echtgerätetest bleibt offen.
 
 Neue Regression: `dashboard/src/services/coachDraftSave.test.js` verifiziert, dass die Anfrage ausschließlich das Entwurfsfeld enthält. Der bestehende Backend-HTTP-Test testet jetzt zusätzlich eine reine Coach-Entwurfsänderung bei unveränderten aktiven Pete-, Checkout- und Testmodus-Einstellungen. Der konkurrierende PR #61 wurde bereits geschlossen; eine zweite Coach-Implementierung wurde bewusst nicht zusammengeführt.
+
+
+## Phase 38 – Entwurfsidentität ohne Änderung der aktiven Marke (10.10.2026)
+
+Der bestehende versionierte `coachOnboardingDraft` (Version 1) unterstützt nun ein **optionales**
+`identity`-Objekt mit `brandName`, `operatorName`, `assistantName`,
+`audience` und `tone`. Bestehende v1-Entwürfe ohne Identität bleiben kompatibel.
+Die API lehnt zusätzliche Felder wie `role`, `apiKey`, falsche Typen und
+zu lange Zeichenketten ab.
+
+Der Coach-Editor erlaubt diese fünf Angaben nur im isolierten Entwurf. Die
+Vorschau verwendet **entweder alle Angaben aus `identity`** oder bei alten
+Entwürfen explizit die aktive Legacy-Konfiguration mit sichtbarer Warnung.
+Ein unvollständiger Entwurf erbt bewusst **keinen** Jochen-/Pete-Wert.
+
+Der separate Button „Coach-Entwurf speichern“ sendet weiterhin ausschließlich
+`{coachOnboardingDraft}`, niemals aktive Marken-/Pete-/Checkout-Einstellungen.
+Regressionstests prüfen die Backend-Validierung, HTTP-Speicherung ohne aktive
+Änderung und die fehlende Vermischung in der Vorschau.
+
+**Grenze:** Keine Coach-Anmeldung, keine Tenant-Datenisolierung, keine Aktivierung
+oder Echtversand. Die neue Identität wird vom aktiven Pete-Runtime-Prompt nicht
+gelesen. Der normale Wizard-Weiter-Button bearbeitet weiterhin aktive Settings.

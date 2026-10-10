@@ -31,6 +31,28 @@ test("Preview is always draft only, never marks multi-tenant or provider deliver
   assert.ok(view.warnings.some(w => /Jochen|Vorlagen/.test(w)));
 });
 
+test("Independent draft identity never inherits Jochen's live brand, assistant, or target audience", () => {
+  const view = getCoachOnboardingPreview({
+    companyName: "Eltern fit & vital", adminName: "Jochen",
+    assistantName: "Pete", companyAudience: "Berufstätige Eltern", brandVoice: "Jochen",
+    coachOnboardingDraft: {
+      version: 1, preferredContact: "", welcomeLine: "", offers: [], faqs: [],
+      identity: {
+        brandName: "Studio Nord", operatorName: "Coach Ada",
+        assistantName: "", audience: "Berufstätige", tone: "Ruhig",
+      },
+    },
+  });
+  assert.equal(view.identitySource, "coach_draft");
+  assert.equal(view.brand, "Studio Nord");
+  assert.equal(view.operator, "Coach Ada");
+  assert.equal(view.assistant, ""); // Never fallback to active Pete.
+  assert.equal(view.audience, "Berufstätige");
+  assert.equal(view.tone, "Ruhig");
+  assert.equal(view.liveReady, false);
+  assert.equal(view.tenantIsolated, false);
+});
+
 test("Missing details are visible in preview without fabricating offerings", () => {
   const view = getCoachOnboardingPreview({});
   assert.deepEqual(view.offers, []);
@@ -50,6 +72,7 @@ test("Guided wizard wires editor to settings save and shows explicit non-live wa
   assert.match(wizard, /<CoachProfilePreview/);
   assert.match(wizard, /update\("coachOnboardingDraft", value\)/);
   assert.match(wizard, /await onSaveSettings\(\)/);
+  assert.match(editor, /Coach-Identität als Entwurf/);
   assert.match(editor, /Angebotsentwürfe/);
   assert.match(editor, /Häufige Fragen/);
   assert.match(editor, /maxLength=\{700\}/);

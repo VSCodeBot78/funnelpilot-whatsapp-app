@@ -7,8 +7,17 @@ export type CoachOfferDraft = {
   url: string;
 };
 export type CoachFaqDraft = { question: string; answer: string };
+// Independent, INERT identity fields for a future coach. Never read by Pete runtime.
+export type CoachIdentityDraft = {
+  brandName: string;
+  operatorName: string;
+  assistantName: string;
+  audience: string;
+  tone: string;
+};
 export type CoachOnboardingDraft = {
   version: 1;
+  identity?: CoachIdentityDraft;
   preferredContact: string;
   welcomeLine: string;
   offers: CoachOfferDraft[];
@@ -48,10 +57,27 @@ function onlyFields(obj: Record<string, unknown>, allowed: string[]): boolean {
   return Object.keys(obj).every(key => allowed.includes(key));
 }
 
+function parseIdentityDraft(input: unknown): CoachIdentityDraft | null {
+  if (!isPlainObject(input) ||
+    !onlyFields(input, ["brandName", "operatorName", "assistantName", "audience", "tone"]) ||
+    !validText(input.brandName, 120) ||
+    !validText(input.operatorName, 120) ||
+    !validText(input.assistantName, 80) ||
+    !validText(input.audience, 240) ||
+    !validText(input.tone, 420)) return null;
+  return {
+    brandName: input.brandName.trim(),
+    operatorName: input.operatorName.trim(),
+    assistantName: input.assistantName.trim(),
+    audience: input.audience.trim(),
+    tone: input.tone.trim(),
+  };
+}
+
 export function parseCoachOnboardingDraft(input: unknown):
   { ok: true; value: CoachOnboardingDraft } | { ok: false; error: string } {
   if (!isPlainObject(input) ||
-    !onlyFields(input, ["version", "preferredContact", "welcomeLine", "offers", "faqs"]) ||
+    !onlyFields(input, ["version", "identity", "preferredContact", "welcomeLine", "offers", "faqs"]) ||
     input.version !== 1 ||
     !validText(input.preferredContact, 180) ||
     !validText(input.welcomeLine, 420) ||
@@ -93,10 +119,17 @@ export function parseCoachOnboardingDraft(input: unknown):
     faqs.push({ question, answer });
   }
 
+  // Absent identity stays absent so historical v1 drafts remain byte-for-byte compatible.
+  const identity = input.identity === undefined ? undefined : parseIdentityDraft(input.identity);
+  if (input.identity !== undefined && !identity) {
+    return { ok: false, error: "coach_identity_draft_invalid" };
+  }
+
   return {
     ok: true,
     value: {
       version: 1,
+      ...(identity ? { identity } : {}),
       preferredContact: input.preferredContact.trim(),
       welcomeLine: input.welcomeLine.trim(),
       offers,

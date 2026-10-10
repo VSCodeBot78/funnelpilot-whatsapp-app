@@ -45,6 +45,21 @@ test("Coach draft validation keeps only bounded, harmless, draft-only strings", 
     priceLabel: "", url: "" }] }).ok, true);
 });
 
+test("Independent coach identity stays inert, is bounded, and never accepts roles or API secrets", () => {
+  const identity = {
+    brandName: "Studio Nord", operatorName: "Coach Ada", assistantName: "Nora",
+    audience: "Berufstätige Menschen", tone: "Ruhig und knapp",
+  };
+  const valid = parseCoachOnboardingDraft({ ...draft, identity });
+  assert.equal(valid.ok, true);
+  if (valid.ok) assert.deepEqual(valid.value.identity, identity);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: { ...identity, role: "admin" } }).ok, false);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: { ...identity, apiKey: "secret" } }).ok, false);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: { ...identity, brandName: "x".repeat(121) } }).ok, false);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: { ...identity, operatorName: 42 } }).ok, false);
+  assert.equal(parseCoachOnboardingDraft({ ...draft, identity: { brandName: "Only one" } }).ok, false);
+});
+
 test("Guided coach draft survives actual HTTP save, reload and unrelated partial update without live activation", async t => {
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>(resolve => server.once("listening", resolve));
@@ -82,6 +97,20 @@ test("Guided coach draft survives actual HTTP save, reload and unrelated partial
 
   // Saving a coach draft alone must leave the active Jochen workspace untouched.
   const beforeDraftOnly = readSettings();
+  const identity = {
+    brandName: "Neue Coach-Marke", operatorName: "Coach Bea",
+    assistantName: "Mila", audience: "Frauen im Job", tone: "Kurz und klar",
+  };
+  const identityOnlySave = await post({ coachOnboardingDraft: { ...draft, identity } });
+  assert.equal(identityOnlySave.status, 200);
+  assert.deepEqual(readSettings().coachOnboardingDraft.identity, identity);
+  assert.equal(readSettings().companyName, beforeDraftOnly.companyName);
+  assert.equal(readSettings().adminName, beforeDraftOnly.adminName);
+  assert.equal(readSettings().assistantName, beforeDraftOnly.assistantName);
+  assert.equal(readSettings().masterPrompt, beforeDraftOnly.masterPrompt);
+  assert.equal(readSettings().aiEnabled, beforeDraftOnly.aiEnabled);
+  assert.equal(readSettings().starterCheckoutUrl, beforeDraftOnly.starterCheckoutUrl);
+  assert.equal((await post({ coachOnboardingDraft: draft })).status, 200);
   const draftOnly = await post({ coachOnboardingDraft: {
     ...draft, welcomeLine: "Neuer Entwurf, nicht aktiv",
   } });

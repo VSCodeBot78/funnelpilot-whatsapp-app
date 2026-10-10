@@ -393,7 +393,7 @@ export default function SetupWizardModal({
               <strong>Wichtig:</strong> Die bestehenden Marken-, Buchungs- und Checkout-Felder
               oberhalb des neuen Editors gehören weiterhin zum aktuellen Workspace und
               können von aktiven Funktionen genutzt werden. Nur die zusätzlichen
-              Coach-Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
+              Coach-Identitätsdaten, Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
               Test-Coaches im laufenden Workspace einrichten.
             </p>
             <h3 style={{ marginTop: 0 }}>Angebote und nächste Schritte</h3>
@@ -406,7 +406,7 @@ export default function SetupWizardModal({
             <p style={{ ...small, background: "#eff6ff", border: "1px solid #bfdbfe",
               padding: 10, borderRadius: 8 }}>
               „Coach-Entwurf speichern“ sichert ausschließlich die unten erfassten
-              Angebotsentwürfe und FAQs. Andere Änderungen im Einrichtungsformular
+              Identitätsdaten, Angebotsentwürfe und FAQs. Andere Änderungen im Einrichtungsformular
               werden dadurch nicht gespeichert. „Weiter“ speichert weiterhin
               die gesamten aktuellen Einstellungen dieses einen Arbeitsbereichs.
             </p>
