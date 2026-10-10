@@ -34,6 +34,8 @@ export type MetaInstagramSendResult =
 type SendTextMessageInput = {
   to: string;
   body: string;
+  // Dashboard/human messages are not AI echoes, even on the same transport.
+  origin?: "ai" | "human";
 };
 
 function normalizeString(value: unknown): string {
@@ -112,10 +114,12 @@ export async function sendMetaInstagramTextMessage(
     };
   }
 
-  const pendingToken = registerPendingAiInstagramOutbound({
-    recipientId: to,
-    text: body,
-  });
+  const pendingToken = input.origin === "human"
+    ? null
+    : registerPendingAiInstagramOutbound({
+        recipientId: to,
+        text: body,
+      });
 
   try {
     const response = await fetch(buildInstagramSendUrl(), {
@@ -137,7 +141,7 @@ export async function sendMetaInstagramTextMessage(
     const responseBody = await response.json().catch(() => null);
 
     if (!response.ok) {
-      clearPendingAiInstagramOutbound(pendingToken);
+      if (pendingToken) clearPendingAiInstagramOutbound(pendingToken);
       const metaError =
         responseBody &&
         typeof responseBody === "object" &&
@@ -155,10 +159,12 @@ export async function sendMetaInstagramTextMessage(
     }
 
     const metaMessageId = getMetaMessageId(responseBody);
-    confirmPendingAiInstagramOutbound({
-      token: pendingToken,
-      metaMessageId,
-    });
+    if (pendingToken) {
+      confirmPendingAiInstagramOutbound({
+        token: pendingToken,
+        metaMessageId,
+      });
+    }
 
     return {
       ok: true,
@@ -168,7 +174,7 @@ export async function sendMetaInstagramTextMessage(
       metaMessageId,
     };
   } catch (error) {
-    clearPendingAiInstagramOutbound(pendingToken);
+    if (pendingToken) clearPendingAiInstagramOutbound(pendingToken);
     return {
       ok: false,
       sent: false,

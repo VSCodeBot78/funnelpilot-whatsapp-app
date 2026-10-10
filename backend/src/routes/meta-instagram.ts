@@ -10,8 +10,10 @@ import {
   appendHumanMessage,
   getOrCreateConversationState,
   persistConversationState,
+  takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { getConversationState } from "../data/store.js";
 import { readSettings } from "../services/settings-store.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
@@ -25,7 +27,7 @@ import {
 import {
   isKnownAiOutboundEcho,
   markLatestAssistantMessagePrepared,
-  updateLatestAssistantMessageSendResult,
+  reconcileAiOutboundReceipt,
 } from "../services/conversation-outbound.service.js";
 import { verifyMetaWebhookSignature } from "../services/meta-webhook-signature.service.js";
 import { consumeKnownAiInstagramEcho } from "../services/instagram-outbound-echo.service.js";
@@ -313,9 +315,18 @@ router.post("/", async (req: RawBodyRequest, res) => {
               state: echoState,
             });
 
+          const alreadyRecordedHumanEcho = echoState.messages.some((message) =>
+            message.actor === "human" &&
+            message.metaMessageId === event.messageId
+          );
+
           if (knownAiEcho) {
             echoReason = "instagram_ai_echo";
-          } else if (event.text) {
+          } else if (alreadyRecordedHumanEcho) {
+            // A dashboard message can be recorded before its matching Meta echo.
+            // Never duplicate the same human message in the conversation.
+            echoReason = "instagram_human_echo_already_recorded";
+          } else {
             echoState.backendLeadId =
               echoLeadSync.lead.backendLeadId || echoLeadSync.lead.id;
             echoState.leadName = echoLeadSync.lead.name;
@@ -324,15 +335,30 @@ router.post("/", async (req: RawBodyRequest, res) => {
             echoState.notes = echoLeadSync.lead.note;
             echoState.bookingData = echoLeadSync.lead.bookingData;
 
-            appendHumanMessage(echoState, event.text);
+            // Attachment-only/manual non-text echoes must also pause Pete.
+            // Do not invent a human text message when Meta supplied no text.
+            if (event.text) {
+              appendHumanMessage(echoState, event.text);
+              const humanMessage = echoState.messages.at(-1);
+              if (humanMessage?.actor === "human") {
+                humanMessage.metaMessageId = event.messageId;
+                humanMessage.transport = PROVIDER;
+                humanMessage.outboundStatus = "sent";
+                humanMessage.sent = true;
+                humanMessage.dryRun = false;
+                humanMessage.sentAt = receivedAt;
+              }
+              messageAppended = true;
+              echoMessageAppended = true;
+            } else {
+              takeOverByHuman(echoState, receivedAt);
+            }
             persistConversationState(echoState);
 
             leadAction = echoLeadSync.action;
             leadId = echoLeadSync.lead.id;
             conversationUpdated = true;
-            messageAppended = true;
             echoConversationUpdated = true;
-            echoMessageAppended = true;
             echoReason = "instagram_human_echo_takeover";
           }
         }
@@ -526,6 +552,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
             replyText: engineReply.text,
             transport: PROVIDER,
           });
+          const preparedAssistantId = engineReply.state.messages.filter((message) =>
+            message.actor !== "human" &&
+            message.role === "assistant" &&
+            message.text.trim() === engineReply.text?.trim()
+          ).at(-1)?.id;
 
           const outboundPermission = evaluateLatestAiOutboundPermission({
             leadId: leadSync.lead.id,
@@ -561,27 +592,32 @@ router.post("/", async (req: RawBodyRequest, res) => {
             sent = true;
             outboundStatus = "sent";
             metaMessageId = sendResult.metaMessageId;
-            updateLatestAssistantMessageSendResult({
-              messages: engineReply.state.messages,
-              replyText: engineReply.text,
-              transport: PROVIDER,
-              outboundStatus: "sent",
-              sentAt: nowIso(),
-              metaMessageId,
-            });
+            if (preparedAssistantId) {
+              reconcileAiOutboundReceipt({
+                leadId: leadSync.lead.id,
+                campaignId: leadSync.campaignId,
+                assistantMessageId: preparedAssistantId,
+                transport: PROVIDER,
+                outboundStatus: "sent",
+                sentAt: nowIso(),
+                metaMessageId,
+              });
+            }
           } else if (!sendResult.ok) {
             failed += 1;
             dryRun = false;
             sent = false;
             outboundStatus = "send_failed";
-            updateLatestAssistantMessageSendResult({
-              messages: engineReply.state.messages,
-              replyText: engineReply.text,
-              transport: PROVIDER,
-              outboundStatus: "send_failed",
-              sendError: sendResult.error,
-            });
-            persistConversationState(engineReply.state);
+            if (preparedAssistantId) {
+              reconcileAiOutboundReceipt({
+                leadId: leadSync.lead.id,
+                campaignId: leadSync.campaignId,
+                assistantMessageId: preparedAssistantId,
+                transport: PROVIDER,
+                outboundStatus: "send_failed",
+                sendError: sendResult.error,
+              });
+            }
 
             saveMessageEventLogEntry(
               buildLogEntry({
@@ -630,7 +666,8 @@ router.post("/", async (req: RawBodyRequest, res) => {
         }
 
         if (!skipEngineStatePersist) {
-          persistConversationState(engineReply.state);
+          const latest = getConversationState(leadSync.lead.id, leadSync.campaignId);
+          if (latest) persistConversationState(latest);
         }
         processed += 1;
       } catch (engineError) {

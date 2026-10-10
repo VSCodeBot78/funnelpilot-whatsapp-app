@@ -83,8 +83,8 @@ export function consumeKnownAiInstagramEcho(input: {
 
   const recipientId = normalizeString(input.recipientId);
   const messageId = normalizeString(input.messageId);
-  const text = normalizeString(input.text);
-
+  // Message text alone cannot identify the sender: Jochen and Pete may send
+  // exactly the same text while a Meta request is in flight.
   if (stateContainsAiMessageId(input.state, messageId)) {
     return true;
   }
@@ -99,12 +99,9 @@ export function consumeKnownAiInstagramEcho(input: {
       Boolean(item.metaMessageId) &&
       item.metaMessageId === messageId;
 
-    const pendingTextMatches =
-      !item.metaMessageId &&
-      Boolean(text) &&
-      item.text === text;
-
-    if (idMatches || pendingTextMatches) {
+    // Fail closed if the outgoing Meta ID is still unknown. Treating an
+    // unconfirmed same-text echo as AI would suppress a real human takeover.
+    if (idMatches) {
       pending.delete(token);
       return true;
     }

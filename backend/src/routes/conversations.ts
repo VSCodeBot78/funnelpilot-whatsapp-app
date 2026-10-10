@@ -268,9 +268,15 @@ router.post("/conversations/:campaignId/:leadId/human-message", async (req, res)
     let messageAppended = false;
 
     if (outbound.ok && outbound.sent) {
-      appendHumanMessage(state, messageText);
+      // Meta may echo an outgoing manual message before its API request finishes.
+      // Reuse that exact recorded human message instead of adding a duplicate.
+      const latest = getConversationState(String(leadId).trim(), String(campaignId).trim()) ?? state;
+      const alreadyRecorded = Boolean(outbound.metaMessageId) &&
+        latest.messages.some((entry) => entry.actor === "human" &&
+          entry.metaMessageId === outbound.metaMessageId);
+      if (!alreadyRecorded) appendHumanMessage(latest, messageText);
 
-      const message = state.messages.at(-1);
+      const message = alreadyRecorded ? null : latest.messages.at(-1);
       if (message?.actor === "human") {
         message.transport = outbound.transport;
         message.outboundStatus = "sent";
@@ -281,13 +287,14 @@ router.post("/conversations/:campaignId/:leadId/human-message", async (req, res)
         message.sendError = null;
       }
 
-      persistConversationState(state);
-      messageAppended = true;
+      persistConversationState(latest);
+      messageAppended = !alreadyRecorded;
     }
 
+    const currentState = getConversationState(String(leadId).trim(), String(campaignId).trim()) ?? state;
     return res.json({
       ok: true,
-      state,
+      state: currentState,
       outboundTransport: outbound.transport,
       recipient: outbound.recipient,
       sent: outbound.sent,

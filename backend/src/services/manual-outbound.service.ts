@@ -113,6 +113,7 @@ export async function sendManualConversationOutbound(input: {
     const result = await sendMetaInstagramTextMessage({
       to: target.recipient,
       body: messageText,
+      origin: "human",
     });
 
     return {

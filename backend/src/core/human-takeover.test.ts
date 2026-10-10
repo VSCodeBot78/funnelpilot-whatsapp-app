@@ -19,6 +19,7 @@ const {
   getOrCreateConversationState,
   releaseToAi,
   takeOverByHuman,
+  persistConversationState,
 } = await import("./state-manager.js");
 const { processIncomingMessage } = await import("./conversation-engine.js");
 const {
@@ -30,6 +31,9 @@ const {
 const {
   evaluateProviderBookingFollowUp,
 } = await import("../services/provider-booking.service.js");
+
+const { reconcileAiOutboundReceipt } = await import("../services/conversation-outbound.service.js");
+const { evaluateLatestAiOutboundPermission } = await import("../services/ai-outbound-guard.service.js");
 
 const CAMPAIGN_ID = "eltern-vital-fit";
 
@@ -158,4 +162,68 @@ test("Phase 1 human takeover semantics", async (t) => {
     assert.equal(evaluation.active, false);
     assert.match(evaluation.reason ?? "", /Human Takeover/i);
   });
+  await t.test("delayed Instagram AI receipt cannot overwrite later human reply", () => {
+    clearConversationStore();
+    const state = getOrCreateConversationState("instagram:race-human-1", CAMPAIGN_ID);
+    appendAssistantMessage(state, "Pete schlägt etwas vor.");
+    const aiMessage = state.messages.at(-1);
+    assert.ok(aiMessage);
+    aiMessage.transport = "meta_instagram";
+    aiMessage.outboundStatus = "prepared";
+    persistConversationState(state);
+
+    // Model a human answer arriving after the Meta request began but before
+    // the asynchronous send promise resolved.
+    appendHumanMessage(state, "Ich übernehme, Jochen hier.");
+    persistConversationState(state);
+
+    const accepted = reconcileAiOutboundReceipt({
+      leadId: state.leadId, campaignId: state.campaignId,
+      assistantMessageId: aiMessage.id, transport: "meta_instagram",
+      outboundStatus: "sent", metaMessageId: "race-ig-ack",
+    });
+    assert.equal(accepted, true);
+    assert.equal(state.owner, "human");
+    assert.equal(state.aiPaused, true);
+    assert.equal(state.messages.length, 2);
+    assert.equal(state.messages.at(-1)?.actor, "human");
+    assert.equal(state.messages.at(-1)?.text, "Ich übernehme, Jochen hier.");
+    assert.equal(state.messages[0]?.metaMessageId, "race-ig-ack");
+    assert.deepEqual(evaluateLatestAiOutboundPermission({
+      leadId: state.leadId, campaignId: state.campaignId,
+    }), { allowed: false, reason: "human_owned" });
+    assert.equal(reconcileAiOutboundReceipt({
+      leadId: state.leadId, campaignId: state.campaignId,
+      assistantMessageId: state.messages.at(-1)!.id,
+      transport: "meta_instagram", outboundStatus: "sent",
+    }), false);
+  });
+
+  await t.test("delayed WhatsApp failure updates only Pete receipt, not human ownership", () => {
+    clearConversationStore();
+    const state = getOrCreateConversationState("whatsapp:race-human-2", CAMPAIGN_ID);
+    appendAssistantMessage(state, "Pete antwortet");
+    const aiMessage = state.messages.at(-1);
+    assert.ok(aiMessage);
+    aiMessage.transport = "meta_whatsapp";
+    aiMessage.outboundStatus = "prepared";
+    persistConversationState(state);
+    appendHumanMessage(state, "Jochen hat geantwortet.");
+    persistConversationState(state);
+
+    const reconciled = reconcileAiOutboundReceipt({
+      leadId: state.leadId, campaignId: state.campaignId,
+      assistantMessageId: aiMessage.id, transport: "meta_whatsapp",
+      outboundStatus: "send_failed", sendError: "mock failure",
+    });
+    assert.equal(reconciled, true);
+    assert.equal(aiMessage.outboundStatus, "send_failed");
+    assert.equal(state.owner, "human");
+    assert.equal(state.aiPaused, true);
+    assert.equal(state.messages.at(-1)?.text, "Jochen hat geantwortet.");
+    assert.deepEqual(evaluateLatestAiOutboundPermission({
+      leadId: state.leadId, campaignId: state.campaignId,
+    }), { allowed: false, reason: "human_owned" });
+  });
+
 });
