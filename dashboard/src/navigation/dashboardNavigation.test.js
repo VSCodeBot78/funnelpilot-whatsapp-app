@@ -16,7 +16,7 @@ test("Primary navigation focuses daily tasks while every original module remains
   assert.equal(new Set(keys).size, keys.length);
   assert.deepEqual(new Set(keys), new Set([
     "dashboard", "inbox", "leads", "appointments", "ghosting",
-    "campaigns", "settings", "onboarding", "booking-events",
+    "campaigns", "settings", "onboarding", "coach-draft", "booking-events",
   ]));
   assert.deepEqual(DAILY_NAV.slice(0, 4).map(item => item.key),
     ["dashboard", "inbox", "leads", "appointments"]);
