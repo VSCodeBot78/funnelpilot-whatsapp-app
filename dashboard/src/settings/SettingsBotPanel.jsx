@@ -38,6 +38,7 @@ export default function SettingsBotPanel({
     defaultLanguage: "Deutsch",
     brandVoice: "Jochen-Sprache",
     masterPrompt: "",
+    customerTopObjections: "",
     dmConversationMode: "natural",
     answerLength: "kurz",
     fallbackReply: DEFAULT_FALLBACK_TEXT,
