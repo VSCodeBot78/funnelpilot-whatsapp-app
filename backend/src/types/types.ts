@@ -209,6 +209,8 @@ export type ConversationAnswerMap = {
   starterCheckoutSessionId?: string;
   starterProductId?: string;
   onboardingBookingUrl?: string;
+  onboardingPromptPreparedAt?: string;
+  // Legacy read-only field from older persisted data. Never set without a confirmed send.
   onboardingPromptSentAt?: string;
 };
 

@@ -111,3 +111,18 @@ Die Challenge/Signatur nutzt weiterhin die vorhandenen echten Secrets in `backen
 4. Hetzner inklusive TLS, Reverse Proxy, Authentifizierung aller Admin-APIs, persistenter Speicherung, Backups und Monitoring.
 
 **Kosten:** Laptop-Test mit den bestehenden Tools erfordert keinen Hetzner-Server. Falls ein echter OpenAI-Aufruf erfolgt, können API-Gebühren anfallen. Das lokale Testprogramm legt keine kostenpflichtigen Cloud-Ressourcen an.
+
+## 7. Geführtes App-Onboarding ab Phase 15
+
+Beim ersten Öffnen des Dashboards wird die Seite **Einrichtung** angezeigt. Sie bleibt jederzeit links in der Navigation erreichbar. Die vier Abschnitte sind:
+
+1. **Workspace:** Produkt- und Betreibername sowie Branding, Speichern im Backend.
+2. **Pete:** Assistent, Markenstimme, Sprache und Eskalationsregel, ebenfalls im Backend gespeichert.
+3. **Kanäle & Sicherheit:** API-/Token-Konfiguration wird am lokalen `/health/readiness` geprüft. **Konfiguriert bedeutet nicht live verbunden.** Kein OAuth-/Meta-One-Click-Connect.
+4. **Gesamtablauf:** Kampagnen, Testleads, Inbox, Human Takeover, Follow-ups, Termine, Testchat. Zusätzlich ist ein **simulierter 499-€-Kauf** mit vorbereiteter Onboarding-Termineinladung möglich.
+
+Der simulierte Checkout ist nur über die lokale Dashboard-Backend-Verbindung aufrufbar und erzeugt einen eigenen synthetischen Testlead. Er führt **keine Zahlung und keinen Nachrichtenversand** aus. Die Invite-Markierung heißt jetzt `onboardingPromptPreparedAt`; sie darf nicht mit einer tatsächlich gesendeten Nachricht verwechselt werden.
+
+Die Einführung lässt sich verlassen und über **Einrichtung** jederzeit erneut öffnen. Der Browser speichert dabei nur den Hinweis, dass die Einführung bereits angezeigt wurde. Das ist **kein serverseitiger Kunden-Onboarding-Abschlussstatus**. Die One-Click-Verbindung echter Meta-Konten und ein Live-Test des Kauf-/Onboarding-Versands sind weiterhin offen.
+
+**Wichtige Begriffe:** Betreiber-Onboarding = Ersteinrichtung der Software. Kunden-Onboarding = Termin-/Einladungsprozess nach Kauf des Coachings. Beide können jetzt lokal in ihren vorhandenen Teilen getestet werden; der vollständige produktive Versand bleibt gesondert abzunehmen.

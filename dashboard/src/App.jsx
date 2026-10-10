@@ -69,7 +69,7 @@ export default function App() {
           </div>
         </div>
 
-        {isDashboard ? <AppDashboard /> : <ChatTest />}
+        {isDashboard ? <AppDashboard onOpenTestChat={() => setView("chat")} /> : <ChatTest />}
       </div>
     </div>
   );
