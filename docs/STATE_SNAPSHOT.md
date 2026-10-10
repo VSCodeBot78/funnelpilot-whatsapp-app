@@ -258,3 +258,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **Sicherheitsgrenze explizit:** Fremde Coach-Marken nicht im derzeitigen Jochen-Workspace testen; sonst würden **bestehende** Marken-/Prompt-/Angebotseinstellungen überschrieben. Für spätere echte Coach-Konten braucht es zuerst Login, Rollen und serverseitige Mandantentrennung. Draft-Angebote/FAQs überschreiben die Angebotswahrheit der Pete-Engine NICHT.
 - **Tests:** Backend-HTTP-Persistenz/Reload/Teilupdate und strenge Validierung sowie Dashboard-Vorschau-/Nichtaktivierungs-Tests. Vor Docs-Änderungen GitHub-CI `38070751513`: **223 Backend + 9 Relay/Starter + 23 Dashboard = 255 Tests**, beide Builds erfolgreich. Endgültigen PR-HEAD gesondert prüfen.
 - **Detail:** `docs/PHASE37_COACH_ONBOARDING_2026-10-10.md`. Keine neuen Anbieter, Live-Sends, Hetzner-Instanz oder Kosten. **Prioritäten 1–7 auf der technischen Vorbereitungsseite bearbeitet; echte SaaS- und Laptop-Abnahmen bleiben offen**.
+
+## Phase 37 Nachbesserung – duplicate PR aufgelöst, Coach-Identität geschützt (10.10.2026)
+
+- **PR #60 ist die kanonische integrierte Coach-Onboarding-Implementierung**; der parallel erstellte, konfligierende PR #61 wurde ohne Merge geschlossen. Es gibt nur einen Einrichtungs-Wizard/Coach-Editor.
+- Zusätzliche `coachOnboardingDraft.identity`-Felder in der bestehenden Entwurfsvorlage statt Verwendung von Jochens aktuellen Marken-/Pete-Werten in der Coach-Vorschau. Bestehende gespeicherte v1-Entwürfe ohne Identity bleiben lesbar.
+- Neues read-only-sicheres `POST /coach-onboarding-draft`: **nur** Entwurfsfelder werden serverseitig gespeichert, nicht andere ungespeicherte aktive Einstellungen aus dem Dashboard; keine KI-/Meta-/Kampagnen-Freigabe. Frontend-Button nutzt nur diese Route.
+- Neuer synthetischer HTTP-Test prüft Unverändertheit von `companyName`, `adminName`, `assistantName`, `masterPrompt`, `aiEnabled`, `testMode`, Buchungs- und Checkout-URLs; reine Preview-Tests verhindern das Erben aktueller EF&V-Daten in ein fremdes Coach-Profil.
+- **Noch keine SaaS-Freigabe:** Globale aktive Einstellungen im bestehenden Wizard bleiben bewusst aktiv. Für fremde Coaches nur die getrennte Vorlage bearbeiten; eigene Logins, echte Mandantenisolation und echter Windows-/Meta-Test weiterhin offen.
+- Details: `docs/PHASE37_COACH_ONBOARDING_2026-10-10.md` Abschnitt 7.
