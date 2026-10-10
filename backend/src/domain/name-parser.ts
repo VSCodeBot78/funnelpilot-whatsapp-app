@@ -111,8 +111,11 @@ export function isMultiplePeopleIntroduction(input: string): boolean {
     return true;
   }
 
+  // Only interpret an explicit pair of first names as two chat participants.
+  // A casual parent message like "zwei Kindern und abends müde" is NOT a
+  // two-person introduction, even though it contains "<word> und <word>".
   const andPattern =
-    /\b([a-zäöüß-]{2,})\s+(und|&)\s+([a-zäöüß-]{2,})\b/i;
+    /^(?:(?:ich bin|hier sind)\s+)?([a-zäöüß-]{2,})\s+(und|&)\s+([a-zäöüß-]{2,})(?:\s+hier)?$/i;
 
   const andMatch = normalized.match(andPattern);
 
@@ -140,6 +143,11 @@ export function parseName(input: string): string | null {
   }
 
   if (isMultiplePeopleIntroduction(normalized)) {
+    return null;
+  }
+
+  // This states parental context but does not introduce a first name.
+  if (/^(?:(?:ich bin|bin)\s+)?(?:papa|mama|vater|mutter|elternteil)\b/i.test(normalized)) {
     return null;
   }
 

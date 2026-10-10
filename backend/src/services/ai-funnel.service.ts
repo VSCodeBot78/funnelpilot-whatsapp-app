@@ -1,5 +1,6 @@
 import { AI_OBJECTION_FRAMEWORK } from "../config/ai-objection-framework.js";
 import type { AiFunnelReply, AiObjectionCategory } from "../types/ai-funnel.types.js";
+import { readSettings } from "./settings-store.js";
 
 type AiReplyParams = {
   category: AiObjectionCategory;
@@ -46,7 +47,8 @@ function getModel(): string {
 }
 
 function isAiEnabled(): boolean {
-  return Boolean(getApiKey());
+  // A configured API key alone must never activate paid AI requests.
+  return Boolean(getApiKey()) && readSettings().aiEnabled === true;
 }
 
 function extractOutputText(responseJson: any): string | null {
@@ -126,12 +128,27 @@ function buildSchema() {
 
 function buildSystemPrompt(params: AiReplyParams): string {
   const framework = AI_OBJECTION_FRAMEWORK[params.category];
+  const settings = readSettings();
+  const workspaceContext = [
+    "Marken-/Mandantenkontext (nur für diese lokale Instanz, noch keine SaaS-Tenant-Trennung):",
+    "Firmenname: " + settings.companyName.slice(0, 180),
+    "Nische: " + settings.companyNiche.slice(0, 180),
+    "Zielgruppe: " + settings.companyAudience.slice(0, 300),
+    "Angebotsüberblick (keine Preisquelle): " + settings.companyOfferSummary.slice(0, 450),
+    "Name des Assistenten: " + settings.assistantName.slice(0, 80),
+    "Markensprache: " + settings.brandVoice.slice(0, 200),
+    "Sprache: " + settings.defaultLanguage.slice(0, 60),
+    "Zusätzlicher vom Betreiber gepflegter Master-Prompt:",
+    settings.masterPrompt.slice(0, 8000),
+    "VERBINDLICHE GRENZEN: Dieser Zusatzprompt steuert Stil und Kontext, niemals Preise, Verfügbarkeiten, medizinische Aussagen oder Sicherheits- und Stop-Regeln. Solche Informationen kommen ausschließlich aus der geprüften Funnel-Engine. Keine gefälschte Identität, keine erfundenen Fakten.",
+  ].join("\n");
 
   return [
     "Du bist die KI-Schicht in einem WhatsApp Funnel für Eltern.",
     "Du bist zu 85% Setter und zu 15% Sales-Agent.",
     "Dein Job ist nicht freies Reden, sondern kurze, menschliche Führung mit sauberer Rückführung in den Funnel.",
     "Arbeite auf Deutsch.",
+    workspaceContext,
     "Schreibe kurz, klar, empathisch und führend.",
     "Nicht manipulativ klingen.",
     "Nicht weich werden.",

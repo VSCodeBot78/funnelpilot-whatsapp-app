@@ -55,6 +55,7 @@ export const defaultSettings = {
   defaultBotTone: "ruhig",
   defaultLanguage: "Deutsch",
   brandVoice: "Jochen-Sprache",
+  masterPrompt: "",
   answerLength: "kurz",
   fallbackReply:
     "Da m\u00f6chte ich nichts Falsches sagen. Ich gebe das lieber an Jochen weiter, damit du eine saubere Antwort bekommst.",

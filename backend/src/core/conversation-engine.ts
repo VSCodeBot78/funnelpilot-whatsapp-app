@@ -2115,6 +2115,17 @@ export async function processIncomingMessage(
     const parsedName = parseName(input.messageText);
 
     if (!parsedName) {
+      // Preserve disclosed parental context while still asking for a real
+      // first name. Otherwise "Ich bin Papa von zwei Kindern" would either
+      // be treated as two people or ask the parent question a second time.
+      const parentContextFromIntro = parseParentContext(input.messageText);
+      if (parentContextFromIntro.explicit) {
+        patchAnswers(state, {
+          parentRole: parentContextFromIntro.role,
+          parentContextText: parentContextFromIntro.rawText,
+          isTargetParent: parentContextFromIntro.role !== "not_parent",
+        });
+      }
       const lowered = normalizeText(input.messageText);
       const replyText =
         lowered === "hallo" || lowered === "hi" || lowered === "hey" || lowered === "huhu"

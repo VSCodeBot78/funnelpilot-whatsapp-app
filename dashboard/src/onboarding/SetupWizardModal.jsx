@@ -100,14 +100,14 @@ export default function SetupWizardModal({
   }
 
   function input(label, key, options = {}) {
-    const { multiline = false, placeholder = "" } = options;
+    const { multiline = false, placeholder = "", rows = 3 } = options;
     const style = { padding: "11px 12px", width: "100%", boxSizing: "border-box",
       border: "1px solid #cbd5e1", borderRadius: 9, color: "#0f172a",
       background: "#ffffff", fontSize: 14, marginTop: 6 };
     return <label style={{ fontSize: 13, color: "#334155", fontWeight: 700 }}>
       {label}
       {multiline
-        ? <textarea rows={3} style={{ ...style, resize: "vertical" }}
+        ? <textarea rows={rows} style={{ ...style, resize: "vertical" }}
             value={settings[key] || ""} placeholder={placeholder}
             onChange={e => update(key, e.target.value)} />
         : <input style={style} value={settings[key] || ""} placeholder={placeholder}
@@ -319,6 +319,17 @@ export default function SetupWizardModal({
               <div style={{ display: "grid", gap: 12 }}>
                 {input("Assistentenname", "assistantName")}
                 {input("Markensprache / Tonalität", "brandVoice")}
+                <div>
+                  {input("Master-Prompt: So soll Pete mit deinen Leads sprechen",
+                    "masterPrompt", { multiline: true, rows: 9,
+                    placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    Für Eltern fit &amp; vital ist eine Startvorlage hinterlegt.
+                    Andere Unternehmen tragen später ihren eigenen Master-Prompt ein.
+                    Der Prompt steuert die freie KI-Antwortschicht; feste Sicherheits-
+                    und Funnel-Antworten werden zusätzlich getrennt geprüft.
+                  </p>
+                </div>
                 {input("Eskalation an einen Menschen", "escalationHint", { multiline: true })}
                 {input("Was Pete niemals tun darf", "noGos", { multiline: true })}
               </div>

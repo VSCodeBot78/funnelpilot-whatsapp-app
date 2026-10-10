@@ -1,4 +1,5 @@
 import type { FlowOption, FlowStepId } from "../types/types.js";
+import { readSettings } from "./settings-store.js";
 
 export type AiChoiceInterpretation = {
   mappedChoice: string | null;
@@ -43,7 +44,8 @@ export async function interpretChoiceWithAi(params: {
   leadName?: string;
 }): Promise<AiChoiceInterpretation | null> {
   const apiKey = getApiKey();
-  if (!apiKey || params.options.length === 0) {
+  // API key presence alone is not consent to incur OpenAI API charges.
+  if (!apiKey || !readSettings().aiEnabled || params.options.length === 0) {
     return null;
   }
 

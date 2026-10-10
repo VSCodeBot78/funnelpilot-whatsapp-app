@@ -37,11 +37,13 @@ export default function SettingsBotPanel({
     defaultBotTone: "ruhig",
     defaultLanguage: "Deutsch",
     brandVoice: "Jochen-Sprache",
+    masterPrompt: "",
     answerLength: "kurz",
     fallbackReply: DEFAULT_FALLBACK_TEXT,
     qualificationPrompt: "",
     escalationHint: DEFAULT_ESCALATION_RULE,
     noGos: DEFAULT_NO_GOS,
+    aiEnabled: false,
     aiProvider: "OpenAI",
     aiModel: "gpt-4.1-mini",
     openAiApiKeyConfigured: false,
@@ -163,6 +165,26 @@ export default function SettingsBotPanel({
 
             <div style={{ marginTop: 12 }}>
               <FieldLabelWithInfo
+                label="Master-Prompt für Pete"
+                title="Marken- und Zielgruppenprompt"
+                text="Eigene Sprache, Zielgruppe, Coach-Angebote, Gesprächsführung und Tabus. Der Text fließt in die OpenAI-Antwortschicht ein; feste Funnel-Antworten und Sicherheitsregeln gelten zusätzlich."
+                placement="right"
+              />
+              <textarea
+                rows={9}
+                style={baseTextareaStyle(colors, 200)}
+                value={safeSettings.masterPrompt || ""}
+                onChange={(event) => updateField("masterPrompt", event.target.value)}
+                placeholder="Zielgruppe, Markenstimme, Umgang mit Einwänden und zulässige Aussagen"
+              />
+              <div style={{ color: colors.sub, fontSize: 12, marginTop: 5 }}>
+                Ein Standardtext ist für die aktuelle Eltern-fit-&amp;-vital-Testumgebung bereits im Backend vorbereitet.
+                Spätere Kunden passen diesen Prompt im eigenen Bereich an.
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
                 label="Eskalationsregel"
                 title="Eskalationsregel"
                 text="Legt fest, wann Pete nicht weiter automatisiert antworten soll und Jochen \u00fcbernehmen muss."
@@ -216,6 +238,20 @@ export default function SettingsBotPanel({
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
             OpenAI / KI-Anbindung
           </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10,
+            marginBottom: 16, fontSize: 13, lineHeight: 1.5 }}>
+            <input type="checkbox" checked={Boolean(safeSettings.aiEnabled)}
+              onChange={event => updateField("aiEnabled", event.target.checked)}
+              style={{ marginTop: 3 }} />
+            <span><strong>Freie OpenAI-KI-Antworten aktivieren</strong>
+              <span style={{ display: "block", color: colors.sub, fontSize: 12 }}>
+                Standardmäßig aus. Nur mit bewusst aktiviertem Schalter UND einem
+                serverseitig hinterlegten API-Schlüssel werden externe KI-Aufrufe
+                gestartet. Regelbasierte Funnel-Antworten und Testchat funktionieren
+                auch ohne diesen Schalter.
+              </span>
+            </span>
+          </label>
 
           <div
             style={{
