@@ -116,6 +116,20 @@ export function getNaturalConversationReply(params: {
     /\b(keto[\s-]*guide|keto[\s-]*pdf|keto[\s-]*anleitung|kostenloser keto[\s-]*guide)\b/) ||
     /^(keto|guide)$/i.test(input);
 
+  // An explicit buying request must not be sent back into an opening
+  // qualification flow, including when someone wants Keto coaching.
+  if (matches(input,
+      /\b(ich (mochte|will) (die |das )?(5[\s-]*wochen[\s-]*)?(begleitung|startphase|coaching) (buchen|kaufen)|ich will die begleitung|ich mochte die begleitung|ich will starten|ich mochte starten|direkt kaufen)\b/)) {
+    return {
+      text: (ketoSupport || ketoInConversation
+        ? "Keto kann dabei individuell eingebaut werden, wenn es zu dir passt.\n"
+        : "") +
+        priceFiveWeeks +
+        "\nMöchtest du dazu zuerst ein Strategiegespräch oder lieber direkt starten?",
+      phase: "coaching_close", track: ketoSupport || ketoInConversation ? "keto" : "coaching",
+    };
+  }
+
   if (ketoSupport && ["opening", "info", "selfstarter_offered"].includes(phase)) {
     return {
       text: "Keto kann Jochen in die 5-Wochen-Begleitung einbauen, wenn es zu dir passt. Es ist kein Muss und kein Dogma.\n" +
