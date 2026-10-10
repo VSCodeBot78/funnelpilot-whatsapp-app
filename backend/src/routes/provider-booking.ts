@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { appendAssistantMessage } from "../core/state-manager.js";
+import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
+import { sendConversationTextOutbound } from "../services/manual-outbound.service.js";
+import { updateLatestAssistantMessageSendResult } from "../services/conversation-outbound.service.js";
 import {
   evaluateProviderBookingFollowUp,
   getProviderFollowUpMessage,
@@ -112,7 +115,7 @@ router.post("/mark-sent/:campaignId/:leadId", (req, res) => {
   }
 });
 
-router.post("/send-due/:campaignId/:leadId", (req, res) => {
+router.post("/send-due/:campaignId/:leadId", async (req, res) => {
   try {
     const { campaignId, leadId } = req.params;
     const sentAt = typeof req.body?.sentAt === "string" ? req.body.sentAt : undefined;
@@ -154,7 +157,57 @@ router.post("/send-due/:campaignId/:leadId", (req, res) => {
       });
     }
 
+    const outboundPermission = evaluateLatestAiOutboundPermission({
+      leadId,
+      campaignId,
+    });
+
+    if (!outboundPermission.allowed) {
+      return res.json({
+        ok: true,
+        leadId,
+        campaignId,
+        sent: false,
+        dryRun: true,
+        sendSkipped: true,
+        sendSkipReason: `outbound_guard_${outboundPermission.reason}`,
+        messageText,
+        evaluation,
+        providerBookingState: state.providerBooking,
+      });
+    }
+
+    const outbound = await sendConversationTextOutbound({
+      state,
+      messageText,
+    });
+
+    if (!outbound.ok || !outbound.sent) {
+      return res.json({
+        ok: true,
+        leadId,
+        campaignId,
+        sent: false,
+        dryRun: outbound.dryRun,
+        sendSkipped: outbound.sendSkipped,
+        sendSkipReason: outbound.reason,
+        sendError: outbound.error,
+        outboundTransport: outbound.transport,
+        messageText,
+        evaluation,
+        providerBookingState: state.providerBooking,
+      });
+    }
+
     appendAssistantMessage(state, messageText);
+    updateLatestAssistantMessageSendResult({
+      messages: state.messages,
+      replyText: messageText,
+      transport: outbound.transport,
+      outboundStatus: "sent",
+      sentAt: new Date().toISOString(),
+      metaMessageId: outbound.metaMessageId ?? null,
+    });
 
     state.providerBooking = markProviderFollowUpAsSent(
       state.providerBooking,
@@ -168,6 +221,11 @@ router.post("/send-due/:campaignId/:leadId", (req, res) => {
       ok: true,
       leadId,
       campaignId,
+      sent: true,
+      dryRun: false,
+      sendSkipped: false,
+      outboundTransport: outbound.transport,
+      metaMessageId: outbound.metaMessageId ?? undefined,
       sentStage: evaluation.stage,
       sentAt: now.toISOString(),
       messageText,
