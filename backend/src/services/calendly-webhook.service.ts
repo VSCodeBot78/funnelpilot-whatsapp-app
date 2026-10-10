@@ -176,7 +176,7 @@ export function buildGoogleCalendarTemplateLink(params: {
     "Die finalen Termindetails und den Gesprächslink findest du in deiner Calendly-Bestätigung per Mail.";
   const location = "Details siehe Calendly-Bestätigung";
 
-  const params = new URLSearchParams({
+  const calendarParams = new URLSearchParams({
     action: "TEMPLATE",
     text: title,
     dates: `${start}/${end}`,
@@ -184,7 +184,7 @@ export function buildGoogleCalendarTemplateLink(params: {
     location,
   });
 
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  return `https://calendar.google.com/calendar/render?${calendarParams.toString()}`;
 }
 
 function buildBookedWhatsappConfirmation(body: CalendlyPayload): string {
