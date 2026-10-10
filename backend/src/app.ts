@@ -10,6 +10,7 @@ import campaignsRouter from "./routes/campaigns.js";
 import testChatRouter from "./routes/test-chat.js";
 import webhookRouter from "./routes/webhook.js";
 import settingsConfigRoute from "./routes/settings-config.js";
+import coachOnboardingDraftRouter from "./routes/coach-onboarding-draft.js";
 import conversationsRouter from "./routes/conversations.js";
 import ghostingConfigRouter from "./routes/ghosting-config.js";
 import leadsRouter from "./routes/leads.js";
@@ -155,6 +156,8 @@ app.use(
 app.use(destructiveRouteGuard);
 
 app.use(settingsConfigRoute);
+// Single-workspace inert coach template; guarded as an admin route in production.
+app.use(coachOnboardingDraftRouter);
 
 app.get("/health", (_req, res) => {
   return res.json({
