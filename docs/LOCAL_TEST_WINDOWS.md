@@ -195,3 +195,15 @@ Das Backend speichert nach einer erfolgreichen Antwort nur den Zeitstempel der B
 **Anzeigen:** `api_verified_no_sync` heißt **API-Zugriff geprüft, Synchronisierung noch nicht aktiv**. Bei 401/403 wird erneute Autorisierung empfohlen; bei Netzwerkproblemen bleibt der vorherige Status erhalten. Abgelaufene Zugriffs-Tokens werden nicht als aktuell erfolgreich geprüft behandelt; automatische Token-Erneuerung ist noch nicht implementiert. Der API-Prüf-Endpunkt akzeptiert Anfragen nur vom autorisierten lokalen Dashboard-Ursprung bzw. später vom produktiven Dashboard-Ursprung.
 
 Dieser Check kann auf dem Laptop mit echten OAuth-Testkonten erst nach Registrierung der Anbieter-Apps und Hinterlegung der Secrets ausgeführt werden. Die Funktionslogik ist zusätzlich mit rein synthetischen Tokens und gemockten Anbieter-Antworten automatisiert getestet. Er ersetzt keinen End-to-End-Test für tatsächliche Event-/Kontakt-Synchronisierung.
+
+
+## 11. Onboarding im Dashboard neu starten (Phase 19)
+
+Direkt auf der Dashboard-Startseite gibt es zwei Schnellaktionen:
+
+- **Einrichtung neu durchlaufen:** öffnet denselben sechs Schritte umfassenden Pop-up-Assistenten wieder ab „Willkommen“. Bereits gespeicherte Betreiber-/Pete-/Angebotseinstellungen und autorisierte Konten bleiben erhalten.
+- **Verbindungen bearbeiten:** öffnet das Pop-up sofort beim vierten Schritt „Verbindungen“, etwa um Kalender, Social Media oder CRM zu prüfen bzw. zu wechseln.
+
+Der bestehende Sidebar-Eintrag **Einrichtung** bleibt ebenfalls erhalten. Das Schließen des Pop-ups oder sein Neustart ruft **keinen** Reset-/Lösch-Endpunkt auf, entfernt keine OAuth-Tokens und aktiviert keinen Nachrichtenversand. Die neuen Aktionen sind ausschließlich Navigation.
+
+Test auf dem Laptop: Setup schließen, Dashboard aufrufen, beide Buttons prüfen, Felder und Providerstatus vergleichen; sie müssen beim Wiederöffnen erhalten bleiben. Besonders wichtig ist, „Neu durchlaufen“ nicht mit „Werkseinstellungen wiederherstellen“ zu verwechseln.
