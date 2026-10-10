@@ -15,6 +15,7 @@ export function assertSafeLocalLaptopEnvironment(
     "INSTAGRAM_ENGINE_ENABLED",
     "INSTAGRAM_SEND_ENABLED",
     "WHATSAPP_SEND_ENABLED",
+    "WHATSAPP_ALLOW_ALL_RECIPIENTS",
     "INSTAGRAM_ALLOW_ALL_SENDERS",
     "INSTAGRAM_AUTO_ENABLE_NEW_LEADS",
     "ENABLE_GENERIC_WEBHOOKS",
@@ -23,6 +24,9 @@ export function assertSafeLocalLaptopEnvironment(
     if (values[key]?.trim().toLowerCase() !== "false") {
       throw new Error("local_laptop_lock_requires_false_" + key);
     }
+  }
+  if (values.WHATSAPP_ALLOWED_RECIPIENT_IDS?.trim() !== "") {
+    throw new Error("local_laptop_lock_requires_empty_whatsapp_allowlist");
   }
   if (values.INSTAGRAM_ALLOWED_SENDER_IDS?.trim() !== "") {
     throw new Error("local_laptop_lock_requires_empty_instagram_allowlist");

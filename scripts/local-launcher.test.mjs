@@ -15,6 +15,8 @@ test("Windows one-click launcher is non-destructive and explicitly disables all 
     'INSTAGRAM_AUTO_ENABLE_NEW_LEADS = "false"',
     'INSTAGRAM_ALLOWED_SENDER_IDS = ""',
     'WHATSAPP_SEND_ENABLED = "false"',
+    'WHATSAPP_ALLOWED_RECIPIENT_IDS = ""',
+    'WHATSAPP_ALLOW_ALL_RECIPIENTS = "false"',
     'ENABLE_GENERIC_WEBHOOKS = "false"',
     'DISABLE_DESTRUCTIVE_ROUTES = "true"',
     'FUNNELPILOT_LOCAL_TEST_MODE = "true"',
