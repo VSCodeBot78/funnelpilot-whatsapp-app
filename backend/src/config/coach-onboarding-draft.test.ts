@@ -80,6 +80,23 @@ test("Guided coach draft survives actual HTTP save, reload and unrelated partial
   const invalidOwner = await post({ coachOnboardingDraft: { ...draft, unknownRole: "admin" } });
   assert.equal(invalidOwner.status, 400);
 
+  // Saving a coach draft alone must leave the active Jochen workspace untouched.
+  const beforeDraftOnly = readSettings();
+  const draftOnly = await post({ coachOnboardingDraft: {
+    ...draft, welcomeLine: "Neuer Entwurf, nicht aktiv",
+  } });
+  assert.equal(draftOnly.status, 200);
+  assert.equal(readSettings().companyName, beforeDraftOnly.companyName);
+  assert.equal(readSettings().masterPrompt, beforeDraftOnly.masterPrompt);
+  assert.equal(readSettings().assistantName, beforeDraftOnly.assistantName);
+  assert.equal(readSettings().starterCheckoutUrl, beforeDraftOnly.starterCheckoutUrl);
+  assert.equal(readSettings().aiEnabled, beforeDraftOnly.aiEnabled);
+  assert.equal(readSettings().testMode, beforeDraftOnly.testMode);
+  assert.equal(readSettings().coachOnboardingDraft.welcomeLine,
+    "Neuer Entwurf, nicht aktiv");
+  // Restore the earlier draft to keep the remaining roundtrip assertions meaningful.
+  assert.equal((await post({ coachOnboardingDraft: draft })).status, 200);
+
   const unrelated = await post({ brandVoice: "ruhig, konkret und menschlich" });
   assert.equal(unrelated.status, 200);
   assert.deepEqual(unrelated.body.settings?.coachOnboardingDraft, draft);
