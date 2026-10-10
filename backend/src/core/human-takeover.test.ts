@@ -113,6 +113,39 @@ test("Phase 1 human takeover semantics", async (t) => {
     assert.equal(result.state.lastActor, "ai");
   });
 
+  await t.test("explicit release clears natural handover latch without bypassing STOP", async () => {
+    clearConversationStore();
+    const state = getOrCreateConversationState("phase31-release-latch", CAMPAIGN_ID);
+    takeOverByHuman(state);
+    state.flags.peteRuntimeHandoffActive = true;
+    state.flags.peteRuntimeHandoffRequested = true;
+    releaseToAi(state);
+    assert.equal(state.owner, "ai");
+    assert.equal(state.aiPaused, false);
+    assert.equal(state.flags.peteRuntimeHandoffActive, false);
+    assert.equal(state.flags.peteRuntimeHandoffRequested, false);
+    const resumed = await processIncomingMessage({
+      leadId: state.leadId, campaignId: state.campaignId,
+      conversationMode: "natural", messageText: "Bitte den kostenlosen Keto Guide.",
+    });
+    assert.match(resumed.text ?? "", /keto-guide/i);
+    assert.equal(resumed.state.owner, "ai");
+
+    const stopped = getOrCreateConversationState("phase31-stopped-latch", CAMPAIGN_ID);
+    takeOverByHuman(stopped);
+    stopped.flags.stopped = true;
+    stopped.flags.peteRuntimeHandoffActive = true;
+    releaseToAi(stopped);
+    assert.equal(stopped.flags.stopped, true);
+    const denied = await processIncomingMessage({
+      leadId: stopped.leadId, campaignId: stopped.campaignId,
+      conversationMode: "natural", messageText: "Hi, bitte Termin buchen",
+    });
+    assert.equal(denied.text, null);
+    assert.equal(denied.replySuppressedReason, "stopped");
+    assert.equal(stopped.flags.stopped, true);
+  });
+
   await t.test("stopped conversations stay silent on later inbound messages", async () => {
     clearConversationStore();
     const state = getOrCreateConversationState("phase1-stopped", CAMPAIGN_ID);
