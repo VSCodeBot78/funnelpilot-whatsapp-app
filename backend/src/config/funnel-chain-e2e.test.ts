@@ -387,6 +387,54 @@ test("Phase 31 – real in-process endpoints connected into complete, provider-m
     }));
   });
 
+  await t.test("simulated checkout records business state but never creates onboarding draft after STOP or human takeover", async () => {
+    for (const blockedBy of ["stop", "human"] as const) {
+      clearConversationStore();
+      const leadId = "phase31-checkout-" + blockedBy;
+      const initial = await chat(base, leadId, "Hallo, ich will die 5-Wochen-Begleitung buchen.");
+      assert.equal(initial.status, 200);
+      if (blockedBy === "stop") {
+        const stop = await chat(base, leadId, "Bitte nicht mehr schreiben.");
+        assert.equal(stop.status, 200);
+        assert.equal(getConversationState(leadId, CAMPAIGN)?.flags.stopped, true);
+      } else {
+        const takeover = await postJson(base, conversationUrl(leadId, "takeover"), {});
+        assert.equal(takeover.status, 200);
+        assert.equal(getConversationState(leadId, CAMPAIGN)?.owner, "human");
+      }
+
+      const before = getConversationState(leadId, CAMPAIGN);
+      assert.ok(before);
+      const originalCount = before.messages.length;
+      const simulated = await postJson(base, "/webhook/checkout", {
+        leadId, campaignId: CAMPAIGN,
+        event: "checkout.completed", paymentStatus: "paid",
+        checkoutId: "phase31-fake-payment-" + blockedBy,
+      });
+      assert.equal(simulated.status, 200);
+      const after = getConversationState(leadId, CAMPAIGN);
+      assert.ok(after);
+      assert.equal(after.answers.coachingEntryPurchaseStatus, "paid");
+      assert.equal(after.messages.length, originalCount,
+        "A blocked assistant must not append a new prepared onboarding DM");
+      assert.equal(after.answers.onboardingPromptPreparedAt, undefined,
+        "No onboarding prepared timestamp is valid without an actual draft");
+      assert.equal(simulated.body.reply, undefined,
+        "API response must not imply a customer-facing message was prepared");
+      if (blockedBy === "stop") {
+        assert.equal(after.flags.stopped, true);
+      } else {
+        assert.equal(after.owner, "human");
+        assert.equal(after.aiPaused, true);
+      }
+    }
+    console.log("PHASE31_CHAIN " + JSON.stringify({
+      path: "checkout-while-blocked", stopPreserved: true,
+      humanPreserved: true, purchaseMetadataRecorded: true,
+      autoDrafts: 0, realSends: 0,
+    }));
+  });
+
   await t.test("signed provider confirmation after personal takeover updates status, but never injects an AI reply", async () => {
     clearConversationStore();
     const leadId = "phase31-handover-booking-test";
