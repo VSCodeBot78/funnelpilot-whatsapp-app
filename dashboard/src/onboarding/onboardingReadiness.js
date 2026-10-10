@@ -3,7 +3,9 @@ import { getLocalRuntimeDiagnostics } from "../diagnostics/systemDiagnostics.js"
 // These are configuration indicators, NOT evidence that Meta accepted a DM.
 // Keep "configured" separate from "verified by a live test".
 export function getOnboardingReadiness(readiness) {
-  if (!readiness || readiness.ok !== true) {
+  if (!readiness || readiness.ok !== true ||
+      readiness.service !== "funnel-pilot-backend" ||
+      readiness.status !== "ready") {
     return {
       backendReachable: false,
       sendLocked: null,
@@ -16,9 +18,7 @@ export function getOnboardingReadiness(readiness) {
 
   return {
     backendReachable: true,
-    sendLocked:
-      readiness.instagramSendEnabled === false &&
-      readiness.whatsappSendEnabled === false,
+    sendLocked: getLocalRuntimeDiagnostics(readiness).localFlagsSafe,
     instagramConfigured: Boolean(
       readiness.instagramVerifyTokenConfigured &&
       readiness.instagramAppSecretConfigured &&
