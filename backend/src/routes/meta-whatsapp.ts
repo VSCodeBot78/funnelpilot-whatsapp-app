@@ -746,11 +746,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
                 messages: engineReply.state.messages,
                 replyText: engineReply.text,
               });
-              const preparedAssistantId = engineReply.state.messages.findLast((message) =>
+              const preparedAssistantId = engineReply.state.messages.filter((message) =>
                 message.actor !== "human" &&
                 message.role === "assistant" &&
                 message.text.trim() === engineReply.text?.trim()
-              )?.id;
+              ).at(-1)?.id;
 
               const outboundPermission = evaluateLatestAiOutboundPermission({
                 leadId: leadSync.lead.id,
