@@ -144,7 +144,7 @@ export function getNaturalConversationReply(params: {
       phase: "info",
     };
   }
-  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
     return {
       text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
       phase: "trust_clarify",
