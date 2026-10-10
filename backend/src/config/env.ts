@@ -86,6 +86,10 @@ function getInstagramAllowedSenderIds(): string[] {
   return getCsvEnv("INSTAGRAM_ALLOWED_SENDER_IDS");
 }
 
+function getInstagramAllowAllSenders(): boolean {
+  return getBooleanEnv("INSTAGRAM_ALLOW_ALL_SENDERS");
+}
+
 function getDataDir(): string {
   const configured = getOptionalEnv("DATA_DIR");
   if (!configured) {
@@ -128,6 +132,7 @@ export const env = {
   INSTAGRAM_SEND_ENABLED: getInstagramSendEnabled(),
   INSTAGRAM_ENGINE_ENABLED: getInstagramEngineEnabled(),
   INSTAGRAM_ALLOWED_SENDER_IDS: getInstagramAllowedSenderIds(),
+  INSTAGRAM_ALLOW_ALL_SENDERS: getInstagramAllowAllSenders(),
   ENABLE_GENERIC_WEBHOOKS: getBooleanEnv("ENABLE_GENERIC_WEBHOOKS"),
   OPENAI_MODEL: getOptionalEnv("OPENAI_MODEL"),
   OPENAI_API_KEY_CONFIGURED: Boolean(getOptionalEnv("OPENAI_API_KEY")),

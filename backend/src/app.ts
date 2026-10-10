@@ -190,6 +190,7 @@ app.get("/health/readiness", (_req, res) => {
     instagramAppSecretConfigured: Boolean(env.INSTAGRAM_APP_SECRET),
     instagramEngineEnabled: env.INSTAGRAM_ENGINE_ENABLED,
     instagramAllowedSenderCount: env.INSTAGRAM_ALLOWED_SENDER_IDS.length,
+    instagramAllowAllSenders: env.INSTAGRAM_ALLOW_ALL_SENDERS,
     instagramSendEnabled: env.INSTAGRAM_SEND_ENABLED,
     instagramSendConfigured,
     privacyPolicyUrlConfigured,

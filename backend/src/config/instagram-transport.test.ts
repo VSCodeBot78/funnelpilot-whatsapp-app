@@ -14,6 +14,7 @@ process.env.DATA_DIR = testDataDir;
 process.env.INSTAGRAM_SEND_ENABLED = "false";
 process.env.INSTAGRAM_ENGINE_ENABLED = "true";
 process.env.INSTAGRAM_ALLOWED_SENDER_IDS = "route-test-igsid";
+process.env.INSTAGRAM_ALLOW_ALL_SENDERS = "false";
 process.env.INSTAGRAM_VERIFY_TOKEN = "instagram-test-token";
 process.env.META_APP_SECRET = "test-meta-app-secret";
 process.env.INSTAGRAM_APP_SECRET = "test-instagram-app-secret";
@@ -247,18 +248,42 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       allowedSenderIds: ["allowed-sender"],
     });
     assert.equal(allowed.allowed, true);
+
+    const noAllowlist = evaluateInstagramAutomationGate({
+      senderId: "real-lead",
+      engineEnabled: true,
+      allowedSenderIds: [],
+      allowAllSenders: false,
+    });
+    assert.equal(noAllowlist.allowed, false);
+    if (!noAllowlist.allowed) {
+      assert.equal(noAllowlist.reason, "allowlist_required");
+    }
+
+    const deliberateAll = evaluateInstagramAutomationGate({
+      senderId: "real-lead",
+      engineEnabled: true,
+      allowedSenderIds: [],
+      allowAllSenders: true,
+    });
+    assert.equal(deliberateAll.allowed, true);
   });
 
   await t.test("Instagram send allowlist protects the live-test recipient", () => {
     assert.equal(
-      isInstagramRecipientAllowed("route-test-igsid", ["route-test-igsid"]),
+      isInstagramRecipientAllowed(
+        "route-test-igsid",
+        ["route-test-igsid"],
+        false,
+      ),
       true,
     );
     assert.equal(
-      isInstagramRecipientAllowed("real-lead", ["route-test-igsid"]),
+      isInstagramRecipientAllowed("real-lead", ["route-test-igsid"], false),
       false,
     );
-    assert.equal(isInstagramRecipientAllowed("anyone", []), true);
+    assert.equal(isInstagramRecipientAllowed("anyone", [], false), false);
+    assert.equal(isInstagramRecipientAllowed("anyone", [], true), true);
   });
 
   await t.test("outbound Instagram is dry-run by default", async () => {

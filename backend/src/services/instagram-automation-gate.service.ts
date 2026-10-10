@@ -2,6 +2,7 @@ import { env } from "../config/env.js";
 
 export type InstagramAutomationGateReason =
   | "engine_disabled"
+  | "allowlist_required"
   | "sender_not_allowlisted";
 
 export type InstagramAutomationGateResult =
@@ -26,12 +27,15 @@ export function evaluateInstagramAutomationGate(params: {
   senderId: string;
   engineEnabled?: boolean;
   allowedSenderIds?: string[];
+  allowAllSenders?: boolean;
 }): InstagramAutomationGateResult {
   const senderId = normalizeString(params.senderId);
   const engineEnabled =
     params.engineEnabled ?? env.INSTAGRAM_ENGINE_ENABLED;
   const allowedSenderIds =
     params.allowedSenderIds ?? env.INSTAGRAM_ALLOWED_SENDER_IDS;
+  const allowAllSenders =
+    params.allowAllSenders ?? env.INSTAGRAM_ALLOW_ALL_SENDERS;
 
   if (!engineEnabled) {
     return {
@@ -42,10 +46,24 @@ export function evaluateInstagramAutomationGate(params: {
 
   const allowlist = normalizeAllowedSenderIds(allowedSenderIds);
 
-  if (allowlist.size > 0 && !allowlist.has(senderId)) {
+  if (allowlist.size > 0) {
+    if (!allowlist.has(senderId)) {
+      return {
+        allowed: false,
+        reason: "sender_not_allowlisted",
+      };
+    }
+
+    return {
+      allowed: true,
+      reason: null,
+    };
+  }
+
+  if (!allowAllSenders) {
     return {
       allowed: false,
-      reason: "sender_not_allowlisted",
+      reason: "allowlist_required",
     };
   }
 
@@ -58,7 +76,13 @@ export function evaluateInstagramAutomationGate(params: {
 export function isInstagramRecipientAllowed(
   recipientId: string,
   allowedSenderIds = env.INSTAGRAM_ALLOWED_SENDER_IDS,
+  allowAllSenders = env.INSTAGRAM_ALLOW_ALL_SENDERS,
 ): boolean {
   const allowlist = normalizeAllowedSenderIds(allowedSenderIds);
-  return allowlist.size === 0 || allowlist.has(normalizeString(recipientId));
+
+  if (allowlist.size > 0) {
+    return allowlist.has(normalizeString(recipientId));
+  }
+
+  return allowAllSenders;
 }
