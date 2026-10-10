@@ -402,6 +402,7 @@ export type EngineInput = {
   leadId: string;
   campaignId: string;
   messageText: string;
+  conversationMode?: "natural" | "legacy";
 };
 
 export type EngineReply = {

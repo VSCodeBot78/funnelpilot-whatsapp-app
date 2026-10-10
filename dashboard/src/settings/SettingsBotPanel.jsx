@@ -38,6 +38,8 @@ export default function SettingsBotPanel({
     defaultLanguage: "Deutsch",
     brandVoice: "Jochen-Sprache",
     masterPrompt: "",
+    customerTopObjections: "",
+    dmConversationMode: "natural",
     answerLength: "kurz",
     fallbackReply: DEFAULT_FALLBACK_TEXT,
     qualificationPrompt: "",
@@ -161,6 +163,36 @@ export default function SettingsBotPanel({
               <option value="mittel">mittel</option>
             </select>
           </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
+                label="Gesprächsmodus"
+                title="Natürliche DMs oder alter Auswahl-Funnel"
+                text="Natürlich: aufgreifen, spiegeln, eine Frage. Klassisch: bisheriger A-B-C-D-Ablauf. Betrifft den Testchat und Instagram, nicht rückwirkend WhatsApp."
+                placement="right"
+              />
+              <select style={inputStyle(colors)} value={safeSettings.dmConversationMode || "natural"}
+                onChange={event => updateField("dmConversationMode", event.target.value)}>
+                <option value="natural">Natürliches Gespräch (Standard)</option>
+                <option value="legacy">Klassischer A-B-C-D-Flow (Altmodus)</option>
+              </select>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
+                label="3 häufigste Kundeneinwände (optional)"
+                title="Häufigste Einwände deiner Zielgruppe"
+                text="Maximal drei Erfahrungen aus echten Kundengesprächen, jeweils in einer eigenen Zeile. Kann später jederzeit geändert oder leer gelassen werden. Pete darf dazu gezielt nachfragen, ohne die Sicherheitsregeln zu verändern."
+                placement="right"
+              />
+              <textarea
+                rows={4}
+                style={baseTextareaStyle(colors, 96)}
+                value={safeSettings.customerTopObjections || ""}
+                onChange={(event) => updateField("customerTopObjections", event.target.value)}
+                placeholder={"Zu wenig Zeit\nPreis / Budget\nSchon vieles probiert"}
+              />
             </div>
 
             <div style={{ marginTop: 12 }}>

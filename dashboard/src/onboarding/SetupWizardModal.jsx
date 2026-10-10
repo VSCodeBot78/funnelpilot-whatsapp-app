@@ -320,10 +320,22 @@ export default function SetupWizardModal({
                 {input("Assistentenname", "assistantName")}
                 {input("Markensprache / Tonalität", "brandVoice")}
                 <div>
+                  {input("Deine 3 häufigsten Kundeneinwände (optional)", "customerTopObjections",
+                    { multiline: true, rows: 4,
+                      placeholder: "Ein Einwand pro Zeile, maximal drei. Beispiel: Zu wenig Zeit" })}
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    Welche Hürden begegnen dir in echten Kundengesprächen am häufigsten?
+                    Diese Angaben helfen Pete beim gezielten Nachfragen. Du kannst sie
+                    jederzeit ändern oder leer lassen. Sicherheitsregeln bleiben unverändert.
+                  </p>
+                </div>
+                <div>
                   {input("Master-Prompt: So soll Pete mit deinen Leads sprechen",
                     "masterPrompt", { multiline: true, rows: 9,
                     placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
                   <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    Standard ist der natürliche Instagram-DM-Dialog: zuhören, spiegeln,
+                    eine Frage, dann passender nächster Schritt. A-B-C-D gibt es nur noch als Altmodus.
                     Für Eltern fit &amp; vital ist eine Startvorlage hinterlegt.
                     Andere Unternehmen tragen später ihren eigenen Master-Prompt ein.
                     Der Prompt steuert die freie KI-Antwortschicht; feste Sicherheits-

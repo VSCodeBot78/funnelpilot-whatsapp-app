@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
+import { readSettings } from "../services/settings-store.js";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.post("/message", async (req, res) => {
       leadId,
       campaignId,
       messageText,
+      conversationMode: readSettings().dmConversationMode === "natural" ? "natural" : "legacy",
     });
 
     return res.json({
