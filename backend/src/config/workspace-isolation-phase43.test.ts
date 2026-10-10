@@ -91,7 +91,15 @@ test("Phase 43: viewer is read-only, operator cannot read provider integration m
   assert.throws(() => storage.write(viewer, "leads", []), /read_only/);
   storage.write(operator, "leads", [{ id: "operator-synthetic-lead" }]);
   assert.deepEqual(storage.read(owner, "leads"), [{ id: "operator-synthetic-lead" }]);
-  storage.write(owner, "integration-metadata", { connected: false });
+  storage.write(owner, "integration-metadata", { provider: "instagram", connected: false });
+  assert.throws(() => storage.write(owner, "integration-metadata", {
+    provider: "instagram", accessToken: "fake-secret",
+  }), /integration_secrets_forbidden/);
+  assert.throws(() => storage.write(owner, "integration-metadata", {
+    apiKey: "fake-secret",
+  }), /integration_secrets_forbidden/);
+  assert.deepEqual(storage.read(owner, "integration-metadata"),
+    { provider: "instagram", connected: false });
   assert.throws(() => storage.read(viewer, "integration-metadata"), /owner_required/);
   assert.throws(() => storage.read(operator, "integration-metadata"), /owner_required/);
   assert.throws(() => storage.write(operator, "integration-metadata", {}), /owner_required/);

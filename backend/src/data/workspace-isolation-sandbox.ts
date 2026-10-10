@@ -57,6 +57,35 @@ function assertNotSymlink(file: string): void {
   }
 }
 
+/**
+ * This prototype must never become a plaintext provider credential store.
+ * Only nonsensitive connection-state booleans/labels are permitted.
+ */
+function validateIntegrationMetadata(value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("workspace_sandbox_invalid_integration_metadata");
+  }
+  const record = value as Record<string, unknown>;
+  const allowed = new Set(["provider", "connected", "lastCheckedAt"]);
+  if (Object.keys(record).some(key => !allowed.has(key))) {
+    throw new Error("workspace_sandbox_integration_secrets_forbidden");
+  }
+  if (record.provider !== undefined &&
+    !["instagram", "whatsapp", "calendly", "google_calendar", "hubspot"]
+      .includes(String(record.provider))) {
+    throw new Error("workspace_sandbox_invalid_integration_metadata");
+  }
+  if (record.connected !== undefined && typeof record.connected !== "boolean") {
+    throw new Error("workspace_sandbox_invalid_integration_metadata");
+  }
+  if (record.lastCheckedAt !== undefined &&
+      (typeof record.lastCheckedAt !== "string" ||
+       !/^\\d{4}-\\d{2}-\\d{2}T/.test(record.lastCheckedAt) ||
+       record.lastCheckedAt.length > 40)) {
+    throw new Error("workspace_sandbox_invalid_integration_metadata");
+  }
+}
+
 type Grant = Readonly<{ workspaceId: string; actorId: string }>;
 
 export function createWorkspaceIsolationSandbox(input: {
@@ -138,6 +167,7 @@ export function createWorkspaceIsolationSandbox(input: {
     },
     write(grant: Grant, resource: SandboxWorkspaceResource, value: unknown): void {
       requirePermission(grant, resource, "write");
+      if (resource === "integration-metadata") validateIntegrationMetadata(value);
       const destination = checkedPath(grant, resource);
       // No symlink traversal for existing workspace path components.
       fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });

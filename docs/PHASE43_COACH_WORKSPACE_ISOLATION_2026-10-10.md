@@ -21,7 +21,10 @@ angebundenes** Workspace-Speicher-Prototypmodul:
 - Eigene Datenräume für `settings`, `campaigns`, `leads`,
   `conversations`, `message-events`, `booking-events`, `ghosting`
   und rein beschreibende `integration-metadata`.
-  **Keine Provider-Schlüssel/Tokens oder Zahlungen in diesem Prototyp.**
+  Integration-Metadaten erlauben ausschließlich `provider`, `connected`
+  und `lastCheckedAt`; Felder wie `accessToken` und `apiKey`
+  werden abgewiesen. **Keine Provider-Schlüssel/Tokens oder Zahlungen
+  in diesem Prototyp.**
 - Kein impliziter Zugriff auf Legacy-`DATA_DIR`, keine Default-Coach-
   Freigabe, keine Übernahme von Jochen-Master-Prompt, Leads oder Preisen.
 - Zugriffsprüfung anhand der **von einem vertrauenswürdigen Server
