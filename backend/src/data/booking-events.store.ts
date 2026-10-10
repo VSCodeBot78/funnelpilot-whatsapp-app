@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { BookingEventLogEntry } from "../types/types.js";
 
 const DATA_DIR = env.DATA_DIR;
@@ -42,7 +43,7 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
 
 function writeBookingEventsFile(entries: BookingEventLogEntry[]): void {
   ensureDataDir();
-  fs.writeFileSync(BOOKING_EVENTS_FILE, JSON.stringify(entries, null, 2), "utf8");
+  writePrivateJsonAtomic(BOOKING_EVENTS_FILE, entries);
 }
 
 function persistBookingEvents(): void {
