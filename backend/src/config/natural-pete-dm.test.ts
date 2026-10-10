@@ -203,4 +203,40 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
       assert.doesNotMatch(out.text, /(?:^|\n)[abcd]\)/im);
     }
   });
+  await t.test("shift-work parents have their actual context reflected, without invented details", async () => {
+    const a = await send("natural-shift-three-kids", "Ich bin Mama von 3 Kindern, arbeite in Schichten und bin abends völlig kaputt.");
+    assert.match(a.text || "", /Drei Kinder, Schichtdienst/);
+    assert.match(a.text || "", /Schlaf oder die Arbeit/);
+    assert.doesNotMatch(a.text || "", /Kinder, Job und abends komplett leer/);
+    assert.equal((a.text?.match(/\\?/g) || []).length, 1);
+
+    const b = await send("natural-shift-two-kids", "Papa von zwei Kindern, Schichtarbeit und total müde.");
+    assert.match(b.text || "", /Zwei Kinder, Schichtdienst/);
+    assert.doesNotMatch(b.text || "", /Drei Kinder/);
+  });
+
+  await t.test("sales-bot disclosure does not invent previous negative experiences", async () => {
+    const a = await send("natural-salesbot-first", "Ist das hier wieder so ein Verkaufsbot?");
+    assert.match(a.text || "", /ich bin Pete, Jochens KI-Assistent/i);
+    assert.match(a.text || "", /nichts kaufen/i);
+    assert.doesNotMatch(a.text || "", /solchen Erfahrungen|letzten Angebot|letzten Coaching/i);
+    assert.equal((a.text?.match(/\\?/g) || []).length, 1);
+
+    const b = await send("natural-salesbot-history", "Ich wurde beim letzten Coaching nur abgezockt.");
+    assert.match(b.text || "", /skeptisch/i);
+    assert.doesNotMatch(b.text || "", /499 €|14,95 €|calendly/);
+  });
+
+  await t.test("a second booking-status question gets a different honest answer, not a false confirmation", async () => {
+    const a = await send("natural-booking-repeat", "Ich möchte ein Strategiegespräch buchen");
+    assert.match(a.text || "", /calendly/);
+    const b = await send("natural-booking-repeat", "Hab gebucht");
+    assert.match(b.text || "", /noch nicht als bestätigt/i);
+    const c = await send("natural-booking-repeat", "Ist mein Termin jetzt bestätigt?");
+    assert.notEqual(c.text, b.text);
+    assert.match(c.text || "", /weiterhin keine bestätigte Buchung/);
+    assert.notEqual(c.state.providerBooking.status, "booked");
+    assert.doesNotMatch(c.text || "", /Termin ist im Buchungssystem bestätigt/);
+  });
+
 });
