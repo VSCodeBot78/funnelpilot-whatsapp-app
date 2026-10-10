@@ -15,6 +15,7 @@ process.env.INSTAGRAM_SEND_ENABLED = "false";
 process.env.INSTAGRAM_ENGINE_ENABLED = "true";
 process.env.INSTAGRAM_ALLOWED_SENDER_IDS = "route-test-igsid";
 process.env.INSTAGRAM_ALLOW_ALL_SENDERS = "false";
+process.env.INSTAGRAM_AUTO_ENABLE_NEW_LEADS = "false";
 process.env.INSTAGRAM_VERIFY_TOKEN = "instagram-test-token";
 process.env.META_APP_SECRET = "test-meta-app-secret";
 process.env.INSTAGRAM_APP_SECRET = "test-instagram-app-secret";
@@ -42,6 +43,7 @@ const {
 } = await import("../services/instagram-automation-gate.service.js");
 const {
   getLeadById,
+  saveLead,
   deleteLead,
 } = await import("../data/leads.store.js");
 const { default: app } = await import("../app.js");
@@ -208,7 +210,8 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     assert.equal(first.lead.id, leadId);
     assert.equal(first.lead.source, "Instagram");
     assert.equal(first.lead.phone, "");
-    assert.match(first.lead.note, /Instagram IGSID/);
+    assert.equal(first.lead.botEnabled, false);
+    assert.match(first.lead.note, /wartet auf Handoff/);
 
     const second = syncInstagramLead({
       instagramScopedId: igsid,
@@ -337,7 +340,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     assert.equal(invalid.statusCode, 401);
   });
 
-  await t.test("full Instagram webhook route processes a signed DM in dry-run mode", async () => {
+  await t.test("new Instagram lead stays silent until explicit handoff, then processes in dry-run mode", async () => {
     const server = app.listen(0);
     await new Promise<void>((resolve) => server.once("listening", resolve));
 
@@ -355,46 +358,96 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       assert.equal(verifyResponse.status, 200);
       assert.equal(await verifyResponse.text(), "challenge-123");
 
-      const payload = {
-        object: "instagram",
-        entry: [
-          {
-            id: "17841400000000000",
-            changes: [
-              {
-                field: "messages",
-                value: {
-                  sender: { id: "route-test-igsid" },
-                  recipient: { id: "17841400000000000" },
-                  timestamp: Date.now(),
-                  message: {
-                    mid: "route-test-mid-1",
-                    text: "Max",
+      function buildSignedPayload(messageId: string, text: string) {
+        const payload = {
+          object: "instagram",
+          entry: [
+            {
+              id: "17841400000000000",
+              changes: [
+                {
+                  field: "messages",
+                  value: {
+                    sender: { id: "route-test-igsid" },
+                    recipient: { id: "17841400000000000" },
+                    timestamp: Date.now(),
+                    message: {
+                      mid: messageId,
+                      text,
+                    },
                   },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+        };
+
+        const raw = JSON.stringify(payload);
+        const signature =
+          "sha256=" +
+          crypto
+            .createHmac("sha256", "test-instagram-app-secret")
+            .update(Buffer.from(raw, "utf8"))
+            .digest("hex");
+
+        return { raw, signature };
+      }
+
+      const firstSigned = buildSignedPayload(
+        "route-test-mid-before-handoff",
+        "Max",
+      );
+      const firstResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": firstSigned.signature,
           },
-        ],
+          body: firstSigned.raw,
+        },
+      );
+
+      assert.equal(firstResponse.status, 200);
+      const firstResult = (await firstResponse.json()) as {
+        ok: boolean;
+        processed: number;
+        ignoredAutomationPaused: number;
+        engineProcessed?: boolean;
+        sent?: boolean;
       };
 
-      const raw = JSON.stringify(payload);
-      const signature =
-        "sha256=" +
-        crypto
-          .createHmac("sha256", "test-instagram-app-secret")
-          .update(Buffer.from(raw, "utf8"))
-          .digest("hex");
+      assert.equal(firstResult.ok, true);
+      assert.equal(firstResult.processed, 0);
+      assert.equal(firstResult.ignoredAutomationPaused, 1);
+      assert.equal(firstResult.engineProcessed, false);
+      assert.equal(firstResult.sent, false);
 
+      const leadId = "instagram:route-test-igsid";
+      const waitingLead = getLeadById(leadId);
+      assert.ok(waitingLead);
+      assert.equal(waitingLead.botEnabled, false);
+
+      saveLead({
+        ...waitingLead,
+        botEnabled: true,
+        note: waitingLead.note.replace(" | Funnel Pilot wartet auf Handoff", ""),
+      });
+
+      const secondSigned = buildSignedPayload(
+        "route-test-mid-after-handoff",
+        "Max",
+      );
       const response = await fetch(
         baseUrl + "/webhooks/meta/instagram",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Hub-Signature-256": signature,
+            "X-Hub-Signature-256": secondSigned.signature,
           },
-          body: raw,
+          body: secondSigned.raw,
         },
       );
 
@@ -413,7 +466,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
 
       assert.equal(result.ok, true);
       assert.equal(result.processed, 1);
-      assert.equal(result.leadId, "instagram:route-test-igsid");
+      assert.equal(result.leadId, leadId);
       assert.equal(result.engineProcessed, true);
       assert.equal(result.botReplyPrepared, true);
       assert.equal(result.dryRun, true);
@@ -427,9 +480,9 @@ test("Phase 4 Instagram transport foundation", async (t) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Hub-Signature-256": signature,
+            "X-Hub-Signature-256": secondSigned.signature,
           },
-          body: raw,
+          body: secondSigned.raw,
         },
       );
 
@@ -441,7 +494,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       assert.equal(duplicateResult.processed, 0);
       assert.equal(duplicateResult.duplicates, 1);
 
-      deleteLead("instagram:route-test-igsid");
+      deleteLead(leadId);
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
