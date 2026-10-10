@@ -7,6 +7,7 @@ import {
   type MessageEventStatus,
 } from "../data/message-events.store.js";
 import {
+  appendHumanMessage,
   getOrCreateConversationState,
   persistConversationState,
 } from "../core/state-manager.js";
@@ -21,6 +22,7 @@ import {
   type ParsedInstagramMessageEvent,
 } from "../services/meta-instagram-webhook.service.js";
 import {
+  isKnownAiOutboundEcho,
   markLatestAssistantMessagePrepared,
   updateLatestAssistantMessageSendResult,
 } from "../services/conversation-outbound.service.js";
@@ -276,6 +278,56 @@ router.post("/", async (req: RawBodyRequest, res) => {
 
       if (event.isEcho) {
         ignoredEchoes += 1;
+
+        let echoReason = "instagram_echo";
+        let echoLeadId: string | undefined;
+        let echoCampaignId: string | undefined;
+        let echoConversationUpdated = false;
+        let echoMessageAppended = false;
+
+        if (event.recipientId) {
+          const echoLeadSync = syncInstagramLead({
+            instagramScopedId: event.recipientId,
+            botEnabledForNewLead: false,
+          });
+          const echoState = getOrCreateConversationState(
+            echoLeadSync.lead.id,
+            echoLeadSync.campaignId,
+          );
+
+          echoLeadId = echoLeadSync.lead.id;
+          echoCampaignId = echoLeadSync.campaignId;
+
+          const knownAiEcho = isKnownAiOutboundEcho({
+            messages: echoState.messages,
+            messageId: event.messageId,
+            transport: PROVIDER,
+          });
+
+          if (knownAiEcho) {
+            echoReason = "instagram_ai_echo";
+          } else if (event.text) {
+            echoState.backendLeadId =
+              echoLeadSync.lead.backendLeadId || echoLeadSync.lead.id;
+            echoState.leadName = echoLeadSync.lead.name;
+            echoState.phone = echoLeadSync.lead.phone;
+            echoState.source = "Instagram";
+            echoState.notes = echoLeadSync.lead.note;
+            echoState.bookingData = echoLeadSync.lead.bookingData;
+
+            appendHumanMessage(echoState, event.text);
+            persistConversationState(echoState);
+
+            leadAction = echoLeadSync.action;
+            leadId = echoLeadSync.lead.id;
+            conversationUpdated = true;
+            messageAppended = true;
+            echoConversationUpdated = true;
+            echoMessageAppended = true;
+            echoReason = "instagram_human_echo_takeover";
+          }
+        }
+
         saveMessageEventLogEntry(
           buildLogEntry({
             messageId: event.messageId,
@@ -286,7 +338,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
             raw: {
               ...raw,
               incomingStatus: "processed",
-              reason: "instagram_echo",
+              reason: echoReason,
+              leadId: echoLeadId,
+              campaignId: echoCampaignId,
+              conversationUpdated: echoConversationUpdated,
+              messageAppended: echoMessageAppended,
               engineProcessed: false,
               sent: false,
             },
@@ -296,6 +352,8 @@ router.post("/", async (req: RawBodyRequest, res) => {
           messageId: event.messageId,
           from: event.senderId,
           status: "ignored_status",
+          leadId: echoLeadId,
+          campaignId: echoCampaignId,
         });
         continue;
       }
