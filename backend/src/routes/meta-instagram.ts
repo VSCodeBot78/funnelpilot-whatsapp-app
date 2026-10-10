@@ -432,6 +432,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       conversationUpdated = true;
 
       let engineReplyPreview: string | undefined;
+      let skipEngineStatePersist = false;
 
       try {
         const engineReply = await processIncomingMessage({
@@ -470,7 +471,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
             sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
             outboundStatus = "dry_run";
             ignoredAutomationPaused += 1;
-            persistConversationState(engineReply.state);
+
+            // Do not persist the stale engine state here. A human takeover may
+            // have happened after the engine prepared this reply. Persisting
+            // engineReply.state would overwrite the newer human-owned state.
+            skipEngineStatePersist = true;
           } else {
             const sendResult = await sendMetaInstagramTextMessage({
               to: event.senderId,
@@ -556,7 +561,9 @@ router.post("/", async (req: RawBodyRequest, res) => {
           }
         }
 
-        persistConversationState(engineReply.state);
+        if (!skipEngineStatePersist) {
+          persistConversationState(engineReply.state);
+        }
         processed += 1;
       } catch (engineError) {
         failed += 1;
