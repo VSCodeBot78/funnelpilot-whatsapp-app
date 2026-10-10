@@ -54,6 +54,12 @@ const {
   isKnownAiOutboundEcho,
 } = await import("../services/conversation-outbound.service.js");
 const {
+  clearPendingAiInstagramOutboundRegistry,
+  confirmPendingAiInstagramOutbound,
+  consumeKnownAiInstagramEcho,
+  registerPendingAiInstagramOutbound,
+} = await import("../services/instagram-outbound-echo.service.js");
+const {
   DEFAULT_CAMPAIGN_ID,
 } = await import("../config/campaigns.js");
 const { default: app } = await import("../app.js");
@@ -209,6 +215,55 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       }),
       false,
     );
+  });
+
+  await t.test("pending AI outbound protects the short echo race before Meta message id is stored", () => {
+    clearPendingAiInstagramOutboundRegistry();
+
+    registerPendingAiInstagramOutbound({
+      recipientId: "race-lead",
+      text: "Pete Antwort",
+    });
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "echo-before-meta-response",
+        text: "Pete Antwort",
+      }),
+      true,
+    );
+
+    clearPendingAiInstagramOutboundRegistry();
+
+    const token = registerPendingAiInstagramOutbound({
+      recipientId: "race-lead",
+      text: "Gleicher Text",
+    });
+    confirmPendingAiInstagramOutbound({
+      token,
+      metaMessageId: "confirmed-ai-mid",
+    });
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "manual-different-mid",
+        text: "Gleicher Text",
+      }),
+      false,
+    );
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "confirmed-ai-mid",
+        text: "Gleicher Text",
+      }),
+      true,
+    );
+
+    clearPendingAiInstagramOutboundRegistry();
   });
 
   await t.test("attachment-only events are explicit unsupported candidates", () => {

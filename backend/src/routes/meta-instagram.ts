@@ -27,6 +27,7 @@ import {
   updateLatestAssistantMessageSendResult,
 } from "../services/conversation-outbound.service.js";
 import { verifyMetaWebhookSignature } from "../services/meta-webhook-signature.service.js";
+import { consumeKnownAiInstagramEcho } from "../services/instagram-outbound-echo.service.js";
 
 const router = Router();
 const PROVIDER = "meta_instagram" as const;
@@ -298,11 +299,18 @@ router.post("/", async (req: RawBodyRequest, res) => {
           echoLeadId = echoLeadSync.lead.id;
           echoCampaignId = echoLeadSync.campaignId;
 
-          const knownAiEcho = isKnownAiOutboundEcho({
-            messages: echoState.messages,
-            messageId: event.messageId,
-            transport: PROVIDER,
-          });
+          const knownAiEcho =
+            isKnownAiOutboundEcho({
+              messages: echoState.messages,
+              messageId: event.messageId,
+              transport: PROVIDER,
+            }) ||
+            consumeKnownAiInstagramEcho({
+              recipientId: event.recipientId,
+              messageId: event.messageId,
+              text: event.text,
+              state: echoState,
+            });
 
           if (knownAiEcho) {
             echoReason = "instagram_ai_echo";
