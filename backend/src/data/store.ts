@@ -28,6 +28,7 @@ function readConversationsFile(): StoreRecord {
   try {
     const raw = fs.readFileSync(CONVERSATIONS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_conversation_store");
       return {};
     }
 
@@ -35,7 +36,9 @@ function readConversationsFile(): StoreRecord {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed;
     }
+    if (env.NODE_ENV === "production") throw new Error("invalid_conversation_store_shape");
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("conversation_store_invalid_stop_restore", { cause: error });
     console.error("conversation store read error:", error);
   }
 
