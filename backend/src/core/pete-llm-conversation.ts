@@ -35,7 +35,7 @@ export function isPeteLlmReadyForProvider(): boolean {
  */
 export function isExplicitPeteHumanTakeoverRequest(text: string): boolean {
   const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return /\b(?:jochen\s+(?:soll|bitte)\s+(?:hier\s+)?(?:ubernehmen|antworten|schreiben)|(?:ich\s+mochte|ich\s+will|bitte)\s+(?:mit\s+)?(?:einem\s+)?(?:echten?\s+)?menschen\s+(?:hier\s+)?(?:schreiben|reden|sprechen)|(?:ubergeb|gib|verbinde)\w*\s+(?:den\s+chat\s+)?(?:an\s+)?jochen|jochen\s+hier\s+(?:im\s+)?chat\s+(?:personlich\s+)?(?:ubernehm|schreib|antwort)|bitte\s+kein(?:en)?\s+bot\s+mehr)\b/i.test(input);
+  return /\b(?:jochen\s+(?:soll\s+)?(?:bitte\s+)?(?:hier\s+)?(?:ubernehmen|antworten|schreiben)|(?:ich\s+mochte|ich\s+will|bitte)\s+(?:mit\s+)?(?:einem\s+)?(?:echten?\s+)?menschen\s+(?:hier\s+)?(?:schreiben|reden|sprechen)|(?:ubergeb|gib|verbinde)\w*\s+(?:den\s+chat\s+)?(?:an\s+)?jochen|jochen\s+hier\s+(?:im\s+)?chat\s+(?:personlich\s+)?(?:ubernehm|schreib|antwort)|bitte\s+kein(?:en)?\s+bot\s+mehr)\b/i.test(input);
 }
 
 /**
