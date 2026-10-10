@@ -27,6 +27,7 @@ export type SettingsConfig = {
   defaultLanguage: string;
   brandVoice: string;
   masterPrompt: string;
+  customerTopObjections: string;
   dmConversationMode: "natural" | "legacy";
   answerLength: "kurz" | "mittel" | string;
   fallbackReply: string;
@@ -111,6 +112,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   defaultLanguage: "Deutsch",
   brandVoice: "Jochen-Sprache",
   masterPrompt: DEFAULT_MASTER_PROMPT,
+  customerTopObjections: "Keine Zeit im Elternalltag\nPreis oder Budget\nSchon vieles versucht",
   dmConversationMode: "natural",
   answerLength: "kurz",
   fallbackReply: DEFAULT_FALLBACK_TEXT,
