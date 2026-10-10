@@ -234,3 +234,25 @@
   .fp-system-actions { width: 100%; }
   .fp-system-actions button { flex: 1; }
 }
+/* Phase 37: coach-template wizard works on narrow mobile browsers as well. */
+.fp-coach-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.fp-coach-steps button:focus-visible,
+.fp-coach-actions button:focus-visible,
+.fp-coach-draft input:focus-visible,
+.fp-coach-draft textarea:focus-visible {
+  outline: 3px solid #ff914d;
+  outline-offset: 2px;
+}
+.fp-coach-draft button:disabled { cursor: not-allowed; opacity: .55; }
+@media (max-width: 720px) {
+  .fp-coach-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fp-coach-draft h1 { font-size: 19px !important; }
+  .fp-coach-actions button { flex: 1 1 140px; }
+}
+@media (max-width: 360px) {
+  .fp-coach-steps { grid-template-columns: minmax(0, 1fr); }
+}
