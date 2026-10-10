@@ -139,6 +139,13 @@ test("Phase 7 pre-live conversation matrix", async (t) => {
     assert.doesNotMatch(result.text ?? "", /Eltern-Energie-Startphase/i);
   });
 
+  await t.test("legacy engine explicitly refuses unapproved six-month prices", async () => {
+    clearConversationStore();
+    const result = await send("matrix-unapproved-longterm", "Was kostet die 6-Monats-Begleitung?");
+    assert.match(result.text ?? "", /Jochen persönlich/i);
+    assert.doesNotMatch(result.text ?? "", /2\.499|2499|2\.000|2000|499 €|14,95 €/);
+  });
+
   await t.test("installment request goes to personal clarification without invented rate", async () => {
     clearConversationStore();
 
