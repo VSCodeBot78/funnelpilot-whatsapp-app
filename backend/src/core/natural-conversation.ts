@@ -63,8 +63,12 @@ export function getNaturalConversationReply(params: {
   // Provider booking follows its verified legacy webhook confirmation flow.
   // A self-reported "I booked" must never be treated as verified.
   if (state.currentStep === "booking" &&
-      /^(hab(e)? gebucht|ist gebucht|termin steht|bin eingetragen)$/i.test(input)) {
-    return null;
+      /\b(hab(?:e)? gebucht|ist gebucht|termin steht|bin eingetragen|termin bestatigt|bestatigung|termin jetzt|hab den termin)\b/i.test(input)) {
+    // Only a signed provider callback can mark a booking as confirmed.
+    return state.providerBooking?.status === "booked"
+      ? { text: "Ja, dein Termin ist im Buchungssystem bestätigt.", phase: "booking_confirmed" }
+      : { text: "Ich kann den Termin hier noch nicht als bestätigt sehen. Bitte prüf, ob du von Calendly eine Bestätigung erhalten hast.",
+          phase: "booking_offered" };
   }
 
   // A human may reject marketing or call out mechanical questioning without
@@ -191,6 +195,29 @@ export function getNaturalConversationReply(params: {
       infoOnly: true };
   }
 
+  if (phase === "budget_clarify") {
+    if (matches(input, /\b(preis|geld|budget|finanziell|kann ich nicht|zu teuer|kita[\s-]*kosten|wirklich das geld)\b/) &&
+        !matches(input, /\b(unsicher|zweifel|weis nicht|weiss nicht)\b/)) {
+      return { text: "Dann macht es gerade keinen Sinn, dich in eine Begleitung zu drängen.\n" +
+        "Wäre ein selbstständiger Einstieg für 14,95 € eine Option oder ist im Moment auch das zu viel?",
+        phase: "selfstarter_budget_offer", track: "coaching" };
+    }
+    return { text: "Verstanden. Was müsste für dich klarer sein, damit du einschätzen kannst, ob die Begleitung passt?",
+      phase: "coaching_next", track: "coaching" };
+  }
+  if (phase === "selfstarter_budget_offer") {
+    if (matches(input, /\b(auch das zu viel|auch nicht|gerade nicht|kein geld|kein budget|nichts kaufen|nein danke)\b/)) {
+      return { text: "Verstanden. Dann lassen wir das erstmal. Wenn du später eine Frage hast, meld dich gern.",
+        phase: "info", infoOnly: true };
+    }
+    if (matches(input, /\b(ja|okay|ok|interessiert|anschauen|selbststarter|geht|machbar|passt)\b/)) {
+      return { text: selfstarterText, phase: "selfstarter_offered",
+        track: "selfstarter", infoOnly: true };
+    }
+    return { text: "Kein Stress. Du musst dich jetzt nicht entscheiden.",
+      phase: "info", infoOnly: true };
+  }
+
   // Price reference: first use the present chat context, never a three-product list.
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
       !matches(input, /\b(nicht leisten|zu teuer|kein geld|kein budget|budget problem|finanziell nicht)\b/)) {
@@ -246,16 +273,6 @@ export function getNaturalConversationReply(params: {
         track: matches(input, /keto/) ? "keto" : "coaching" };
     }
   }
-  if (phase === "budget_clarify") {
-    if (matches(input, /\b(preis|geld|budget|finanziell|kann ich nicht|zu teuer)\b/) &&
-        !matches(input, /\b(unsicher|zweifel|weis nicht|weiss nicht)\b/)) {
-      return { text: "Dann macht es gerade keinen Sinn, dich in eine Begleitung zu drängen.\n" + selfstarterText,
-        phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
-    }
-    return { text: "Verstanden. Was müsste für dich klarer sein, damit du einschätzen kannst, ob die Begleitung passt?",
-      phase: "coaching_next", track: "coaching" };
-  }
-
   if (matches(input, /\b(keine zeit fur sport|keine zeit zum trainieren|keine zeit fur training|keine zeit fur fitness)\b/)) {
     return {
       text: "Das ist bei vielen Eltern genau der Knackpunkt. Job, Kinder und Alltag sind schon voll.\n" +
