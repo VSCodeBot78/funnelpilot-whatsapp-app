@@ -154,7 +154,7 @@ export default function OnboardingView({
     }
   }
 
-  function status(text, ok, detail) {
+  function status(text, ok, detail, successLabel = "Konfiguriert, nicht live verifiziert") {
     return (
       <div style={{
         display: "flex",
@@ -168,7 +168,7 @@ export default function OnboardingView({
       }}>
         <span>{text}</span>
         <span style={{ color: colors.sub, textAlign: "right" }}>
-          {ok ? "Konfiguriert, nicht live verifiziert" : detail || "Nicht konfiguriert / unbekannt"}
+          {ok ? successLabel : detail || "Nicht konfiguriert / unbekannt"}
         </span>
       </div>
     );
@@ -191,7 +191,7 @@ export default function OnboardingView({
               style={{
                 ...action,
                 background: step === i ? colors.accent : colors.panelSoft,
-                color: step === i ? "#111827" : colors.text,
+                color: step === i ? "#ffffff" : colors.text,
               }}
             >
               {i + 1}. {label}
@@ -252,7 +252,7 @@ export default function OnboardingView({
             {checking ? "Prüfe ..." : "Verbindungsstatus aktualisieren"}
           </button>
           {readinessError && <p role="alert" style={{ color: colors.danger || colors.text }}>{readinessError}</p>}
-          {status("Backend erreichbar", state.backendReachable, "Backend nicht erreichbar")}
+          {status("Backend erreichbar", state.backendReachable, "Backend nicht erreichbar", "Erreichbar (lokal getestet)")}
           {status("OpenAI-Schlüssel vorhanden", state.aiKeyConfigured)}
           {status("Instagram-Zugangsdaten vorhanden", state.instagramConfigured)}
           {status("WhatsApp-Zugangsdaten vorhanden", state.whatsappConfigured)}
