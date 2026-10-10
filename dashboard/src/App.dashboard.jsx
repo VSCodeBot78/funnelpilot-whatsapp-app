@@ -136,6 +136,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   const {
     backendHealthy,
     backendHealthMessage,
+    retryBackendHealth,
   } = useBackendHealth({
     apiBaseUrl: settings.apiBaseUrl,
   });
@@ -548,7 +549,13 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
                 fontWeight: 600,
               }}
             >
-              {backendHealthMessage}
+              <div>{backendHealthMessage}</div>
+              <button type="button" onClick={retryBackendHealth}
+                style={{ background: "#ffffff", color: "#111827", marginTop: 9,
+                  border: "1px solid #d1d5db", borderRadius: 6,
+                  padding: "7px 11px", cursor: "pointer", fontWeight: 700 }}>
+                Erneut prüfen
+              </button>
             </div>
           )}
 
