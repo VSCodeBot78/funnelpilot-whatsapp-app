@@ -100,6 +100,7 @@ export function consumeKnownAiInstagramEcho(input: {
       item.metaMessageId === messageId;
 
     const pendingTextMatches =
+      !item.metaMessageId &&
       Boolean(text) &&
       item.text === text;
 
