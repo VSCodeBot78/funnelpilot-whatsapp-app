@@ -286,7 +286,11 @@ function hydrateStoreFromFile(): void {
   if (savedLeads.length > 0) {
     leadsStore = new Map(savedLeads.map((lead) => [lead.id, cloneLead(lead)]));
   } else {
-    leadsStore = buildStoreFromDefaults();
+    // Never present demo personas as genuine customers in a production tenant.
+    // Existing persisted leads are not silently deleted by this guard.
+    leadsStore = env.NODE_ENV === "production"
+      ? new Map<string, LeadRecord>()
+      : buildStoreFromDefaults();
   }
 }
 
