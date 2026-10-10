@@ -294,3 +294,18 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
   Handübernahme und ausdrücklicher Live-Freigabe.
 - Keine echte Meta-Verbindung, ManyChat-Änderung, Live-Nachricht, Remote-Test
   oder echte Provider-Zustellbestätigung vorgenommen.
+
+
+## Phase 41 – Pete: Themenwechsel statt Terminzwang (10.10.2026)
+- Nach „Hier im Chat mit Jochen oder Strategiegespräch?“ dürfen Eltern sofort
+  zu Keto Guide, Elterncheck, Selbststarter oder konkreter Preisfrage wechseln.
+  Die alte Terminauswahl darf solche neuen Wünsche nicht übersteuern.
+- Ein ausdrücklich abgelehnter Termin führt nicht zu einer Buchung.
+- Im kaufnahen 5-Wochen-Dialog wird „nicht direkt kaufen“ nicht mehr als
+  positive Checkout-Absicht fehlinterpretiert. Eindeutiges „direkt kaufen“
+  und „erst Strategiegespräch“ bleiben getrennte positive Fälle.
+- Neue mehrstufige Regressionen mit konkreten Mutter-/Vater-Antworten,
+  ohne OpenAI- oder Meta-Netzwerk, prüfen Preis-, Link-, Booking-, Handover-
+  und Checkout-Verhalten. Sie belegen **keine** echte KI-Gesprächsqualität.
+- Live-Stimme, reales OpenAI-Modell und Meta-Sends bleiben ungetestet;
+  echte Freigabe weiterhin erst nach Windows-/Provider-Test.
