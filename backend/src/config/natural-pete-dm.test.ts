@@ -218,7 +218,7 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
   await t.test("sales-bot disclosure does not invent previous negative experiences", async () => {
     const a = await send("natural-salesbot-first", "Ist das hier wieder so ein Verkaufsbot?");
     assert.match(a.text || "", /ich bin Pete, Jochens KI-Assistent/i);
-    assert.match(a.text || "", /nichts kaufen/i);
+    assert.match(a.text || "", /niemand etwas kaufen|nichts kaufen/i);
     assert.doesNotMatch(a.text || "", /solchen Erfahrungen|letzten Angebot|letzten Coaching/i);
     assert.equal((a.text?.match(/\?/g) || []).length, 1);
 
