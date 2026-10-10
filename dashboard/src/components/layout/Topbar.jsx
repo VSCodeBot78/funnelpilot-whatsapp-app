@@ -24,7 +24,7 @@ export default function Topbar({
         <div style={{ color: colors.sub, marginTop: 4, fontSize: 12 }}>
           {hasCustomSubtitle ? customSubtitle :
            section === "inbox" ? "Gespräche und persönliche Übernahme" :
-           section === "dashboard" ? "Tagesübersicht · lokale Testumgebung" :
+           section === "dashboard" ? "Tagesübersicht · Live-Zustellung separat prüfen" :
            "Funnel Pilot · Arbeitsbereich"}
         </div>
       </div>
@@ -41,7 +41,7 @@ export default function Topbar({
             />
           </label>
         )}
-        <div className="fp-user-initial" aria-label="Angemeldeter Arbeitsbereich"
+        <div className="fp-user-initial" aria-label="Arbeitsbereich"
           style={{ border: `1px solid ${colors.border}`, background: colors.panel,
             color: colors.text }}>
           {userInitial}
