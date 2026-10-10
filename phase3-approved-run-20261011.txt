@@ -1,0 +1,5 @@
+Funnel Pilot Phase 3 synthetic QA run.
+Authorization: 10 EUR existing OpenAI API credit, user disabled automatic recharge.
+Internal cap: 8.00 USD, separate durable GitHub ledger branch. Model: gpt-4.1-mini.
+Only 50 fictional ten-turn parent personas, no live Meta sends, no customer data.
+Run date: 2026-10-11.
