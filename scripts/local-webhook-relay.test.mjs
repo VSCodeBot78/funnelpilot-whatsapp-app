@@ -103,3 +103,41 @@ test("relay rejects origin-changing and unsupported paths", () => {
   assert.equal(isAllowedLocalWebhook("PUT", "/webhooks/meta/instagram"), false);
   assert.equal(isAllowedLocalWebhook("POST", "/webhooks/meta/instagram/"), false);
 });
+
+test("Calendly callback is opt-in, POST-only, and never exposes admin routes", async (t) => {
+  const requests = [];
+  const backend = http.createServer(async (req, res) => {
+    let raw = "";
+    for await (const chunk of req) raw += chunk.toString("utf8");
+    requests.push({ path: req.url, signature: req.headers["calendly-webhook-signature"], raw });
+    res.writeHead(202, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+  });
+  const backendPort = await start(backend);
+  const relay = createLocalWebhookRelay({ backendPort, allowCalendly: true });
+  const port = await start(relay);
+  t.after(async () => { await close(relay); await close(backend); });
+
+  assert.equal(isAllowedLocalWebhook("POST", "/booking-events/calendly"), false);
+  assert.equal(isAllowedLocalWebhook("POST", "/booking-events/calendly", { allowCalendly: true }), true);
+  assert.equal(isAllowedLocalWebhook("GET", "/booking-events/calendly", { allowCalendly: true }), false);
+  const base = "http://127.0.0.1:" + port;
+
+  const denyGet = await fetch(base + "/booking-events/calendly");
+  assert.equal(denyGet.status, 404);
+  const denyAdmin = await fetch(base + "/booking-events");
+  assert.equal(denyAdmin.status, 404);
+  const denyGeneric = await fetch(base + "/booking-events/provider", {
+    method: "POST", body: "{}",
+  });
+  assert.equal(denyGeneric.status, 404);
+  const raw = '{"event":"invitee.created","payload":{"event":{"start_time":"2026-10-21T17:00:00Z"}}}';
+  const signature = "t=1792602000,v1=" + "a".repeat(64);
+  const allowed = await fetch(base + "/booking-events/calendly", {
+    method: "POST",
+    headers: { "calendly-webhook-signature": signature },
+    body: raw,
+  });
+  assert.equal(allowed.status, 202);
+  assert.deepEqual(requests, [{ path: "/booking-events/calendly", signature, raw }]);
+});
