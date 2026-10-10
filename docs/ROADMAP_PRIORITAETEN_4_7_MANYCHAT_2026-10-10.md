@@ -86,3 +86,10 @@ Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „P
 - **Geplantes Hetzner-Betriebshandbuch** einschließlich Zugriffsschutz, TLS, Server-/Gateway-Geheimnissen, Backups, Restore, Löschfristen, Transparenz, Rollen und Multi-Tenant-Go-/No-Go: `docs/PHASE36_HETZNER_DATENSCHUTZ_BETRIEB_2026-10-10.md`.
 - **Als Nächstes:** Priorität 7 Coach-Onboarding vorbereiten. Echte Benutzeranmeldung, verschlüsselte Backups, Tenant-Isolation, DSGVO-Vertragsprüfung, Sicherheitsabnahme und Hetzner-Deployment bleiben **separat offen**.
 - Die späteren Produktmodule M-01 (ManyChat-Miniflows) und M-02 (mobile Coach-PWA) bleiben nachgelagert. Keine bezahlten Dienste eingerichtet und kein echter Sendebetrieb aktiviert.
+
+## Umsetzung Priorität 7 – 10.10.2026
+
+- **Coach-Onboarding v1 als Entwurf im Code umgesetzt:** Vorhandene Marken-/Zielgruppen-/Assistentenfelder werden durch einen versionierten, begrenzten Angebots-/Preis-/HTTPS-Link-/FAQ-/Kontaktentwurf ergänzt. Eingabemaske, direkte Speicherung und verständliche statische Vorschau sind im bestehenden Wizard erreichbar. Backend-Validierung und HTTP-/UI-Tests hinzugefügt.
+- **Wichtige Grenze:** Weiterhin nur EIN gemeinsamer Workspace. Die alten Einstellungen können Petes aktuelle Konfiguration beeinflussen, wenn sie überschrieben werden. Die neuen Coach-Daten sind bewusst Entwürfe und aktivieren **keine** zusätzlichen Angebote, Preiszusagen, Meta-Sends oder KI-Prompts. Ein eigener Coach-Account, ein eigener Tenant und unabhängige Provider-Integrationen fehlen.
+- **Keine Verwendung mit anderen echten Coaches**, bevor Authentisierung, Mandantentrennung, getrennte Daten und sichere Provider-Verbindungen nachgewiesen sind. Detaildokument: `docs/PHASE37_COACH_ONBOARDING_2026-10-10.md`.
+- **Prioritäten 1–7:** Technische Vorbereitung abgeschlossen, aber nicht mit Produktiv-/SaaS-Freigabe verwechseln. Offene Folgeblöcke: Windows-Abnahme; kontrollierter Meta-/ManyChat-Livetest; Login/Tenant-Isolation/SaaS-Datenbank; Hetzner-/Backup-/Datenschutz-Liveabnahme; später M-01 eigene kleine Keyword-/Button-/Link-Flows und M-02 mobile installierbare PWA.
