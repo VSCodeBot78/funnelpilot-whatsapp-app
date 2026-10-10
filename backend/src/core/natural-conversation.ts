@@ -63,11 +63,16 @@ export function getNaturalConversationReply(params: {
     .filter(m => m.role === "user").map(m => normalize(m.text)).join(" ");
   const ketoInConversation = lastTrack === "keto";
   const bookingUrl = bookingLink(params.bookingUrl);
+  const lastSharedResource = state.messages.slice().reverse().find(m =>
+    m.role === "assistant" &&
+    (/jochen-kammerer\.de\/keto-guide|check\.jochen-kammerer\.de/.test(m.text))
+  )?.text ?? "";
+  const lastWasGuide = lastSharedResource.includes("/keto-guide");
 
   // Provider booking follows its verified legacy webhook confirmation flow.
   // A self-reported "I booked" must never be treated as verified.
   if (state.currentStep === "booking" &&
-      /\b(hab(?:e)? gebucht|ist gebucht|termin steht|bin eingetragen|termin bestatigt|bestatigung|termin jetzt|hab den termin)\b/i.test(input)) {
+      /\b(hab(?:e)? gebucht|ist gebucht|termin steht|bin eingetragen|termin bestatigt|bestatigung|termin jetzt|hab den termin|siehst du den termin|termin garantieren|kannst du mir den termin garantieren)\b/i.test(input)) {
     // Only a signed provider callback can mark a booking as confirmed.
     return state.providerBooking?.status === "booked"
       ? { text: "Ja, dein Termin ist im Buchungssystem bestätigt.", phase: "booking_confirmed" }
@@ -142,6 +147,10 @@ export function getNaturalConversationReply(params: {
           phase: "human_handover", handoff: true };
   }
 
+  if (matches(input, /\b(was ist bei jochen anders|was macht jochen anders|was macht ihr anders|was ist an eurer begleitung.*anders)\b/)) {
+    return { text: "Jochen verbindet kurze, alltagstaugliche Bewegung mit familienkompatibler Ernährung und schaut auch auf Schlaf und Stress. Das ist keine Erfolgsgarantie, und du musst hier nichts überstürzen.",
+      phase: "info", infoOnly: true };
+  }
   if (matches(input, /\b(wie kann ich wissen|was ist anders|warum sollte ich vertrauen|woran erkenne ich)\b/)) {
     return {
       text: "Das musst du nicht blind glauben. Jochen kann dir konkret erklären, wie er arbeitet und was die Begleitung beinhaltet. Du kannst dann in Ruhe entscheiden.\nWas wäre dir dabei am wichtigsten?",
@@ -156,7 +165,11 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true,
     };
   }
-  if (matches(input, /\b(wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+  if (matches(input, /\b(verkaufsmasche|nur etwas verkaufen|nur was verkaufen|ihr wollt mir.*verkaufen)\b/)) {
+    return { text: "Verstanden. Hier muss niemand etwas kaufen. Wenn du zuerst nur wissen willst, wie Jochen arbeitet, ist das völlig okay.",
+      phase: "info", infoOnly: true };
+  }
+  if (matches(input, /\b(wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei|schlechten coach|schlechte coach|letzten programm.*arger)\b/)) {
     return {
       text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
       phase: "trust_clarify",
@@ -221,6 +234,12 @@ export function getNaturalConversationReply(params: {
   // A concrete question about an already shown product is not a reason to
   // restart the qualification flow. No invented product contents.
   if (phase === "selfstarter_offered" &&
+      matches(input, /\b(kann ich das ohne call|ohne call kaufen|ohne gesprach kaufen|direkt ohne termin kaufen)\b/)) {
+    return { text: "Ja, den Selbststarter kannst du ohne Strategiegespräch über die Produktseite kaufen:\n" +
+        OFFER_TRUTH.selfstarter.productUrl,
+      phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
+  }
+  if (phase === "selfstarter_offered" &&
       matches(input, /\b(den link schaue ich|schaue ich mir an|schaue mir den link|ich schaue es mir an|schaue mir das an|erstmal anschauen)\b/)) {
     return { text: "Klar, schau es dir in Ruhe an. Wenn etwas unklar ist, meld dich.",
       phase: "info", infoOnly: true };
@@ -237,13 +256,38 @@ export function getNaturalConversationReply(params: {
       return { text: "Ob die fünf Wochen auf eine längere Begleitung angerechnet werden können, klärt Jochen persönlich. Ich möchte dir dazu nichts zusagen, was nicht feststeht.",
         phase: "longterm_unverified", infoOnly: true };
     }
-    if (matches(input, /\b(rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer)\b/)) {
+    if (matches(input, /\b(rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer|finanzierbar)\b/)) {
       return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "longterm_unverified", infoOnly: true };
     }
-    if (matches(input, /\b(danke|verstanden|frage ich jochen|jochen direkt|alles klar)\b/)) {
+    if (matches(input, /\b(danke|verstanden|frage ich jochen|jochen direkt|alles klar|dann personlich|warte ich auf jochen|ich klare es)\b/)) {
       return { text: "Genau. Jochen kann dir die aktuellen Konditionen persönlich erklären.",
         phase: "info", infoOnly: true };
     }
+  }
+
+  // Context for follow-ups after a free resource: do not treat "Is it free?"
+  // as a new paid coaching price enquiry.
+  if (phase === "info" && lastSharedResource &&
+      matches(input, /\b(ist das kostenlos|kostet das|muss ich dafur|muss ich dafuer|ohne personliches coaching|ohne coaching)\b/)) {
+    return { text: lastWasGuide
+      ? "Ja, Jochens Keto Guide ist kostenlos. Du musst dafür kein Coaching kaufen."
+      : "Ja, der Elternfitness-Check ist kostenlos. Du musst dafür kein Coaching kaufen.",
+      phase: "info", infoOnly: true };
+  }
+  if (phase === "info" && lastWasGuide &&
+      matches(input, /\b(hore lieber|lieber horen|horversion|audio|kinderwagen)\b/)) {
+    return { text: "Dann passt die Hörversion gut. Sie ist beim kostenlosen Keto Guide dabei.",
+      phase: "info", infoOnly: true };
+  }
+  if (phase === "info" &&
+      matches(input, /\b(was ihr so macht|was macht jochen|was bietet jochen|schick mir erst informationen|erst informationen)\b/)) {
+    return { text: "Jochen arbeitet mit machbarer Bewegung, familienkompatibler Ernährung und Schlaf/Stress als drei Bausteinen. Hier kannst du dir die Methode ohne Verpflichtung ansehen:\n" +
+        OFFER_TRUTH.coachingEntry.infoUrl,
+      phase: "info", infoOnly: true };
+  }
+  if (matches(input, /\b(das ist die personliche begleitung|ist das die personliche begleitung|ist das dann funf wochen|ist das dann 5 wochen)\b/)) {
+    return { text: "Ja, die persönliche Begleitung mit Jochen läuft als Einstieg fünf Wochen. Danach wird nichts automatisch zugesagt.",
+      phase: "coaching_next", track: "coaching" };
   }
 
   if (phase === "budget_clarify") {
@@ -368,6 +412,11 @@ export function getNaturalConversationReply(params: {
     };
   }
 
+  if (["coaching_close", "coaching_next", "trust_clarify"].includes(phase) &&
+      matches(input, /\b(ich bespreche das|ich bespreche es|ich uberlege mir das|ich kaufe jedenfalls nicht heute|ich brauche zeit|brauche noch zeit)\b/)) {
+    return { text: "Klar, nimm dir die Zeit. Wenn du später eine konkrete Frage hast, meld dich einfach.",
+      phase: "info", infoOnly: true };
+  }
   if (phase === "coaching_close" || phase === "coaching_next") {
     if (matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
         (rejectsCall || !matches(input, /\b(gesprach|strategie|termin)\b/))) {
@@ -530,6 +579,14 @@ export function getNaturalConversationReply(params: {
   }
   if (matches(input, /^(hallo|hi|hey|moin|guten tag|servus)\b/)) {
     return { text: "Hey 😊 Was möchtest du gerade am liebsten verändern?", phase: "opening" };
+  }
+  if (phase === "info") {
+    // An info-only exchange should never spontaneously restart a sales quiz.
+    if (matches(input, /\b(danke|okay|ok|passt|lese ich|ich probier|ich schaue|am wochenende|kein druck|kein kauf)\b/)) {
+      return { text: "Alles klar 👍", phase: "info", infoOnly: true };
+    }
+    return { text: "Verstanden. Wenn du dazu noch eine konkrete Frage hast, meld dich einfach.",
+      phase: "info", infoOnly: true };
   }
   return { text: "Was ist bei dir gerade der größte Knackpunkt im Alltag?", phase: "opening" };
 }
