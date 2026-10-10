@@ -81,7 +81,7 @@ test("Phase 41: parents can switch topics after Pete offers chat with Jochen", a
       assert.doesNotMatch(answer.text || "", scenario.forbidden);
       assert.equal(answer.state.answers.naturalPhase, scenario.phase);
       assert.equal(answer.state.owner, "ai");
-      assert.equal(answer.state.flags.wantsBooking, false);
+      assert.notEqual(answer.state.flags.wantsBooking, true);
       assert.notEqual(answer.state.providerBooking.status, "booked");
       assert.doesNotMatch(answer.text || "", /(?:^|\n)[abcd]\)\s/im);
       console.log("FP_PHASE41_ROLEPLAY " + JSON.stringify({

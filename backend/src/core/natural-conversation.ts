@@ -58,6 +58,7 @@ export function getNaturalConversationReply(params: {
   const { text, state } = params;
   const input = normalize(text);
   const phase = String(state.answers.naturalPhase ?? "opening");
+  const alreadyChoosingCheckout = phase === "coaching_close" || phase === "coaching_next";
   const lastTrack = String(state.answers.naturalTrack ?? "");
   const lastMessages = state.messages.slice(-8)
     .filter(m => m.role === "user").map(m => normalize(m.text)).join(" ");
@@ -204,7 +205,7 @@ export function getNaturalConversationReply(params: {
 
   // An explicit buying request must not be sent back into an opening
   // qualification flow, including when someone wants Keto coaching.
-  if (matches(input,
+  if (!alreadyChoosingCheckout && matches(input,
       /\b(ich (mochte|will) (die |das )?(5[\s-]*wochen[\s-]*)?(begleitung|startphase|coaching) (buchen|kaufen)|ich will die begleitung|ich mochte die begleitung|ich will starten|ich mochte starten|direkt kaufen)\b/)) {
     return {
       text: (ketoSupport || ketoInConversation
@@ -431,7 +432,7 @@ export function getNaturalConversationReply(params: {
     };
   }
 
-  if (matches(input, /\b(ich will starten|ich mochte starten|will ich buchen|ich will das buchen|direkt kaufen|ich will die begleitung)\b/)) {
+  if (!alreadyChoosingCheckout && matches(input, /\b(ich will starten|ich mochte starten|will ich buchen|ich will das buchen|direkt kaufen|ich will die begleitung)\b/)) {
     if (lastTrack === "selfstarter") return {
       text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter", infoOnly: true,
     };
