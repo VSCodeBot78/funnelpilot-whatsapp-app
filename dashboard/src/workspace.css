@@ -234,3 +234,14 @@
   .fp-system-actions { width: 100%; }
   .fp-system-actions button { flex: 1; }
 }
+
+/* Phase 37: readable offer inputs in the guided coach setup on phones/tablets. */
+.fp-coach-draft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-top: 9px;
+}
+@media (max-width: 480px) {
+  .fp-coach-draft-grid { grid-template-columns: minmax(0, 1fr); }
+}

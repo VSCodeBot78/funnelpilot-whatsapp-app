@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
+import { DEFAULT_COACH_ONBOARDING_DRAFT, parseCoachOnboardingDraft, type CoachOnboardingDraft } from "./coach-onboarding-draft.js";
 
 export type SettingsConfig = {
   productName: string;
@@ -14,6 +15,7 @@ export type SettingsConfig = {
   companyNiche: string;
   companyAudience: string;
   companyOfferSummary: string;
+  coachOnboardingDraft: CoachOnboardingDraft;
   setupVideoUrl: string;
   topbarSubtitle: string;
   footerText: string;
@@ -99,6 +101,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   companyNiche: "Fitness & Vitalität für Eltern",
   companyAudience: "Berufstätige Eltern 35–55",
   companyOfferSummary: "No Bullshit Elternfitness, Selbststarter und Coaching",
+  coachOnboardingDraft: DEFAULT_COACH_ONBOARDING_DRAFT,
   setupVideoUrl: "",
   topbarSubtitle: "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
   footerText: "copyright Jochen Kammerer",
@@ -148,6 +151,11 @@ function sanitizeSettings(
   const sanitized: Record<string, unknown> = {};
   for (const [key, rawValue] of Object.entries(value)) {
     if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+    if (key === "coachOnboardingDraft") {
+      const result = parseCoachOnboardingDraft(rawValue);
+      if (result.ok) sanitized[key] = result.value;
+      continue;
+    }
     const defaultValue = DEFAULT_SETTINGS[key as keyof SettingsConfig];
     if (typeof rawValue !== typeof defaultValue) continue;
     if (key === "customerTopObjections") {
@@ -195,6 +203,11 @@ export function readSettings(): SettingsConfig {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      // Legacy, absent or externally edited persisted objects must never be
+      // interpreted as validated future coach offers.
+      coachOnboardingDraft: parseCoachOnboardingDraft(parsed.coachOnboardingDraft).ok
+        ? (parseCoachOnboardingDraft(parsed.coachOnboardingDraft) as { ok: true; value: CoachOnboardingDraft }).value
+        : DEFAULT_COACH_ONBOARDING_DRAFT,
       aiModel:
         String(parsed.aiModel ?? DEFAULT_SETTINGS.aiModel).trim() ||
         DEFAULT_SETTINGS.aiModel,

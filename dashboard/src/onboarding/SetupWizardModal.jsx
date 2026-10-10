@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
 import { getSetupDiagnostics } from "./onboardingReadiness";
+import CoachDraftEditor from "./CoachDraftEditor";
+import CoachProfilePreview from "./CoachProfilePreview";
 
 const STAGES = ["Willkommen", "Marke & Pete", "Angebote", "Verbindungen", "Test", "Fertig"];
 const PROVIDERS = [
@@ -92,6 +94,21 @@ export default function SetupWizardModal({
 
   function update(key, value) {
     onSettingsChange(previous => ({ ...previous, [key]: value }));
+  }
+
+  async function saveCoachDraft() {
+    setMessage("");
+    setSaving(true);
+    try {
+      const saved = await onSaveSettings();
+      setMessage(saved
+        ? "Coach-Entwurf im bestehenden Workspace gespeichert. Kein neuer Coach-Zugang und keine Live-Freigabe."
+        : "Coach-Entwurf konnte nicht gespeichert werden. Felder und HTTPS-Links kontrollieren.");
+    } catch {
+      setMessage("Coach-Entwurf konnte nicht gespeichert werden. Kein Live-Betrieb aktiviert.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function next() {
@@ -288,8 +305,9 @@ export default function SetupWizardModal({
             <div style={{ ...box, background: "#eaf3ff" }}>
               <h2 style={{ margin: "0 0 12px", fontSize: 26 }}>Willkommen bei Funnel Pilot!</h2>
               <p style={{ ...small, fontSize: 15 }}>
-                Richte deine Marke, Pete und deine Verbindungen Schritt für Schritt ein.
-                Du brauchst dafür keine technischen Kenntnisse.
+                Richte deine Marke, Angebote, Antworten und Verbindungen Schritt für Schritt ein.
+                Du brauchst dafür keine technischen Kenntnisse. Andere Coach-Konten
+                und eine Live-Freigabe entstehen dadurch noch nicht.
               </p>
               <div style={{ marginTop: 14, ...small }}>✓ Ein geführter Ablauf</div>
               <div style={{ ...small }}>✓ Jederzeit wieder öffnen</div>
@@ -314,7 +332,15 @@ export default function SetupWizardModal({
             </div>
           </div>}
 
-          {stage === 1 && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+          {stage === 1 && <div>
+            <p style={{ ...small, padding: 12, border: "1px solid #fed7aa",
+              borderRadius: 9, background: "#fff7ed", marginTop: 0 }}>
+              <strong>Wichtig:</strong> Diese Einrichtung bearbeitet derzeit deinen einzigen
+              bestehenden Workspace. Ein fremder Coach hat hier NOCH KEIN eigenes Konto
+              oder getrennte Daten. Andere Marken nur in einer separaten Testumgebung
+              ausprobieren, nicht über deinen laufenden Eltern-fit-&amp;-vital-Workspace.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
             <div>
               <h3 style={{ marginTop: 0 }}>Deine Marke</h3>
               <div style={{ display: "grid", gap: 12 }}>
@@ -326,7 +352,7 @@ export default function SetupWizardModal({
               </div>
             </div>
             <div>
-              <h3 style={{ marginTop: 0 }}>Pete und deine Kommunikation</h3>
+              <h3 style={{ marginTop: 0 }}>Dein KI-Assistent und deine Kommunikation</h3>
               <div style={{ display: "grid", gap: 12 }}>
                 {input("Assistentenname", "assistantName")}
                 {input("Markensprache / Tonalität", "brandVoice")}
@@ -341,7 +367,7 @@ export default function SetupWizardModal({
                   </p>
                 </div>
                 <div>
-                  {input("Master-Prompt: So soll Pete mit deinen Leads sprechen",
+                  {input("Master-Prompt: So soll dein KI-Assistent mit Leads sprechen",
                     "masterPrompt", { multiline: true, rows: 9,
                     placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
                   <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
@@ -356,11 +382,20 @@ export default function SetupWizardModal({
                 {input("Eskalation an einen Menschen", "escalationHint", { multiline: true })}
                 {input("Was Pete niemals tun darf", "noGos", { multiline: true })}
               </div>
-              <p style={small}>Pete behauptet nicht, persönlich der Betreiber zu sein.</p>
+              <p style={small}>Dein KI-Assistent darf nicht behaupten, persönlich der Betreiber zu sein.</p>
+            </div>
             </div>
           </div>}
 
           {stage === 2 && <div style={{ display: "grid", gap: 16 }}>
+            <p style={{ ...small, padding: 12, border: "1px solid #fed7aa",
+              borderRadius: 9, background: "#fff7ed" }}>
+              <strong>Wichtig:</strong> Die bestehenden Marken-, Buchungs- und Checkout-Felder
+              oberhalb des neuen Editors gehören weiterhin zum aktuellen Workspace und
+              können von aktiven Funktionen genutzt werden. Nur die zusätzlichen
+              Coach-Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
+              Test-Coaches im laufenden Workspace einrichten.
+            </p>
             <h3 style={{ marginTop: 0 }}>Angebote und nächste Schritte</h3>
             {input("Deine Angebote und Zielsetzung", "companyOfferSummary", { multiline: true,
               placeholder: "Was bietest du an, zu welchem Preis und für wen?" })}
@@ -368,6 +403,15 @@ export default function SetupWizardModal({
               { placeholder: "https://calendly.com/..." })}
             {input("Kauf-Link für dein Haupteinstiegsangebot", "starterCheckoutUrl",
               { placeholder: "https://..." })}
+            <CoachDraftEditor
+              value={settings.coachOnboardingDraft}
+              onChange={value => update("coachOnboardingDraft", value)}
+            />
+            <CoachProfilePreview settings={settings} />
+            <button type="button" style={{ ...primary, justifySelf: "start" }}
+              onClick={saveCoachDraft} disabled={saving}>
+              {saving ? "Speichere…" : "Coach-Entwurf speichern"}
+            </button>
             <div style={box}>
               <strong>Weiterführende Angebote & Links</strong>
               <p style={small}>Zusätzliche Produktlinks und Kampagnenregeln kannst du bereits
@@ -398,8 +442,10 @@ export default function SetupWizardModal({
 
           {stage === 4 && <div>
             <h3 style={{ marginTop: 0 }}>Teste Funnel Pilot vor dem Start</h3>
-            <p style={small}>Das Dashboard, Pete, Leads, Inbox, Termine und Follow-ups
-              lassen sich lokal prüfen. Echte Meta-Sends bleiben deaktiviert.</p>
+            <p style={small}>Dashboard, Leads, Inbox, Termine und Follow-ups
+              lassen sich lokal prüfen. Der Pete-Testchat verwendet weiterhin
+              den bestehenden Single-Workspace, NICHT automatisch den neuen
+              Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert.</p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button type="button" style={primary} onClick={onOpenTestChat}>Pete-Testgespräch öffnen</button>
               <button type="button" style={btn} onClick={() => onOpenSection("inbox")}>Inbox / Human Takeover</button>
@@ -422,6 +468,7 @@ export default function SetupWizardModal({
 
           {stage === 5 && <div style={{ display: "grid", gap: 15 }}>
             <h2 style={{ margin: 0 }}>Dein Dashboard ist vorbereitet.</h2>
+            <CoachProfilePreview settings={settings} />
             <p style={small}>Die Einstellungen lassen sich jederzeit ergänzen. Der
               Einrichtungsassistent aktiviert ausdrücklich noch keine externen Nachrichten.</p>
             <div style={box}>
