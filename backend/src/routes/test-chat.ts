@@ -2,8 +2,11 @@ import { Router } from "express";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
 import { readSettings } from "../services/settings-store.js";
+import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 
 const router = Router();
+
+router.get("/budget", (_req, res) => res.json(getPeteBudgetStatusSafe()));
 
 router.post("/message", async (req, res) => {
   try {
