@@ -66,6 +66,28 @@ export function getNaturalConversationReply(params: {
     return null;
   }
 
+  // A human may reject marketing or call out mechanical questioning without
+  // issuing a formal STOP. Respect that boundary instead of repeating a pitch.
+  if (matches(input,
+      /\b(keine werbung|kein verkaufsgesprach|keine verkaufsgesprach|kein interesse|nicht interessiert|nur schauen|ich schaue nur|ich will keine werbung|will nichts kaufen|bitte nicht verkaufen)\b/)) {
+    return {
+      text: "Alles gut. Kein Verkaufsgespräch. Wenn du irgendwann eine konkrete Frage hast, kannst du dich einfach melden.",
+      phase: "info", infoOnly: true,
+    };
+  }
+  if (matches(input,
+      /\b(das hast du mich|hast du mich (doch )?(schon|gerade)|schon gefragt|gleiche frage|immer wieder das gleiche|fragst du nochmal)\b/)) {
+    return {
+      text: "Stimmt, das war doppelt. Danke für den Hinweis. Ich will dich nicht mit Fragen nerven. Sag einfach, was du gerade wissen möchtest.",
+      phase: "info", infoOnly: true,
+    };
+  }
+  if (phase === "info" && matches(input,
+      /\b(danke|vielleicht spater|alles klar|passt so|ok danke)\b/)) {
+    return { text: "Gerne. Meld dich einfach, wenn du noch eine Frage hast.",
+      phase: "info", infoOnly: true };
+  }
+
   // "Mit Jochen sprechen" is ambiguous: live chat or booking? Ask only once.
   if (phase === "human_choice") {
     if (matches(input, /\b(hier|chat|dm|nachricht|personlich ubernehmen|im gespräch hier)\b/)) {
@@ -325,6 +347,12 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "attempts") {
+    if (matches(input, /\b(noch nie|nie richtig|gar nichts|noch nichts|nichts probiert|noch nicht angefangen)\b/)) {
+      return {
+        text: "Dann bist du eher am Anfang, und das ist völlig okay. Was würde dir den Einstieg gerade am meisten erleichtern?",
+        phase: "blocker", track: ketoInConversation ? "keto" : undefined,
+      };
+    }
     return {
       text: "Du hast also schon etwas probiert, aber es hat nicht dauerhaft gepasst.\n" +
         "Woran ist es bisher meistens gescheitert?",
