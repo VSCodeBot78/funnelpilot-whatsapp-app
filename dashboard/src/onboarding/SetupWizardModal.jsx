@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
+import { getSetupDiagnostics } from "./onboardingReadiness";
 
 const STAGES = ["Willkommen", "Marke & Pete", "Angebote", "Verbindungen", "Test", "Fertig"];
 const PROVIDERS = [
@@ -231,6 +232,8 @@ export default function SetupWizardModal({
     </div>;
   }
 
+  const diagnostics = getSetupDiagnostics({ readiness, integrations, settings });
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 1000,
@@ -388,14 +391,36 @@ export default function SetupWizardModal({
             <p style={small}>Die Einstellungen lassen sich jederzeit ergänzen. Der
               Einrichtungsassistent aktiviert ausdrücklich noch keine externen Nachrichten.</p>
             <div style={box}>
-              <strong>Lokale Sicherheit</strong>
-              <p style={small}>Backend: {readiness?.ok ? "erreichbar" : "nicht geprüft"}</p>
-              <p style={small}>Instagram-Send: {readiness?.instagramSendEnabled === false
-                ? "aus" : "nicht als sicher bestätigt"}</p>
-              <p style={small}>WhatsApp-Send: {readiness?.whatsappSendEnabled === false
-                ? "aus" : "nicht als sicher bestätigt"}</p>
-              <p style={small}>Echte Meta-Verbindungen, Kalender-Sync und CRM-Sync müssen
-                jeweils vor dem produktiven Start bestätigt werden.</p>
+              <strong>Einrichtungs- und Sicherheitsdiagnose</strong>
+              <p style={{ ...small, fontWeight: 700, marginTop: 8 }}>
+                {diagnostics.localTestReady
+                  ? "Lokaler Test vorbereitet – keine Freigabe für echte Nachrichten."
+                  : "Für den lokalen Test sind noch Prüfungen offen."}
+              </p>
+              <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                {diagnostics.checks.map(item => (
+                  <div key={item.id} style={{
+                    display: "flex", gap: 10, alignItems: "flex-start",
+                    padding: "9px 10px", borderRadius: 7, background: "#f8fafc",
+                  }}>
+                    <span aria-label={item.status === "ok" ? "geprüft" : "offen"} style={{
+                      fontWeight: 800, color: item.status === "ok" ? "#15803d" : "#92400e",
+                    }}>{item.status === "ok" ? "✓" : "○"}</span>
+                    <div style={{ display: "grid", gap: 3, fontSize: 13 }}>
+                      <strong>{item.label}</strong>
+                      <span style={{ color: "#475569" }}>{item.detail}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ ...small, marginTop: 12 }}>
+                Diese Diagnose prüft Einstellungen und bekannte API-Statuswerte.
+                Eine echte Terminbuchung oder Instagram-/WhatsApp-Zustellung
+                kann sie nicht ersetzen.
+              </p>
+              <button type="button" style={btn} onClick={reload} disabled={loading}>
+                {loading ? "Prüfe…" : "Diagnose aktualisieren"}
+              </button>
             </div>
             <button type="button" style={{ ...primary, alignSelf: "start" }} onClick={onClose}>
               Zum Dashboard →
