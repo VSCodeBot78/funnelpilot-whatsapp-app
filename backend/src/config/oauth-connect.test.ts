@@ -82,7 +82,7 @@ test("Provider one-click foundation: PKCE, CSRF, encryption and truthful status"
         "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1",
       );
       assert.equal(options?.method, "GET");
-      assert.equal(options?.headers?.authorization, "Bearer " + simulatedToken);
+      assert.equal(new Headers(options?.headers).get("authorization"), "Bearer " + simulatedToken);
       return new Response(JSON.stringify({ items: [{ id: "primary", summary: "Private Calendar" }] }), {
         status: 200, headers: { "content-type": "application/json" },
       });
