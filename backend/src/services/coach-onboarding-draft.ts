@@ -102,11 +102,12 @@ export function validateCoachOnboardingDraft(input: unknown): Result {
   if (input.schemaVersion !== 1) {
     issues.push({ field: "schemaVersion", message: "Nicht unterstützte Vorlagenversion." });
   }
+  const record: Record<string, unknown> = input;
   const empty = emptyCoachOnboardingDraft();
   function section<T extends Record<string, string>>(
     name: "brand" | "assistant" | "links", model: T,
   ): T {
-    const source = input[name];
+    const source = record[name];
     if (!isPlainRecord(source)) {
       issues.push({ field: name, message: "Abschnitt fehlt oder ist ungültig." });
       return model;
