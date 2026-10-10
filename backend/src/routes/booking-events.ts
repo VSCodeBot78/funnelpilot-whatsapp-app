@@ -98,73 +98,63 @@ function getCalendlySignatureHeader(req: Request): string | undefined {
 }
 
 function verifyCalendlyWebhookSignature(req: Request): WebhookVerificationResult {
-  const mode = env.CALENDLY_WEBHOOK_VERIFY_MODE;
+  // Production must fail closed even if the environment accidentally uses "off".
+  const mode = env.NODE_ENV === "production" ? "strict" : env.CALENDLY_WEBHOOK_VERIFY_MODE;
   const secret = env.CALENDLY_WEBHOOK_SECRET;
   const signature = getCalendlySignatureHeader(req);
 
   if (mode === "off") {
-    return {
-      ok: true,
-      reason: "signature verification disabled",
-    };
+    return { ok: true, reason: "local signature verification disabled" };
   }
-
-  if (mode === "strict" && !secret) {
-    return {
-      ok: false,
-      statusCode: 500,
-      error:
-        "CALENDLY_WEBHOOK_SECRET muss gesetzt sein, wenn CALENDLY_WEBHOOK_VERIFY_MODE=strict ist.",
-    };
-  }
-
   if (!secret) {
-    return {
-      ok: true,
-      reason: "dev mode with no secret",
-    };
+    if (mode === "strict") {
+      return { ok: false, statusCode: 503, error: "calendly_webhook_secret_not_configured" };
+    }
+    return { ok: true, reason: "local dev without signature secret" };
   }
-
   if (!signature) {
     if (mode === "strict") {
-      return {
-        ok: false,
-        statusCode: 401,
-        error: "Webhook-Signature fehlt.",
-      };
+      return { ok: false, statusCode: 401, error: "calendly_signature_missing" };
     }
-
-    return {
-      ok: true,
-      reason: "dev mode signature optional",
-    };
+    return { ok: true, reason: "local dev without signature" };
   }
 
-  const rawPayload = getRawWebhookPayload(req);
-  const computedSignature = crypto
+  // Calendly: Calendly-Webhook-Signature: t=<unix_seconds>,v1=<hmac_sha256>.
+  // The signed data is exactly `timestamp + "." + rawBody`.
+  const parts = Object.fromEntries(signature.split(",").map((part) => {
+    const separator = part.indexOf("=");
+    return separator > 0
+      ? [part.slice(0, separator).trim(), part.slice(separator + 1).trim()]
+      : ["", ""];
+  }));
+  const timestamp = parts.t || "";
+  const digest = parts.v1 || "";
+  const timestampSeconds = Number(timestamp);
+  const skew = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
+  if (
+    !/^\\d{10,13}$/.test(timestamp) ||
+    !Number.isSafeInteger(timestampSeconds) ||
+    !Number.isFinite(skew) ||
+    skew > 180 ||
+    !/^[0-9a-f]{64}$/i.test(digest)
+  ) {
+    return { ok: false, statusCode: 401, error: "calendly_signature_invalid_or_expired" };
+  }
+
+  const computed = crypto
     .createHmac("sha256", secret)
-    .update(rawPayload)
+    .update(timestamp + "." + getRawWebhookPayload(req))
     .digest("hex");
+  const actual = Buffer.from(digest, "hex");
+  const expected = Buffer.from(computed, "hex");
+  const matches =
+    actual.length === expected.length &&
+    crypto.timingSafeEqual(actual, expected);
 
-  if (signature !== computedSignature) {
-    if (mode === "strict") {
-      return {
-        ok: false,
-        statusCode: 401,
-        error: "Ungültige Webhook-Signature.",
-      };
-    }
-
-    return {
-      ok: true,
-      reason: "dev mode invalid signature ignored",
-    };
+  if (!matches) {
+    return { ok: false, statusCode: 401, error: "calendly_signature_invalid" };
   }
-
-  return {
-    ok: true,
-    reason: "valid signature",
-  };
+  return { ok: true, reason: "valid_calendly_signature" };
 }
 
 function formatReadableSlot(startAt: string): string {
