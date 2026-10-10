@@ -258,3 +258,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **Sicherheitsgrenze explizit:** Fremde Coach-Marken nicht im derzeitigen Jochen-Workspace testen; sonst würden **bestehende** Marken-/Prompt-/Angebotseinstellungen überschrieben. Für spätere echte Coach-Konten braucht es zuerst Login, Rollen und serverseitige Mandantentrennung. Draft-Angebote/FAQs überschreiben die Angebotswahrheit der Pete-Engine NICHT.
 - **Tests:** Backend-HTTP-Persistenz/Reload/Teilupdate und strenge Validierung sowie Dashboard-Vorschau-/Nichtaktivierungs-Tests. Vor Docs-Änderungen GitHub-CI `38070751513`: **223 Backend + 9 Relay/Starter + 23 Dashboard = 255 Tests**, beide Builds erfolgreich. Endgültigen PR-HEAD gesondert prüfen.
 - **Detail:** `docs/PHASE37_COACH_ONBOARDING_2026-10-10.md`. Keine neuen Anbieter, Live-Sends, Hetzner-Instanz oder Kosten. **Prioritäten 1–7 auf der technischen Vorbereitungsseite bearbeitet; echte SaaS- und Laptop-Abnahmen bleiben offen**.
+
+
+## Phase 38 – isolierte Coach-Identität nur als Entwurf (10.10.2026)
+- `coachOnboardingDraft.identity` speichert optional Marke, Betreiber, KI-Name,
+  Zielgruppe und Tonalität ohne aktive Einstellungen zu verändern.
+- Die Vorschau mischt keine einzelnen aktiven Jochen-Felder mehr in eine
+  vorhandene Entwurfsidentität; ältere Entwürfe erhalten Legacy-Warnung.
+- Backend-Validierung und automatisierte UI-/HTTP-Regressionen ergänzt.
+- **Kein** Benutzerkonto, Multi-Tenant, fremder Live-Coach oder Meta-Test;
+  Windows-Abnahme und echte Provider-Freigaben bleiben offen.

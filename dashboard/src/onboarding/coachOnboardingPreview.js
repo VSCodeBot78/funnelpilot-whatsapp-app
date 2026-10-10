@@ -6,17 +6,25 @@ export const EMPTY_COACH_DRAFT = Object.freeze({
 // not generate an AI prompt, a sellable offer, a paid checkout or live sends.
 export function getCoachOnboardingPreview(settings = {}) {
   const draft = settings.coachOnboardingDraft || EMPTY_COACH_DRAFT;
-  const brand = String(settings.companyName || "").trim();
-  const operator = String(settings.adminName || "").trim();
-  const assistant = String(settings.assistantName || "").trim();
-  const audience = String(settings.companyAudience || "").trim();
-  const tone = String(settings.brandVoice || "").trim();
+  // A draft identity is exclusively draft-sourced: never silently mix with
+  // live workspace identity, even when one draft field is still empty.
+  const hasDraftIdentity = draft.identity && typeof draft.identity === "object" &&
+    !Array.isArray(draft.identity);
+  const identity = hasDraftIdentity ? draft.identity : settings;
+  const brand = String(hasDraftIdentity ? identity.brandName || "" : identity.companyName || "").trim();
+  const operator = String(hasDraftIdentity ? identity.operatorName || "" : identity.adminName || "").trim();
+  const assistant = String(hasDraftIdentity ? identity.assistantName || "" : identity.assistantName || "").trim();
+  const audience = String(hasDraftIdentity ? identity.audience || "" : identity.companyAudience || "").trim();
+  const tone = String(hasDraftIdentity ? identity.tone || "" : identity.brandVoice || "").trim();
   const offers = (Array.isArray(draft.offers) ? draft.offers : [])
     .filter(item => item && String(item.name || "").trim());
   const faqs = (Array.isArray(draft.faqs) ? draft.faqs : [])
     .filter(item => item && String(item.question || "").trim() &&
       String(item.answer || "").trim());
   const warnings = [];
+  if (!hasDraftIdentity) warnings.push(
+    "Legacy-Vorschau: Marke und Assistent stammen noch aus dem aktiven Workspace. Für fremde Coaches eigene Entwurfs-Identität eingeben."
+  );
   if (!brand || !operator || !assistant || !audience)
     warnings.push("Marke, Betreiber, Assistent und Zielgruppe vollständig eintragen.");
   if (!offers.length)
@@ -34,6 +42,7 @@ export function getCoachOnboardingPreview(settings = {}) {
     preferredContact: String(draft.preferredContact || "").trim(),
     welcomeLine: String(draft.welcomeLine || "").trim(),
     offers, faqs, warnings,
+    identitySource: hasDraftIdentity ? "coach_draft" : "active_workspace_legacy",
     draftOnly: true, liveReady: false, tenantIsolated: false,
   };
 }

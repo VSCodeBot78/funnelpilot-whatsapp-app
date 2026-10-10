@@ -15,6 +15,11 @@ export default function CoachProfilePreview({ settings = {} }) {
         So sehen deine Eingaben aus. Dies ist weder eine KI-Antwort noch eine
         bestätigte Meta-Verbindung, ein gültiges Verkaufsangebot oder ein eigenes Coach-Konto.
       </p>
+      <p style={{ fontSize: 12, fontWeight: 650, color: "#475569" }}>
+        {profile.identitySource === "coach_draft"
+          ? "Marke und Assistent stammen ausschließlich aus dem unveröffentlichten Coach-Entwurf."
+          : "Achtung: Bei älteren Entwürfen stammen Marke und Assistent noch aus dem aktiven Workspace."}
+      </p>
       <div style={{ display: "grid", gap: 5, fontSize: 13 }}>
         <div><b>Marke:</b> {profile.brand || "Noch nicht angegeben"}</div>
         <div><b>Betreiber:</b> {profile.operator || "Noch nicht angegeben"}</div>
