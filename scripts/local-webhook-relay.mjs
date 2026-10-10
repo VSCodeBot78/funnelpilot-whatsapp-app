@@ -9,7 +9,7 @@ const WEBHOOK_PATHS = new Set([
   "/webhooks/meta/whatsapp",
 ]);
 
-export function isAllowedLocalWebhook(method, requestTarget) {
+export function isAllowedLocalWebhook(method, requestTarget, { allowCalendly = false } = {}) {
   if (method !== "GET" && method !== "POST") return false;
   if (
     typeof requestTarget !== "string" ||
@@ -24,20 +24,21 @@ export function isAllowedLocalWebhook(method, requestTarget) {
     const parsed = new URL(requestTarget, "http://127.0.0.1");
     return (
       parsed.origin === "http://127.0.0.1" &&
-      WEBHOOK_PATHS.has(parsed.pathname)
+      (WEBHOOK_PATHS.has(parsed.pathname) ||
+        (allowCalendly && method === "POST" && parsed.pathname === "/booking-events/calendly"))
     );
   } catch {
     return false;
   }
 }
 
-export function createLocalWebhookRelay({ backendPort = 3001 } = {}) {
+export function createLocalWebhookRelay({ backendPort = 3001, allowCalendly = false } = {}) {
   if (!Number.isInteger(backendPort) || backendPort < 1 || backendPort > 65535) {
     throw new Error("Invalid backend port.");
   }
 
   return http.createServer((incoming, outgoing) => {
-    if (!isAllowedLocalWebhook(incoming.method, incoming.url)) {
+    if (!isAllowedLocalWebhook(incoming.method, incoming.url, { allowCalendly })) {
       incoming.resume();
       outgoing.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       outgoing.end("Not found");
@@ -92,10 +93,14 @@ function getLocalPort(name, fallback) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const relayPort = getLocalPort("LOCAL_WEBHOOK_RELAY_PORT", 3002);
   const backendPort = getLocalPort("PORT", 3001);
-  const server = createLocalWebhookRelay({ backendPort });
+  const allowCalendly = process.env.LOCAL_ALLOW_CALENDLY_WEBHOOK === "true";
+  if (allowCalendly && process.env.CALENDLY_WEBHOOK_VERIFY_MODE !== "strict") {
+    throw new Error("LOCAL_ALLOW_CALENDLY_WEBHOOK requires CALENDLY_WEBHOOK_VERIFY_MODE=strict in relay and backend.");
+  }
+  const server = createLocalWebhookRelay({ backendPort, allowCalendly });
   server.listen(relayPort, "127.0.0.1", () => {
     console.log(
-      `[local-webhook-relay] Listening on http://127.0.0.1:${relayPort}; only Meta webhook GET/POST. Backend: 127.0.0.1:${backendPort}`,
+      `[local-webhook-relay] Listening on http://127.0.0.1:${relayPort}; only Meta webhook GET/POST${allowCalendly ? " + signed Calendly POST" : ""}. Backend: 127.0.0.1:${backendPort}`,
     );
     console.log("[local-webhook-relay] Do NOT tunnel port 3001 or port 5173.");
   });
