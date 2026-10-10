@@ -4,7 +4,12 @@ import {
   type PeteEscalationCategory,
 } from "../config/pete-prompt-v1.js";
 import { DEFAULT_VIDEO_GUIDE_URL } from "../config/campaigns.js";
-import { OFFER_TRUTH } from "../config/offer-truth.js";
+import {
+  OFFER_TRUTH,
+  LONG_TERM_PRICE_UNVERIFIED_REPLY,
+  hasUnapprovedOfferPrice,
+  isUnverifiedLongTermPriceQuestion,
+} from "../config/offer-truth.js";
 import type { CampaignConfig, FlowStepId } from "../types/types.js";
 
 export type PeteRuntimeSafetyCategory =
@@ -571,7 +576,8 @@ function getSafeOfferPriceText(campaign?: CampaignConfig): string | undefined {
   if (
     !text ||
     hasAggressiveClosingText(text) ||
-    hasNormalFlowJochenThirdPersonText(text)
+    hasNormalFlowJochenThirdPersonText(text) ||
+    hasUnapprovedOfferPrice(text)
   ) {
     return undefined;
   }
@@ -937,8 +943,7 @@ function buildMedicalSoftReply(matchedKeyword: string): string {
 function buildDirectPriceReply(_campaign?: CampaignConfig): string {
   return (
     `Das 5-Wochen-Coaching liegt bei ${OFFER_TRUTH.coachingEntry.priceText}.\n` +
-    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
-    `Die 6-Monats-Begleitung liegt regulär bei ${OFFER_TRUTH.longTerm.priceText}; nach dem 5-Wochen-Coaching bleiben durch die Anrechnung noch ${OFFER_TRUTH.longTerm.upgradeBalanceEur?.toLocaleString("de-DE")} € offen.`
+    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.`
   );
 }
 
@@ -946,6 +951,9 @@ function buildPriceReply(
   normalized: string,
   context?: PeteRuntimeSafetyContext,
 ): string {
+  if (isUnverifiedLongTermPriceQuestion(normalized)) {
+    return LONG_TERM_PRICE_UNVERIFIED_REPLY;
+  }
   const directPriceRequest =
     context?.askedPrice ||
     includesAnyKeyword(normalized, DIRECT_PRICE_KEYWORDS) !== undefined;
