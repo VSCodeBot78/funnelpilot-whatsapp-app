@@ -21,7 +21,7 @@ Stand: 2026-10-10 (Pre-Live-Basis inkl. lokalem Sicherheitsrelay)
 - ManyChat-Koexistenz: neue IG-Leads standardmäßig `botEnabled=false`; expliziter Handoff im Dashboard
 - Instagram erlaubte Sender mit Allowlist, globaler Send standardmäßig aus
 - vier editierbare Dashboard-Runtime-Links; Elterncheck/Checkout-Verwechslung verhindert
-- Produktwahrheit: Selbststarter 14,95 €, Coaching 5 Wochen 499 €, Begleitung 6 Monate 2.499 € (499 € anrechenbar)
+- Angebotsfreigabe (aktueller Stand): Selbststarter 14,95 €, Coaching 5 Wochen 499 €. 6-Monats-/Langzeitkonditionen weiterhin ungeklärt; historischer Betrag 2.499 € und Anrechnung **nicht** für Lead-Antworten freigegeben (Phase 28 behebt aktive Code-Rückfälle).
 - WhatsApp-Regression durch den gemeinsamen Backend-Testlauf
 
 ## Sicherer Laptop-Test vor Hetzner
@@ -154,3 +154,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Bei mehrfacher Frage zur angeblich erfolgten Calendly-Buchung formuliert Pete ohne bestätigenden Provider-Webhook nicht zweimal den identischen Satz, sondern benennt weiterhin den ausstehenden Nachweis und die Möglichkeit einer persönlichen Klärung.
 - Neue Regressionen in `backend/src/config/natural-pete-dm.test.ts` für Schichtdienst, fehlende erfundene Vorgeschichte und wiederholte, nicht bestätigte Terminfrage. CI-Nachweis auf Commit `074d61e3`: **124 Backend-Tests + 5 Relay-/Launcher-Tests + 8 Dashboard-Tests = 137 bestanden, 0 fehlgeschlagen**, Backend-/Dashboard-Build grün (GitHub Actions 38053473713 und 38053471402).
 - Weiter offen: Jochens finale Sprachabnahme, unabhängige OpenAI-Modellgespräche, echte Meta-/Calendly-End-to-End-Tests und Windows-Laptop-Abnahme. Kein produktiver Auto-Send.
+
+## Phase 28 – Unfreigegebene Preisangaben gesperrt (10.10.2026)
+
+- Aktive `OFFER_TRUTH.longTerm`-Konfiguration enthält **keine** numerischen 6-Monats-Preise, Anrechnungen oder Upgrades mehr. Der Datensatz ist ausdrücklich `pending_founder_approval`; historische Zahlwerte bleiben nur in alten Berichten/Tests als Warnbeispiele.
+- Die alte Funktion `getLongTermReply` gibt statt des früheren Angebots-/Rabatttextes eine einheitliche Antwort zurück, dass Jochen Preis und Umfang persönlich klärt. Legacy-Keywörter erkennen jetzt auch die direkte `6-Monats`-, `Premium`- und `Advanced`-Nachfrage.
+- Sowohl im natürlichen Pete-Modus als auch in den älteren Runtime-Safety-/Response-Composer-Preiswegen wird ein konkret verlangter Langzeitpreis nicht aus anderen Produktpreisen abgeleitet. Der direkte generische Preisweg nennt nur noch bestätigte Kurzangebote.
+- Frei bearbeitete Kampagnen-Antworttexte mit veralteten oder anderen unbestätigten Euro-Beträgen werden im Preisantwortweg verworfen. Strukturierte OpenAI-Zwischenantworten dürfen keine selbst erzeugten Euro-Beträge liefern; sonst verwendet der bestehende Ablauf die sichere Alternative. Eine direkte Langzeitpreisfrage wird nicht an den kostenauslösenden Modellpfad gegeben.
+- Neue Tests erfassen Angebots-Felder, alte Beträge und erfundene Euro-Angaben, Natural/Legacy-Routing, direkte und nicht-direkte Composer-Preiswege sowie ein vollständiges Legacy-Engine-Gespräch.
+- **CI-Stand nach Code- und Teständerung:** GitHub Actions #38055847690, **131 Backend + 5 Relay/Launcher + 8 Dashboard = 144 Tests bestanden, 0 Fehler**, beide Builds erfolgreich. Dies beweist Code-/Testverhalten, **nicht** live gesendete Meta-/WhatsApp- oder echte OpenAI-Modellantworten.
+- **Geschäftliche Entscheidung bleibt offen:** Konditionen einer längeren Begleitung müssen von Jochen ausdrücklich freigegeben werden, bevor irgendein Kundentext einen konkreten Betrag, eine Rate oder Anrechnung nennen darf. Preise/Links der beiden Kurzangebote ebenfalls vor echtem Live-Test gegen Checkout prüfen.
