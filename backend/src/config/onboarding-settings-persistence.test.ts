@@ -44,9 +44,11 @@ test("Onboarding repeat and partial settings edits preserve all unrelated data",
     brandVoice: "freundlich und präzise",
     defaultBookingUrl: "https://calendly.com/coach/kennenlernen",
     companyOfferSummary: "8-Wochen-Begleitung",
+    customerTopObjections: "  Kein Vertrauen in Apps  \n  Ungünstige Arbeitszeiten \nZu viele Anbieter\nVierter Einwand",
   });
   assert.equal(first.settings.companyName, "Coach Testmarke");
   assert.equal(first.settings.assistantName, "Nora");
+  assert.equal(first.settings.customerTopObjections, "Kein Vertrauen in Apps\nUngünstige Arbeitszeiten\nZu viele Anbieter");
 
   const second = await patch({
     defaultBookingUrl: "https://calendly.com/coach/neuer-termin",
@@ -55,6 +57,7 @@ test("Onboarding repeat and partial settings edits preserve all unrelated data",
   assert.equal(second.settings.companyNiche, "Stressfreies Fitnesstraining");
   assert.equal(second.settings.assistantName, "Nora");
   assert.equal(second.settings.companyOfferSummary, "8-Wochen-Begleitung");
+  assert.equal(second.settings.customerTopObjections, "Kein Vertrauen in Apps\nUngünstige Arbeitszeiten\nZu viele Anbieter");
   assert.equal(second.settings.defaultBookingUrl, "https://calendly.com/coach/neuer-termin");
 
   const repeat = await patch({
@@ -79,6 +82,7 @@ test("Onboarding repeat and partial settings edits preserve all unrelated data",
   assert.equal(reloaded.settings.companyName, "Coach Testmarke 2");
   assert.equal(reloaded.settings.defaultBookingUrl, "https://calendly.com/coach/neuer-termin");
   assert.equal(reloaded.settings.companyOfferSummary, "8-Wochen-Begleitung");
+  assert.equal(reloaded.settings.customerTopObjections, "Kein Vertrauen in Apps\nUngünstige Arbeitszeiten\nZu viele Anbieter");
 
   const stored = JSON.parse(fs.readFileSync(path.join(dataDir, "settings.json"), "utf8"));
   assert.equal(stored.companyName, "Coach Testmarke 2");
@@ -88,4 +92,6 @@ test("Onboarding repeat and partial settings edits preserve all unrelated data",
   assert.equal(readSettings().assistantName, "Nora 2");
   assert.equal(writeSettings({ assistantName: "Neue Nora" }).companyName, "Coach Testmarke 2");
   assert.equal(readSettings().defaultBookingUrl, "https://calendly.com/coach/neuer-termin");
+  assert.equal(writeSettings({ customerTopObjections: "" }).customerTopObjections, "");
+  assert.equal(readSettings().companyName, "Coach Testmarke 2");
 });
