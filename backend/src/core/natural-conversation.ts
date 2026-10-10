@@ -26,6 +26,16 @@ function normalize(value: string): string {
 function matches(value: string, re: RegExp): boolean {
   return re.test(normalize(value));
 }
+function wantsPersonalSupport(value: string): boolean {
+  const text = normalize(value);
+  if (/\b(kein(?:e|en)?|ohne|nicht)\s+(?:coach|begleitung|unterstutzung)\b/.test(text)) {
+    return false;
+  }
+  return /\b(begleitung|coaching|coach|unterstutzung|personliche hilfe|gemeinsam|jemand(?:en)?|dranbleib(?:en|t|e|st)?|an meiner seite)\b/.test(text);
+}
+function wantsSelfGuided(value: string): boolean {
+  return /\b(selbst|allein|selber|ohne coach|erstmal infos|selbststarter)\b/.test(normalize(value));
+}
 const bookingLink = (url?: string) =>
   url && /^https:\/\//i.test(url) ? url : null;
 const priceFiveWeeks =
@@ -283,10 +293,10 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "preference") {
-    if (matches(input, /\b(selbst|allein|selber|ohne coach|erstmal infos)\b/)) {
+    if (wantsSelfGuided(input)) {
       return { text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
     }
-    if (matches(input, /\b(begleitung|coach|personlich|gemeinsam|unterstutzung|dranbleiben)\b/)) {
+    if (wantsPersonalSupport(input)) {
       return {
         text: "Genau dafür ist die persönliche Begleitung gedacht.\n" +
           "Was wäre für dich das wichtigste Ergebnis nach fünf Wochen?",
@@ -322,6 +332,17 @@ export function getNaturalConversationReply(params: {
     };
   }
   if (phase === "blocker") {
+    if (wantsPersonalSupport(input)) {
+      return {
+        text: "Du willst also nicht noch einen Plan, sondern Unterstützung beim Dranbleiben.\n" +
+          "Was wäre für dich das wichtigste Ergebnis nach fünf Wochen?",
+        phase: "coaching_goal", track: ketoInConversation ? "keto" : "coaching",
+      };
+    }
+    if (wantsSelfGuided(input)) {
+      return { text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter",
+        infoOnly: true };
+    }
     return {
       text: "Das erklärt, warum es bisher schwer war, dranzubleiben.\n" +
         "Was wäre für dich gerade besser: selbst mit einem klaren Plan loslegen oder jemanden an der Seite haben, der mit dir dranbleibt?",
