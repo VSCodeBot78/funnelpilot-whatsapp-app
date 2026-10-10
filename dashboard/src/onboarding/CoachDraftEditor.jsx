@@ -16,6 +16,16 @@ export default function CoachDraftEditor({ value = EMPTY_COACH_DRAFT, onChange }
   const draft = { ...EMPTY_COACH_DRAFT, ...value };
   const offers = Array.isArray(draft.offers) ? draft.offers : [];
   const faqs = Array.isArray(draft.faqs) ? draft.faqs : [];
+  const identity = {
+    brandName: "", coachName: "", niche: "", audience: "", websiteUrl: "",
+    assistantName: "", brandVoice: "", escalation: "", noGos: "",
+    ...(draft.identity || {}),
+  };
+  function changeIdentity(key, next) {
+    onChange({ ...draft, version: 1,
+      identity: { ...identity, [key]: next },
+    });
+  }
   function change(key, next) {
     onChange({ ...draft, version: 1, [key]: next });
   }
@@ -29,6 +39,33 @@ export default function CoachDraftEditor({ value = EMPTY_COACH_DRAFT, onChange }
   }
   return (
     <section aria-label="Coach-Angebote und häufige Fragen" style={{ display: "grid", gap: 18 }}>
+      <div style={{ padding: 14, border: "1px solid #dbe4ee", borderRadius: 12 }}>
+        <h4 style={{ margin: "0 0 7px" }}>Neue Coach-Identität – nur Entwurf</h4>
+        <p style={{ fontSize: 12, color: "#64748b" }}>
+          Diese Angaben überschreiben nicht die aktive Marke, Pete-Konfiguration
+          oder Kundendaten von Eltern fit &amp; vital.
+        </p>
+        <div className="fp-coach-draft-grid">
+          {[
+            ["Markenname", "brandName", 120],
+            ["Name des Coaches", "coachName", 120],
+            ["Nische", "niche", 180],
+            ["Zielgruppe", "audience", 500],
+            ["Website (HTTPS)", "websiteUrl", 700],
+            ["KI-Assistentenname", "assistantName", 100],
+            ["Markensprache", "brandVoice", 600],
+            ["Wann ein Mensch übernehmen muss", "escalation", 1000],
+            ["Fachliche Grenzen / No-Gos", "noGos", 1000],
+          ].map(([label, key, max]) =>
+            <label key={key} style={{ fontSize: 12, fontWeight: 650 }}>
+              {label}
+              <input style={fieldStyle} maxLength={max} value={identity[key]}
+                onChange={e => changeIdentity(key, e.target.value)}/>
+            </label>
+          )}
+        </div>
+      </div>
+
       <div style={{ padding: 14, border: "1px solid #dbe4ee", borderRadius: 12 }}>
         <h4 style={{ margin: "0 0 7px" }}>Kontakt und persönliche Begrüßung</h4>
         <p style={{ fontSize: 12, color: "#64748b" }}>Optionaler Entwurf für die spätere Coach-Einrichtung, noch keine automatische Nachricht.</p>
