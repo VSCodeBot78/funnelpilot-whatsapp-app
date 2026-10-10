@@ -19,6 +19,7 @@ import {
   releaseToAi,
   takeOverByHuman,
 } from "../core/state-manager.js";
+import { sendManualConversationOutbound } from "../services/manual-outbound.service.js";
 
 const router = Router();
 
@@ -231,31 +232,80 @@ router.post("/conversations/:campaignId/:leadId/release", (req, res) => {
   }
 });
 
-router.post("/conversations/:campaignId/:leadId/human-message", (req, res) => {
+router.post("/conversations/:campaignId/:leadId/human-message", async (req, res) => {
   try {
     const { campaignId, leadId } = req.params;
     const messageText = String(req.body?.messageText ?? "").trim();
-    const state = getConversationState(String(leadId).trim(), String(campaignId).trim());
+    const state = getConversationState(
+      String(leadId).trim(),
+      String(campaignId).trim(),
+    );
 
     if (!state) {
-      return res.status(404).json({ ok: false, error: "Conversation State nicht gefunden." });
+      return res.status(404).json({
+        ok: false,
+        error: "Conversation State nicht gefunden.",
+      });
     }
 
     if (!messageText) {
-      return res.status(400).json({ ok: false, error: "messageText ist erforderlich." });
+      return res.status(400).json({
+        ok: false,
+        error: "messageText ist erforderlich.",
+      });
     }
 
-    appendHumanMessage(state, messageText);
+    // Human intent wins immediately. Even if the external send fails or is
+    // still dry-run, Pete must not answer in parallel while Jochen is typing.
+    takeOverByHuman(state);
     persistConversationState(state);
+
+    const outbound = await sendManualConversationOutbound({
+      state,
+      messageText,
+    });
+
+    let messageAppended = false;
+
+    if (outbound.ok && outbound.sent) {
+      appendHumanMessage(state, messageText);
+
+      const message = state.messages.at(-1);
+      if (message?.actor === "human") {
+        message.transport = outbound.transport;
+        message.outboundStatus = "sent";
+        message.dryRun = false;
+        message.sent = true;
+        message.sentAt = new Date().toISOString();
+        message.metaMessageId = outbound.metaMessageId ?? null;
+        message.sendError = null;
+      }
+
+      persistConversationState(state);
+      messageAppended = true;
+    }
 
     return res.json({
       ok: true,
       state,
-      outboundTransport: "not_sent",
-      note: "Phase 1 speichert die manuelle Nachricht im Conversation State. Externer Versand bleibt bewusst aus.",
+      outboundTransport: outbound.transport,
+      recipient: outbound.recipient,
+      sent: outbound.sent,
+      dryRun: outbound.dryRun,
+      sendSkipped: outbound.sendSkipped,
+      sendSkipReason: outbound.reason,
+      sendError: outbound.error,
+      metaMessageId: outbound.metaMessageId ?? undefined,
+      messageAppended,
+      note: outbound.sent
+        ? "Manuelle Nachricht wurde extern gesendet. Die KI bleibt pausiert."
+        : "Die KI ist pausiert, aber die manuelle Nachricht wurde nicht extern gesendet.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Manuelle Nachricht konnte nicht gespeichert werden.";
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Manuelle Nachricht konnte nicht verarbeitet werden.";
     return res.status(500).json({ ok: false, error: message });
   }
 });
