@@ -23,6 +23,7 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
   assert.match(initial.masterPrompt, /Eltern fit & vital/);
   assert.match(initial.masterPrompt, /Keto ist optionales Werkzeug/);
   writeSettings({
+    aiEnabled: true,
     companyName: "Coach-Testmarke",
     companyAudience: "Mütter mit Schichtarbeit",
     assistantName: "Nora",
@@ -74,4 +75,18 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
   writeSettings({ masterPrompt: "Geänderter Kundentext" });
   assert.equal(readSettings().companyName, "Coach-Testmarke");
   assert.equal(readSettings().masterPrompt, "Geänderter Kundentext");
+
+  writeSettings({ aiEnabled: false });
+  let called = false;
+  globalThis.fetch = (async () => {
+    called = true;
+    throw new Error("API must not be called with aiEnabled=false");
+  }) as typeof fetch;
+  const disabledResult = await generateAlreadyTriedBridgeReply({
+    userMessage: "Ich bin müde",
+    currentStep: "tried_before_freetext",
+    nextStep: "consequence_freetext",
+  });
+  assert.equal(disabledResult, null);
+  assert.equal(called, false);
 });
