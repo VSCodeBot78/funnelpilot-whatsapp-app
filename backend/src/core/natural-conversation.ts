@@ -132,9 +132,9 @@ export function getNaturalConversationReply(params: {
           phase: "human_handover", handoff: true };
   }
 
-  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+  if (matches(input, /\b(wie kann ich wissen|was ist anders|warum sollte ich vertrauen|woran erkenne ich)\b/)) {
     return {
-      text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
+      text: "Das musst du nicht blind glauben. Jochen kann dir konkret erklären, wie er arbeitet und was die Begleitung beinhaltet. Du kannst dann in Ruhe entscheiden.\nWas wäre dir dabei am wichtigsten?",
       phase: "trust_clarify",
     };
   }
@@ -144,7 +144,12 @@ export function getNaturalConversationReply(params: {
       phase: "info",
     };
   }
-
+  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+    return {
+      text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
+      phase: "trust_clarify",
+    };
+  }
   if (matches(input, /\b(bist du eine ki|schreibt jochen|bist du ein bot)\b/)) {
     return {
       text: "Ich bin Pete, Jochens KI-Assistent. Ich helfe hier bei der ersten Einordnung. Wenn es persönlicher wird, übernimmt Jochen.",
@@ -406,6 +411,19 @@ export function getNaturalConversationReply(params: {
     };
   }
   if (phase === "blocker") {
+    if (matches(input, /\b(job|familie|kinder|schlaf|schichten)\b/) &&
+        matches(lastMessages, /\b(nicht mal zehn|wirklich null|gar keine zeit)\b/)) {
+      return {
+        text: "Mit Job und Familie ist bei dir gerade wirklich alles voll. Da muss jetzt nicht noch ein Trainingsprogramm oben drauf. Wenn wieder etwas Luft ist, können wir einen kleinen Einstieg suchen.",
+        phase: "info", infoOnly: true,
+      };
+    }
+    if (matches(input, /\b(unsicher|ob ich das packe|nicht schaffen|schaffe es nicht|angst dass)\b/)) {
+      return {
+        text: "Klar, wenn du erst anfängst, ist das eine Hürde. Es muss nicht gleich ein perfekter Trainingsplan sein.\nWas wäre für dich ein kleiner realistischer Anfang?",
+        phase: "preference",
+      };
+    }
     if (matches(input, /\b(weiss nicht|weis nicht|keine ahnung|nicht sagen|weiss selber nicht|unsicher ob)\b/)) {
       return { text: "Okay, dann will ich dir keine Ursache unterstellen.\nWas kommt dir am ehesten dazwischen: Zeit, Energie oder Planung?",
         phase: "blocker", track: ketoInConversation ? "keto" : undefined };
