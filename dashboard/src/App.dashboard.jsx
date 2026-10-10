@@ -327,6 +327,12 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     );
   }
 
+  const handleCloseWizard = useCallback(() => {
+    try { window.localStorage.setItem("funnelpilot-onboarding-intro-seen-v1", "true"); }
+    catch { /* private browser mode */ }
+    setSection("dashboard");
+  }, []);
+
   function renderContent() {
     const statAll = contacts.length;
     const statHot = contacts.filter((contact) =>
@@ -578,11 +584,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onSaveSettings={handleSaveSettings}
           onOpenTestChat={() => { setSection("dashboard"); onOpenTestChat(); }}
           onOpenSection={setSection}
-          onClose={() => {
-            try { window.localStorage.setItem("funnelpilot-onboarding-intro-seen-v1", "true"); }
-            catch { /* private browser mode */ }
-            setSection("dashboard");
-          }}
+          onClose={handleCloseWizard}
         />
       )}
 
