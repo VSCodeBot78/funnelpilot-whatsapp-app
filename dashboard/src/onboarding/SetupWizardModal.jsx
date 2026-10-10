@@ -100,12 +100,24 @@ export default function SetupWizardModal({
     setMessage("");
     setSaving(true);
     try {
-      const saved = await onSaveSettings();
-      setMessage(saved
-        ? "Coach-Entwurf im bestehenden Workspace gespeichert. Kein neuer Coach-Zugang und keine Live-Freigabe."
-        : "Coach-Entwurf konnte nicht gespeichert werden. Felder und HTTPS-Links kontrollieren.");
+      // Sends ONLY the inert template, never pending changes to the current
+      // Jochen workspace. All real settings continue using onSaveSettings.
+      const response = await fetch(buildApiUrl("/coach-onboarding-draft", settings.apiBaseUrl), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(settings.coachOnboardingDraft),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setMessage("Coach-Vorlage nicht gespeichert. Felder und HTTPS-Links überprüfen.");
+        return;
+      }
+      onSettingsChange(previous => ({
+        ...previous, coachOnboardingDraft: result.draft,
+      }));
+      setMessage("Nur Coach-Entwurf gespeichert. Aktive Pete-/Marken-/Angebotsfelder wurden nicht mitgespeichert.");
     } catch {
-      setMessage("Coach-Entwurf konnte nicht gespeichert werden. Kein Live-Betrieb aktiviert.");
+      setMessage("Backend nicht erreichbar. Coach-Vorlage wurde nicht gespeichert.");
     } finally {
       setSaving(false);
     }
@@ -392,9 +404,10 @@ export default function SetupWizardModal({
               borderRadius: 9, background: "#fff7ed" }}>
               <strong>Wichtig:</strong> Die bestehenden Marken-, Buchungs- und Checkout-Felder
               oberhalb des neuen Editors gehören weiterhin zum aktuellen Workspace und
-              können von aktiven Funktionen genutzt werden. Nur die zusätzlichen
-              Coach-Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
-              Test-Coaches im laufenden Workspace einrichten.
+              können von aktiven Funktionen genutzt werden. Die separate Coach-Identität sowie Angebote und FAQs darunter sind nur
+              Entwürfe. Mit „Coach-Entwurf speichern“ werden keine Änderungen
+              an Marke, Pete oder Links des aktiven Arbeitsbereichs gespeichert.
+              „Weiter“ dagegen speichert die aktiven Felder darüber.
             </p>
             <h3 style={{ marginTop: 0 }}>Angebote und nächste Schritte</h3>
             {input("Deine Angebote und Zielsetzung", "companyOfferSummary", { multiline: true,
