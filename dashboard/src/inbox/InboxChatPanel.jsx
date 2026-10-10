@@ -14,6 +14,28 @@ function getBackendConnectionLabel(activeConversation) {
   return "Echter Backend-State verbunden";
 }
 
+function getOutboundLabel(msg) {
+  if (msg.role === "contact") {
+    return "";
+  }
+
+  const actor = msg.actor === "human" ? "Jochen" : "Pete";
+
+  if (msg.outboundStatus === "sent" || msg.sent === true) {
+    return `${actor} · gesendet`;
+  }
+
+  if (msg.outboundStatus === "send_failed") {
+    return `${actor} · Sendefehler`;
+  }
+
+  if (msg.outboundStatus === "dry_run" || msg.dryRun === true) {
+    return `${actor} · nicht gesendet (Dry-run)`;
+  }
+
+  return actor;
+}
+
 export default function InboxChatPanel({
   colors,
   activeContact,
@@ -218,6 +240,7 @@ export default function InboxChatPanel({
                   }}
                 >
                   {msg.time}
+                  {getOutboundLabel(msg) ? ` · ${getOutboundLabel(msg)}` : ""}
                 </div>
               </div>
             </div>
@@ -244,8 +267,9 @@ export default function InboxChatPanel({
             }}
           >
             Manuelle Nachricht übernimmt den Chat automatisch und pausiert die KI.
-            In Phase 1 wird sie nur im Conversation-State gespeichert; echter
-            externer Versand bleibt bewusst aus.
+            Der Versand läuft über den Kanal des Leads. Ist der Transport noch im
+            Dry-run oder nicht freigeschaltet, bleibt die Nachricht im Eingabefeld
+            und wird ausdrücklich als nicht gesendet gemeldet.
           </div>
         ) : null}
 
