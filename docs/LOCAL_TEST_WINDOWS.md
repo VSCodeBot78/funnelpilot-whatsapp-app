@@ -126,3 +126,37 @@ Der simulierte Checkout ist nur über die lokale Dashboard-Backend-Verbindung au
 Die Einführung lässt sich verlassen und über **Einrichtung** jederzeit erneut öffnen. Der Browser speichert dabei nur den Hinweis, dass die Einführung bereits angezeigt wurde. Das ist **kein serverseitiger Kunden-Onboarding-Abschlussstatus**. Die One-Click-Verbindung echter Meta-Konten und ein Live-Test des Kauf-/Onboarding-Versands sind weiterhin offen.
 
 **Wichtige Begriffe:** Betreiber-Onboarding = Ersteinrichtung der Software. Kunden-Onboarding = Termin-/Einladungsprozess nach Kauf des Coachings. Beide können jetzt lokal in ihren vorhandenen Teilen getestet werden; der vollständige produktive Versand bleibt gesondert abzunehmen.
+
+## 8. Kunden-Einrichtung als Pop-up-Modal (Phase 16)
+
+Der erste Start zeigt den geführten Assistenten **über** dem abgedunkelten Dashboard. Über den Sidebar-Eintrag **Einrichtung** ist er jederzeit wieder erreichbar.
+
+Die sechs Schritte: **Willkommen (Video ansehen oder direkt einrichten)** → **Marke & Pete** → **Angebote und Links** → **Verbindungen** → **Test** → **Fertig**. Unternehmensname, Website, Nische, Zielgruppe und Angebotsbeschreibung werden in den bestehenden Backend-Einstellungen gespeichert.
+
+Das eigene Setup-Video ist optional. Solange kein `setupVideoUrl` hinterlegt ist, gibt es keinen funktionslosen Videoplayer, sondern die Option **Direkt einrichten**.
+
+### One-Click-Grundlage: Google Calendar, Calendly, HubSpot
+
+Die Integration startet per Klick einen offiziellen OAuth-Flow (Authorization Code + PKCE + State, 10-Minuten-Timeout). Der Nutzer gibt **kein Anbieter-Passwort** in Funnel Pilot ein. OAuth-App-Clientdaten müssen einmalig vom Softwarebetreiber angelegt und in `backend/.env` gesetzt werden.
+
+Benötigt pro Anbieter: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`; analog `CALENDLY_` und `HUBSPOT_`. Die App-Callback-URL muss bei jedem Anbieter genau registriert sein. Zusätzlicher Schlüssel `OAUTH_TOKEN_ENCRYPTION_KEY` mit 32 kryptographisch zufälligen Bytes (hexadezimal, 64 Zeichen, oder base64).
+
+Ein lokaler Beispielbefehl in PowerShell für einen neuen geheimen Schlüssel:
+
+```powershell
+[BitConverter]::ToString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).Replace("-", "").ToLowerInvariant()
+```
+
+**Schlüssel nur lokal in die `.env` eintragen, nie in GitHub oder Chats posten.** Gespeicherte OAuth-Tokens werden AES-256-GCM-verschlüsselt unter `DATA_DIR/oauth-connections.enc.json` abgelegt. Die Schlüsseldatei selbst wird nicht im Repository verwaltet.
+
+Lokale OAuth-Callbacks nutzen `http://localhost:3001/integrations/oauth/<provider>/callback`, soweit im jeweiligen Anbieter-Entwicklerkonto als Redirect URI zulässig. Nach erfolgreicher Autorisierung kehrt der Browser zu `http://localhost:5173/?setup=connections` zurück. Beim Testen muss `localhost` konsistent verwendet werden; Port 3001 ist lokal und wird **nicht** durch Cloudflare veröffentlicht.
+
+**Unterscheidung von Status:**
+- **Einrichtung erforderlich:** Entwickler-App/Secret/Redirect/Verschlüsselung noch nicht konfiguriert
+- **Bereit zur Anmeldung:** Login kann gestartet werden
+- **Autorisierung vorhanden, Sync noch nicht aktiv:** Anbieter hat ein OAuth-Token erteilt; vollständiger Kalender-/CRM-Datenaustausch, Refresh, Webhooks und Produktivfähigkeit sind noch nicht nachgewiesen
+- **Meta/Instagram/Facebook/WhatsApp:** Meta-App, Embedded Signup, Berechtigungen und Kontrolle der echten Zustellung sind separate offene Punkte
+
+Der aktuelle Speicher ist **einzel-Workspace**, nicht mandantenfähig. Für spätere zahlende Softwarekunden sind Benutzerkonten, Tenant-Isolation, Admin-Authentifizierung, anbieterbezogene Refresh-/Revoke-Prozesse, vollständige Sync-Dienste, echte Meta-Ein-Klick-Anbindung und Anbieterprüfungen erforderlich.
+
+**Wichtig:** Ein Pop-up zur Einrichtung und eine erfolgte OAuth-Autorisierung ersetzen **keinen** echten End-to-End-Test der angebundenen Dienste. Keine Aktivierung fremder Leads oder echten Sends beim Schließen des Wizards.

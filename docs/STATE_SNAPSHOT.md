@@ -52,3 +52,17 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Meta-App-Review weiterhin zurückgestellt, bis interne Abnahme erfolgreich.
 - Danach isolierter Testlead mit Allowlist und bewusstem explizitem Live-Send.
 - Hetzner erst nach bestandener lokaler Abnahme. Keine neue Grundsatzplanung erforderlich.
+
+## Phase 16 – Kunden-Setup-Modal und OAuth-Basis (PR #37)
+
+- Ersteinrichtung ist jetzt ein **zentriertes modales Fenster über dem Dashboard** statt einer eigenen Inhaltsseite.
+- Öffnet beim ersten Start (neuer Browser-Marker v2), danach jederzeit per Sidebar „Einrichtung“.
+- Ablauf: Willkommen / optionales eigenes Setup-Video → Marke & Pete → Angebote/Links → Anbieter-Verbindungen → Gesamttest → Fertig.
+- Zusätzlicher gespeicherter Firmenkontext: Name, Website, Nische, Zielgruppe, Angebote; Setup-Video-URL optional.
+- Google Calendar, Calendly, HubSpot: serverseitiger OAuth Authorization Code + PKCE + State und verschlüsselte Token-Ablage in `DATA_DIR`, erst nach OAuth-App-Registrierung aktivierbar.
+- **Wichtig:** `authorized_not_synced` ist nur erfolgreiche Autorisierung, **nicht** nachgewiesene Kalender-/CRM-Synchronisierung.
+- Instagram/Facebook/WhatsApp: echte vereinfachte Meta-Anbindung/Embedded Signup weiterhin offen; keine irreführenden „verbunden“-Buttons.
+- Noch kein Multi-Tenant-SaaS, keine serverseitige Benutzer-Authentifizierung oder anbieterspezifischer Refresh-/Sync-Dienst. Vor Verkauf an mehrere Unternehmen ergänzen.
+- Im lokalen Pre-Live-Test bleiben beide Sende-Flags deaktiviert; Cloudflare Quick Tunnel weiterhin nur Webhooks auf Port 3002.
+- PR #37 CI: 88 Backend-Tests + 2 Relay-Tests + 5 Dashboard-Tests = **95** bestanden, Builds grün, 0 Fehler. Aktueller CI-Stand nach letztem UX-Commit separat prüfen.
+- Der finale Laptop-Browser- und OAuth-Echtanbieter-Abnahmetest ist **noch offen**; kein Meta Review, kein Hetzner.

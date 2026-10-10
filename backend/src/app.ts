@@ -16,6 +16,7 @@ import leadsRouter from "./routes/leads.js";
 import bookingEventsRouter from "./routes/booking-events.js";
 import metaWhatsappRouter from "./routes/meta-whatsapp.js";
 import metaInstagramRouter from "./routes/meta-instagram.js";
+import oauthIntegrationsRouter from "./routes/oauth-integrations.js";
 import { env } from "./config/env.js";
 import { readSettings } from "./services/settings-store.js";
 
@@ -219,6 +220,8 @@ app.use("/provider-booking", providerBookingRouter);
 app.use("/booking-events", bookingEventsRouter);
 app.use("/webhooks/meta/whatsapp", metaWhatsappRouter);
 app.use("/webhooks/meta/instagram", metaInstagramRouter);
+// OAuth callback needs a registered exact redirect URI; other integration routes are admin-only.
+app.use("/integrations/oauth", oauthIntegrationsRouter);
 app.use(conversationsRouter);
 app.use(ghostingConfigRouter);
 app.use(leadsRouter);

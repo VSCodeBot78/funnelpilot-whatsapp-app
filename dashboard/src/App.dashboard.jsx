@@ -22,7 +22,7 @@ import SettingsView from "./settings/SettingsView";
 import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
-import OnboardingView from "./onboarding/OnboardingView";
+import SetupWizardModal from "./onboarding/SetupWizardModal";
 
 const navItems = [
   { key: "onboarding", label: "Einrichtung" },
@@ -38,7 +38,8 @@ const navItems = [
 
 function firstSection() {
   try {
-    return window.localStorage.getItem("funnelpilot-onboarding-intro-seen-v1") === "true"
+    if (new URLSearchParams(window.location.search).get("setup") === "connections") return "onboarding";
+    return window.localStorage.getItem("funnelpilot-onboarding-modal-seen-v2") === "true"
       ? "dashboard" : "onboarding";
   } catch {
     return "onboarding";
@@ -326,24 +327,13 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     );
   }
 
+  const handleCloseWizard = useCallback(() => {
+    try { window.localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"); }
+    catch { /* private browser mode */ }
+    setSection("dashboard");
+  }, []);
+
   function renderContent() {
-    if (section === "onboarding") {
-      return (
-        <OnboardingView
-          colors={colors}
-          settings={settings}
-          settingsMessage={settingsMessage}
-          onSettingsChange={setSettings}
-          onSaveSettings={handleSaveSettings}
-          onOpenSection={setSection}
-          onOpenTestChat={onOpenTestChat}
-          onLeave={() => {
-            try { window.localStorage.setItem("funnelpilot-onboarding-intro-seen-v1", "true"); } catch { /* browser privacy mode */ }
-            setSection("dashboard");
-          }}
-        />
-      );
-    }
     const statAll = contacts.length;
     const statHot = contacts.filter((contact) =>
       contact.tags.includes("Heißer Lead"),
@@ -585,6 +575,18 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           </div>
         </main>
       </div>
+
+      {section === "onboarding" && (
+        <SetupWizardModal
+          colors={colors}
+          settings={settings}
+          onSettingsChange={setSettings}
+          onSaveSettings={handleSaveSettings}
+          onOpenTestChat={() => { setSection("dashboard"); onOpenTestChat(); }}
+          onOpenSection={setSection}
+          onClose={handleCloseWizard}
+        />
+      )}
 
       <div
         style={{

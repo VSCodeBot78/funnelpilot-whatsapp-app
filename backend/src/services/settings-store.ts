@@ -8,6 +8,12 @@ export type SettingsConfig = {
   adminRole: string;
   defaultTheme: "dark" | "light" | "system";
   brandHint: string;
+  companyName: string;
+  companyWebsite: string;
+  companyNiche: string;
+  companyAudience: string;
+  companyOfferSummary: string;
+  setupVideoUrl: string;
   topbarSubtitle: string;
   footerText: string;
   aiEnabled: boolean;
@@ -61,6 +67,12 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   adminRole: "Admin",
   defaultTheme: "dark",
   brandHint: "Funnel Pilot / White Label sp\u00e4ter",
+  companyName: "Eltern fit & vital",
+  companyWebsite: "https://jochen-kammerer.de",
+  companyNiche: "Fitness & Vitalität für Eltern",
+  companyAudience: "Berufstätige Eltern 35–55",
+  companyOfferSummary: "No Bullshit Elternfitness, Selbststarter und Coaching",
+  setupVideoUrl: "",
   topbarSubtitle: "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
   footerText: "copyright Jochen Kammerer",
   aiEnabled: false,
