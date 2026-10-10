@@ -202,7 +202,7 @@ test("Phase 6 pre-live hardening", async (t) => {
       "Schick mir den Elterncheck",
       getCampaignById(DEFAULT_CAMPAIGN_ID),
     );
-    assert.match(reply, /example\\.test\\/custom-resource/);
+    assert.ok(reply.includes("https://example.test/custom-resource"));
     assert.doesNotMatch(reply, /checkout-499/);
     assert.doesNotMatch(reply, /check\\.jochen-kammerer\\.de/);
   });
