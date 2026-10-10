@@ -28,6 +28,8 @@ router.post("/message", async (req, res) => {
       reply: result.text,
       nextStep: result.nextStep,
       detectedIntent: result.detectedIntent,
+      replySource: result.state.answers.peteReplySource ?? "legacy",
+      replySuppressedReason: result.replySuppressedReason ?? null,
       state: result.state,
     });
   } catch (error) {

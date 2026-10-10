@@ -18,6 +18,7 @@ import metaWhatsappRouter from "./routes/meta-whatsapp.js";
 import metaInstagramRouter from "./routes/meta-instagram.js";
 import oauthIntegrationsRouter from "./routes/oauth-integrations.js";
 import { env } from "./config/env.js";
+import { isPeteLlmConversationSelected, arePeteLlmApiCallsApproved, isPeteLlmReadyForProvider } from "./core/pete-llm-conversation.js";
 import { readSettings } from "./services/settings-store.js";
 import { createProductionAdminGuard } from "./services/production-admin-guard.js";
 
@@ -211,6 +212,9 @@ app.get("/health/readiness", (_req, res) => {
     aiBotSettingsConfigured: areAiBotSettingsConfigured(settings),
     openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
     openAiModelConfigured: Boolean(settings.aiModel?.trim()),
+    peteLlmConversationSelected: isPeteLlmConversationSelected(),
+    peteLlmCostGateApproved: arePeteLlmApiCallsApproved(),
+    peteLlmProviderReady: isPeteLlmReadyForProvider(),
     timestamp: new Date().toISOString(),
   });
 });

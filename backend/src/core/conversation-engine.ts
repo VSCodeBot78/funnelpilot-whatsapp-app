@@ -1,7 +1,9 @@
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
+import { getConversationState } from "../data/store.js";
 import {
   getPeteLlmConversationReply,
+  isExplicitPeteHumanTakeoverRequest,
   isPeteLlmConversationSelected,
   isTrustedPeteTransactionRequest,
   PETE_LLM_HANDOFF_REPLY,
@@ -1236,6 +1238,7 @@ export async function processIncomingMessage(
   const state = getOrCreateConversationState(input.leadId, campaign.id);
 
   appendUserMessage(state, input.messageText);
+  const lastIncomingMessageId = state.messages.at(-1)?.id;
 
   if (state.flags.stopped) {
     persistConversationState(state);
@@ -1311,36 +1314,84 @@ export async function processIncomingMessage(
     // Phase 1: an explicitly selected LLM path is separate from the legacy
     // deterministic natural flow. Safety and ownership checks above remain
     // authoritative. Trusted product/transaction requests stay deterministic.
+    // Bot identity is factual, not a model-generated guess. Keep this
+    // deterministic even when the LLM feature has been selected.
     if (isPeteLlmConversationSelected() &&
-        !isTrustedPeteTransactionRequest(input.messageText)) {
-      const result = await getPeteLlmConversationReply(state);
-      if (result.kind === "llm") {
-        updateAnswer(state, "peteReplySource", "llm");
-        appendAssistantMessage(state, result.text);
-        persistConversationState(state);
-        return { text: result.text, nextStep: state.currentStep,
-          detectedIntent: "flow_answer", state };
-      }
-      // Fail closed: never silently continue the old broken question loop.
-      patchAnswers(state, {
-        peteReplySource: "llm_handoff",
-        peteLlmFailureReason: result.reason,
-      });
+        /\b(?:wer schreibt mir|wer antwortet mir|bist du (?:ein )?bot|bist du (?:eine )?ki|schreibt jochen (?:pers[oö]nlich)?|bist du jochen)\b/i.test(input.messageText)) {
+      const identity = "Ich bin Pete, Jochens KI-Assistent. Ich helfe bei der ersten Einordnung. Wenn du persönlich mit Jochen sprechen möchtest, sage es einfach.";
+      updateAnswer(state, "peteReplySource", "deterministic");
+      appendAssistantMessage(state, identity);
+      persistConversationState(state);
+      return { text: identity, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    if (isPeteLlmConversationSelected() &&
+        isExplicitPeteHumanTakeoverRequest(input.messageText)) {
+      patchAnswers(state, { peteReplySource: "human_handoff" });
       patchFlags(state, {
         peteRuntimeHandoffRequested: true,
         peteRuntimeHandoffActive: true,
       });
       takeOverByHuman(state);
-      appendAssistantMessage(state, PETE_LLM_HANDOFF_REPLY);
+      const reply = "Verstanden. Ich gebe den Chat an Jochen weiter. Er übernimmt hier persönlich.";
+      appendAssistantMessage(state, reply);
       persistConversationState(state);
-      return { text: PETE_LLM_HANDOFF_REPLY, nextStep: state.currentStep,
+      return { text: reply, nextStep: state.currentStep,
         detectedIntent: "flow_answer", state };
+    }
+
+    if (isPeteLlmConversationSelected() &&
+        !isTrustedPeteTransactionRequest(input.messageText)) {
+      const result = await getPeteLlmConversationReply(state);
+      // The LLM call is asynchronous. A human may take over, STOP may arrive,
+      // or another incoming message may supersede this one during the await.
+      // Always reload the authoritative state before appending its response.
+      const latest = getConversationState(input.leadId, campaign.id);
+      if (!latest || latest.flags.stopped) {
+        return { text: null, nextStep: latest?.currentStep ?? state.currentStep,
+          detectedIntent: "stop", state: latest ?? state,
+          replySuppressedReason: "stopped" };
+      }
+      if (latest.owner === "human" || latest.aiPaused === true ||
+          latest.flags.peteRuntimeHandoffActive) {
+        return { text: null, nextStep: latest.currentStep,
+          detectedIntent: "unknown", state: latest,
+          replySuppressedReason: "human_owned" };
+      }
+      if (latest.messages.at(-1)?.id !== lastIncomingMessageId) {
+        return { text: null, nextStep: latest.currentStep,
+          detectedIntent: "unknown", state: latest,
+          replySuppressedReason: "superseded" };
+      }
+      if (result.kind === "llm") {
+        updateAnswer(latest, "peteReplySource", "llm");
+        appendAssistantMessage(latest, result.text);
+        persistConversationState(latest);
+        return { text: result.text, nextStep: latest.currentStep,
+          detectedIntent: "flow_answer", state: latest };
+      }
+      // Fail closed: never silently continue the old broken question loop.
+      patchAnswers(latest, {
+        peteReplySource: "llm_handoff",
+        peteLlmFailureReason: result.reason,
+      });
+      patchFlags(latest, {
+        peteRuntimeHandoffRequested: true,
+        peteRuntimeHandoffActive: true,
+      });
+      takeOverByHuman(latest);
+      appendAssistantMessage(latest, PETE_LLM_HANDOFF_REPLY);
+      persistConversationState(latest);
+      return { text: PETE_LLM_HANDOFF_REPLY, nextStep: latest.currentStep,
+        detectedIntent: "flow_answer", state: latest };
     }
 
     const natural = getNaturalConversationReply({
       text: input.messageText, state, bookingUrl,
     });
     if (natural) {
+      updateAnswer(state, "peteReplySource", "deterministic");
       if (natural.phase) updateAnswer(state, "naturalPhase", natural.phase);
       if (natural.track) updateAnswer(state, "naturalTrack", natural.track);
       if (natural.infoOnly) {

@@ -19,26 +19,58 @@ export function isPeteLlmConversationSelected(): boolean {
   return process.env.PETE_LLM_CONVERSATION_ENABLED?.trim().toLowerCase() === "true";
 }
 
+/** Feature flag is not authorization to spend money or transfer chat content. */
+export function arePeteLlmApiCallsApproved(): boolean {
+  return process.env.PETE_LLM_API_CALLS_APPROVED?.trim().toLowerCase() === "true";
+}
+
+export function isPeteLlmReadyForProvider(): boolean {
+  return isPeteLlmConversationSelected() && arePeteLlmApiCallsApproved() &&
+    Boolean(process.env.OPENAI_API_KEY?.trim()) &&
+    readSettings().aiEnabled === true;
+}
+
+/** Explicit, unambiguous "human here in the chat" must take actual ownership.
+ * A request for coaching support is NOT automatically a handover.
+ */
+export function isExplicitPeteHumanTakeoverRequest(text: string): boolean {
+  const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return /\b(?:jochen\s+(?:soll\s+)?(?:bitte\s+)?(?:hier\s+)?(?:ubernehmen|antworten|schreiben)|(?:ich\s+mochte|ich\s+will|bitte)\s+(?:mit\s+)?(?:einem\s+)?(?:echten?\s+)?menschen\s+(?:hier\s+)?(?:schreiben|reden|sprechen)|(?:ubergeb|gib|verbinde)\w*\s+(?:den\s+chat\s+)?(?:an\s+)?jochen|jochen\s+hier\s+(?:im\s+)?chat\s+(?:personlich\s+)?(?:ubernehm|schreib|antwort)|bitte\s+kein(?:en)?\s+bot\s+mehr)\b/i.test(input);
+}
+
 /**
  * Keep offers, booking, real handover and links in the already-tested
  * deterministic transaction path, not in a model-generated claim.
  * This match is conservative by design and will be reviewed in Phase 2.
  */
 export function isTrustedPeteTransactionRequest(input: string): boolean {
-  return /keto[\s-]*(?:guide|pdf|anleitung)|eltern[\s-]*check|selbststarter|strategiegespr[aä]ch|calendly|checkout|buchungslink|(?:\b(?:einen?|der|den|kein(?:en)?)\s+termin\b)|(?:\btermin\s+(?:buchen|vereinbaren)\b)|(?:\bmit\s+jochen\s+(?:sprechen|reden|chatten)\b)|(?:\bjochen\s+(?:soll|bitte)\s+(?:antworten|übernehmen)\b)|(?:\b(?:was|wie viel|wieviel)\s+kostet\b)|(?:\b(?:preis|preise|rabatt|ratenzahlung|zahlung|bezahlt|gebucht|gekauft|bestellt|best[aä]tigt|kaufen|buchung|buchen)\b)|(?:\b5[\s-]*wochen[\s-]*(?:begleitung|coaching|startphase)\b)|(?:\b(?:kostenloser|kostenlosen)\s+(?:guide|check)\b)/i.test(input);
+  return /keto[\s-]*(?:guide|pdf|anleitung)|eltern[\s-]*check|selbststarter|strategiegespr[aä]ch|calendly|checkout|buchungslink|(?:\b(?:einen?|der|den|kein(?:en)?)\s+termin\b)|(?:\btermin\s+(?:buchen|vereinbaren)\b)|(?:\bmit\s+jochen\s+(?:sprechen|reden|chatten)\b)|(?:\bjochen\s+(?:soll|bitte)\s+(?:antworten|übernehmen)\b)|(?:\b(?:was|wie viel|wieviel)\s+kostet\b)|(?:\bwie\s+teuer\b)|(?:\b(?:kosten|konditionen|investition|finanzierung|monatsrate|zahlung|bezahlen|bezahlt|gezahlt|ueberwiesen|überwiesen|rechnung|betrag)\b)|(?:\b(?:preis|preise|rabatt|ratenzahlung|zahlung|bezahlt|gebucht|gekauft|bestellt|best[aä]tigt|kaufen|buchung|buchen|kaufbestätigung|buchungsbestätigung|terminbestätigung)\b)|(?:\b5[\s-]*wochen[\s-]*(?:begleitung|coaching|startphase)\b)|(?:\b(?:kostenloser|kostenlosen)\s+(?:guide|check)\b)|(?:\b(?:bist du (?:eine )?ki|bist du (?:ein )?bot|schreibt jochen|wer schreibt mir)\b)/i.test(input);
+}
+
+function redactForProvider(text: string): string {
+  // Data minimization, not a substitute for consent or provider DPA.
+  return text
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[E-Mail entfernt]")
+    .replace(/(?<![\w])(?:\+?\d[\d\s\-()./]{7,}\d)(?![\w])/g, "[Telefonnummer entfernt]")
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+[A-Za-z0-9._-]{16,})\b/gi, "[Zugangsdaten entfernt]");
 }
 
 export function buildPeteContext(state: ConversationState) {
   // 36 consecutive messages preserve up to 18 complete lead/assistant turns.
   // Limit payload size to avoid runaway cost and accidental oversized requests.
+  const conversation = state.messages.slice(-36).map(message => ({
+    role: message.role,
+    text: redactForProvider(message.text.slice(0, 1500)),
+  }));
+  // Hard upper bound on payload cost; prefer the newest complete turns.
+  while (conversation.length > 1 && JSON.stringify(conversation).length > 12000) {
+    conversation.shift();
+  }
   return {
     campaignId: state.campaignId,
     currentPhase: String(state.answers.naturalPhase ?? "opening").slice(0, 50),
     currentTrack: String(state.answers.naturalTrack ?? "").slice(0, 50),
-    conversation: state.messages.slice(-36).map(message => ({
-      role: message.role,
-      text: message.text.slice(0, 1500),
-    })),
+    conversation,
   };
 }
 
@@ -68,7 +100,7 @@ export function validatePeteLlmReply(value: unknown): { reply: string; needsHuma
     .replace(/[ \t]{2,}/g, " ").replace(/ {2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n").trim();
   if (!reply || reply.length > 750 || (reply.match(/\?/g) ?? []).length > 1) return null;
-  if (containsGeneratedPrice(reply) || /https?:\/\/|www\./i.test(reply)) return null;
+  if (containsGeneratedPrice(reply) || /\b(?:EUR|Euro)\b|€/i.test(reply) || /https?:\/\/|www\./i.test(reply)) return null;
   // Provider records, never text generated by a model, must confirm bookings or purchases.
   if (/\b(?:termin|buchung|zahlung|kauf|bestellung)\b.{0,42}\b(?:best[aä]tigt|erfolgreich|bezahlt|gebucht)\b/i.test(reply)) return null;
   return { reply, needsHuman: data.needsHuman };
@@ -94,7 +126,7 @@ function readResponseText(payload: unknown): string | null {
 }
 
 export async function getPeteLlmConversationReply(state: ConversationState): Promise<PeteLlmResult> {
-  if (!isPeteLlmConversationSelected()) {
+  if (!isPeteLlmConversationSelected() || !arePeteLlmApiCallsApproved()) {
     return { kind: "handoff", reason: "not_authorized" };
   }
   // Never activate paid calls solely because a secret was found in an old .env.
