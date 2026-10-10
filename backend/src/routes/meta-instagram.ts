@@ -736,6 +736,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       processed,
       duplicates,
       ignoredEchoes,
+      humanEchoTakeovers,
       ignoredUnsupported,
       ignoredAutomationPaused,
       failed: failed + 1,
