@@ -37,7 +37,11 @@ function isKnownAiEcho(
       : Date.now();
 
   return state.messages.some((message) => {
-    if (message.actor !== "ai") {
+    const isAiAuthored =
+      message.actor === "ai" ||
+      (!message.actor && message.role === "assistant");
+
+    if (!isAiAuthored) {
       return false;
     }
 
