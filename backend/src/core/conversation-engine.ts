@@ -1,4 +1,5 @@
 import { getCampaignById } from "../config/campaigns.js";
+import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
   detectBookingPreference,
   detectBookingRequest,
@@ -1248,6 +1249,80 @@ export async function processIncomingMessage(
       state,
       replySuppressedReason: "human_owned",
     };
+  }
+
+  if (input.conversationMode === "natural") {
+    const bookingUrl = getRuntimeBookingUrl({ state });
+    const decision = decidePeteNextAction(input.messageText, {
+      campaign,
+      currentStep: state.currentStep,
+      lastAssistantText: getLastAssistantText(state),
+      bookingUrl,
+    });
+
+    // Preserve precedence of STOP, medical crises, legal/privacy and hard
+    // safety handoffs even if the user asks a sales-related question.
+    if ([
+      "hard_stop", "medical_critical", "medical_soft",
+      "emotional_crisis", "legal_privacy",
+    ].includes(decision.decisionType)) {
+      const guarded = composePeteResponse(decision, {
+        campaign, currentStep: state.currentStep,
+        userText: input.messageText,
+        lastAssistantText: getLastAssistantText(state),
+        bookingUrl,
+      });
+      if (guarded) {
+        applyPeteDecisionStatePatch({
+          decision, composed: guarded, state, runtimeBookingUrl: bookingUrl,
+        });
+        appendAssistantMessage(state, guarded.text);
+        persistConversationState(state);
+        return { text: guarded.text, nextStep: state.currentStep,
+          detectedIntent: mapPeteDecisionToIntent(decision), state };
+      }
+    }
+
+    if (state.flags.peteRuntimeHandoffActive) {
+      persistConversationState(state);
+      return { text: null, nextStep: state.currentStep,
+        detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
+    }
+
+    const natural = getNaturalConversationReply({
+      text: input.messageText, state, bookingUrl,
+    });
+    if (natural) {
+      if (natural.phase) updateAnswer(state, "naturalPhase", natural.phase);
+      if (natural.track) updateAnswer(state, "naturalTrack", natural.track);
+      if (natural.infoOnly) {
+        patchFlags(state, { wantsInfoOnly: true });
+        setCurrentStep(state, "info_only");
+      }
+      if (natural.handoff) {
+        patchFlags(state, {
+          peteRuntimeHandoffRequested: true,
+          peteRuntimeHandoffActive: true,
+        });
+        takeOverByHuman(state);
+      }
+      if (natural.booking) {
+        patchFlags(state, { wantsBooking: true });
+        setCurrentStep(state, "booking");
+        if (bookingUrl) {
+          state.providerBooking = activateProviderBookingState({
+            current: state.providerBooking,
+            provider: inferBookingProviderFromUrl(bookingUrl),
+            bookingUrl,
+            linkSentAt: nowIso(),
+          });
+        }
+      }
+      appendAssistantMessage(state, natural.text);
+      persistConversationState(state);
+      return { text: natural.text, nextStep: state.currentStep,
+        detectedIntent: natural.booking ? "booking_intent" : "flow_answer", state };
+    }
   }
 
   if (isSelfstarterInterest(input.messageText)) {
