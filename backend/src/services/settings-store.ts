@@ -193,6 +193,7 @@ export function readSettings(): SettingsConfig {
         DEFAULT_SETTINGS.aiModel,
     };
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("settings_store_invalid_stop_restore", { cause: error });
     console.error("settings read error:", error);
     return { ...DEFAULT_SETTINGS };
   }
