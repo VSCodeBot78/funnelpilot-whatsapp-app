@@ -96,7 +96,10 @@ export function getNaturalConversationReply(params: {
   }
   if (phase === "info" && matches(input,
       /\b(danke|vielleicht spater|vielleicht melde ich mich spater|alles klar|passt so|passt fur mich|ok danke|ich lese nur|erstmal nur lesen|erst mal nur lesen)\b/)) {
-    return { text: "Gerne. Meld dich einfach, wenn du noch eine Frage hast.",
+    const alreadyClosed = state.messages.some(m => m.role === "assistant" &&
+      m.text === "Gerne. Meld dich einfach, wenn du noch eine Frage hast.");
+    return { text: alreadyClosed ? "Alles klar 👍" :
+        "Gerne. Meld dich einfach, wenn du noch eine Frage hast.",
       phase: "info", infoOnly: true };
   }
 
@@ -218,6 +221,11 @@ export function getNaturalConversationReply(params: {
   // A concrete question about an already shown product is not a reason to
   // restart the qualification flow. No invented product contents.
   if (phase === "selfstarter_offered" &&
+      matches(input, /\b(den link schaue ich|schaue ich mir an|schaue mir den link|ich schaue es mir an|schaue mir das an|erstmal anschauen)\b/)) {
+    return { text: "Klar, schau es dir in Ruhe an. Wenn etwas unklar ist, meld dich.",
+      phase: "info", infoOnly: true };
+  }
+  if (phase === "selfstarter_offered" &&
       matches(input, /\b(was bekomme ich|was ist da drin|was beinhaltet|was ist enthalten|umfang)\b/)) {
     return { text: "Der Selbststarter ist für den eigenständigen Einstieg gedacht. Die genauen Inhalte findest du auf der Produktseite:\n" +
         OFFER_TRUTH.selfstarter.productUrl,
@@ -225,7 +233,11 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "longterm_unverified") {
-    if (matches(input, /\b(anrechnung|angerechnet|verrechnen|gutschrift|rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer)\b/)) {
+    if (matches(input, /\b(anrechnung|angerechnet|verrechnen|gutschrift)\b/)) {
+      return { text: "Ob die fünf Wochen auf eine längere Begleitung angerechnet werden können, klärt Jochen persönlich. Ich möchte dir dazu nichts zusagen, was nicht feststeht.",
+        phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer)\b/)) {
       return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "longterm_unverified", infoOnly: true };
     }
     if (matches(input, /\b(danke|verstanden|frage ich jochen|jochen direkt|alles klar)\b/)) {
