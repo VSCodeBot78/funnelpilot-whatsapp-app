@@ -48,6 +48,7 @@ function firstSection() {
 
 export default function AppDashboard({ onOpenTestChat = () => {} }) {
   const [section, setSection] = useState(firstSection);
+  const [onboardingStartStep, setOnboardingStartStep] = useState(0);
   const [search, setSearch] = useState("");
   const [activeContactId, setActiveContactId] = useState(null);
   const [openChatTabs, setOpenChatTabs] = useState([]);
@@ -328,6 +329,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   }
 
   const handleCloseWizard = useCallback(() => {
+    setOnboardingStartStep(0);
     try { window.localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"); }
     catch { /* private browser mode */ }
     setSection("dashboard");
@@ -354,6 +356,14 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onSelectLead={(id) => {
             setActiveContactId(id);
             setSection("inbox");
+          }}
+          onRestartOnboarding={() => {
+            setOnboardingStartStep(0);
+            setSection("onboarding");
+          }}
+          onEditConnections={() => {
+            setOnboardingStartStep(3);
+            setSection("onboarding");
           }}
         />
       );
@@ -578,6 +588,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
 
       {section === "onboarding" && (
         <SetupWizardModal
+          startStep={onboardingStartStep}
           colors={colors}
           settings={settings}
           onSettingsChange={setSettings}
