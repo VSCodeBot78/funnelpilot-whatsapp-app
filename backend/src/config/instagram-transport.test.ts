@@ -46,6 +46,21 @@ const {
   saveLead,
   deleteLead,
 } = await import("../data/leads.store.js");
+const {
+  appendAssistantMessage,
+  getOrCreateConversationState,
+  persistConversationState,
+} = await import("../core/state-manager.js");
+const {
+  deleteConversationState,
+  getConversationState,
+} = await import("../data/store.js");
+const {
+  clearPendingAiInstagramOutboundRegistry,
+  confirmPendingAiInstagramOutbound,
+  consumeKnownAiInstagramEcho,
+  registerPendingAiInstagramOutbound,
+} = await import("../services/instagram-outbound-echo.service.js");
 const { default: app } = await import("../app.js");
 
 test("Phase 4 Instagram transport foundation", async (t) => {
@@ -338,6 +353,201 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     });
     assert.equal(invalid.ok, false);
     assert.equal(invalid.statusCode, 401);
+  });
+
+  await t.test("pending AI outbound echo matching is safe across the Meta response race", () => {
+    clearPendingAiInstagramOutboundRegistry();
+
+    const earlyToken = registerPendingAiInstagramOutbound({
+      recipientId: "race-lead",
+      text: "Pete Antwort",
+    });
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "race-echo-before-meta-id",
+        text: "Pete Antwort",
+      }),
+      true,
+    );
+
+    clearPendingAiInstagramOutboundRegistry();
+
+    const confirmedToken = registerPendingAiInstagramOutbound({
+      recipientId: "race-lead",
+      text: "Gleicher Text",
+    });
+    confirmPendingAiInstagramOutbound({
+      token: confirmedToken,
+      metaMessageId: "meta-ai-id",
+    });
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "manual-different-id",
+        text: "Gleicher Text",
+      }),
+      false,
+    );
+
+    assert.equal(
+      consumeKnownAiInstagramEcho({
+        recipientId: "race-lead",
+        messageId: "meta-ai-id",
+        text: "Gleicher Text",
+      }),
+      true,
+    );
+
+    clearPendingAiInstagramOutboundRegistry();
+    void earlyToken;
+  });
+
+  await t.test("Instagram echo keeps Pete echo as AI but external outbound takes over", async () => {
+    const igsid = "route-test-igsid";
+    const leadId = buildInstagramLeadId(igsid);
+    deleteLead(leadId);
+    deleteConversationState(leadId, "eltern-vital-fit");
+    clearPendingAiInstagramOutboundRegistry();
+
+    const leadSync = syncInstagramLead({
+      instagramScopedId: igsid,
+      botEnabledForNewLead: true,
+    });
+    const state = getOrCreateConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+    appendAssistantMessage(state, "Pete Echo Test");
+    const aiMessage = state.messages.at(-1);
+    assert.ok(aiMessage);
+    aiMessage.transport = "meta_instagram";
+    aiMessage.outboundStatus = "sent";
+    aiMessage.sent = true;
+    aiMessage.metaMessageId = "known-ai-echo-mid";
+    persistConversationState(state);
+
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const baseUrl = `http://127.0.0.1:${address.port}`;
+
+      function signedEcho(messageId: string, text: string) {
+        const payload = {
+          object: "instagram",
+          entry: [
+            {
+              id: "17841400000000000",
+              messaging: [
+                {
+                  sender: { id: "17841400000000000" },
+                  recipient: { id: igsid },
+                  timestamp: Date.now(),
+                  message: {
+                    mid: messageId,
+                    text,
+                    is_echo: true,
+                  },
+                },
+              ],
+            },
+          ],
+        };
+
+        const raw = JSON.stringify(payload);
+        const signature =
+          "sha256=" +
+          crypto
+            .createHmac("sha256", "test-instagram-app-secret")
+            .update(Buffer.from(raw, "utf8"))
+            .digest("hex");
+
+        return { raw, signature };
+      }
+
+      const aiEcho = signedEcho("known-ai-echo-mid", "Pete Echo Test");
+      const aiResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": aiEcho.signature,
+          },
+          body: aiEcho.raw,
+        },
+      );
+
+      assert.equal(aiResponse.status, 200);
+      const aiResult = (await aiResponse.json()) as {
+        externalTakeovers?: number;
+        ignoredEchoes?: number;
+      };
+      assert.equal(aiResult.ignoredEchoes, 1);
+      assert.equal(aiResult.externalTakeovers, 0);
+
+      const afterAiEcho = getConversationState(
+        leadSync.lead.id,
+        leadSync.campaignId,
+      );
+      assert.ok(afterAiEcho);
+      assert.equal(afterAiEcho.owner, "ai");
+      assert.equal(afterAiEcho.aiPaused, false);
+
+      const manualEcho = signedEcho(
+        "manual-external-echo-mid",
+        "Hier ist Jochen persönlich.",
+      );
+      const manualResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": manualEcho.signature,
+          },
+          body: manualEcho.raw,
+        },
+      );
+
+      assert.equal(manualResponse.status, 200);
+      const manualResult = (await manualResponse.json()) as {
+        externalTakeovers?: number;
+        ignoredEchoes?: number;
+        conversationUpdated?: boolean;
+        messageAppended?: boolean;
+      };
+      assert.equal(manualResult.ignoredEchoes, 1);
+      assert.equal(manualResult.externalTakeovers, 1);
+      assert.equal(manualResult.conversationUpdated, true);
+      assert.equal(manualResult.messageAppended, true);
+
+      const afterManualEcho = getConversationState(
+        leadSync.lead.id,
+        leadSync.campaignId,
+      );
+      assert.ok(afterManualEcho);
+      assert.equal(afterManualEcho.owner, "human");
+      assert.equal(afterManualEcho.aiPaused, true);
+      assert.equal(afterManualEcho.lastActor, "human");
+      assert.equal(afterManualEcho.messages.at(-1)?.actor, "human");
+      assert.equal(
+        afterManualEcho.messages.at(-1)?.text,
+        "Hier ist Jochen persönlich.",
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+      deleteLead(leadId);
+      deleteConversationState(leadId, leadSync.campaignId);
+      clearPendingAiInstagramOutboundRegistry();
+    }
   });
 
   await t.test("new Instagram lead stays silent until explicit handoff, then processes in dry-run mode", async () => {
