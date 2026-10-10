@@ -158,3 +158,7 @@ export async function sendManualConversationOutbound(input: {
     error: "unsupported_conversation_transport",
   };
 }
+
+
+// Generic alias for automated follow-ups that use the same channel routing.
+export const sendConversationTextOutbound = sendManualConversationOutbound;
