@@ -245,6 +245,10 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true };
   }
   if (phase === "selfstarter_offered" &&
+      matches(input, /\b(okay|ok|danke|passt|super|alles klar)\b/)) {
+    return { text: "Gerne. Schau es dir in Ruhe an.", phase: "info", infoOnly: true };
+  }
+  if (phase === "selfstarter_offered" &&
       matches(input, /\b(was bekomme ich|was ist da drin|was beinhaltet|was ist enthalten|umfang)\b/)) {
     return { text: "Der Selbststarter ist für den eigenständigen Einstieg gedacht. Die genauen Inhalte findest du auf der Produktseite:\n" +
         OFFER_TRUTH.selfstarter.productUrl,
@@ -256,7 +260,23 @@ export function getNaturalConversationReply(params: {
       return { text: "Ob die fünf Wochen auf eine längere Begleitung angerechnet werden können, klärt Jochen persönlich. Ich möchte dir dazu nichts zusagen, was nicht feststeht.",
         phase: "longterm_unverified", infoOnly: true };
     }
-    if (matches(input, /\b(rabatt|anzahlung|raten|rate|monatlich|zahlung|konditionen|preis|kostet|wie teuer|finanzierbar)\b/)) {
+    if (matches(input, /\b(raten|rate|monatlich)\b/)) {
+      return { text: "Eine verbindliche Monatsrate für die längere Begleitung kann ich dir nicht nennen. Das klärt Jochen persönlich.",
+        phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(rabatt)\b/)) {
+      return { text: "Ob es dafür einen Rabatt gibt, ist nicht bestätigt. Das klärt Jochen persönlich mit dir.",
+        phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(anzahlung)\b/)) {
+      return { text: "Ob eine Anzahlung möglich ist, kann ich dir nicht verbindlich zusagen. Jochen klärt das persönlich.",
+        phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(finanzierbar)\b/)) {
+      return { text: "Verstehe, dass du erst wissen willst, ob das in dein Budget passt. Ich nenne dir lieber keine ungeprüfte Zahl. Jochen kann dir die aktuellen Konditionen persönlich erklären.",
+        phase: "longterm_unverified", infoOnly: true };
+    }
+    if (matches(input, /\b(zahlung|konditionen|preis|kostet|wie teuer)\b/)) {
       return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "longterm_unverified", infoOnly: true };
     }
     if (matches(input, /\b(danke|verstanden|frage ich jochen|jochen direkt|alles klar|dann personlich|warte ich auf jochen|ich klare es)\b/)) {
