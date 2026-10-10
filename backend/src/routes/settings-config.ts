@@ -47,6 +47,26 @@ router.get("/settings-config", (_req: Request, res: Response) => {
   }
 });
 
+// Dedicated draft-only path: never accept or write active brand, Pete, send,
+// checkout, campaign or authorization fields along with a coach template.
+router.post("/coach-onboarding-draft", (req: Request, res: Response) => {
+  const payload = req.body as unknown;
+  const draft = parseCoachOnboardingDraft(payload);
+  if (!draft.ok) {
+    return res.status(400).json({ ok: false, error: draft.error });
+  }
+  try {
+    const saved = writeSettings({ coachOnboardingDraft: draft.value });
+    return res.json({
+      ok: true, draft: saved.coachOnboardingDraft, activated: false,
+    });
+  } catch {
+    return res.status(409).json({
+      ok: false, error: "coach_draft_save_failed",
+    });
+  }
+});
+
 router.post("/settings-config", (req: Request, res: Response) => {
   try {
     const payload = (req.body ?? {}) as Partial<SettingsConfig>;
