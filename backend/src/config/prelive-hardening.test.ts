@@ -23,6 +23,7 @@ const {
   saveSchedulingConfig,
 } = await import("../data/scheduling-config.store.js");
 const {
+  appendAssistantMessage,
   getOrCreateConversationState,
   persistConversationState,
   takeOverByHuman,
@@ -42,7 +43,14 @@ const {
 } = await import("../domain/pricing-rules.js");
 const {
   clearConversationStore,
+  getConversationState,
 } = await import("../data/store.js");
+const {
+  syncInstagramLead,
+} = await import("../services/instagram-lead-sync.service.js");
+const {
+  handleInstagramEcho,
+} = await import("../services/instagram-echo-handoff.service.js");
 
 test("Phase 6 pre-live hardening", async (t) => {
   t.after(() => {
@@ -97,6 +105,68 @@ test("Phase 6 pre-live hardening", async (t) => {
       }),
       { allowed: false, reason: "stopped" },
     );
+  });
+
+  await t.test("manual Instagram echo triggers human takeover while bot echo stays AI-owned", () => {
+    clearConversationStore();
+
+    const igsid = "phase6-human-echo-igsid";
+    const leadSync = syncInstagramLead({
+      instagramScopedId: igsid,
+    });
+
+    const state = getOrCreateConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+
+    appendAssistantMessage(state, "Automatische Antwort");
+    const latestAiMessage = state.messages.at(-1);
+    assert.ok(latestAiMessage);
+    latestAiMessage.metaMessageId = "phase6-bot-mid";
+    latestAiMessage.outboundStatus = "sent";
+    latestAiMessage.transport = "meta_instagram";
+    latestAiMessage.sent = true;
+    persistConversationState(state);
+
+    const botEcho = handleInstagramEcho({
+      messageId: "phase6-bot-mid",
+      senderId: "17841400000000000",
+      recipientId: igsid,
+      text: "Automatische Antwort",
+      timestampMs: Date.now(),
+      isEcho: true,
+      hasAttachments: false,
+    });
+
+    assert.equal(botEcho.action, "ignored_bot_echo");
+    assert.equal(
+      getConversationState(leadSync.lead.id, leadSync.campaignId)?.owner,
+      "ai",
+    );
+
+    const humanEcho = handleInstagramEcho({
+      messageId: "phase6-human-mid",
+      senderId: "17841400000000000",
+      recipientId: igsid,
+      text: "Hier ist Jochen, ich übernehme kurz.",
+      timestampMs: Date.now(),
+      isEcho: true,
+      hasAttachments: false,
+    });
+
+    assert.equal(humanEcho.action, "human_takeover");
+
+    const updated = getConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+
+    assert.equal(updated?.owner, "human");
+    assert.equal(updated?.aiPaused, true);
+    assert.equal(updated?.lastActor, "human");
+    assert.equal(updated?.messages.at(-1)?.actor, "human");
+    assert.match(updated?.messages.at(-1)?.text ?? "", /Jochen/);
   });
 
   await t.test("dashboard offer links are used by Pete at runtime", () => {
