@@ -11,6 +11,7 @@ process.env.DATA_DIR = dir;
 process.env.INSTAGRAM_SEND_ENABLED = "false";
 process.env.WHATSAPP_SEND_ENABLED = "false";
 process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+process.env.PETE_LLM_API_CALLS_APPROVED = "false";
 delete process.env.OPENAI_API_KEY;
 
 const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
@@ -33,6 +34,7 @@ test("Phase 45: model route is opt-in and preserves all trusted safety interlock
     globalThis.fetch = oldFetch;
     delete process.env.OPENAI_API_KEY;
     process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+    process.env.PETE_LLM_API_CALLS_APPROVED = "false";
     clearConversationStore();
     fs.rmSync(dir, { recursive: true, force: true });
   });
@@ -69,6 +71,7 @@ test("Phase 45: model route is opt-in and preserves all trusted safety interlock
     clearConversationStore();
     writeSettings({ aiEnabled: true });
     process.env.OPENAI_API_KEY = "test-never-send";
+    process.env.PETE_LLM_API_CALLS_APPROVED = "true";
     process.env.OPENAI_MODEL = "gpt-4.1-mini";
     const transcript = [
       "Ich bin Mama von zwei Kindern und abends platt.",
