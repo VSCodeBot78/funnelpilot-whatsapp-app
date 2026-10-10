@@ -1,0 +1,114 @@
+name: Pete Phase 3 - 50 Synthetic Parent Chats
+
+# Deliberately NOT automatic on normal PRs or pushes.
+# A single, exact branch plus an approved commit message is required.
+on:
+  push:
+    branches:
+      - phase3-approved-run-20261011
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  pete-real-synthetic:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/phase3-approved-run-20261011' &&
+      startsWith(github.event.head_commit.message, 'PHASE3_APPROVED_50_CHATS')
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      NODE_ENV: test
+      OPENAI_MODEL: gpt-4.1-mini
+      PETE_LLM_CONVERSATION_ENABLED: "true"
+      PETE_LLM_API_CALLS_APPROVED: "true"
+      PETE_PHASE3_BUDGET_ENVELOPE: "true"
+      PETE_PHASE3_APPROVED_RUN: FIFTY_SYNTHETIC_CHATS
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      ENABLE_GENERIC_WEBHOOKS: "false"
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false"
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: "false"
+      INSTAGRAM_ALLOW_ALL_SENDERS: "false"
+    steps:
+      - name: Checkout approved test code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Checkout cross-run budget ledger branch
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install and compile tested backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+      - name: Verify private credential exists, without printing it
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo "::error::OPENAI_API_KEY GitHub Actions Secret fehlt oder ist ungueltig."
+            exit 1
+          fi
+          if [ ! -f budget-ledger/phase3-budget-ledger.json ]; then
+            echo "::error::Budgetstand fehlt: API-Aufrufe sind gesperrt."
+            exit 1
+          fi
+          git -C budget-ledger config user.name "Funnel Pilot phase3 budget bot"
+          git -C budget-ledger config user.email "actions@users.noreply.github.com"
+      - name: Run 50 difficult synthetic chats in 5 prepaid blocks
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for batch in 0 1 2 3 4; do
+            echo "Phase 3: reserve protected batch $batch of 5"
+            export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-$batch"
+            mkdir -p "$DATA_DIR"
+            node scripts/pete-phase3-ledger.mjs reserve "$batch"
+            git -C budget-ledger add phase3-budget-ledger.json
+            git -C budget-ledger commit -m "Reserve Phase3 job $GITHUB_RUN_ID batch $batch"
+            # Required remote confirmation BEFORE any paid API call.
+            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            echo "Phase 3: running ten synthetic personas in protected batch $batch"
+            set +e
+            (cd backend && npx tsx src/config/pete-phase3-live-runner.ts "$batch")
+            result=$?
+            set -e
+            node scripts/pete-phase3-ledger.mjs settle "$batch"
+            git -C budget-ledger add phase3-budget-ledger.json
+            git -C budget-ledger commit -m "Settle Phase3 job $GITHUB_RUN_ID batch $batch"
+            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            if [ "$result" -ne 0 ]; then
+              echo "::error::Phase 3 batch $batch stopped; no more API calls."
+              exit "$result"
+            fi
+          done
+      - name: Archive ONLY fictional transcripts for independent human review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-phase3-fifty-synthetic-chats
+          path: phase3-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30

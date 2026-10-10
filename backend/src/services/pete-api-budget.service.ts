@@ -115,6 +115,13 @@ export function reservePeteBudget(params: {
     throw new PeteBudgetStop("model_not_priced");
   // Each token represents >=1 byte of text in the encoded payload; an extra
   // 6k-token overhead covers API wrappers and hidden roles. No tools are enabled.
+  // GitHub Phase 3 envelopes reserve 1.50 USD for exactly 100 calls.
+  // At most 26k request bytes + 6k wrapper tokens and 400 output tokens
+  // cost less than 0.0135 USD per call, safely below the envelope.
+  if (process.env.PETE_PHASE3_BUDGET_ENVELOPE === "true" &&
+      Buffer.byteLength(params.requestBody, "utf8") > 26000) {
+    throw new PeteBudgetStop("exhausted");
+  }
   const maximumInputTokens = Buffer.byteLength(params.requestBody, "utf8") + 6000;
   const reservedMicros = Math.ceil(maximumInputTokens * INPUT_USD_MICROS_PER_TOKEN +
     MAX_OUTPUT_TOKENS * OUTPUT_USD_MICROS_PER_TOKEN);
