@@ -206,3 +206,10 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **Abnahmeanleitung:** `docs/PHASE32_SICHERER_LAPTOP_TEST.md` enthält minimalen Windows-Start, lokale Testfälle, Go/No-Go, echten Provider-Test als gesonderte Freigabe, Not-Aus und die offenen Nachweise. `docs/LOCAL_TEST_WINDOWS.md` verweist auf diesen Ablauf; die veraltete Angabe 2.499 € als freigegebener Preis ist korrigiert.
 - **Code-CI nach Änderungen:** GitHub Actions `38063036654` auf `8e4739f8`, **213 Backend + 9 Relay/Launcher/Sicherheits-Preflight + 8 Dashboard = 230 Tests erfolgreich, 0 Fehler**, Backend-/Dashboard-Build grün. Letzten PR-HEAD separat prüfen.
 - **Wichtige Grenze:** Weder das Starter-Skript noch der lokale Preflight wurde auf dem echten Windows-Laptop ausgeführt. Echte Meta-/ManyChat-Doppelantworten, zugestellte DMs, Calendly-/Zahlungsprovider-Integration, Cloudflare in freier Wildbahn und SaaS-Authentifizierung sind **nicht** damit freigegeben. Keine echten Sends, keine neuen Gebühren und keine Produktionsumschaltung.
+
+## Aktive Roadmap / spätere Ablösung externer DM-Automationen (10.10.2026)
+
+- Prioritäten **1–3** (Phase 30–32) als reine Entwicklungs-/Vorbereitungsarbeit abgeschlossen. Als Nächstes ohne Laptop **4 Dashboard vereinfachen → 5 Startdiagnose verbessern → 6 Datenschutz/Betrieb vorbereiten → 7 Coach-Onboarding vorbereiten**.
+- Externer DM-Closer: noch etwa eine Woche Benchmark-Test, danach **keine Verlängerung vorgesehen**; Kündigung noch nicht nachgewiesen.
+- ManyChat bleibt **vorerst** für bestehende kurze Trigger/Buttons/Linkstrecken bestehen, soll langfristig durch eigene, **einfache Funnel-Pilot-Keyword-/Auswahl-/Link-Flows** ersetzt werden. Kostenpräferenz künftig eigener Hetzner-Betrieb statt ManyChat-Abo. Der Ersatz ist **strategisch festgeschrieben, nicht gegenwärtige Entwicklungspriorität**.
+- Vollständige Kriterien, spätere technische Reihenfolge und grobe Fortschrittsgrößen: `docs/ROADMAP_PRIORITAETEN_4_7_MANYCHAT_2026-10-10.md`. Meta-Kanalfähigkeiten, echte Zustellung, Ghosting, Human-Handover, Deduplizierung und Migration **pro Trigger** gesondert freigeben; keine parallelen Bot-Antworten einplanen.
