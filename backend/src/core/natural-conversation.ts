@@ -34,7 +34,8 @@ function wantsPersonalSupport(value: string): boolean {
   return /\b(begleitung|coaching|coach|unterstutzung|personliche hilfe|gemeinsam|jemand(?:en)?|dranbleib(?:en|t|e|st)?|an meiner seite)\b/.test(text);
 }
 function wantsSelfGuided(value: string): boolean {
-  return /\b(selbst|allein|selber|ohne coach|erstmal infos|selbststarter)\b/.test(normalize(value));
+  const input = normalize(value);
+  return /\b(ohne coach|erstmal infos|selbststarter|selbst (?:versuchen|machen|loslegen|starten|angehen|probieren)|selber (?:versuchen|machen|loslegen|starten|angehen|probieren)|allein (?:versuchen|machen|loslegen|starten|angehen|probieren))\b/.test(input);
 }
 const bookingLink = (url?: string) =>
   url && /^https:\/\//i.test(url) ? url : null;
@@ -88,6 +89,8 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true };
   }
 
+  const rejectsCall = matches(input, /\b(kein(?:en)?|ohne|nicht)\s+(gesprach|strategiegesprach|termin|call)\b/);
+
   // "Mit Jochen sprechen" is ambiguous: live chat or booking? Ask only once.
   if (phase === "human_choice") {
     if (matches(input, /\b(hier|chat|dm|nachricht|personlich ubernehmen|im gespräch hier)\b/)) {
@@ -117,7 +120,7 @@ export function getNaturalConversationReply(params: {
     return { text: "Klar. Ich gebe den Chat an Jochen weiter.",
       phase: "human_handover", handoff: true };
   }
-  if (matches(input, /\b(strategiegesprach|termin buchen|termin vereinbaren)\b/)) {
+  if (!rejectsCall && matches(input, /\b(strategiegesprachstermin|strategiegesprach|termin buchen|termin vereinbaren|termin ausmachen|termin machen)\b/)) {
     return bookingUrl
       ? { text: "Hier kannst du dir direkt ein Strategiegespräch aussuchen:\n" + bookingUrl,
           phase: "booking_offered", booking: true }
@@ -226,7 +229,7 @@ export function getNaturalConversationReply(params: {
     return { text: "Verstanden. Was wäre für dich gerade der wichtigste Punkt, damit du entscheiden kannst, ob die Begleitung sinnvoll ist?",
       phase: "coaching_next", track: "coaching" };
   }
-  if (matches(input, /\b(ich muss uberlegen|muss ich uberlegen|ich uberlege es mir|bin noch unsicher|ich weiss nicht|ich weiß nicht|brauche bedenkzeit|noch nicht sicher)\b/)) {
+  if (matches(input, /\b(ich muss uberlegen|muss ich uberlegen|ich uberlege es mir|bin noch unsicher|brauche bedenkzeit|noch nicht sicher)\b/)) {
     return {
       text: "Klar, nimm dir die Zeit. Ist noch etwas zur Begleitung offen oder passt der Zeitpunkt gerade nicht?",
       phase: "think_clarify",
@@ -293,14 +296,14 @@ export function getNaturalConversationReply(params: {
 
   if (phase === "coaching_close" || phase === "coaching_next") {
     if (matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
-        !matches(input, /\b(gesprach|strategie|termin)\b/)) {
+        (rejectsCall || !matches(input, /\b(gesprach|strategie|termin)\b/))) {
       return {
         text: "Hier kannst du dir die 5-Wochen-Startphase ansehen und direkt starten:\n" +
           OFFER_TRUTH.coachingEntry.checkoutUrl,
         phase: "checkout_offered", track: ketoInConversation ? "keto" : "coaching",
       };
     }
-    if (matches(input, /\b(termin|gesprach|strategie)\b/)) {
+    if (!rejectsCall && matches(input, /\b(termin|gesprach|strategie)\b/)) {
       return bookingUrl
         ? { text: "Hier kannst du dir ein Strategiegespräch aussuchen:\n" + bookingUrl,
             phase: "booking_offered", booking: true }
