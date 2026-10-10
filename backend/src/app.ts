@@ -185,6 +185,8 @@ app.get("/health/readiness", (_req, res) => {
     webhookBaseUrlConfigured: Boolean(env.WEBHOOK_BASE_URL),
     dataDir: env.DATA_DIR,
     destructiveRoutesDisabled: areDestructiveRoutesDisabled(),
+    // Configuration only, not proof that any provider delivered an event.
+    genericWebhooksEnabled: env.ENABLE_GENERIC_WEBHOOKS,
     metaVerifyTokenConfigured: Boolean(env.META_VERIFY_TOKEN),
     metaSendConfigured,
     instagramVerifyTokenConfigured: Boolean(env.INSTAGRAM_VERIFY_TOKEN),
