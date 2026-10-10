@@ -122,6 +122,21 @@ export default function SettingsGeneralPanel({
 
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+            Setup-Video (optional, HTTPS-URL)
+          </div>
+          <input
+            style={inputStyle(colors)}
+            value={safeSettings.setupVideoUrl || ""}
+            onChange={(e) => updateField("setupVideoUrl", e.target.value)}
+            placeholder="https://... Dein kurzes 10-15-Minuten-Setup-Video"
+          />
+          <div style={{ color: colors.sub, fontSize: 12, marginTop: 5 }}>
+            Im Einrichtungsfenster erscheint „Video ansehen“ nur bei gültiger HTTPS-Adresse.
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
             Footer-Text
           </div>
           <input
