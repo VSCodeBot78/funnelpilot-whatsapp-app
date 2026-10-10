@@ -132,7 +132,7 @@ function verifyCalendlyWebhookSignature(req: Request): WebhookVerificationResult
   const timestampSeconds = Number(timestamp);
   const skew = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
   if (
-    !/^\\d{10,13}$/.test(timestamp) ||
+    !/^\d{10,13}$/.test(timestamp) ||
     !Number.isSafeInteger(timestampSeconds) ||
     !Number.isFinite(skew) ||
     skew > 180 ||
