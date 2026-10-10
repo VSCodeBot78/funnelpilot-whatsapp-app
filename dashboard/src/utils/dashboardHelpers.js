@@ -123,11 +123,11 @@ export function getNormalizedOfferContext(campaign = {}) {
         ? context.infoLink1Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink1Enabled,
     infoLink1Label:
-      typeof context.infoLink1Label === "string"
+      typeof context.infoLink1Label === "string" && context.infoLink1Label.trim()
         ? context.infoLink1Label
         : DEFAULT_OFFER_CONTEXT.infoLink1Label,
     infoLink1Url:
-      typeof context.infoLink1Url === "string"
+      typeof context.infoLink1Url === "string" && context.infoLink1Url.trim()
         ? context.infoLink1Url
         : DEFAULT_OFFER_CONTEXT.infoLink1Url,
     infoLink2Enabled:
@@ -135,11 +135,11 @@ export function getNormalizedOfferContext(campaign = {}) {
         ? context.infoLink2Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink2Enabled,
     infoLink2Label:
-      typeof context.infoLink2Label === "string"
+      typeof context.infoLink2Label === "string" && context.infoLink2Label.trim()
         ? context.infoLink2Label
         : DEFAULT_OFFER_CONTEXT.infoLink2Label,
     infoLink2Url:
-      typeof context.infoLink2Url === "string"
+      typeof context.infoLink2Url === "string" && context.infoLink2Url.trim()
         ? context.infoLink2Url
         : DEFAULT_OFFER_CONTEXT.infoLink2Url,
     infoLink3Enabled:
@@ -147,11 +147,11 @@ export function getNormalizedOfferContext(campaign = {}) {
         ? context.infoLink3Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink3Enabled,
     infoLink3Label:
-      typeof context.infoLink3Label === "string"
+      typeof context.infoLink3Label === "string" && context.infoLink3Label.trim()
         ? context.infoLink3Label
         : DEFAULT_OFFER_CONTEXT.infoLink3Label,
     infoLink3Url:
-      typeof context.infoLink3Url === "string"
+      typeof context.infoLink3Url === "string" && context.infoLink3Url.trim()
         ? context.infoLink3Url
         : DEFAULT_OFFER_CONTEXT.infoLink3Url,
     infoLink4Enabled:
@@ -159,11 +159,11 @@ export function getNormalizedOfferContext(campaign = {}) {
         ? context.infoLink4Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink4Enabled,
     infoLink4Label:
-      typeof context.infoLink4Label === "string"
+      typeof context.infoLink4Label === "string" && context.infoLink4Label.trim()
         ? context.infoLink4Label
         : DEFAULT_OFFER_CONTEXT.infoLink4Label,
     infoLink4Url:
-      typeof context.infoLink4Url === "string"
+      typeof context.infoLink4Url === "string" && context.infoLink4Url.trim()
         ? context.infoLink4Url
         : DEFAULT_OFFER_CONTEXT.infoLink4Url,
     internalNote:

@@ -241,11 +241,11 @@ function normalizeOfferContext(value: unknown): CampaignOfferContext {
         ? raw.infoLink1Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink1Enabled,
     infoLink1Label:
-      typeof raw.infoLink1Label === "string"
+      typeof raw.infoLink1Label === "string" && raw.infoLink1Label.trim()
         ? raw.infoLink1Label
         : DEFAULT_OFFER_CONTEXT.infoLink1Label,
     infoLink1Url:
-      typeof raw.infoLink1Url === "string"
+      typeof raw.infoLink1Url === "string" && raw.infoLink1Url.trim()
         ? raw.infoLink1Url
         : DEFAULT_OFFER_CONTEXT.infoLink1Url,
     infoLink2Enabled:
@@ -253,11 +253,11 @@ function normalizeOfferContext(value: unknown): CampaignOfferContext {
         ? raw.infoLink2Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink2Enabled,
     infoLink2Label:
-      typeof raw.infoLink2Label === "string"
+      typeof raw.infoLink2Label === "string" && raw.infoLink2Label.trim()
         ? raw.infoLink2Label
         : DEFAULT_OFFER_CONTEXT.infoLink2Label,
     infoLink2Url:
-      typeof raw.infoLink2Url === "string"
+      typeof raw.infoLink2Url === "string" && raw.infoLink2Url.trim()
         ? raw.infoLink2Url
         : DEFAULT_OFFER_CONTEXT.infoLink2Url,
     infoLink3Enabled:
@@ -265,11 +265,11 @@ function normalizeOfferContext(value: unknown): CampaignOfferContext {
         ? raw.infoLink3Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink3Enabled,
     infoLink3Label:
-      typeof raw.infoLink3Label === "string"
+      typeof raw.infoLink3Label === "string" && raw.infoLink3Label.trim()
         ? raw.infoLink3Label
         : DEFAULT_OFFER_CONTEXT.infoLink3Label,
     infoLink3Url:
-      typeof raw.infoLink3Url === "string"
+      typeof raw.infoLink3Url === "string" && raw.infoLink3Url.trim()
         ? raw.infoLink3Url
         : DEFAULT_OFFER_CONTEXT.infoLink3Url,
     infoLink4Enabled:
@@ -277,11 +277,11 @@ function normalizeOfferContext(value: unknown): CampaignOfferContext {
         ? raw.infoLink4Enabled
         : DEFAULT_OFFER_CONTEXT.infoLink4Enabled,
     infoLink4Label:
-      typeof raw.infoLink4Label === "string"
+      typeof raw.infoLink4Label === "string" && raw.infoLink4Label.trim()
         ? raw.infoLink4Label
         : DEFAULT_OFFER_CONTEXT.infoLink4Label,
     infoLink4Url:
-      typeof raw.infoLink4Url === "string"
+      typeof raw.infoLink4Url === "string" && raw.infoLink4Url.trim()
         ? raw.infoLink4Url
         : DEFAULT_OFFER_CONTEXT.infoLink4Url,
     internalNote:
