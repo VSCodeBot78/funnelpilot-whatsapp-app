@@ -98,6 +98,8 @@ $escapedRepo = $repo.Replace("'", "''")
 $backendCommands = @(
   "Set-Location -LiteralPath '$escapedBackend'",
   '$env:NODE_ENV = "development"',
+  '$env:FUNNELPILOT_LOCAL_TEST_MODE = "true"',
+  '$env:CORS_ORIGIN = "http://127.0.0.1:5173"',
   '$env:PORT = "3001"',
   '$env:INSTAGRAM_ENGINE_ENABLED = "false"',
   '$env:INSTAGRAM_SEND_ENABLED = "false"',
@@ -187,7 +189,7 @@ try {
   throw
 }
 
-Write-Host "Backend/Dashboard erreichbar, Relay isoliert, Instagram und WhatsApp deaktiviert." -ForegroundColor Green
+Write-Host "Backend/Dashboard erreichbar, Relay pro Callback gesichert, Instagram und WhatsApp deaktiviert." -ForegroundColor Green
 Write-Host "Test im Browser: $dashboardUrl" -ForegroundColor Green
 Write-Host "Cloudflare wurde NICHT gestartet." -ForegroundColor Yellow
 Start-Process $dashboardUrl | Out-Null

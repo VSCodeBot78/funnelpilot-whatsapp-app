@@ -11,35 +11,12 @@
  */
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { evaluateSafeReadiness } from "./local-safety-profile.mjs";
+export { evaluateSafeReadiness } from "./local-safety-profile.mjs";
 
 const LOCAL_BACKEND = "http://127.0.0.1:3001";
 const LOCAL_RELAY = "http://127.0.0.1:3002";
 const TIMEOUT_MS = 2500;
-
-export function evaluateSafeReadiness(status) {
-  const violations = [];
-  if (!status || status.ok !== true || status.service !== "funnel-pilot-backend" ||
-      status.status !== "ready") {
-    return ["Das Backend meldet keine gültige Funnel-Pilot-Readiness."];
-  }
-  // A deliberately strict test-only profile; NO enabling Meta here.
-  const required = [
-    ["nodeEnv", "development"],
-    ["instagramSendEnabled", false],
-    ["whatsappSendEnabled", false],
-    ["instagramEngineEnabled", false],
-    ["instagramAllowAllSenders", false],
-    ["instagramAutoEnableNewLeads", false],
-    ["instagramAllowedSenderCount", 0],
-    ["destructiveRoutesDisabled", true],
-  ];
-  for (const [key, expected] of required) {
-    if (status[key] !== expected) {
-      violations.push(key + " muss " + JSON.stringify(expected) + " sein.");
-    }
-  }
-  return violations;
-}
 
 async function probe(fetchImpl, url, opts = {}) {
   // Reject redirects: a public redirect is never a local safety pass.

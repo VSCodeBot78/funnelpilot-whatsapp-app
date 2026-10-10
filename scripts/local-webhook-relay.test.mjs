@@ -34,7 +34,7 @@ test("local webhook relay blocks admin routes and preserves webhook body", async
     res.end(JSON.stringify({ received: true }));
   });
   const backendPort = await start(backend);
-  const relay = createLocalWebhookRelay({ backendPort });
+  const relay = createLocalWebhookRelay({ backendPort, requireSafeLaptopMode: false });
   const relayPort = await start(relay);
   t.after(async () => {
     await close(relay);
@@ -114,7 +114,7 @@ test("Calendly callback is opt-in, POST-only, and never exposes admin routes", a
     res.end(JSON.stringify({ ok: true }));
   });
   const backendPort = await start(backend);
-  const relay = createLocalWebhookRelay({ backendPort, allowCalendly: true });
+  const relay = createLocalWebhookRelay({ backendPort, allowCalendly: true, requireSafeLaptopMode: false });
   const port = await start(relay);
   t.after(async () => { await close(relay); await close(backend); });
 
@@ -140,4 +140,53 @@ test("Calendly callback is opt-in, POST-only, and never exposes admin routes", a
   });
   assert.equal(allowed.status, 202);
   assert.deepEqual(requests, [{ path: "/booking-events/calendly", signature, raw }]);
+});
+
+test("Phase 39 local relay denies callbacks after backend restart without safe lock", async t => {
+  let safe = true;
+  const visited = [];
+  const expected = {
+    ok: true, service: "funnel-pilot-backend", status: "ready",
+    nodeEnv: "development", localLaptopSafeMode: true,
+    instagramSendEnabled: false, whatsappSendEnabled: false,
+    instagramEngineEnabled: false, instagramAllowAllSenders: false,
+    instagramAutoEnableNewLeads: false, instagramAllowedSenderCount: 0,
+    genericWebhooksEnabled: false, destructiveRoutesDisabled: true,
+  };
+  const backend = http.createServer((req, res) => {
+    visited.push(req.url);
+    if (req.url === "/health/readiness") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ...expected, instagramSendEnabled: !safe }));
+    } else if (req.url === "/webhooks/meta/instagram") {
+      res.writeHead(403); res.end("signed webhook required");
+    } else {
+      res.writeHead(404); res.end();
+    }
+  });
+  const backendPort = await start(backend);
+  const relay = createLocalWebhookRelay({ backendPort });
+  const relayPort = await start(relay);
+  t.after(async () => { await close(relay); await close(backend); });
+  const endpoint = "http://127.0.0.1:" + relayPort + "/webhooks/meta/instagram";
+  assert.equal((await fetch(endpoint)).status, 403);
+  safe = false;
+  const afterRestart = await fetch(endpoint, {
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+  });
+  assert.equal(afterRestart.status, 503);
+  assert.equal(visited.filter(p => p === "/webhooks/meta/instagram").length, 1,
+    "unsafe inbound webhook must not reach backend");
+  assert.equal((await fetch("http://127.0.0.1:" + relayPort + "/leads")).status, 404);
+  assert.equal(visited.filter(p => p === "/leads").length, 0);
+});
+
+test("Phase 39 local relay stops ingress when backend readiness is unavailable", async t => {
+  const backend = http.createServer((_req, res) => { res.writeHead(404); res.end(); });
+  const backendPort = await start(backend);
+  const relay = createLocalWebhookRelay({ backendPort });
+  const relayPort = await start(relay);
+  t.after(async () => { await close(relay); await close(backend); });
+  const result = await fetch("http://127.0.0.1:" + relayPort + "/webhooks/meta/whatsapp");
+  assert.equal(result.status, 503);
 });

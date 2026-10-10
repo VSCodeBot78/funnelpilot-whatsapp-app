@@ -185,6 +185,7 @@ app.get("/health/readiness", (_req, res) => {
     service: "funnel-pilot-backend",
     status: "ready",
     nodeEnv: env.NODE_ENV,
+    localLaptopSafeMode: env.LOCAL_LAPTOP_TEST_MODE,
     whatsappSendEnabled: env.WHATSAPP_SEND_ENABLED,
     publicBackendUrlConfigured: Boolean(env.PUBLIC_BACKEND_URL),
     webhookBaseUrlConfigured: Boolean(env.WEBHOOK_BASE_URL),

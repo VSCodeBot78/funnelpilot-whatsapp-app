@@ -3,6 +3,7 @@
 import http from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { evaluateSafeReadiness } from "./local-safety-profile.mjs";
 
 const WEBHOOK_PATHS = new Set([
   "/webhooks/meta/instagram",
@@ -32,17 +33,45 @@ export function isAllowedLocalWebhook(method, requestTarget, { allowCalendly = f
   }
 }
 
-export function createLocalWebhookRelay({ backendPort = 3001, allowCalendly = false } = {}) {
+// Check the running backend before forwarding EVERY allowed webhook.
+ // If it has crashed, restarted without the launcher lock, or changed safety
+ // flags, no inbound customer message is ever forwarded by this local relay.
+async function backendHasSafeLaptopLock(backendPort) {
+  const response = await fetch("http://127.0.0.1:" + backendPort + "/health/readiness", {
+    redirect: "error", signal: AbortSignal.timeout(1500),
+  });
+  if (response.status !== 200) return false;
+  return evaluateSafeReadiness(await response.json()).length === 0;
+}
+
+export function createLocalWebhookRelay({
+  backendPort = 3001, allowCalendly = false, requireSafeLaptopMode = true,
+} = {}) {
   if (!Number.isInteger(backendPort) || backendPort < 1 || backendPort > 65535) {
     throw new Error("Invalid backend port.");
   }
 
-  return http.createServer((incoming, outgoing) => {
+  return http.createServer(async (incoming, outgoing) => {
     if (!isAllowedLocalWebhook(incoming.method, incoming.url, { allowCalendly })) {
       incoming.resume();
       outgoing.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       outgoing.end("Not found");
       return;
+    }
+
+    if (requireSafeLaptopMode) {
+      let safe = false;
+      try {
+        safe = await backendHasSafeLaptopLock(backendPort);
+      } catch {
+        // Fail closed on timeout, malformed JSON or stopped backend.
+      }
+      if (!safe) {
+        incoming.resume();
+        outgoing.writeHead(503, { "content-type": "text/plain; charset=utf-8" });
+        outgoing.end("Local safety gate closed");
+        return;
+      }
     }
 
     // Preserve the *exact* POST body for Meta's HMAC-SHA256 verification.

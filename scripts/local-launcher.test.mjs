@@ -17,6 +17,8 @@ test("Windows one-click launcher is non-destructive and explicitly disables all 
     'WHATSAPP_SEND_ENABLED = "false"',
     'ENABLE_GENERIC_WEBHOOKS = "false"',
     'DISABLE_DESTRUCTIVE_ROUTES = "true"',
+    'FUNNELPILOT_LOCAL_TEST_MODE = "true"',
+    'CORS_ORIGIN = "http://127.0.0.1:5173"',
     'LOCAL_ALLOW_CALENDLY_WEBHOOK = "false"',
   ]) {
     assert.ok(file.includes(value), "missing safe state: " + value);
