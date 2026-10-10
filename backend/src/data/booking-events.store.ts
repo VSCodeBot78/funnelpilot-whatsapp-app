@@ -10,7 +10,7 @@ const bookingEventsStore = new Map<string, BookingEventLogEntry>();
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
