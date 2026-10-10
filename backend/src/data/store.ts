@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { ConversationState, StoreRecord } from "../types/types.js";
 
 const DATA_DIR = env.DATA_DIR;
@@ -13,7 +14,7 @@ function buildKey(leadId: string, campaignId: string): string {
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -27,6 +28,7 @@ function readConversationsFile(): StoreRecord {
   try {
     const raw = fs.readFileSync(CONVERSATIONS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_conversation_store");
       return {};
     }
 
@@ -34,7 +36,9 @@ function readConversationsFile(): StoreRecord {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed;
     }
+    if (env.NODE_ENV === "production") throw new Error("invalid_conversation_store_shape");
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("conversation_store_invalid_stop_restore", { cause: error });
     console.error("conversation store read error:", error);
   }
 
@@ -43,7 +47,7 @@ function readConversationsFile(): StoreRecord {
 
 function writeConversationsFile(data: StoreRecord): void {
   ensureDataDir();
-  fs.writeFileSync(CONVERSATIONS_FILE, JSON.stringify(data, null, 2), "utf8");
+  writePrivateJsonAtomic(CONVERSATIONS_FILE, data);
 }
 
 function persistStore(): void {

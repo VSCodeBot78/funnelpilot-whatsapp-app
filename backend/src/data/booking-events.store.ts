@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { BookingEventLogEntry } from "../types/types.js";
 
 const DATA_DIR = env.DATA_DIR;
@@ -9,7 +10,7 @@ const bookingEventsStore = new Map<string, BookingEventLogEntry>();
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -23,6 +24,7 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
   try {
     const raw = fs.readFileSync(BOOKING_EVENTS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_booking_events_store");
       return [];
     }
 
@@ -33,7 +35,9 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
           item && typeof item === "object" && typeof (item as any).id === "string",
       );
     }
+    if (env.NODE_ENV === "production") throw new Error("invalid_booking_events_store_shape");
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("booking_events_store_invalid_stop_restore", { cause: error });
     console.error("booking events store read error:", error);
   }
 
@@ -42,7 +46,7 @@ function readBookingEventsFile(): BookingEventLogEntry[] {
 
 function writeBookingEventsFile(entries: BookingEventLogEntry[]): void {
   ensureDataDir();
-  fs.writeFileSync(BOOKING_EVENTS_FILE, JSON.stringify(entries, null, 2), "utf8");
+  writePrivateJsonAtomic(BOOKING_EVENTS_FILE, entries);
 }
 
 function persistBookingEvents(): void {

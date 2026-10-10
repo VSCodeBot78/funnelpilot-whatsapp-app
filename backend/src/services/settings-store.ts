@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 export type SettingsConfig = {
   productName: string;
@@ -165,7 +166,7 @@ function sanitizeSettings(
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -173,11 +174,7 @@ function ensureSettingsFile(): void {
   ensureDataDir();
 
   if (!fs.existsSync(SETTINGS_FILE)) {
-    fs.writeFileSync(
-      SETTINGS_FILE,
-      JSON.stringify(DEFAULT_SETTINGS, null, 2),
-      "utf8",
-    );
+    writePrivateJsonAtomic(SETTINGS_FILE, DEFAULT_SETTINGS);
   }
 }
 
@@ -186,7 +183,14 @@ export function readSettings(): SettingsConfig {
 
   try {
     const raw = fs.readFileSync(SETTINGS_FILE, "utf8");
+    if (env.NODE_ENV === "production" && !raw.trim()) {
+      throw new Error("empty_production_settings");
+    }
     const parsed = JSON.parse(raw || "{}") as Partial<SettingsConfig>;
+    if (env.NODE_ENV === "production" &&
+        (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) {
+      throw new Error("invalid_production_settings_shape");
+    }
 
     return {
       ...DEFAULT_SETTINGS,
@@ -196,6 +200,7 @@ export function readSettings(): SettingsConfig {
         DEFAULT_SETTINGS.aiModel,
     };
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("settings_store_invalid_stop_restore", { cause: error });
     console.error("settings read error:", error);
     return { ...DEFAULT_SETTINGS };
   }
@@ -213,11 +218,7 @@ export function writeSettings(
     ),
   };
 
-  fs.writeFileSync(
-    SETTINGS_FILE,
-    JSON.stringify(merged, null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(SETTINGS_FILE, merged);
 
   return merged;
 }
@@ -225,11 +226,7 @@ export function writeSettings(
 export function resetSettings(): SettingsConfig {
   ensureSettingsFile();
 
-  fs.writeFileSync(
-    SETTINGS_FILE,
-    JSON.stringify(DEFAULT_SETTINGS, null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(SETTINGS_FILE, DEFAULT_SETTINGS);
 
   return { ...DEFAULT_SETTINGS };
 }

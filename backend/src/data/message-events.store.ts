@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 
 export type MessageEventStatus =
   | "received"
@@ -31,7 +32,7 @@ let messageEventsStore: MessageEventLogEntry[] = [];
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -45,11 +46,13 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
   try {
     const raw = fs.readFileSync(MESSAGE_EVENTS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_message_events_store");
       return [];
     }
 
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
+      if (env.NODE_ENV === "production") throw new Error("invalid_message_events_store_shape");
       return [];
     }
 
@@ -63,6 +66,7 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
         typeof item.status === "string",
     );
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("message_events_store_invalid_stop_restore", { cause: error });
     console.error("message events store read error:", error);
     return [];
   }
@@ -70,11 +74,7 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
 
 function writeMessageEventsFile(events: MessageEventLogEntry[]): void {
   ensureDataDir();
-  fs.writeFileSync(
-    MESSAGE_EVENTS_FILE,
-    JSON.stringify(events.slice(-MAX_EVENTS), null, 2),
-    "utf8",
-  );
+  writePrivateJsonAtomic(MESSAGE_EVENTS_FILE, events.slice(-MAX_EVENTS));
 }
 
 function persistMessageEventsStore(): void {

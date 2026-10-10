@@ -78,3 +78,11 @@ Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „P
 - **Wizard und Alt-Einrichtung** verwenden strengere Prüfungen; OAuth-Statusausfälle werden von Backend-Status getrennt behandelt. Relay und echte Meta-/Calendly-/Payment-Zustellung bleiben **immer separat offen**.
 - Technischer Ablauf und lokale Abnahme: `docs/PHASE35_STARTDIAGNOSE_2026-10-10.md`.
 - **Als Nächstes:** Priorität 6 Datenschutz/Betrieb, dann Priorität 7 Coach-Onboarding. M-01 ManyChat-Miniflows und M-02 mobile Coach-PWA bleiben spätere Produktbausteine; keine Zusatzkosten und kein Live-Schalten durch Priorität 5.
+
+## Umsetzung Priorität 6 – 10.10.2026
+
+- **Produktions-Sicherheitsbasis im Code umgesetzt:** Der Backend-Server hört ausschließlich auf Loopback; eine eigene, vor allen Routern aktive Sperre schützt im Produktionsmodus Admin-, Lead-, Inbox- und Settings-Zugriffe. Ein serverseitiges Gateway-Secret ohne authentisierten Proxy ist **keine** Login-Lösung.
+- **Dateisicherheit verbessert:** Die fünf wichtigsten lokalen JSON-Datenquellen (Gespräche, Leads, Einstellungen, Nachrichten- und Buchungsereignisse) werden atomar mit restriktiven neuen Dateirechten geschrieben; beschädigte Dateien führen in Produktion zum Abbruch statt stiller Neuerzeugung. Keine automatisch eingefügten Demo-Leads bei leerem Produktionsbestand.
+- **Geplantes Hetzner-Betriebshandbuch** einschließlich Zugriffsschutz, TLS, Server-/Gateway-Geheimnissen, Backups, Restore, Löschfristen, Transparenz, Rollen und Multi-Tenant-Go-/No-Go: `docs/PHASE36_HETZNER_DATENSCHUTZ_BETRIEB_2026-10-10.md`.
+- **Als Nächstes:** Priorität 7 Coach-Onboarding vorbereiten. Echte Benutzeranmeldung, verschlüsselte Backups, Tenant-Isolation, DSGVO-Vertragsprüfung, Sicherheitsabnahme und Hetzner-Deployment bleiben **separat offen**.
+- Die späteren Produktmodule M-01 (ManyChat-Miniflows) und M-02 (mobile Coach-PWA) bleiben nachgelagert. Keine bezahlten Dienste eingerichtet und kein echter Sendebetrieb aktiviert.

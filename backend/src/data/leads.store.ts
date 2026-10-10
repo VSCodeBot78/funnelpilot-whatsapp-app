@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { BookingData } from "../types/types.js";
 
 type LeadRecord = {
@@ -36,7 +37,7 @@ const LEADS_FILE = path.join(DATA_DIR, "leads.json");
 
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
   }
 }
 
@@ -49,11 +50,13 @@ function readLeadsFile(): LeadRecord[] {
   try {
     const raw = fs.readFileSync(LEADS_FILE, "utf8");
     if (!raw.trim()) {
+      if (env.NODE_ENV === "production") throw new Error("empty_leads_store");
       return [];
     }
 
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
+      if (env.NODE_ENV === "production") throw new Error("invalid_leads_store_shape");
       return [];
     }
 
@@ -62,6 +65,7 @@ function readLeadsFile(): LeadRecord[] {
         item && typeof item === "object" && typeof (item as any).id === "string",
     );
   } catch (error) {
+    if (env.NODE_ENV === "production") throw new Error("leads_store_invalid_stop_restore", { cause: error });
     console.error("lead store read error:", error);
     return [];
   }
@@ -69,7 +73,7 @@ function readLeadsFile(): LeadRecord[] {
 
 function writeLeadsFile(leads: LeadRecord[]): void {
   ensureDataDir();
-  fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), "utf8");
+  writePrivateJsonAtomic(LEADS_FILE, leads);
 }
 
 function persistLeadsStore(): void {
@@ -286,7 +290,11 @@ function hydrateStoreFromFile(): void {
   if (savedLeads.length > 0) {
     leadsStore = new Map(savedLeads.map((lead) => [lead.id, cloneLead(lead)]));
   } else {
-    leadsStore = buildStoreFromDefaults();
+    // Never present demo personas as genuine customers in a production tenant.
+    // Existing persisted leads are not silently deleted by this guard.
+    leadsStore = env.NODE_ENV === "production"
+      ? new Map<string, LeadRecord>()
+      : buildStoreFromDefaults();
   }
 }
 
