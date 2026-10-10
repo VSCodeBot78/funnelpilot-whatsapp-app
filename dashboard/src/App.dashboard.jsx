@@ -24,6 +24,7 @@ import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
+import CoachDraftView from "./onboarding/CoachDraftView";
 
 const navItems = ALL_NAV;
 
@@ -351,6 +352,16 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
             setOnboardingStartStep(3);
             setSection("onboarding");
           }}
+        />
+      );
+    }
+
+    if (section === "coach-draft") {
+      return (
+        <CoachDraftView
+          colors={colors}
+          apiBaseUrl={settings.apiBaseUrl}
+          onOpenSetup={() => { setOnboardingStartStep(0); setSection("onboarding"); }}
         />
       );
     }
