@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   loadSettingsConfig as loadSettingsConfigFromApi,
   saveSettings as saveSettingsToApi,
+  saveCoachDraftOnly as saveCoachDraftOnlyToApi,
   resetSettings as resetSettingsFromApi,
 } from "../services/settingsApi";
 
@@ -168,6 +169,20 @@ export function useSettingsConfig({
     }
   }, [onSettingsSaved, settings]);
 
+  const saveCoachDraftOnly = useCallback(async draft => {
+    try {
+      const savedDraft = await saveCoachDraftOnlyToApi(draft, settings.apiBaseUrl);
+      // Keep all unsaved edits in the UI, but persist ONLY the reviewed draft.
+      setSettings(previous => ({ ...previous, coachOnboardingDraft: savedDraft }));
+      setSettingsMessage("Nur Coach-Entwurf gespeichert. Live-Einstellungen unverändert.");
+      return savedDraft;
+    } catch (error) {
+      console.error("coach draft save error:", error);
+      setSettingsMessage("Coach-Entwurf konnte nicht gespeichert werden.");
+      return null;
+    }
+  }, [settings.apiBaseUrl]);
+
   const resetSettings = useCallback(async () => {
     try {
       const resetData = await resetSettingsFromApi(settings.apiBaseUrl);
@@ -200,6 +215,7 @@ export function useSettingsConfig({
     setDarkMode,
     loadSettingsConfig,
     saveSettings,
+    saveCoachDraftOnly,
     resetSettings,
     userInitial: getUserInitial(settings.adminName),
     defaultSettings,
