@@ -1,5 +1,7 @@
 # Funnel Pilot – Laptop-Abnahme vor Hetzner (Windows)
 
+> **Phase 32 (10.10.2026):** Für den kürzesten sicheren Windows-Abnahmelauf inklusive automatischem HTTP-Sicherheits-Preflight, konkreten STOP-Kriterien und Rollback zuerst **[PHASE32_SICHERER_LAPTOP_TEST.md](PHASE32_SICHERER_LAPTOP_TEST.md)** verwenden. Diese Datei bleibt die ausführliche Hintergrund- und manuelle Fehlerdiagnose. **Der echte Windows-Laptop wurde noch nicht getestet.** Der Starter öffnet das Dashboard nun erst nach grünem lokalem Preflight.
+
 ## Neuer Kurzstart: sicherer Ein-Kommando-Test (Phase 20)
 
 **Alternative zu den drei manuellen PowerShell-Fenstern unten.** Der neue Launcher liegt in `scripts/start-local.ps1`. Bei gültigem Branch `funnel-pilot-current` prüft er Node.js/Git, erzeugt `backend/.env` nur dann aus der Vorlage, wenn sie noch fehlt, installiert fehlende Node-Abhängigkeiten und führt **alle** Backend-/Dashboard-Tests und Builds durch. Erst danach startet er drei **lokale** PowerShell-Fenster für Backend, Dashboard und den eingeschränkten Relay und öffnet das Dashboard im Browser:
@@ -18,7 +20,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps
 
 **Sicherheitsregeln:** Der Launcher überschreibt keine vorhandenen Secrets, verändert keine Git-Historie und aktiviert niemals Instagram-/WhatsApp-Sends. `INSTAGRAM_ENGINE_ENABLED=false`, beide Send-Flags `false`, `INSTAGRAM_ALLOW_ALL_SENDERS=false`, `ENABLE_GENERIC_WEBHOOKS=false` und `DISABLE_DESTRUCTIVE_ROUTES=true` werden für das Backend erzwungen. Bereits belegte Testports führen zum Abbruch, damit keine alte versehentlich aktive Instanz verwechselt wird. Er öffnet **keinen** Cloudflare-Tunnel, erstellt keine Hetzner-Ressourcen und führt keine echten Nachrichten aus. Für echte Meta-/Calendly-Tests braucht es später zusätzlich die separat beschriebenen Freigaben.
 
-**Status:** Der PowerShell-Launcher ist im GitHub-Repository und über statische Sicherheitsprüfungen in CI abgesichert. Er wurde **noch nicht auf deinem echten Windows-Laptop ausgeführt**. Die ausführlichen manuellen Schritte darunter bleiben als Diagnose- und Fallback-Anleitung bestehen.
+**Status Phase 32:** Der PowerShell-Launcher verfügt zusätzlich zu den statischen CI-Sicherheitsprüfungen jetzt über den tatsächlichen Netzwerk-Preflight `scripts/local-safety-preflight.mjs`. Er muss alle gesetzten Readiness-Schutzflags prüfen sowie mehrere verbotene Relay-Routen durch echte lokale HTTP-Anfragen als gesperrt nachweisen, **bevor** das Dashboard geöffnet wird. Mit `-CheckOnly` laufen nur Builds und Tests; ein dynamischer HTTP-Preflight setzt gestartete lokale Dienste voraus. Der Launcher wurde **noch nicht auf deinem echten Windows-Laptop ausgeführt**. Die ausführlichen manuellen Schritte darunter bleiben als Diagnose- und Fallback-Anleitung bestehen.
 
 
 **Stand:** 10.10.2026. Erst interne Tests, dann kontrollierter Meta-Testaccount, dann erst Hetzner. Keine Meta-App-Review in dieser Phase.
@@ -113,7 +115,7 @@ Die Challenge/Signatur nutzt weiterhin die vorhandenen echten Secrets in `backen
 | Bereich | Lokal prüfbar | Erforderlicher Nachweis |
 | --- | --- | --- |
 | Dashboard & Testchat | Ja | Startet, beantwortet Testfragen; Backend `/health` 200 |
-| Produktwahrheit | Ja | 14,95 € / 499 € / 2.499 €; keine erfundenen Preise |
+| Produktwahrheit | Ja | **14,95 € / 499 €**; längere Begleitung, Monatsraten und Anrechnungen nicht freigegeben und niemals erfinden |
 | Link-Routing | Ja | 4 konfigurierbare Links, eigene Overrides, kein Checkout/Elterncheck-Mix |
 | Human Takeover | Ja | Human Ownership blockiert Pete und Follow-ups |
 | Instagram Parser/HMAC/Dedupe | Ja | Signierte Testevents durch Relay, keine Doppelverarbeitung |
