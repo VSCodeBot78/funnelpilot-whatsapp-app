@@ -3,7 +3,7 @@
 Funnel Pilot: safe local Windows test launcher (no Meta outbound, no public tunnel).
 From repository root:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
-Validation only:
+Validation only (build/tests, no running HTTP preflight):
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1 -CheckOnly
 #>
 param([switch]$CheckOnly)
@@ -151,7 +151,43 @@ for ($attempt = 0; $attempt -lt 20; $attempt++) {
 if (-not $backendReady -or -not $dashboardReady) {
   throw "Backend oder Dashboard nicht bereit. Bitte die PowerShell-Fenster prüfen."
 }
-Write-Host "Backend/Dashboard erreichbar. Instagram und WhatsApp sind deaktiviert." -ForegroundColor Green
+
+# Phase 32: do not open the browser until the webhook relay actually listens
+# AND a real localhost HTTP preflight has rejected every admin/public route.
+$relayReady = $false
+for ($attempt = 0; $attempt -lt 20; $attempt++) {
+  $client = New-Object System.Net.Sockets.TcpClient
+  try {
+    $connection = $client.BeginConnect("127.0.0.1", 3002, $null, $null)
+    try {
+      if ($connection.AsyncWaitHandle.WaitOne(250)) {
+        try {
+          $client.EndConnect($connection)
+          $relayReady = $true
+        } catch [System.Net.Sockets.SocketException] { }
+      }
+    } finally {
+      $connection.AsyncWaitHandle.Close()
+    }
+  } finally {
+    $client.Close()
+  }
+  if ($relayReady) { break }
+  Start-Sleep -Seconds 1
+}
+if (-not $relayReady) {
+  throw "Webhook-Relay Port 3002 nicht bereit. Kein Browserstart. PowerShell-Fenster pruefen."
+}
+try {
+  Invoke-Checked "Lokaler Sicherheits-Preflight (echte HTTP-Sperrpruefung)" "node.exe" @(
+    (Join-Path $repo "scripts\local-safety-preflight.mjs")
+  )
+} catch {
+  Write-Host "SICHERHEITS-STOP: Die drei gestarteten PowerShell-Fenster schliessen. Keinen Tunnel starten." -ForegroundColor Red
+  throw
+}
+
+Write-Host "Backend/Dashboard erreichbar, Relay isoliert, Instagram und WhatsApp deaktiviert." -ForegroundColor Green
 Write-Host "Test im Browser: $dashboardUrl" -ForegroundColor Green
 Write-Host "Cloudflare wurde NICHT gestartet." -ForegroundColor Yellow
 Start-Process $dashboardUrl | Out-Null
