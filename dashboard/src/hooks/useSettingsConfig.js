@@ -56,6 +56,7 @@ export const defaultSettings = {
   defaultLanguage: "Deutsch",
   brandVoice: "Jochen-Sprache",
   masterPrompt: "",
+  customerTopObjections: "",
   dmConversationMode: "natural",
   answerLength: "kurz",
   fallbackReply:
