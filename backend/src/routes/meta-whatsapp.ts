@@ -8,8 +8,10 @@ import {
   type MessageEventStatus,
 } from "../data/message-events.store.js";
 import {
+  appendHumanMessage,
   getOrCreateConversationState,
   persistConversationState,
+  takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { sendMetaWhatsappTextMessage } from "../services/meta-whatsapp-api.service.js";
@@ -23,6 +25,7 @@ const PROVIDER = "meta_whatsapp" as const;
 type MetaMessage = {
   id?: string;
   from?: string;
+  to?: string;
   timestamp?: string;
   type?: string;
   text?: {
@@ -67,11 +70,13 @@ type MetaContact = {
 
 type MetaWebhookValue = {
   messages?: MetaMessage[];
+  message_echoes?: MetaMessage[];
   statuses?: MetaStatus[];
   contacts?: MetaContact[];
 };
 
 type MetaWebhookChange = {
+  field?: string;
   value?: MetaWebhookValue;
 };
 
@@ -376,6 +381,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let ignoredStatuses = 0;
   let ignoredUnsupported = 0;
   let ignoredAutomationPaused = 0;
+  let humanEchoTakeovers = 0;
   let failed = 0;
   let leadAction: "found" | "created" | undefined;
   let leadId: string | undefined;
@@ -400,6 +406,108 @@ router.post("/", async (req: RawBodyRequest, res) => {
         const contacts = Array.isArray(value.contacts) ? value.contacts : [];
         const statuses = Array.isArray(value.statuses) ? value.statuses : [];
         const messages = Array.isArray(value.messages) ? value.messages : [];
+        const messageEchoes =
+          normalizeString(change.field) === "smb_message_echoes" &&
+          Array.isArray(value.message_echoes)
+            ? value.message_echoes
+            : [];
+
+        for (const echo of messageEchoes) {
+          const messageId = normalizeString(echo.id);
+          const recipient = normalizeString(echo.to);
+          const type = normalizeString(echo.type) || "unknown";
+          const receivedAt = metaTimestampToIso(echo.timestamp);
+
+          if (!messageId || !recipient) {
+            failed += 1;
+            continue;
+          }
+
+          const existing = getMessageEventByMessageId(PROVIDER, messageId);
+          if (existing) {
+            duplicates += 1;
+            continue;
+          }
+
+          const textBody = normalizeString(echo.text?.body);
+          const leadSync = syncWhatsappLead({
+            from: recipient,
+          });
+          const state = getOrCreateConversationState(
+            leadSync.lead.id,
+            leadSync.campaignId,
+          );
+
+          state.backendLeadId =
+            leadSync.lead.backendLeadId || leadSync.lead.id;
+          state.leadName = leadSync.lead.name;
+          state.phone = leadSync.lead.phone || leadSync.normalizedPhone;
+          state.source = leadSync.lead.source || "WhatsApp";
+          state.notes = leadSync.lead.note;
+          state.bookingData = leadSync.lead.bookingData;
+
+          let echoMessageAppended = false;
+
+          if (type === "text" && textBody) {
+            appendHumanMessage(state, textBody);
+            const humanMessage = state.messages.at(-1);
+
+            if (humanMessage?.actor === "human") {
+              humanMessage.transport = "whatsapp_business_app";
+              humanMessage.outboundStatus = "sent";
+              humanMessage.dryRun = false;
+              humanMessage.sent = true;
+              humanMessage.sentAt = receivedAt;
+              humanMessage.metaMessageId = messageId;
+              humanMessage.sendError = null;
+            }
+
+            echoMessageAppended = true;
+            messageAppended = true;
+          } else {
+            takeOverByHuman(state, receivedAt);
+          }
+
+          persistConversationState(state);
+
+          humanEchoTakeovers += 1;
+          leadAction = leadSync.action;
+          leadId = leadSync.lead.id;
+          conversationUpdated = true;
+
+          saveMessageEventLogEntry(
+            buildLogEntry({
+              messageId,
+              from: recipient,
+              receivedAt,
+              type: `smb_message_echo:${type}`,
+              status: "ignored_status",
+              raw: {
+                incomingStatus: "processed",
+                reason: "whatsapp_business_app_echo_takeover",
+                leadId: leadSync.lead.id,
+                campaignId: leadSync.campaignId,
+                conversationUpdated: true,
+                messageAppended: echoMessageAppended,
+                owner: state.owner,
+                aiPaused: state.aiPaused,
+                engineProcessed: false,
+                sent: false,
+              },
+            }),
+          );
+
+          logMetaMessage({
+            messageId,
+            from: recipient,
+            type: `smb_message_echo:${type}`,
+            status: "ignored_status",
+            leadId: leadSync.lead.id,
+            campaignId: leadSync.campaignId,
+            engineProcessed: false,
+            sent: false,
+          });
+        }
 
         for (const status of statuses) {
           ignoredStatuses += 1;
@@ -866,6 +974,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       ignoredStatuses,
       ignoredUnsupported,
       ignoredAutomationPaused,
+      humanEchoTakeovers,
       failed,
       dryRun,
       leadAction,
@@ -894,6 +1003,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       ignoredStatuses,
       ignoredUnsupported,
       ignoredAutomationPaused,
+      humanEchoTakeovers,
       failed: failed + 1,
       dryRun: true,
       engineProcessed: false,
