@@ -223,3 +223,11 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **Tests:** Vier neue Dashboard-Regressionsfälle zur Navigationsvollständigkeit, echten Metadaten-Zählung, UI-Aktionen und Offline-/Mobile-Anbindung. Detailbericht: `docs/PHASE34_DASHBOARD_FOKUS_2026-10-10.md`. Erwarteter CI-Stand vor finalem Merge: 213 Backend + 9 Relay/Sicherheit + 12 Dashboard = **234 erfolgreich**, beide Builds grün; endgültigen PR-HEAD gesondert prüfen.
 - **Nicht live:** Keine echten Nachrichten, Änderungen an Meta-/ManyChat-Routen, Neuaktivierung von Pete oder Freigabe für Produktivbetrieb. Echte Browser-/Tastaturprüfung weiterhin erst auf Windows/Android möglich.
 - **Nächste Priorität:** **5 – Startdiagnose verbessern**, danach 6 Datenschutz/Betrieb und 7 Coach-Onboarding. Native ManyChat-Miniflows bleiben späterer Backlogpunkt.
+
+## Zukunftsbaustein M-02 – mobile Web-App / PWA für Coaches (10.10.2026)
+
+- Nutzerwunsch strategisch aufgenommen: Funnel Pilot soll **unterwegs auf Smartphone/Tablet im Browser** arbeiten und später als möglichst installierbare **Progressive Web App** auch anderen Coaches zur Verfügung stehen.
+- **Aktuell umgesetzt:** Responsive Dashboard-/Inbox-Basis in Phase 34. **Noch nicht umgesetzt:** PWA-Installation, sichere Anmeldung/Mandantenisolation, optionaler Push und reale Geräteprüfung.
+- Ziel ist eine schlanke mobile Inbox-/Lead-/Handover-/Pete-/Terminansicht; für andere Coaches muss die Oberfläche auf ihren **getrennten und autorisierten Workspace** zugreifen, nicht auf Jochens Daten.
+- Vor Live-SaaS: HTTPS, Login/Rollen, Backend-Zugriffsprüfung, sichere Sitzungen/Abmeldung, Datenschutz, keine vorgetäuschten Offline-Sends, echte Smartphone-Abnahme. Keine ungeprüfte Exposition der Admin-API.
+- Ausführlich als **Backlog M-02** in `docs/ROADMAP_PRIORITAETEN_4_7_MANYCHAT_2026-10-10.md` dokumentiert. **Nicht Priorität 5 vorziehen**; nach Grundlagen aus Priorität 6/7 angehen. Keine neuen Kosten/Live-Integrationen.

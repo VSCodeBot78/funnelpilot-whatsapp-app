@@ -36,6 +36,24 @@
 
 **Konkrete Abnahmekriterien für ManyChat-Abschaltung später:** Alle relevanten aktuellen Keyword-, Story-, Link- und CTA-Strecken durch echte Kanalevents nachgewiesen; keine Doppelantworten; zugestellte Buttons/Links von Testleads bestätigt; sauberes Opt-out und Human-Handover; aussagefähige Betriebsdiagnose; bewusst freigegebener Abschalt-/Rollbackplan. 
 
+## Produkt-Backlog M-02: Mobile Web-App für Jochen und spätere Coaches (später)
+
+**Neue Produktentscheidung vom 10.10.2026:** Funnel Pilot soll **unterwegs auf Mobiltelefonen und Tablets als webbasierte App** nutzbar sein. Keine separate native Android- oder iOS-App als MVP voraussetzen. Die gleiche mobile Oberfläche soll später für **alle angeschlossenen Coaches** nutzbar sein, nicht nur für Eltern fit & vital.
+
+**Aktueller Stand:** Seit Priorität 4 existiert bereits eine **responsive Dashboard- und Inbox-Anordnung** (kleinere Displays, Chat/Kontakte/Kontext untereinander). Das ist **noch keine installierbare Progressive Web App (PWA)**, kein Beweis für stabile Mobil-Bedienung auf echten Geräten und keine produktive mobile Freigabe.
+
+**Zielbild einer späteren installierbaren PWA:**
+
+- Über HTTPS im Handy-Browser öffnen und – soweit vom jeweiligen Gerät/Browser unterstützt – **zum Startbildschirm hinzufügen**; App-ähnlicher Start ohne verpflichtenden App-Store-Download.
+- Schneller **Mobiler Arbeitsplatz**: priorisierte Leads, Inbox, Gesprächsverlauf, Jochen-/Coach-Übernahme, „Pete pausieren/an KI zurückgeben“, Termine, wesentliche Lead-Notizen und sichere Statusanzeige. Normale Administrationsfunktionen bleiben optional erreichbar statt den kleinen Bildschirm zu überfrachten.
+- **Coach-fähig statt hardcoded:** Konten, Branding, Angebote und Zugriffsrechte stammen später aus der jeweils autorisierten Coach-/Workspace-Konfiguration; keine Daten eines anderen Coaches sichtbar. Zunächst weiterhin Single-Workspace, bis Login, Rollen und Mandanten-Trennung nachgewiesen sind.
+- **Sicherheitsvoraussetzung vor Live-SaaS:** HTTPS, belastbare Anmeldung mit Sitzungsschutz, Abmelden/Entzug, Zugriffskontrolle **serverseitig pro Workspace**, sichere Speicherung/Übertragung, Datenschutz- und Protokollkonzept, Tests für unzulässigen Zugriff. **Keine** Admin-API ohne Authentifizierung ins Internet stellen.
+- **Offline-Verhalten:** Bei fehlender Verbindung Zustand klar anzeigen; **keinen** erfolgreichen Versand, Handover oder Termin vortäuschen. Offline-Antworten und Service-Worker-Caching sensibler Chatdaten werden **nicht** als MVP zugesagt.
+- **Optionale spätere Extras:** Opt-in-Push für relevante Lead-/Handover-Ereignisse, gerätegerechte Bedienung, Benachrichtigungsregeln und Barrierefreiheit. Push-Berechtigungen, sensible Inhalte auf Sperrbildschirm und Plattformunterstützung je Browser müssen vor Freigabe gesondert geprüft werden.
+- **Abnahme erst später auf echten Geräten:** Android/iOS soweit vorhanden und Tablet; Installation/Startbildschirm, Login, Suche/Inbox, langer Chat, Statuswechsel, Human-Takeover, Abmelden, schlechtes Netz sowie strenge Trennung zweier Coach-Accounts.
+
+**Reihenfolge:** Als fester SaaS-Produktbaustein **nach** den Grundlagen aus Priorität 6 (Betrieb/Auth/Datenschutz) und 7 (Coach-Onboarding) bearbeiten. Vorher bleibt die bestehende responsive Browser-Ansicht die praktische Vorarbeit. **Keine Verschiebung der laufenden Priorität 5** und keine zusätzliche Servermiete allein für diesen Backlogpunkt.
+
 ## Einschätzung zum Projektfortschritt (keine objektiven Fertigstellungs-Messwerte)
 
 Die Prozentangaben sind grobe **Arbeits-/Reifegrade**, nicht der Anteil von „Produktiv-Reife ohne Restrisiko“. Die Bereiche sind unterschiedlich groß, daher **kein arithmetischer Durchschnitt** als Gesamtstand.
