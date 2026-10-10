@@ -159,6 +159,37 @@ test("Phase 6 pre-live hardening", async (t) => {
     assert.match(reply, /Keto Guide/);
   });
 
+  await t.test("disabled dashboard resource does not fall back to a static link", () => {
+    saveCampaign({
+      id: "fit",
+      offerContext: {
+        priceInquiryText: "Test",
+        infoLink1Enabled: true,
+        infoLink1Label: "Eltern Vital Methode",
+        infoLink1Url: "https://example.test/methode",
+        infoLink2Enabled: true,
+        infoLink2Label: "Selbststarter",
+        infoLink2Url: "https://example.test/selbststarter",
+        infoLink3Enabled: false,
+        infoLink3Label: "Elterncheck",
+        infoLink3Url: "https://example.test/disabled-elterncheck",
+        infoLink4Enabled: true,
+        infoLink4Label: "Keto Guide",
+        infoLink4Url: "https://example.test/keto-guide",
+        internalNote: "",
+      },
+    });
+
+    const runtimeCampaign = getCampaignById(DEFAULT_CAMPAIGN_ID);
+    const reply = buildPeteRuntimeInfoLinkReply(
+      "Schick mir den Elterncheck",
+      runtimeCampaign,
+    );
+
+    assert.doesNotMatch(reply, /disabled-elterncheck/);
+    assert.doesNotMatch(reply, /check\.jochen-kammerer\.de/);
+  });
+
   await t.test("dashboard checkout override is used by direct-buy runtime", () => {
     const customCheckout = "https://example.test/checkout-499";
 
