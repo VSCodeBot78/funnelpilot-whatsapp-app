@@ -116,7 +116,7 @@ export function getNaturalConversationReply(params: {
     /\b(keto[\s-]*guide|keto[\s-]*pdf|keto[\s-]*anleitung|kostenloser keto[\s-]*guide)\b/) ||
     /^(keto|guide)$/i.test(input);
 
-  if (ketoSupport) {
+  if (ketoSupport && ["opening", "info", "selfstarter_offered"].includes(phase)) {
     return {
       text: "Keto kann Jochen in die 5-Wochen-Begleitung einbauen, wenn es zu dir passt. Es ist kein Muss und kein Dogma.\n" +
         "Geht es dir gerade eher ums Anfangen oder darum, Keto im Alltag durchzuhalten?",
@@ -145,7 +145,7 @@ export function getNaturalConversationReply(params: {
   // Price reference: first use the present chat context, never a three-product list.
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
       !matches(input, /\b(nicht leisten|zu teuer|kein geld|budget problem)\b/)) {
-    if (matches(input, /\b(6[\s-]*monate|sechs[\s-]*monate|premium|advanced)\b/)) {
+    if (matches(input, /\b(6[\s-]*monat(?:e|s)|sechs[\s-]*monat(?:e|s)|premium|advanced)\b/)) {
       return {
         text: "Den konkreten Preis und Umfang der längeren Begleitung klärt Jochen aktuell persönlich. Ich möchte dir hier nichts Falsches nennen.\nMöchtest du dazu direkt mit ihm sprechen?",
         phase: "human_choice",
