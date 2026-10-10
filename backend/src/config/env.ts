@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "node:path";
+import { assertSafeLocalLaptopEnvironment } from "./local-laptop-safe-mode.js";
 
 dotenv.config();
 
@@ -105,8 +106,13 @@ function getDataDir(): string {
     : path.resolve(process.cwd(), configured);
 }
 
+// A dev-server restart re-reads environment; refuse to boot if ANY of the
+// mandatory no-send safeguards has drifted from the launcher configuration.
+assertSafeLocalLaptopEnvironment(process.env);
+
 export const env = {
   NODE_ENV: getNodeEnv(),
+  LOCAL_LAPTOP_TEST_MODE: getBooleanEnv("FUNNELPILOT_LOCAL_TEST_MODE"),
   PORT: getPort(),
   PUBLIC_BACKEND_URL: getOptionalEnv("PUBLIC_BACKEND_URL"),
   WEBHOOK_BASE_URL:

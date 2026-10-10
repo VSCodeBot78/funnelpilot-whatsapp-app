@@ -6,7 +6,7 @@ import { createLocalWebhookRelay } from "./local-webhook-relay.mjs";
 
 const safe = {
   ok: true, service: "funnel-pilot-backend", status: "ready",
-  nodeEnv: "development",
+  nodeEnv: "development", localLaptopSafeMode: true, genericWebhooksEnabled: false,
   instagramSendEnabled: false, whatsappSendEnabled: false,
   instagramEngineEnabled: false, instagramAllowAllSenders: false,
   instagramAutoEnableNewLeads: false, instagramAllowedSenderCount: 0,
@@ -16,7 +16,8 @@ const safe = {
 test("Local readiness fails closed for every individual safety switch", () => {
   assert.deepEqual(evaluateSafeReadiness(safe), []);
   for (const [key, unsafe] of [
-    ["nodeEnv", "production"],
+    ["nodeEnv", "production"], ["localLaptopSafeMode", false],
+    ["genericWebhooksEnabled", true],
     ["instagramSendEnabled", true], ["whatsappSendEnabled", true],
     ["instagramEngineEnabled", true], ["instagramAllowAllSenders", true],
     ["instagramAutoEnableNewLeads", true], ["instagramAllowedSenderCount", 1],
@@ -66,7 +67,7 @@ test("Safety preflight checks REAL loopback HTTP relay and denies unsafe endpoin
   });
   const backendBase = await start(backend);
   const port = Number(new URL(backendBase).port);
-  const relay = createLocalWebhookRelay({ backendPort: port });
+  const relay = createLocalWebhookRelay({ backendPort: port, requireSafeLaptopMode: false });
   const relayBase = await start(relay);
   t.after(async () => { await close(relay); await close(backend); });
 

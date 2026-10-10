@@ -268,3 +268,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Backend-Validierung und automatisierte UI-/HTTP-Regressionen ergänzt.
 - **Kein** Benutzerkonto, Multi-Tenant, fremder Live-Coach oder Meta-Test;
   Windows-Abnahme und echte Provider-Freigaben bleiben offen.
+
+
+## Phase 39 – sicherer längerer Laptop-Test vorbereitet (10.10.2026)
+- Windows-Starter nutzt expliziten Local-Laptop-Safety-Lock; Backend verweigert
+  unsicher konfigurierte Neustarts, Sendeflags bleiben aus.
+- Der lokale Webhook-Relay prüft das komplette Backend-Sicherheitsprofil
+  **vor jeder** zugelassenen Weiterleitung (bei Fehler HTTP 503).
+- Preflight prüft zusätzlich den Lock und deaktivierte generische Webhooks.
+- Negative CI-Tests und Anleitung für zugeklappten Windows-Laptop ergänzt.
+- Noch KEIN Windows-Gerät, Meta-Send, Tunnel, Fernzugriff oder 24/7-Betrieb getestet.
