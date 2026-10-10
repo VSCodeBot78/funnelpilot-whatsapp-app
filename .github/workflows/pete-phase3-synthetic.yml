@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 150
     env:
       NODE_ENV: test
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: gpt-4.1-mini
       PETE_LLM_CONVERSATION_ENABLED: "true"
       PETE_LLM_API_CALLS_APPROVED: "true"
@@ -61,6 +60,8 @@ jobs:
           npm ci
           npm run build
       - name: Verify private credential exists, without printing it
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -75,6 +76,8 @@ jobs:
           git -C budget-ledger config user.name "Funnel Pilot phase3 budget bot"
           git -C budget-ledger config user.email "actions@users.noreply.github.com"
       - name: Run 50 difficult synthetic chats in 5 prepaid blocks
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
