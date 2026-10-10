@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test src/core/human-takeover.test.ts src/config/offer-truth.test.ts src/config/qualification-intelligence.test.ts src/config/instagram-transport.test.ts src/config/manual-outbound.test.ts src/config/followup-outbound.test.ts src/config/prelive-hardening.test.ts src/config/whatsapp-transport.test.ts src/config/prelive-conversation-matrix.test.ts src/config/purchase-onboarding.test.ts src/config/oauth-connect.test.ts src/config/booking-e2e.test.ts src/config/onboarding-settings-persistence.test.ts src/config/master-prompt-runtime.test.ts src/config/pete-dm-review.test.ts && npm run test:relay",
+    "test": "tsx --test src/core/human-takeover.test.ts src/config/offer-truth.test.ts src/config/qualification-intelligence.test.ts src/config/instagram-transport.test.ts src/config/manual-outbound.test.ts src/config/followup-outbound.test.ts src/config/prelive-hardening.test.ts src/config/whatsapp-transport.test.ts src/config/prelive-conversation-matrix.test.ts src/config/purchase-onboarding.test.ts src/config/oauth-connect.test.ts src/config/booking-e2e.test.ts src/config/onboarding-settings-persistence.test.ts src/config/master-prompt-runtime.test.ts src/config/pete-dm-review.test.ts src/config/natural-pete-dm.test.ts && npm run test:relay",
     "check": "npm run build && npm run test",
     "test:relay": "node --test ../scripts/local-webhook-relay.test.mjs ../scripts/local-launcher.test.mjs"
   },
