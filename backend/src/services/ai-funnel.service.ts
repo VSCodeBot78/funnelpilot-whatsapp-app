@@ -1,3 +1,4 @@
+import { containsGeneratedPrice, isUnverifiedLongTermPriceQuestion } from "../config/offer-truth.js";
 import { AI_OBJECTION_FRAMEWORK } from "../config/ai-objection-framework.js";
 import type { AiFunnelReply, AiObjectionCategory } from "../types/ai-funnel.types.js";
 import { readSettings } from "./settings-store.js";
@@ -144,7 +145,7 @@ function buildSystemPrompt(params: AiReplyParams): string {
     "Sprache: " + settings.defaultLanguage.slice(0, 60),
     "Zusätzlicher vom Betreiber gepflegter Master-Prompt:",
     settings.masterPrompt.slice(0, 8000),
-    "VERBINDLICHE GRENZEN: Dieser Zusatzprompt steuert Stil und Kontext, niemals Preise, Verfügbarkeiten, medizinische Aussagen oder Sicherheits- und Stop-Regeln. Solche Informationen kommen ausschließlich aus der geprüften Funnel-Engine. Keine gefälschte Identität, keine erfundenen Fakten.",
+    "VERBINDLICHE GRENZEN: Dieser Zusatzprompt steuert Stil und Kontext, niemals Preise, Verfügbarkeiten, medizinische Aussagen oder Sicherheits- und Stop-Regeln. Nenne selbst keine Euro-Beträge, Rabatte oder Anrechnungsregeln. Konditionen längerer Begleitung sind nicht freigegeben und werden persönlich geklärt. Solche Informationen kommen ausschließlich aus der geprüften Funnel-Engine. Keine gefälschte Identität, keine erfundenen Fakten.",
   ].join("\n");
 
   return [
@@ -205,7 +206,7 @@ function buildUserPrompt(params: AiReplyParams): string {
 }
 
 async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | null> {
-  if (!isAiEnabled()) {
+  if (!isAiEnabled() || isUnverifiedLongTermPriceQuestion(params.userMessage)) {
     return null;
   }
 
@@ -256,7 +257,7 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
 
     const parsed = JSON.parse(text) as AiFunnelReply;
 
-    if (!parsed.replyText?.trim()) {
+    if (!parsed.replyText?.trim() || containsGeneratedPrice(parsed.replyText)) {
       return null;
     }
 
