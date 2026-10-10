@@ -84,3 +84,11 @@ Die sieben geplanten Entwicklungsprioritäten sind damit zwar als Code-/Konzeptg
 - Später eigener mobiler Arbeitsplatz/PWA (Backlog M-02) und einfache native Link-/Button-Flows (M-01) statt ManyChat.
 
 **Go/No-Go:** Geeignet als **technische Coach-Onboarding-Vorbereitung und Demo in isolierter Testumgebung**. Noch **nicht** geeignet, um einen fremden Coach einzuladen oder Zugriff auf vorhandene Gespräche/Daten zu gewähren.
+
+## Ergänzung 10.10.2026 – speichere ausschließlich den Coach-Entwurf
+
+Nach dem Merge von Phase 37 wurde überprüft, dass der bisherige Knopf **„Coach-Entwurf speichern“** versehentlich denselben Full-Settings-Speicherweg wie der normale Wizard benutzte. Mit dem gezielten Fix `saveCoachDraftOnly()` sendet **dieser Knopf nur noch `{coachOnboardingDraft: ...}`** an `POST /settings-config`. Der Backend-Partial-Update bewahrt alle übrigen Felder. Die UI ersetzt nach erfolgreicher Speicherung ausschließlich die gespeicherte Entwurfsstruktur, nicht andere noch ungespeicherte Einstellungen. Es werden **keine** Live-Pete-/Kampagnen-/Meta-Schalter versendet oder aktiviert.
+
+Die Schaltfläche **„Weiter“** in den Schritten 1 und 2 ist nach wie vor die reguläre **Speichern-und-Weiter-Funktion des aktuellen Single-Workspace**; darauf weist die Oberfläche ausdrücklich hin. Das ist **keine** separate Coach-Isolation. Für fremde Coach-Personas weiterhin nur synthetische Daten und eine getrennte lokale Testinstanz nutzen. Der Echtgerätetest bleibt offen.
+
+Neue Regression: `dashboard/src/services/coachDraftSave.test.js` verifiziert, dass die Anfrage ausschließlich das Entwurfsfeld enthält. Der bestehende Backend-HTTP-Test testet jetzt zusätzlich eine reine Coach-Entwurfsänderung bei unveränderten aktiven Pete-, Checkout- und Testmodus-Einstellungen. Der konkurrierende PR #61 wurde bereits geschlossen; eine zweite Coach-Implementierung wurde bewusst nicht zusammengeführt.
