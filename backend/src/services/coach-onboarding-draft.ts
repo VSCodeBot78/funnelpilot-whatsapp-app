@@ -80,9 +80,10 @@ export function parseCoachOnboardingDraft(input: unknown):
   // The identity is a pure draft; it never changes active settings or Pete.
   // Optional so version-1 records saved before this fix remain readable.
   let identity: CoachIdentityDraft | undefined;
-  if (input.identity !== undefined) {
-    if (!isPlainObject(input.identity) ||
-        !onlyFields(input.identity, Object.keys(EMPTY_COACH_IDENTITY))) {
+  const rawIdentity = input.identity;
+  if (rawIdentity !== undefined) {
+    if (!isPlainObject(rawIdentity) ||
+        !onlyFields(rawIdentity, Object.keys(EMPTY_COACH_IDENTITY))) {
       return { ok: false, error: "coach_identity_draft_invalid" };
     }
     const limits: Record<keyof CoachIdentityDraft, number> = {
@@ -92,7 +93,7 @@ export function parseCoachOnboardingDraft(input: unknown):
     };
     const collected: Record<string, string> = {};
     for (const field of Object.keys(limits) as Array<keyof CoachIdentityDraft>) {
-      const raw = input.identity[field];
+      const raw = rawIdentity[field];
       if (!validText(raw, limits[field])) {
         return { ok: false, error: "coach_identity_draft_invalid" };
       }
