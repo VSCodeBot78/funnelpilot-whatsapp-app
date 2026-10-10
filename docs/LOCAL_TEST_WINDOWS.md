@@ -254,3 +254,33 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps
 
 Falls Git einen lokalen Konflikt anzeigt: nicht `reset --hard`,
 nicht `clean`, sondern zuerst den konkreten Konflikt pruefen.
+
+
+## Windows PowerShell 5.1 – lokaler Start: WhatsApp/Instagram-Allowlist gesperrt
+
+Beim **ersten echten Windows-Laptop-Start** mit `start-local.ps1` oeffnete
+sich das Dashboard nicht. Das Backend stoppte absichtlich mit
+`local_laptop_lock_requires_empty_whatsapp_allowlist`.
+
+Ursache: Windows PowerShell 5.1 **entfernt** die Umgebungsvariable bei
+`$env:WHATSAPP_ALLOWED_RECIPIENT_IDS = ""`. Danach laedt `dotenv.config()`
+einen moeglicherweise nichtleeren Eintrag aus der lokalen `backend/.env`.
+Dasselbe Risiko gab es fuer `INSTAGRAM_ALLOWED_SENDER_IDS`.
+
+Der sichere Starter verwendet jetzt in seinen **Child-Prozessen** je den Wert
+`" "` (ein ASCII-Leerzeichen). Die Variable bleibt in Windows vorhanden;
+`dotenv` ersetzt sie nicht; die Backend-CSV-Lesefunktion trimmt sie auf
+**0 erlaubte Empfaenger**. Beide Sende-Flags bleiben explizit `false`,
+der Local-Safe-Mode und der Live-Preflight bleiben aktiv.
+Die lokale `.env` wird weder geloescht noch geaendert.
+
+Nach Fast-forward-Pull die drei alten Terminal-Fenster schliessen und neu
+starten:
+
+```powershell
+git pull --ff-only origin funnel-pilot-current
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+Sichere Freigabe nur nach gruener dynamischer Readiness und Preflight.
+Nicht selbst Allowlist-Inhalte oder Provider-Secrets im Chat posten.

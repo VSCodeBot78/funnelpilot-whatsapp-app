@@ -103,11 +103,15 @@ $backendCommands = @(
   '$env:PORT = "3001"',
   '$env:INSTAGRAM_ENGINE_ENABLED = "false"',
   '$env:INSTAGRAM_SEND_ENABLED = "false"',
-  '$env:INSTAGRAM_ALLOWED_SENDER_IDS = ""',
+  # Windows PowerShell 5.1 removes env vars assigned an empty string.
+  # A single space prevents dotenv from filling an actual allowlist from .env;
+  # backend trims it to zero allowed sender IDs in local safe mode.
+  '$env:INSTAGRAM_ALLOWED_SENDER_IDS = " "',
   '$env:INSTAGRAM_ALLOW_ALL_SENDERS = "false"',
   '$env:INSTAGRAM_AUTO_ENABLE_NEW_LEADS = "false"',
   '$env:WHATSAPP_SEND_ENABLED = "false"',
-  '$env:WHATSAPP_ALLOWED_RECIPIENT_IDS = ""',
+  # Same fail-closed sentinel for WhatsApp recipients. Never set live IDs here.
+  '$env:WHATSAPP_ALLOWED_RECIPIENT_IDS = " "',
   '$env:WHATSAPP_ALLOW_ALL_RECIPIENTS = "false"',
   '$env:ENABLE_GENERIC_WEBHOOKS = "false"',
   '$env:DISABLE_DESTRUCTIVE_ROUTES = "true"',
