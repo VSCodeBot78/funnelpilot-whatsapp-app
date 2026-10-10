@@ -1,3 +1,5 @@
+import { getLocalRuntimeDiagnostics } from "../diagnostics/systemDiagnostics.js";
+
 // These are configuration indicators, NOT evidence that Meta accepted a DM.
 // Keep "configured" separate from "verified by a live test".
 export function getOnboardingReadiness(readiness) {
@@ -44,11 +46,10 @@ export const ONBOARDING_LABELS = [
 // Local preflight is separate from proof that external providers really work.
 // Never derive "live" solely from configured credentials or OAuth authorization.
 export function getSetupDiagnostics({ readiness, integrations, settings = {} } = {}) {
-  const backend = readiness?.ok === true;
-  const sendsOff = backend &&
-    readiness.instagramSendEnabled === false &&
-    readiness.whatsappSendEnabled === false &&
-    readiness.instagramEngineEnabled === false;
+  const safety = getLocalRuntimeDiagnostics(readiness);
+  const backend = safety.checks.some(item => item.id === "backend" && item.status === "ok");
+  const sendsOff = safety.localFlagsSafe;
+  const unresolvedSafety = safety.checks.find(item => item.status !== "ok");
   const companyReady = Boolean(
     String(settings.companyName ?? "").trim() &&
     String(settings.adminName ?? "").trim() &&
@@ -83,8 +84,17 @@ export function getSetupDiagnostics({ readiness, integrations, settings = {} } =
       label: "Testmodus ohne Live-Nachrichten",
       status: sendsOff ? "ok" : "attention",
       detail: sendsOff
-        ? "Instagram-Engine und beide Sendekanal-Schalter sind aus"
-        : "Sicherheitsschalter nicht vollständig geprüft oder aktiv",
+        ? "Lokale Sicherheits-Flags geprüft. Relay und echte Zustellung separat prüfen."
+        : safety.headline + ": " + (unresolvedSafety?.detail || "Sicherheitsstatus offen."),
+      nextStep: sendsOff ? "Windows: nach dem Start den Relay-Check separat ausführen."
+        : (unresolvedSafety?.nextStep || "Backend-Status erneut abrufen."),
+    },
+    {
+      id: "relay",
+      label: "Webhook-Relay-Sperren",
+      status: "pending",
+      detail: "Aus dem Browser nicht nachgewiesen. Kein Start eines öffentlichen Tunnels.",
+      nextStep: "Windows: node .\\scripts\\local-safety-preflight.mjs im Repository ausführen.",
     },
     {
       id: "company",
@@ -134,6 +144,8 @@ export function getSetupDiagnostics({ readiness, integrations, settings = {} } =
   return {
     localTestReady: Boolean(backend && sendsOff && companyReady && aiReady),
     liveIntegrationVerified: false,
+    localSafetyState: safety.state,
+    relayVerified: false,
     checks,
   };
 }
