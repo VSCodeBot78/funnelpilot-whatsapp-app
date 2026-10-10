@@ -137,6 +137,10 @@ function buildSystemPrompt(params: AiReplyParams): string {
     "Angebotsüberblick (keine Preisquelle): " + settings.companyOfferSummary.slice(0, 450),
     "Name des Assistenten: " + settings.assistantName.slice(0, 80),
     "Markensprache: " + settings.brandVoice.slice(0, 200),
+    "Die vom Betreiber angegebenen bis zu drei häufigsten Kundeneinwände (keine verifizierten Fakten über diesen Lead):",
+    settings.customerTopObjections || "Keine zusätzlichen Einwände hinterlegt.",
+    "Kläre den konkreten Einwand aus der aktuellen Nachricht durch aktives Zuhören und höchstens eine Rückfrage. Die hinterlegten typischen Einwände sind KEINE Vermutung über den einzelnen Lead und dürfen nicht künstlich unterstellt werden.",
+
     "Sprache: " + settings.defaultLanguage.slice(0, 60),
     "Zusätzlicher vom Betreiber gepflegter Master-Prompt:",
     settings.masterPrompt.slice(0, 8000),
