@@ -11,13 +11,21 @@ const WEBHOOK_PATHS = new Set([
 
 export function isAllowedLocalWebhook(method, requestTarget) {
   if (method !== "GET" && method !== "POST") return false;
-  if (typeof requestTarget !== "string" || !requestTarget.startsWith("/")) {
+  if (
+    typeof requestTarget !== "string" ||
+    !requestTarget.startsWith("/") ||
+    requestTarget.startsWith("//") ||
+    requestTarget.includes("\\")
+  ) {
     return false;
   }
 
   try {
-    const pathname = new URL(requestTarget, "http://127.0.0.1").pathname;
-    return WEBHOOK_PATHS.has(pathname);
+    const parsed = new URL(requestTarget, "http://127.0.0.1");
+    return (
+      parsed.origin === "http://127.0.0.1" &&
+      WEBHOOK_PATHS.has(parsed.pathname)
+    );
   } catch {
     return false;
   }
