@@ -4,7 +4,11 @@ import type { RawBodyRequest } from "../app.js";
 import { getAllLeads, getLeadById, saveLead } from "../data/leads.store.js";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { getAllBookingEvents, getBookingEventByIdempotencyKey, saveBookingEventLogEntry } from "../data/booking-events.store.js";
-import { mergeBookingDataFromProviderEvent } from "../domain/booking-sync.js";
+import { buildDefaultBookingData, mergeBookingDataFromProviderEvent } from "../domain/booking-sync.js";
+import { markProviderBookingBooked, markProviderBookingCanceled } from "../services/provider-booking.service.js";
+import { stopGhostingState } from "../services/ghosting.service.js";
+import { appendAssistantMessage } from "../core/state-manager.js";
+import { buildGoogleCalendarTemplateLink } from "../services/calendly-webhook.service.js";
 import { env } from "../config/env.js";
 import type { BookingEventLogEntry } from "../types/types.js";
 import type { ProviderBookingState } from "../types/provider-booking.types.js";
@@ -586,52 +590,92 @@ function executeBookingEvent(input: BookingEventInput) {
     };
   }
 
-  if (!lead) {
+  // The test-chat stores a ConversationState but does not create a Leads
+  // dashboard record. Verified Calendly booking events must support both.
+  const existingState = lead
+    ? getConversationState(lead.id, campaignId)
+    : leadId
+      ? getConversationState(leadId, campaignId)
+      : undefined;
+
+  if (!lead && !existingState) {
     return {
       statusCode: 404,
       response: {
         ok: false,
-        error: "Kein Lead mit den angegebenen Kriterien gefunden.",
+        error: "Kein Lead oder Conversation State mit diesen Daten gefunden.",
       },
     };
   }
 
   const mergedBookingData = mergeBookingDataFromProviderEvent(
-    lead.bookingData,
+    lead?.bookingData ?? existingState?.bookingData ?? buildDefaultBookingData(),
     bookingData,
     provider,
     eventType,
   );
 
-  const updatedLead = saveLead({
-    ...lead,
-    booked: mergedBookingData.status === "booked",
-    bookingData: mergedBookingData,
-  });
+  const updatedLead = lead
+    ? saveLead({
+        ...lead,
+        booked: mergedBookingData.status === "booked",
+        bookingData: mergedBookingData,
+      })
+    : null;
 
-  const existingState = getConversationState(updatedLead.id, campaignId);
-  let conversationSummary = null;
+  const state = existingState ??
+    (updatedLead ? getConversationState(updatedLead.id, campaignId) : undefined);
   const cancelledEvent = isCancelledEventType(eventType);
+  let conversationSummary = null;
 
-  if (existingState) {
-    const updatedState = {
-      ...existingState,
-      bookingData: updatedLead.bookingData,
-      ...(cancelledEvent
-        ? {
-            providerBooking: buildProviderBookingCanceledState(
-              existingState.providerBooking,
-            ),
-          }
-        : {}),
-    };
+  if (state) {
+    state.bookingData = mergedBookingData;
 
-    saveConversationState(updatedState);
+    if (cancelledEvent) {
+      state.providerBooking = markProviderBookingCanceled(state.providerBooking);
+    } else if (mergedBookingData.status === "booked") {
+      state.providerBooking = markProviderBookingBooked(state.providerBooking);
+      state.ghosting = stopGhostingState(state.ghosting, "manual_stop");
+    }
+
+    // The event has been confirmed by the provider, but this application
+    // only PREPARES a customer-facing confirmation for the test chat.
+    // Do not claim it was sent over Instagram/WhatsApp.
+    if (
+      provider === "calendly" &&
+      (cancelledEvent || mergedBookingData.status === "booked") &&
+      state.owner !== "human" &&
+      state.aiPaused !== true &&
+      !state.flags.stopped
+    ) {
+      const calendarLink = !cancelledEvent
+        ? buildGoogleCalendarTemplateLink({
+            startAt: mergedBookingData.startAt,
+            endAt: mergedBookingData.endAt,
+            title: "Strategiegespräch",
+          })
+        : null;
+      const message = cancelledEvent
+        ? "Dein Calendly-Termin wurde storniert. Wenn du neu buchen möchtest, sag kurz Bescheid."
+        : "Calendly hat deinen Termin bestätigt. Du erhältst die Buchungsbestätigung vom Anbieter." +
+          (calendarLink
+            ? "\\nHier kannst du den Termin zusätzlich in deinem Google Kalender speichern:\\n" + calendarLink
+            : "");
+      appendAssistantMessage(state, message);
+      const latest = state.messages.at(-1);
+      if (latest) {
+        latest.outboundStatus = "prepared";
+        latest.sent = false;
+      }
+    }
+
+    saveConversationState(state);
     conversationSummary = {
-      leadId: updatedState.leadId,
-      campaignId: updatedState.campaignId,
-      stage: updatedState.stage,
-      bookingData: updatedState.bookingData,
+      leadId: state.leadId,
+      campaignId: state.campaignId,
+      stage: state.stage,
+      bookingData: state.bookingData,
+      providerBookingStatus: state.providerBooking?.status,
     };
   }
 
@@ -639,7 +683,7 @@ function executeBookingEvent(input: BookingEventInput) {
     statusCode: 200,
     response: {
       ok: true,
-      message: "Booking-Event erfolgreich verarbeitet.",
+      message: "Buchungsereignis verarbeitet, aber keine Nachricht versendet.",
       lead: updatedLead,
       conversationSummary,
     },
