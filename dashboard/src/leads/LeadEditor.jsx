@@ -155,7 +155,9 @@ export default function LeadEditor({
             checked={leadForm.botEnabled}
             onChange={(e) => updateField("botEnabled", e.target.checked)}
           />
-          Bot aktiv
+          {leadForm.source === "Instagram"
+            ? "Funnel Pilot übernimmt (Handoff)"
+            : "Bot aktiv"}
         </label>
 
         <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
