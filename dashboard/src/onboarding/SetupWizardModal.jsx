@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
 import { getSetupDiagnostics } from "./onboardingReadiness";
+import CoachDraftEditor from "./CoachDraftEditor";
+import CoachProfilePreview from "./CoachProfilePreview";
 
 const STAGES = ["Willkommen", "Marke & Pete", "Angebote", "Verbindungen", "Test", "Fertig"];
 const PROVIDERS = [
@@ -288,8 +290,9 @@ export default function SetupWizardModal({
             <div style={{ ...box, background: "#eaf3ff" }}>
               <h2 style={{ margin: "0 0 12px", fontSize: 26 }}>Willkommen bei Funnel Pilot!</h2>
               <p style={{ ...small, fontSize: 15 }}>
-                Richte deine Marke, Pete und deine Verbindungen Schritt für Schritt ein.
-                Du brauchst dafür keine technischen Kenntnisse.
+                Richte deine Marke, Angebote, Antworten und Verbindungen Schritt für Schritt ein.
+                Du brauchst dafür keine technischen Kenntnisse. Andere Coach-Konten
+                und eine Live-Freigabe entstehen dadurch noch nicht.
               </p>
               <div style={{ marginTop: 14, ...small }}>✓ Ein geführter Ablauf</div>
               <div style={{ ...small }}>✓ Jederzeit wieder öffnen</div>
@@ -361,6 +364,9 @@ export default function SetupWizardModal({
           </div>}
 
           {stage === 2 && <div style={{ display: "grid", gap: 16 }}>
+            <p style={small}>Deine Angaben sind bis zum Speichern im Schritt „Weiter“
+              nur ein Entwurf. Separate Angebote, Preise und FAQs sind NICHT automatisch
+              von Pete freigegeben.</p>
             <h3 style={{ marginTop: 0 }}>Angebote und nächste Schritte</h3>
             {input("Deine Angebote und Zielsetzung", "companyOfferSummary", { multiline: true,
               placeholder: "Was bietest du an, zu welchem Preis und für wen?" })}
@@ -368,6 +374,11 @@ export default function SetupWizardModal({
               { placeholder: "https://calendly.com/..." })}
             {input("Kauf-Link für dein Haupteinstiegsangebot", "starterCheckoutUrl",
               { placeholder: "https://..." })}
+            <CoachDraftEditor
+              value={settings.coachOnboardingDraft}
+              onChange={value => update("coachOnboardingDraft", value)}
+            />
+            <CoachProfilePreview settings={settings} />
             <div style={box}>
               <strong>Weiterführende Angebote & Links</strong>
               <p style={small}>Zusätzliche Produktlinks und Kampagnenregeln kannst du bereits
@@ -422,6 +433,7 @@ export default function SetupWizardModal({
 
           {stage === 5 && <div style={{ display: "grid", gap: 15 }}>
             <h2 style={{ margin: 0 }}>Dein Dashboard ist vorbereitet.</h2>
+            <CoachProfilePreview settings={settings} />
             <p style={small}>Die Einstellungen lassen sich jederzeit ergänzen. Der
               Einrichtungsassistent aktiviert ausdrücklich noch keine externen Nachrichten.</p>
             <div style={box}>
