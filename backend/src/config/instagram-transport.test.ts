@@ -51,6 +51,11 @@ const {
   clearConversationStore,
 } = await import("../data/store.js");
 const {
+  appendHumanMessage,
+  persistConversationState,
+} = await import("../core/state-manager.js");
+const { env } = await import("../config/env.js");
+const {
   isKnownAiOutboundEcho,
 } = await import("../services/conversation-outbound.service.js");
 const {
@@ -264,6 +269,44 @@ test("Phase 4 Instagram transport foundation", async (t) => {
     );
 
     clearPendingAiInstagramOutboundRegistry();
+  });
+
+
+  await t.test("manual Meta API call does not register as an AI echo (mocked HTTP only)", async () => {
+    const previous = {
+      send: env.INSTAGRAM_SEND_ENABLED,
+      access: env.INSTAGRAM_ACCESS_TOKEN,
+      allowlist: env.INSTAGRAM_ALLOWED_SENDER_IDS,
+    };
+    const originalFetch = globalThis.fetch;
+    clearPendingAiInstagramOutboundRegistry();
+    try {
+      env.INSTAGRAM_SEND_ENABLED = true;
+      env.INSTAGRAM_ACCESS_TOKEN = "local-fake-token";
+      env.INSTAGRAM_ALLOWED_SENDER_IDS = ["manual-mocked-recipient"];
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ message_id: "manual-mocked-ack" }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        })) as typeof fetch;
+
+      const human = await sendMetaInstagramTextMessage({
+        to: "manual-mocked-recipient",
+        body: "Gleichlautender Text",
+        origin: "human",
+      });
+      assert.equal(human.ok, true);
+      assert.equal(human.sent, true);
+      assert.equal(consumeKnownAiInstagramEcho({
+        recipientId: "manual-mocked-recipient",
+        messageId: "manual-mocked-ack", text: "Gleichlautender Text",
+      }), false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      env.INSTAGRAM_SEND_ENABLED = previous.send;
+      env.INSTAGRAM_ACCESS_TOKEN = previous.access;
+      env.INSTAGRAM_ALLOWED_SENDER_IDS = previous.allowlist;
+      clearPendingAiInstagramOutboundRegistry();
+    }
   });
 
   await t.test("attachment-only events are explicit unsupported candidates", () => {
@@ -687,6 +730,48 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       assert.equal(attachmentState.owner, "human");
       assert.equal(attachmentState.aiPaused, true);
       assert.equal(attachmentState.messages.length, 0);
+
+
+      // Dashboard/manual acknowledgement was stored before Meta resent its
+      // echo. The second event must never insert the same message again.
+      appendHumanMessage(humanOwnedState, "Schon im Dashboard gespeichert.");
+      const preRecorded = humanOwnedState.messages.at(-1);
+      assert.ok(preRecorded);
+      preRecorded.metaMessageId = "human-prerecorded-mid";
+      preRecorded.transport = "meta_instagram";
+      preRecorded.sent = true;
+      persistConversationState(humanOwnedState);
+      const countBeforeKnownEcho = humanOwnedState.messages.length;
+      const preRecordedPayload = {
+        object: "instagram",
+        entry: [{
+          id: "17841400000000000",
+          messaging: [{
+            sender: { id: "17841400000000000" },
+            recipient: { id: "route-test-igsid" },
+            timestamp: Date.now(),
+            message: {
+              mid: "human-prerecorded-mid",
+              text: "Schon im Dashboard gespeichert.",
+              is_echo: true,
+            },
+          }],
+        }],
+      };
+      const preRecordedRaw = JSON.stringify(preRecordedPayload);
+      const preRecordedSignature = "sha256=" + crypto
+        .createHmac("sha256", "test-instagram-app-secret")
+        .update(Buffer.from(preRecordedRaw, "utf8")).digest("hex");
+      const preRecordedResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Hub-Signature-256": preRecordedSignature },
+          body: preRecordedRaw,
+        },
+      );
+      assert.equal(preRecordedResponse.status, 200);
+      assert.equal(humanOwnedState.messages.length, countBeforeKnownEcho);
+      assert.equal(humanOwnedState.owner, "human");
 
       const afterTakeoverSigned = buildSignedPayload(
         "route-test-mid-after-human-takeover",
