@@ -1480,20 +1480,19 @@ export async function processIncomingMessage(
 
   if (hasActiveProviderBooking(state)) {
     if (isProviderBookingCompletion(input.messageText)) {
-      state.providerBooking = markProviderBookingBooked(state.providerBooking, nowIso());
-      setCurrentStep(state, "done");
-
+      // A chat user's "ich habe gebucht" is not provider confirmation.
+      // Stay awaiting_booking until the verified booking webhook arrives.
       const replyText =
-        "Perfekt 👍\n\n" +
-        "Dann ist dein Termin jetzt final eingetragen.\n" +
-        "Die Bestätigung bekommst du direkt vom Buchungstool bzw. per Mail.";
+        "Danke dir 👍 Wenn du den Termin über den Buchungslink bestätigt hast, " +
+        "bekommst du die Bestätigung vom Buchungstool. " +
+        "Ich prüfe den Terminstatus erst nach der tatsächlichen Buchungsbestätigung.";
 
       appendAssistantMessage(state, replyText);
       persistConversationState(state);
 
       return {
         text: replyText,
-        nextStep: "done",
+        nextStep: "booking",
         detectedIntent: "booking_intent",
         state,
       };
