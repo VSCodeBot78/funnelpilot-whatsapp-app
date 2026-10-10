@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getOnboardingReadiness, ONBOARDING_LABELS } from "./onboardingReadiness.js";
+import { getOnboardingReadiness, getSetupDiagnostics, ONBOARDING_LABELS } from "./onboardingReadiness.js";
 
 test("unreachable backend is never treated as configured or safely locked", () => {
   const state = getOnboardingReadiness(null);
@@ -60,4 +60,76 @@ test("onboarding has four distinct functional stages", () => {
     "Kanäle & Sicherheit",
     "Gesamtablauf testen",
   ]);
+});
+
+test("setup diagnostics distinguishes safe local tests from unverified external providers", () => {
+  const diagnostics = getSetupDiagnostics({
+    readiness: {
+      ok: true,
+      instagramSendEnabled: false,
+      whatsappSendEnabled: false,
+      instagramEngineEnabled: false,
+      aiBotSettingsConfigured: true,
+    },
+    integrations: { providers: [
+      { provider: "google_calendar", status: "authorized_not_synced" },
+      { provider: "calendly", status: "ready_to_connect" },
+      { provider: "hubspot", status: "authorized_not_synced" },
+    ] },
+    settings: {
+      companyName: "Neue Coach-Marke",
+      adminName: "Test Coach",
+      assistantName: "Nora",
+      defaultBookingUrl: "https://calendly.com/test-coach/meeting",
+    },
+  });
+  assert.equal(diagnostics.localTestReady, true);
+  assert.equal(diagnostics.liveIntegrationVerified, false);
+  assert.equal(diagnostics.checks.find(x => x.id === "backend")?.status, "ok");
+  assert.equal(diagnostics.checks.find(x => x.id === "calendar")?.status, "pending");
+  assert.equal(diagnostics.checks.find(x => x.id === "crm")?.status, "pending");
+  assert.equal(diagnostics.checks.find(x => x.id === "meta")?.status, "pending");
+  assert.match(diagnostics.checks.find(x => x.id === "booking")?.detail, /echte Testbuchung/i);
+});
+
+test("verified read-only OAuth status does not falsely claim live synchronization", () => {
+  const checks = getSetupDiagnostics({
+    readiness: {
+      ok: true,
+      instagramSendEnabled: false,
+      whatsappSendEnabled: false,
+      instagramEngineEnabled: false,
+      aiBotSettingsConfigured: true,
+    },
+    integrations: { providers: [
+      { provider: "google_calendar", status: "api_verified_no_sync" },
+      { provider: "hubspot", status: "api_verified_no_sync" },
+    ] },
+    settings: { companyName: "Coach", adminName: "Admin", assistantName: "Pete" },
+  });
+  assert.equal(checks.checks.find(x => x.id === "calendar")?.status, "ok");
+  assert.equal(checks.checks.find(x => x.id === "crm")?.status, "ok");
+  assert.match(checks.checks.find(x => x.id === "calendar")?.detail, /keine aktive Synchronisierung/);
+  assert.equal(checks.liveIntegrationVerified, false);
+  assert.equal(checks.checks.find(x => x.id === "meta")?.status, "pending");
+});
+
+test("unsafe send flags and unavailable backend block local-test readiness", () => {
+  const settings = { companyName: "Coach", adminName: "Admin", assistantName: "Pete" };
+  const unsafe = getSetupDiagnostics({
+    settings,
+    readiness: {
+      ok: true,
+      instagramEngineEnabled: true,
+      instagramSendEnabled: false,
+      whatsappSendEnabled: false,
+      aiBotSettingsConfigured: true,
+    },
+  });
+  assert.equal(unsafe.localTestReady, false);
+  assert.equal(unsafe.checks.find(x => x.id === "send")?.status, "attention");
+
+  const disconnected = getSetupDiagnostics({ settings, readiness: null });
+  assert.equal(disconnected.localTestReady, false);
+  assert.equal(disconnected.checks.find(x => x.id === "backend")?.status, "attention");
 });
