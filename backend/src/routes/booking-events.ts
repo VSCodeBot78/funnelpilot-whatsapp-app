@@ -7,7 +7,7 @@ import { getAllBookingEvents, getBookingEventByIdempotencyKey, saveBookingEventL
 import { buildDefaultBookingData, mergeBookingDataFromProviderEvent } from "../domain/booking-sync.js";
 import { markProviderBookingBooked, markProviderBookingCanceled } from "../services/provider-booking.service.js";
 import { stopGhostingState } from "../services/ghosting.service.js";
-import { appendAssistantMessage } from "../core/state-manager.js";
+import { appendAssistantMessage, setCurrentStep } from "../core/state-manager.js";
 import { buildGoogleCalendarTemplateLink } from "../services/calendly-webhook.service.js";
 import { env } from "../config/env.js";
 import type { BookingEventLogEntry } from "../types/types.js";
@@ -626,6 +626,7 @@ function executeBookingEvent(input: BookingEventInput) {
     } else if (mergedBookingData.status === "booked") {
       state.providerBooking = markProviderBookingBooked(state.providerBooking);
       state.ghosting = stopGhostingState(state.ghosting, "manual_stop");
+      setCurrentStep(state, "done");
     }
 
     // The event has been confirmed by the provider, but this application
