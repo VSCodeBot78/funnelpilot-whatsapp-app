@@ -135,7 +135,7 @@ test("Phase 7 pre-live conversation matrix", async (t) => {
     assert.equal(result.detectedIntent, "price_question");
     assert.match(result.text ?? "", /499 €/);
     assert.match(result.text ?? "", /14,95 €/);
-    assert.match(result.text ?? "", /2\.499 €/);
+    assert.doesNotMatch(result.text ?? "", /2\.499|2499|2\.000|2000/);
     assert.doesNotMatch(result.text ?? "", /Eltern-Energie-Startphase/i);
   });
 
