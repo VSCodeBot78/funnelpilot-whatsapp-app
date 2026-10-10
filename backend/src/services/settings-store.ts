@@ -8,6 +8,12 @@ export type SettingsConfig = {
   adminRole: string;
   defaultTheme: "dark" | "light" | "system";
   brandHint: string;
+  companyName: string;
+  companyWebsite: string;
+  companyNiche: string;
+  companyAudience: string;
+  companyOfferSummary: string;
+  setupVideoUrl: string;
   topbarSubtitle: string;
   footerText: string;
   aiEnabled: boolean;
