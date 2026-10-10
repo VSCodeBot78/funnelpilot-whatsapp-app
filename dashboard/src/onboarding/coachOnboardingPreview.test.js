@@ -45,7 +45,7 @@ test("Guided wizard wires editor to settings save and shows explicit non-live wa
   const editor = read("./CoachDraftEditor.jsx");
   const preview = read("./CoachProfilePreview.jsx");
   const settings = read("../hooks/useSettingsConfig.js");
-  const backend = read("../../../../backend/src/services/settings-store.ts");
+  const backend = read("../../../backend/src/services/settings-store.ts");
   assert.match(wizard, /<CoachDraftEditor/);
   assert.match(wizard, /<CoachProfilePreview/);
   assert.match(wizard, /update\("coachOnboardingDraft", value\)/);
