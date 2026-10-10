@@ -94,3 +94,17 @@ test("dashboard diagnostic UI uses GET-only checks, supports manual retry and wa
   assert.match(parent, /apiBaseUrl=\{settings.apiBaseUrl\}/);
   assert.match(backend, /genericWebhooksEnabled: env.ENABLE_GENERIC_WEBHOOKS/);
 });
+
+test("wizard keeps backend readiness when optional OAuth status fails and offline banner is retryable", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const wizard = fs.readFileSync(path.join(here, "../onboarding/SetupWizardModal.jsx"), "utf8");
+  const healthHook = fs.readFileSync(path.join(here, "../hooks/useBackendHealth.js"), "utf8");
+  const app = fs.readFileSync(path.join(here, "../App.dashboard.jsx"), "utf8");
+  assert.match(wizard, /Promise.allSettled/);
+  assert.match(wizard, /health.status === "fulfilled"/);
+  assert.match(wizard, /provider.status === "fulfilled"/);
+  assert.match(wizard, /item.nextStep/);
+  assert.match(healthHook, /retryBackendHealth/);
+  assert.match(app, /onClick=\{retryBackendHealth\}/);
+  assert.match(app, /Erneut prüfen/);
+});
