@@ -29,6 +29,7 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
     assistantName: "Nora",
     brandVoice: "Nüchtern und freundlich",
     masterPrompt: "Sonderregel Testmandant: Stelle nur eine Frage und vermeide Werbesprech.",
+    customerTopObjections: "Unregelmäßige Schichten\nUnsicher bei der Ernährungswahl\nSchlechte Erfahrung mit Apps",
   });
   assert.equal(readSettings().masterPrompt,
     "Sonderregel Testmandant: Stelle nur eine Frage und vermeide Werbesprech.");
@@ -67,6 +68,9 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
   assert.match(system, /Mütter mit Schichtarbeit/);
   assert.match(system, /Nora/);
   assert.match(system, /Sonderregel Testmandant/);
+  assert.match(system, /Unregelmäßige Schichten/);
+  assert.match(system, /Schlechte Erfahrung mit Apps/);
+  assert.match(system, /keine verifizierten Fakten über diesen Lead/);
   assert.match(system, /niemals Preise, Verfügbarkeiten, medizinische Aussagen/);
   assert.equal(body.input[1].role, "user");
   assert.match(body.input[1].content, /Schichten/);
