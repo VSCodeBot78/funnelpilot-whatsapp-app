@@ -52,3 +52,13 @@ test("Windows one-click launcher validates project before starting services", ()
     "Open the dashboard only after dynamic HTTP safety gates pass",
   );
 });
+
+test("Windows PowerShell 5.1 launcher is ASCII-only even without UTF-8 BOM", () => {
+  // Windows PowerShell 5.1 can read UTF-8 without BOM as ANSI; non-ASCII
+  // quotation marks from misdecoded characters break parser nesting.
+  assert.equal([...file].filter(char => char.charCodeAt(0) > 127).length, 0,
+    "PowerShell launcher must contain only ASCII for Windows 5.1");
+  assert.equal(file.charCodeAt(0), 35, "Launcher must begin with '#' comment");
+  assert.ok(file.includes('Write-Warning "Lokale Aenderungen gefunden.'));
+  assert.ok(file.includes("local-webhook-relay.mjs"));
+});
