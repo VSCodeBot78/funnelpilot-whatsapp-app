@@ -132,6 +132,19 @@ export function getNaturalConversationReply(params: {
           phase: "human_handover", handoff: true };
   }
 
+  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+    return {
+      text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
+      phase: "trust_clarify",
+    };
+  }
+  if (phase === "trust_clarify") {
+    return {
+      text: "Kann ich verstehen. Du musst hier keine Entscheidung treffen.\nWas wäre dir wichtig, damit du dich bei einer Begleitung gut aufgehoben fühlst?",
+      phase: "info",
+    };
+  }
+
   if (matches(input, /\b(bist du eine ki|schreibt jochen|bist du ein bot)\b/)) {
     return {
       text: "Ich bin Pete, Jochens KI-Assistent. Ich helfe hier bei der ersten Einordnung. Wenn es persönlicher wird, übernimmt Jochen.",
@@ -273,7 +286,9 @@ export function getNaturalConversationReply(params: {
         track: matches(input, /keto/) ? "keto" : "coaching" };
     }
   }
-  if (matches(input, /\b(keine zeit fur sport|keine zeit zum trainieren|keine zeit fur training|keine zeit fur fitness)\b/)) {
+  if ((matches(input, /\b(keine zeit|wenig zeit|keinen freiraum)\b/) &&
+       matches(input, /\b(sport|training|fitness|trainieren)\b/)) ||
+       matches(input, /\b(fur sport .*keine zeit)\b/)) {
     return {
       text: "Das ist bei vielen Eltern genau der Knackpunkt. Job, Kinder und Alltag sind schon voll.\n" +
         "Was wäre bei dir realistisch: 10–20 Minuten ein paarmal pro Woche oder ist selbst das gerade schwierig?",
@@ -292,6 +307,13 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "keto_need") {
+    if (matches(input, /\b(familie|familienessen|kochen|extra kochen|alle|kinder)\b/)) {
+      return {
+        text: "Wenn du für alle kochst, darf Keto nicht bedeuten, dass du jeden Abend zwei Gerichte machen musst.\n" +
+          "Wo hakt es eher: beim gemeinsamen Essen oder bei der Planung?",
+        phase: "blocker", track: "keto",
+      };
+    }
     return {
       text: "Verstanden. Die Ernährung muss zu deinem Alltag passen, nicht umgekehrt.\n" +
         "Woran hakt es bei Keto bisher am meisten?",
@@ -335,6 +357,10 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "preference") {
+    if (matches(input, /\b(keinen starren plan|nicht schon wieder einen starren plan|keine starre diat|keine strenge diat)\b/)) {
+      return { text: "Das verstehe ich. Noch ein starrer Plan, der nicht zum Familienalltag passt, bringt dir nichts.\nWäre dir flexible Unterstützung beim Umsetzen lieber?",
+        phase: "preference", track: ketoInConversation ? "keto" : undefined };
+    }
     if (wantsSelfGuided(input)) {
       return { text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
     }
@@ -380,6 +406,10 @@ export function getNaturalConversationReply(params: {
     };
   }
   if (phase === "blocker") {
+    if (matches(input, /\b(weiss nicht|weis nicht|keine ahnung|nicht sagen|weiss selber nicht|unsicher ob)\b/)) {
+      return { text: "Okay, dann will ich dir keine Ursache unterstellen.\nWas kommt dir am ehesten dazwischen: Zeit, Energie oder Planung?",
+        phase: "blocker", track: ketoInConversation ? "keto" : undefined };
+    }
     if (wantsPersonalSupport(input)) {
       return {
         text: "Du willst also nicht noch einen Plan, sondern Unterstützung beim Dranbleiben.\n" +
@@ -402,8 +432,8 @@ export function getNaturalConversationReply(params: {
       "Was hast du bisher versucht, um daran etwas zu ändern?", phase: "attempts" };
   }
 
-  if (matches(input, /\b(papa|mama|zwei kinder|kindern)\b/) &&
-      matches(input, /\b(platt|mude|erschopft|leer|keine energie)\b/)) {
+  if (matches(input, /\b(papa|mama|vater|mutter|kinder|kindern|schichtdienst|schichtarbeit)\b/) &&
+      matches(input, /\b(platt|mude|erschopft|leer|keine energie|kaputt|fertig)\b/)) {
     return {
       text: "Kinder, Job und abends komplett leer – dann fehlt dir wahrscheinlich nicht einfach nur Wissen 😅\n" +
         "Was zieht dir aktuell am meisten Energie: Job, Schlaf oder der ganze Alltag?",
