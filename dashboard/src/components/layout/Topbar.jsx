@@ -8,8 +8,12 @@ export default function Topbar({
   search,
   onSearchChange,
   userInitial = "J",
+  subtitle = "",
 }) {
-  const showSearch = section === "dashboard" || section === "leads";
+  const showSearch = section === "dashboard" || section === "leads" || section === "inbox";
+  const customSubtitle = String(subtitle).trim();
+  const hasCustomSubtitle = customSubtitle &&
+    customSubtitle !== "Produktstruktur mit Sidebar, Topbar und getrennten Modulen";
   return (
     <header className="fp-topbar"
       style={{ borderBottom: `1px solid ${colors.border}` }}>
@@ -18,7 +22,8 @@ export default function Topbar({
           {getSectionLabel(section)}
         </div>
         <div style={{ color: colors.sub, marginTop: 4, fontSize: 12 }}>
-          {section === "inbox" ? "Gespräche und persönliche Übernahme" :
+          {hasCustomSubtitle ? customSubtitle :
+           section === "inbox" ? "Gespräche und persönliche Übernahme" :
            section === "dashboard" ? "Tagesübersicht · lokale Testumgebung" :
            "Funnel Pilot · Arbeitsbereich"}
         </div>
