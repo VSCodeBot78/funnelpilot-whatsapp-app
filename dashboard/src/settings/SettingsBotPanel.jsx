@@ -181,6 +181,22 @@ export default function SettingsBotPanel({
 
             <div style={{ marginTop: 12 }}>
               <FieldLabelWithInfo
+                label="3 häufigste Kundeneinwände (optional)"
+                title="Häufigste Einwände deiner Zielgruppe"
+                text="Maximal drei Erfahrungen aus echten Kundengesprächen, jeweils in einer eigenen Zeile. Kann später jederzeit geändert oder leer gelassen werden. Pete darf dazu gezielt nachfragen, ohne die Sicherheitsregeln zu verändern."
+                placement="right"
+              />
+              <textarea
+                rows={4}
+                style={baseTextareaStyle(colors, 96)}
+                value={safeSettings.customerTopObjections || ""}
+                onChange={(event) => updateField("customerTopObjections", event.target.value)}
+                placeholder={"Zu wenig Zeit\nPreis / Budget\nSchon vieles probiert"}
+              />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
                 label="Master-Prompt für Pete"
                 title="Marken- und Zielgruppenprompt"
                 text="Eigene Sprache, Zielgruppe, Coach-Angebote, Gesprächsführung und Tabus. Der Text fließt in die OpenAI-Antwortschicht ein; feste Funnel-Antworten und Sicherheitsregeln gelten zusätzlich."
