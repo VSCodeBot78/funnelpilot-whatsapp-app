@@ -38,4 +38,13 @@ test("Windows one-click launcher validates project before starting services", ()
   assert.ok(file.includes('Test-Path -LiteralPath $envPath'));
   assert.ok(file.includes('Copy-Item -LiteralPath $examplePath -Destination $envPath'));
   assert.ok(file.includes('Start-Process $dashboardUrl'));
+  assert.ok(file.includes('local-safety-preflight.mjs'));
+  assert.ok(file.includes('Lokaler Sicherheits-Preflight'));
+  assert.ok(file.includes('Webhook-Relay Port 3002 nicht bereit'));
+  assert.ok(file.includes('SICHERHEITS-STOP'));
+  assert.ok(
+    file.indexOf('Invoke-Checked "Lokaler Sicherheits-Preflight') <
+      file.indexOf('Start-Process $dashboardUrl'),
+    "Open the dashboard only after dynamic HTTP safety gates pass",
+  );
 });
