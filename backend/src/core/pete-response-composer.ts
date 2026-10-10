@@ -30,14 +30,14 @@ const LINK_CLARIFICATION_REPLY =
   "Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck oder den Keto Guide?";
 
 const AMBIGUOUS_LINK_REPLY =
-  "Klar. Geht's dir um die kostenlose Video-Anleitung oder m\u00f6chtest du direkt einen Termin?";
+  "Klar. Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck, den Keto Guide oder einen Termin?";
 
 function normalizeText(value: string | null | undefined): string {
   return String(value ?? "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ÃŸ/g, "ss")
+    .replace(/ß/g, "ss")
     .replace(/[^\p{L}\p{N}\s€]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -87,8 +87,8 @@ function getCoachingEntryPriceText(_campaign: CampaignConfig): string {
 function buildDirectPriceReply(campaign: CampaignConfig): string {
   return (
     `Das 5-Wochen-Coaching liegt bei ${getCoachingEntryPriceText(campaign)}.\n` +
-    `Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.\n` +
-    "Wichtig ist, was zu deiner Situation und deinem Unterstützungsbedarf passt."
+    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+    `Die 6-Monats-Begleitung liegt regulär bei ${OFFER_TRUTH.longTerm.priceText}; nach dem 5-Wochen-Coaching bleiben durch die Anrechnung noch ${OFFER_TRUTH.longTerm.upgradeBalanceEur?.toLocaleString("de-DE")} € offen.`
   );
 }
 
@@ -98,11 +98,20 @@ function buildPriceQuestionReply(campaign: CampaignConfig): string {
 
 function buildPriceObjectionReply(decision: PeteDecision): string {
   const subtype = String(decision.metadata?.priceSubtype ?? "");
+  const templateId = String(decision.metadata?.templateId ?? "");
 
   if (subtype === "installments") {
     return (
       "Ratenzahlung kl\u00e4ren wir am besten kurz pers\u00f6nlich.\n" +
       "Wenn es grunds\u00e4tzlich passen k\u00f6nnte, ist ein kurzes Strategiegespr\u00e4ch der sauberste n\u00e4chste Schritt."
+    );
+  }
+
+  if (templateId === "price_affordability_selfstarter") {
+    return (
+      "Verstanden. Dann macht es keinen Sinn, dich auf 499 € zu drücken.\n" +
+      `Wenn du erstmal selbst loslegen willst, ist der Selbststarter für ${OFFER_TRUTH.selfstarter.priceText} der sinnvollere Einstieg.\n` +
+      `Hier findest du ihn:\n${OFFER_TRUTH.selfstarter.productUrl}`
     );
   }
 
@@ -131,7 +140,7 @@ function buildBookingReply(context: PeteResponseComposerContext): string {
 
 function buildInfoLinkReply(context: PeteResponseComposerContext): string {
   return buildPeteRuntimeInfoLinkReply(
-    context.userText || "video anleitung",
+    context.userText || "infos",
     context.campaign,
     {
       campaign: context.campaign,
@@ -232,7 +241,7 @@ function buildObjectionReply(decision: PeteDecision): string {
     return (
       "Verstehe ich.\n" +
       "Dann halten wir es kurz.\n" +
-      "Soll ich dir erst die kostenlose Video-Anleitung schicken?"
+      "Soll ich dir stattdessen den kostenlosen Elterncheck schicken?"
     );
   }
 
@@ -252,7 +261,7 @@ function buildObjectionReply(decision: PeteDecision): string {
     return (
       "Verstehe ich.\n" +
       "Gerade bei so einer Entscheidung ist es sinnvoll, wenn ihr beide denselben Stand habt.\n" +
-      "Soll ich dir erst eine kurze \u00dcbersicht schicken?"
+      "Soll ich dir den Elterncheck schicken, den ihr gemeinsam anschauen könnt?"
     );
   }
 

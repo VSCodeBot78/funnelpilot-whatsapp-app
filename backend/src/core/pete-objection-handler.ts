@@ -81,6 +81,21 @@ const PRICE_KEYWORDS = [
   "in raten",
 ];
 
+const AFFORDABILITY_HARD_LIMIT_KEYWORDS = [
+  "kein geld",
+  "kein budget",
+  "kann ich mir nicht leisten",
+  "kann ich mir gerade nicht leisten",
+  "kann ich mir aktuell nicht leisten",
+  "finanziell nicht machbar",
+  "passt finanziell nicht",
+  "passt gerade finanziell nicht",
+  "sprengt mein budget",
+  "liegt nicht drin",
+  "ist gerade nicht drin",
+  "ist grad nicht drin",
+];
+
 const MONEY_DETAIL_KEYWORDS = [
   "rabatt",
   "sonderpreis",
@@ -377,6 +392,25 @@ export function evaluatePeteObjection(
   }
 
   if (classification.intent === "price") {
+    const affordabilityHardLimit =
+      includesAnyKeyword(normalized, AFFORDABILITY_HARD_LIMIT_KEYWORDS) !==
+      undefined;
+
+    if (affordabilityHardLimit) {
+      return {
+        ...classification,
+        action: "offer_info",
+        replyText:
+          "Verstanden. Dann macht es keinen Sinn, dich auf 499 € zu drücken.\n" +
+          "Wenn du erstmal selbst loslegen willst, ist der Selbststarter für 14,95 € der sinnvollere Einstieg.\n" +
+          "Hier kannst du direkt schauen, ob das für dich passt.",
+        templateId: "price_affordability_selfstarter",
+        objectionCount,
+        shouldSetInfoOnly: true,
+        reason: "price_affordability_routes_to_low_ticket",
+      };
+    }
+
     const asksMoneyDetail =
       includesAnyKeyword(normalized, MONEY_DETAIL_KEYWORDS) !== undefined;
 
@@ -415,7 +449,7 @@ export function evaluatePeteObjection(
       replyText:
         "Verstehe ich.\n" +
         "Dann halten wir es kurz.\n" +
-        "Soll ich dir erst die kostenlose Video-Anleitung schicken?",
+        "Soll ich dir stattdessen den Elterncheck oder den Selbststarter zeigen?",
       templateId: "time_offer_info",
       objectionCount,
       shouldSetInfoOnly: true,
@@ -445,7 +479,7 @@ export function evaluatePeteObjection(
       replyText:
         "Klar.\n" +
         "Damit ich dir nicht den falschen Link schicke:\n" +
-        "Geht's dir um die kostenlose Video-Anleitung oder um Infos zum Strategiegespräch?",
+        "Geht's dir um die Eltern Vital Methode, den Selbststarter, den Elterncheck oder den Keto Guide?",
       templateId: "info_clarify_link",
       objectionCount,
       shouldSetInfoOnly: true,
@@ -502,7 +536,7 @@ export function evaluatePeteObjection(
       replyText:
         "Kann ich verstehen.\n" +
         "Online wird viel versprochen, deshalb drücke ich dich hier in nichts rein.\n" +
-        "Soll ich dir erst die kostenlose Anleitung schicken?",
+        "Soll ich dir stattdessen den Elterncheck oder den Selbststarter zeigen?",
       templateId: "trust_deescalate_offer_info",
       objectionCount,
       shouldSetInfoOnly: true,

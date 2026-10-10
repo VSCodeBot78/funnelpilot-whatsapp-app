@@ -262,13 +262,15 @@ function hasInfoOfferContext(lastAssistantText: string | undefined): boolean {
 
   return (
     includesAnyKeyword(previous, [
-      "kostenlose video anleitung",
-      "video anleitung",
+      "eltern vital methode",
+      "selbststarter",
+      "elterncheck",
+      "eltern check",
+      "keto guide",
+      "keto-guide",
       "kostenlose anleitung",
-      "erst die kostenlose anleitung",
-      "erstmal die anleitung",
-      "soll ich dir erst",
-      "anleitung schicken",
+      "soll ich dir",
+      "link schicken",
     ]) !== undefined
   );
 }
@@ -345,6 +347,15 @@ function classifyLinkTarget(
     ]) !== undefined;
   const currentHasVideoContext =
     includesAnyKeyword(normalized, [
+      "elterncheck",
+      "eltern check",
+      "keto guide",
+      "keto-guide",
+      "ketoguide",
+      "selbststarter",
+      "selfstarter",
+      "eltern vital",
+      "eltern vital methode",
       "video",
       "anleitung",
       "kostenlos",
@@ -363,6 +374,10 @@ function classifyLinkTarget(
     ]) !== undefined;
   const previousHasInfoContext =
     includesAnyKeyword(previous, [
+      "eltern vital",
+      "selbststarter",
+      "elterncheck",
+      "keto",
       "video",
       "anleitung",
       "kostenlos",
@@ -598,6 +613,7 @@ export function decidePeteNextAction(
           objectionIntent: objectionResult.intent,
           objectionCount: objectionResult.objectionCount,
           templateId: objectionResult.templateId,
+          shouldSetInfoOnly: objectionResult.shouldSetInfoOnly,
           bookingUrlAvailable: Boolean(context.bookingUrl),
         },
       });
