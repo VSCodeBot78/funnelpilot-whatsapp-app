@@ -199,6 +199,11 @@ test("Phase 30: 70 roleplayed parent conversations, 210 lead turns, no live API"
             totalSuppressed++;
           }
 
+          if (section.focus === "free_guide" && si === 0 && turnIndex === 0) {
+            assert.match(pete ?? "", /Jochens Keto Guide/i,
+              "Pete must not pretend the founder's freebie belongs to him");
+            assert.doesNotMatch(pete ?? "", /Mein Keto Guide/i);
+          }
           if (section.focus === "free_guide" && si === 0 && turnIndex === 2) {
             assert.doesNotMatch(pete ?? "", /\?/,
               "Closing an info-only conversation must not restart qualification");
