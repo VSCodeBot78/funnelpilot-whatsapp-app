@@ -4,7 +4,11 @@ import type { RawBodyRequest } from "../app.js";
 import { getAllLeads, getLeadById, saveLead } from "../data/leads.store.js";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { getAllBookingEvents, getBookingEventByIdempotencyKey, saveBookingEventLogEntry } from "../data/booking-events.store.js";
-import { mergeBookingDataFromProviderEvent } from "../domain/booking-sync.js";
+import { buildDefaultBookingData, mergeBookingDataFromProviderEvent } from "../domain/booking-sync.js";
+import { markProviderBookingBooked, markProviderBookingCanceled } from "../services/provider-booking.service.js";
+import { stopGhostingState } from "../services/ghosting.service.js";
+import { appendAssistantMessage, setCurrentStep } from "../core/state-manager.js";
+import { buildGoogleCalendarTemplateLink } from "../services/calendly-webhook.service.js";
 import { env } from "../config/env.js";
 import type { BookingEventLogEntry } from "../types/types.js";
 import type { ProviderBookingState } from "../types/provider-booking.types.js";
@@ -94,73 +98,63 @@ function getCalendlySignatureHeader(req: Request): string | undefined {
 }
 
 function verifyCalendlyWebhookSignature(req: Request): WebhookVerificationResult {
-  const mode = env.CALENDLY_WEBHOOK_VERIFY_MODE;
+  // Production must fail closed even if the environment accidentally uses "off".
+  const mode = env.NODE_ENV === "production" ? "strict" : env.CALENDLY_WEBHOOK_VERIFY_MODE;
   const secret = env.CALENDLY_WEBHOOK_SECRET;
   const signature = getCalendlySignatureHeader(req);
 
   if (mode === "off") {
-    return {
-      ok: true,
-      reason: "signature verification disabled",
-    };
+    return { ok: true, reason: "local signature verification disabled" };
   }
-
-  if (mode === "strict" && !secret) {
-    return {
-      ok: false,
-      statusCode: 500,
-      error:
-        "CALENDLY_WEBHOOK_SECRET muss gesetzt sein, wenn CALENDLY_WEBHOOK_VERIFY_MODE=strict ist.",
-    };
-  }
-
   if (!secret) {
-    return {
-      ok: true,
-      reason: "dev mode with no secret",
-    };
+    if (mode === "strict") {
+      return { ok: false, statusCode: 503, error: "calendly_webhook_secret_not_configured" };
+    }
+    return { ok: true, reason: "local dev without signature secret" };
   }
-
   if (!signature) {
     if (mode === "strict") {
-      return {
-        ok: false,
-        statusCode: 401,
-        error: "Webhook-Signature fehlt.",
-      };
+      return { ok: false, statusCode: 401, error: "calendly_signature_missing" };
     }
-
-    return {
-      ok: true,
-      reason: "dev mode signature optional",
-    };
+    return { ok: true, reason: "local dev without signature" };
   }
 
-  const rawPayload = getRawWebhookPayload(req);
-  const computedSignature = crypto
+  // Calendly: Calendly-Webhook-Signature: t=<unix_seconds>,v1=<hmac_sha256>.
+  // The signed data is exactly `timestamp + "." + rawBody`.
+  const parts = Object.fromEntries(signature.split(",").map((part) => {
+    const separator = part.indexOf("=");
+    return separator > 0
+      ? [part.slice(0, separator).trim(), part.slice(separator + 1).trim()]
+      : ["", ""];
+  }));
+  const timestamp = parts.t || "";
+  const digest = parts.v1 || "";
+  const timestampSeconds = Number(timestamp);
+  const skew = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
+  if (
+    !/^\d{10,13}$/.test(timestamp) ||
+    !Number.isSafeInteger(timestampSeconds) ||
+    !Number.isFinite(skew) ||
+    skew > 180 ||
+    !/^[0-9a-f]{64}$/i.test(digest)
+  ) {
+    return { ok: false, statusCode: 401, error: "calendly_signature_invalid_or_expired" };
+  }
+
+  const computed = crypto
     .createHmac("sha256", secret)
-    .update(rawPayload)
+    .update(timestamp + "." + getRawWebhookPayload(req))
     .digest("hex");
+  const actual = Buffer.from(digest, "hex");
+  const expected = Buffer.from(computed, "hex");
+  const matches =
+    actual.length === expected.length &&
+    crypto.timingSafeEqual(actual, expected);
 
-  if (signature !== computedSignature) {
-    if (mode === "strict") {
-      return {
-        ok: false,
-        statusCode: 401,
-        error: "Ungültige Webhook-Signature.",
-      };
-    }
-
-    return {
-      ok: true,
-      reason: "dev mode invalid signature ignored",
-    };
+  if (!matches) {
+    return { ok: false, statusCode: 401, error: "calendly_signature_invalid" };
   }
-
-  return {
-    ok: true,
-    reason: "valid signature",
-  };
+  return { ok: true, reason: "valid_calendly_signature" };
 }
 
 function formatReadableSlot(startAt: string): string {
@@ -246,7 +240,9 @@ function mapCalendlyEventType(rawEventType: string): string {
 function mapCalendlyPayloadToBookingEvent(payload: CalendlyPayload): BookingEventResult {
   const body = getObject(payload);
   const nested = getObject(body.payload);
-  const event = getObject(body.event ?? nested.event);
+  // Calendly's actual envelope uses body.event as the event *name* and
+  // body.payload.event as the scheduled-event object. Do not discard the latter.
+  const event = getObject(typeof body.event === "object" ? body.event : nested.event);
   const invitee = getObject(body.invitee ?? nested.invitee);
   const tracking = getObject(body.tracking ?? nested.tracking);
 
@@ -584,52 +580,93 @@ function executeBookingEvent(input: BookingEventInput) {
     };
   }
 
-  if (!lead) {
+  // The test-chat stores a ConversationState but does not create a Leads
+  // dashboard record. Verified Calendly booking events must support both.
+  const existingState = lead
+    ? getConversationState(lead.id, campaignId)
+    : leadId
+      ? getConversationState(leadId, campaignId)
+      : undefined;
+
+  if (!lead && !existingState) {
     return {
       statusCode: 404,
       response: {
         ok: false,
-        error: "Kein Lead mit den angegebenen Kriterien gefunden.",
+        error: "Kein Lead oder Conversation State mit diesen Daten gefunden.",
       },
     };
   }
 
   const mergedBookingData = mergeBookingDataFromProviderEvent(
-    lead.bookingData,
+    lead?.bookingData ?? existingState?.bookingData ?? buildDefaultBookingData(),
     bookingData,
     provider,
     eventType,
   );
 
-  const updatedLead = saveLead({
-    ...lead,
-    booked: mergedBookingData.status === "booked",
-    bookingData: mergedBookingData,
-  });
+  const updatedLead = lead
+    ? saveLead({
+        ...lead,
+        booked: mergedBookingData.status === "booked",
+        bookingData: mergedBookingData,
+      })
+    : null;
 
-  const existingState = getConversationState(updatedLead.id, campaignId);
-  let conversationSummary = null;
+  const state = existingState ??
+    (updatedLead ? getConversationState(updatedLead.id, campaignId) : undefined);
   const cancelledEvent = isCancelledEventType(eventType);
+  let conversationSummary = null;
 
-  if (existingState) {
-    const updatedState = {
-      ...existingState,
-      bookingData: updatedLead.bookingData,
-      ...(cancelledEvent
-        ? {
-            providerBooking: buildProviderBookingCanceledState(
-              existingState.providerBooking,
-            ),
-          }
-        : {}),
-    };
+  if (state) {
+    state.bookingData = mergedBookingData;
 
-    saveConversationState(updatedState);
+    if (cancelledEvent) {
+      state.providerBooking = markProviderBookingCanceled(state.providerBooking);
+    } else if (mergedBookingData.status === "booked") {
+      state.providerBooking = markProviderBookingBooked(state.providerBooking);
+      state.ghosting = stopGhostingState(state.ghosting, "manual_stop");
+      setCurrentStep(state, "done");
+    }
+
+    // The event has been confirmed by the provider, but this application
+    // only PREPARES a customer-facing confirmation for the test chat.
+    // Do not claim it was sent over Instagram/WhatsApp.
+    if (
+      provider === "calendly" &&
+      (cancelledEvent || mergedBookingData.status === "booked") &&
+      state.owner !== "human" &&
+      state.aiPaused !== true &&
+      !state.flags.stopped
+    ) {
+      const calendarLink = !cancelledEvent
+        ? buildGoogleCalendarTemplateLink({
+            startAt: mergedBookingData.startAt,
+            endAt: mergedBookingData.endAt,
+            title: "Strategiegespräch",
+          })
+        : null;
+      const message = cancelledEvent
+        ? "Dein Calendly-Termin wurde storniert. Wenn du neu buchen möchtest, sag kurz Bescheid."
+        : "Calendly hat deinen Termin bestätigt. Du erhältst die Buchungsbestätigung vom Anbieter." +
+          (calendarLink
+            ? "\\nHier kannst du den Termin zusätzlich in deinem Google Kalender speichern:\\n" + calendarLink
+            : "");
+      appendAssistantMessage(state, message);
+      const latest = state.messages.at(-1);
+      if (latest) {
+        latest.outboundStatus = "prepared";
+        latest.sent = false;
+      }
+    }
+
+    saveConversationState(state);
     conversationSummary = {
-      leadId: updatedState.leadId,
-      campaignId: updatedState.campaignId,
-      stage: updatedState.stage,
-      bookingData: updatedState.bookingData,
+      leadId: state.leadId,
+      campaignId: state.campaignId,
+      stage: state.stage,
+      bookingData: state.bookingData,
+      providerBookingStatus: state.providerBooking?.status,
     };
   }
 
@@ -637,7 +674,7 @@ function executeBookingEvent(input: BookingEventInput) {
     statusCode: 200,
     response: {
       ok: true,
-      message: "Booking-Event erfolgreich verarbeitet.",
+      message: "Buchungsereignis verarbeitet, aber keine Nachricht versendet.",
       lead: updatedLead,
       conversationSummary,
     },

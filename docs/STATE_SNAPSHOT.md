@@ -66,3 +66,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Im lokalen Pre-Live-Test bleiben beide Sende-Flags deaktiviert; Cloudflare Quick Tunnel weiterhin nur Webhooks auf Port 3002.
 - PR #37 CI: 88 Backend-Tests + 2 Relay-Tests + 5 Dashboard-Tests = **95** bestanden, Builds grün, 0 Fehler. Aktueller CI-Stand nach letztem UX-Commit separat prüfen.
 - Der finale Laptop-Browser- und OAuth-Echtanbieter-Abnahmetest ist **noch offen**; kein Meta Review, kein Hetzner.
+
+## Phase 17 – Buchungsprüfung (10.10.2026)
+
+- Kalenderbuchung im ursprünglichen Testchat funktionierte als **Calendly-Buchungslink + signiertes Buchungsereignis + Google-Kalender-Vorlagenlink**. Das Google-Element ist ein vom Kunden klickbarer Kalenderlink, keine direkte `events.insert`-Google-API.
+- Testchat-Conversation-State kann nun selbst ohne separaten Dashboard-Lead ein **signiertes** Calendly-Event empfangen: `booked` mit Start/Ende; Buchungs- und Ghosting-Followups stoppen; im Testchat erscheint eine nur vorbereitete Bestätigung mit Google-Kalender-Vorlagenlink. `invitee.canceled` aktualisiert `cancelled`. Kein externes Senden.
+- Textnachricht `Hab gebucht` allein bestätigt nicht mehr fälschlich einen Termin. Eine tatsächliche Provider-Bestätigung ist erforderlich.
+- Der offizielle Calendly-Signaturheader `t=…,v1=…` wird gegen `timestamp.originalRawBody` mit 180 Sekunden Toleranz geprüft. Production erzwingt `strict`.
+- Lokaler Cloudflare-Relay erlaubt Calendly `POST /booking-events/calendly` ausschließlich per **explizitem Opt-in** und bei aktiviertem Signaturmodus `strict`. Kein Zugriff auf Admin-Routen. Runbook: `docs/LOCAL_TEST_WINDOWS.md`.
+- CI-Prüfung PR #39: 89 Backend-Tests + 3 Relay-Tests + 5 Dashboard-Tests = **97 bestanden, 0 Fehler**, Backend-/Dashboard-Build grün.
+- Weiterhin offen: echter Calendly-Anbieter-Webhook von einem Testkonto an die aktuell konfigurierte Callback-URL; Nachweis einer wirklichen E-Mail-/Google-Kalender-Eintragung beim Testkunden; OAuth-Abschluss und synchronisierte Kalender-/CRM-Daten. Ohne diesen externen Nachweis keine Live-Freigabe und kein Hetzner.
