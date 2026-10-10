@@ -213,3 +213,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Externer DM-Closer: noch etwa eine Woche Benchmark-Test, danach **keine Verlängerung vorgesehen**; Kündigung noch nicht nachgewiesen.
 - ManyChat bleibt **vorerst** für bestehende kurze Trigger/Buttons/Linkstrecken bestehen, soll langfristig durch eigene, **einfache Funnel-Pilot-Keyword-/Auswahl-/Link-Flows** ersetzt werden. Kostenpräferenz künftig eigener Hetzner-Betrieb statt ManyChat-Abo. Der Ersatz ist **strategisch festgeschrieben, nicht gegenwärtige Entwicklungspriorität**.
 - Vollständige Kriterien, spätere technische Reihenfolge und grobe Fortschrittsgrößen: `docs/ROADMAP_PRIORITAETEN_4_7_MANYCHAT_2026-10-10.md`. Meta-Kanalfähigkeiten, echte Zustellung, Ghosting, Human-Handover, Deduplizierung und Migration **pro Trigger** gesondert freigeben; keine parallelen Bot-Antworten einplanen.
+
+## Phase 34 – Dashboard für tägliche Lead-Arbeit vereinfacht (10.10.2026)
+
+- **Priorität 4 umgesetzt** (technisch, nicht auf Windows/UI live abgenommen): sofort sichtbar Übersicht, Inbox, Leads, Termine, Nachfassaktionen sowie Pete-Testchat; vier bestehende Verwaltungsbereiche bleiben unter einer aufklappbaren Navigation erreichbar. Kein zweites Dashboard/Testchat-Tabsystem mehr.
+- **Übersicht:** Direkte Inbox-/Leads-/Pete-Aktionen, maximal fünf priorisierte Leads und transparente Kennzahlen nur aus vorhandenen Lead-Tags, Readiness und Buchungsmarkierung. Keine Anzeige erfundener „ungelesener“ oder „antwortpflichtiger“ Gespräche.
+- **Bei Backend-Ausfall:** Bisherige fiktive Beispiel-Leads als regulärer Fallback aus der aktiven Anzeige entfernt. Statusmeldung statt vorgetäuschter Daten.
+- **Mobil:** Responsive Layout für Sidebar und Inbox; Leadliste, Chat und Kontext auf schmalen Bildschirmen nacheinander. Suchfeld bleibt auf allen tatsächlich gefilterten Kontaktansichten sichtbar.
+- **Tests:** Vier neue Dashboard-Regressionsfälle zur Navigationsvollständigkeit, echten Metadaten-Zählung, UI-Aktionen und Offline-/Mobile-Anbindung. Detailbericht: `docs/PHASE34_DASHBOARD_FOKUS_2026-10-10.md`. Erwarteter CI-Stand vor finalem Merge: 213 Backend + 9 Relay/Sicherheit + 12 Dashboard = **234 erfolgreich**, beide Builds grün; endgültigen PR-HEAD gesondert prüfen.
+- **Nicht live:** Keine echten Nachrichten, Änderungen an Meta-/ManyChat-Routen, Neuaktivierung von Pete oder Freigabe für Produktivbetrieb. Echte Browser-/Tastaturprüfung weiterhin erst auf Windows/Android möglich.
+- **Nächste Priorität:** **5 – Startdiagnose verbessern**, danach 6 Datenschutz/Betrieb und 7 Coach-Onboarding. Native ManyChat-Miniflows bleiben späterer Backlogpunkt.
