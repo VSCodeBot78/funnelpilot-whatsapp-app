@@ -211,10 +211,21 @@ export function useInbox({
           messageText: newManualMessage.trim(),
         });
         replaceActiveConversation(data.state);
-        setNewManualMessage("");
-        setInboxMessage(
-          "Manuelle Nachricht im Conversation-State gespeichert. KI ist pausiert; externer Versand bleibt in Phase 1 aus.",
-        );
+
+        if (data.sent) {
+          setNewManualMessage("");
+          setInboxMessage(
+            "Nachricht gesendet. Jochen hat übernommen; die KI bleibt pausiert.",
+          );
+        } else {
+          const reason =
+            data.sendSkipReason ||
+            data.sendError ||
+            "Transport ist noch nicht für echten Versand freigeschaltet.";
+          setInboxMessage(
+            `KI pausiert. Nachricht wurde NICHT gesendet: ${reason}`,
+          );
+        }
       } catch (error) {
         console.error("manual conversation message error:", error);
         setInboxMessage("Manuelle Nachricht konnte nicht gespeichert werden.");

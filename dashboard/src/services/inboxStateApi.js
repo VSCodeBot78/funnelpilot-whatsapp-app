@@ -146,9 +146,15 @@ export function mapConversationMessagesToInbox(messages = []) {
   return messages.map((msg, index) => ({
     id: msg.id || `${msg.role}_${msg.createdAt || index}`,
     role: msg.role === "user" ? "contact" : "bot",
+    actor: msg.actor || (msg.role === "user" ? "lead" : "ai"),
     text: msg.text || "",
     time: formatInboxMessageTime(msg.createdAt),
     createdAt: msg.createdAt,
+    outboundStatus: msg.outboundStatus || "",
+    transport: msg.transport || "",
+    sent: msg.sent,
+    dryRun: msg.dryRun === true,
+    sendError: msg.sendError || "",
   }));
 }
 
