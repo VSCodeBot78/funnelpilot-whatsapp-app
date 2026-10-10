@@ -8,6 +8,7 @@ import type {
   GhostingState,
 } from "../types/ghosting.types.js";
 import { getGhostingConfig } from "../data/ghosting-config.store.js";
+import { env } from "../config/env.js";
 
 function parseIso(value?: string): Date | null {
   if (!value) {
@@ -22,10 +23,92 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
+type ZonedParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+function getZonedParts(date: Date, timeZone: string): ZonedParts {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+
+  const values = Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  };
+}
+
+function zonedDateTimeToUtc(
+  parts: Omit<ZonedParts, "second"> & { second?: number },
+  timeZone: string,
+): Date {
+  const targetUtcLike = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second ?? 0,
+    0,
+  );
+
+  let guess = targetUtcLike;
+
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const zoned = getZonedParts(new Date(guess), timeZone);
+    const representedAsUtc = Date.UTC(
+      zoned.year,
+      zoned.month - 1,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second,
+      0,
+    );
+    const offsetMs = representedAsUtc - guess;
+    guess = targetUtcLike - offsetMs;
+  }
+
+  return new Date(guess);
+}
+
 function setTime(date: Date, hour: number, minute: number): Date {
-  const result = new Date(date);
-  result.setHours(hour, minute, 0, 0);
-  return result;
+  const localDate = getZonedParts(date, env.FOLLOWUP_TIMEZONE);
+
+  return zonedDateTimeToUtc(
+    {
+      year: localDate.year,
+      month: localDate.month,
+      day: localDate.day,
+      hour,
+      minute,
+      second: 0,
+    },
+    env.FOLLOWUP_TIMEZONE,
+  );
 }
 
 function toIso(date: Date): string {
