@@ -46,6 +46,16 @@ const {
   saveLead,
   deleteLead,
 } = await import("../data/leads.store.js");
+const {
+  getConversationState,
+  clearConversationStore,
+} = await import("../data/store.js");
+const {
+  isKnownAiOutboundEcho,
+} = await import("../services/conversation-outbound.service.js");
+const {
+  DEFAULT_CAMPAIGN_ID,
+} = await import("../config/campaigns.js");
 const { default: app } = await import("../app.js");
 
 test("Phase 4 Instagram transport foundation", async (t) => {
@@ -165,6 +175,40 @@ test("Phase 4 Instagram transport foundation", async (t) => {
 
     assert.equal(event.isEcho, true);
     assert.equal(event.text, "Automatische Antwort");
+  });
+
+  await t.test("known AI outbound echo is distinguished from a manual human echo", () => {
+    const messages = [
+      {
+        id: "assistant-1",
+        role: "assistant" as const,
+        actor: "ai" as const,
+        text: "Automatische Antwort",
+        createdAt: new Date().toISOString(),
+        transport: "meta_instagram",
+        outboundStatus: "sent" as const,
+        sent: true,
+        metaMessageId: "echo-ai-1",
+      },
+    ];
+
+    assert.equal(
+      isKnownAiOutboundEcho({
+        messages,
+        messageId: "echo-ai-1",
+        transport: "meta_instagram",
+      }),
+      true,
+    );
+
+    assert.equal(
+      isKnownAiOutboundEcho({
+        messages,
+        messageId: "manual-human-echo-1",
+        transport: "meta_instagram",
+      }),
+      false,
+    );
   });
 
   await t.test("attachment-only events are explicit unsupported candidates", () => {
@@ -474,6 +518,105 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       assert.equal(result.sendSkipped, true);
       assert.equal(result.outboundStatus, "dry_run");
 
+      const humanEchoPayload = {
+        object: "instagram",
+        entry: [
+          {
+            id: "17841400000000000",
+            messaging: [
+              {
+                sender: { id: "17841400000000000" },
+                recipient: { id: "route-test-igsid" },
+                timestamp: Date.now(),
+                message: {
+                  mid: "manual-human-echo-1",
+                  text: "Ich übernehme hier kurz.",
+                  is_echo: true,
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const humanEchoRaw = JSON.stringify(humanEchoPayload);
+      const humanEchoSignature =
+        "sha256=" +
+        crypto
+          .createHmac("sha256", "test-instagram-app-secret")
+          .update(Buffer.from(humanEchoRaw, "utf8"))
+          .digest("hex");
+
+      const humanEchoResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": humanEchoSignature,
+          },
+          body: humanEchoRaw,
+        },
+      );
+
+      assert.equal(humanEchoResponse.status, 200);
+      const humanEchoResult = (await humanEchoResponse.json()) as {
+        ok: boolean;
+        ignoredEchoes: number;
+        conversationUpdated?: boolean;
+        messageAppended?: boolean;
+        sent?: boolean;
+      };
+
+      assert.equal(humanEchoResult.ok, true);
+      assert.equal(humanEchoResult.ignoredEchoes, 1);
+      assert.equal(humanEchoResult.conversationUpdated, true);
+      assert.equal(humanEchoResult.messageAppended, true);
+      assert.equal(humanEchoResult.sent, false);
+
+      const humanOwnedState = getConversationState(
+        leadId,
+        DEFAULT_CAMPAIGN_ID,
+      );
+      assert.ok(humanOwnedState);
+      assert.equal(humanOwnedState.owner, "human");
+      assert.equal(humanOwnedState.aiPaused, true);
+      assert.equal(humanOwnedState.lastActor, "human");
+      assert.equal(humanOwnedState.messages.at(-1)?.actor, "human");
+      assert.equal(
+        humanOwnedState.messages.at(-1)?.text,
+        "Ich übernehme hier kurz.",
+      );
+
+      const afterTakeoverSigned = buildSignedPayload(
+        "route-test-mid-after-human-takeover",
+        "Danke dir",
+      );
+      const afterTakeoverResponse = await fetch(
+        baseUrl + "/webhooks/meta/instagram",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": afterTakeoverSigned.signature,
+          },
+          body: afterTakeoverSigned.raw,
+        },
+      );
+
+      assert.equal(afterTakeoverResponse.status, 200);
+      const afterTakeoverResult = (await afterTakeoverResponse.json()) as {
+        ok: boolean;
+        processed: number;
+        engineProcessed?: boolean;
+        botReplyPrepared?: boolean;
+        sent?: boolean;
+      };
+      assert.equal(afterTakeoverResult.ok, true);
+      assert.equal(afterTakeoverResult.processed, 1);
+      assert.equal(afterTakeoverResult.engineProcessed, true);
+      assert.equal(afterTakeoverResult.botReplyPrepared, false);
+      assert.equal(afterTakeoverResult.sent, false);
+
       const duplicateResponse = await fetch(
         baseUrl + "/webhooks/meta/instagram",
         {
@@ -495,6 +638,7 @@ test("Phase 4 Instagram transport foundation", async (t) => {
       assert.equal(duplicateResult.duplicates, 1);
 
       deleteLead(leadId);
+      clearConversationStore();
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
