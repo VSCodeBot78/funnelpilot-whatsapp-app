@@ -75,7 +75,7 @@ test("Phase 12 real follow-up transport truth", async (t) => {
     persistConversationState(state);
 
     const messagesBefore = state.messages.length;
-    const sentHistoryBefore = state.ghosting.sentHistory.length;
+    const sentHistoryBefore = state.ghosting.sentHistory?.length ?? 0;
 
     await withServer(async (baseUrl) => {
       const response = await fetch(
@@ -114,7 +114,7 @@ test("Phase 12 real follow-up transport truth", async (t) => {
     assert.ok(persisted);
     assert.equal(persisted.messages.length, messagesBefore);
     assert.equal(
-      persisted.ghosting.sentHistory.length,
+      persisted.ghosting.sentHistory?.length ?? 0,
       sentHistoryBefore,
     );
     assert.equal(persisted.ghosting.lastSentStage, undefined);
