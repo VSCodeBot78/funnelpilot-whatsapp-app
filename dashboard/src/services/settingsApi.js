@@ -1,4 +1,4 @@
-import { buildApiUrl } from "./apiBase";
+import { buildApiUrl } from "./apiBase.js";
 
 export async function loadSettingsConfig(apiBaseUrl) {
   const response = await fetch(buildApiUrl("/settings-config", apiBaseUrl));
@@ -40,6 +40,21 @@ export async function saveSettings(settings) {
     openAiApiKeyConfigured: Boolean(data.openAiApiKeyConfigured),
     openAiModelConfigured: Boolean(data.openAiModelConfigured),
   };
+}
+
+// Save ONLY the review draft. Never transmit unsaved live Pete, campaigns,
+// booking URLs, channel settings or other fields from the wizard form.
+export async function saveCoachDraftOnly(draft, apiBaseUrl) {
+  const response = await fetch(buildApiUrl("/settings-config", apiBaseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ coachOnboardingDraft: draft }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data?.ok || !data?.settings?.coachOnboardingDraft) {
+    throw new Error(data?.error || "coach_draft_save_failed");
+  }
+  return data.settings.coachOnboardingDraft;
 }
 
 export async function resetSettings(apiBaseUrl) {
