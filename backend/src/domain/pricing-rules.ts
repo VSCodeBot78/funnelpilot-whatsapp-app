@@ -1,7 +1,7 @@
 import { getCampaignById } from "../config/campaigns.js";
 import {
   getCoachingEntryOffer,
-  getLongTermOffer,
+  LONG_TERM_PRICE_UNVERIFIED_REPLY,
   getSelfstarterOffer,
 } from "../config/offer-truth.js";
 import type { CampaignConfig, LeadIntent } from "../types/types.js";
@@ -26,6 +26,13 @@ const INSTALLMENT_KEYWORDS = [
 ];
 
 const LONG_TERM_KEYWORDS = [
+  "6-monats-begleitung",
+  "6-monats",
+  "6 monate",
+  "6-monate",
+  "sechsmonats",
+  "premium",
+  "advanced",
   "längere begleitung",
   "laengere begleitung",
   "intensivere begleitung",
@@ -379,15 +386,9 @@ export function getInstallmentsReply(campaignId: string): string {
   return campaign.texts.installmentsReply;
 }
 
-export function getLongTermReply(campaignId: string): string {
-  const campaign = getCampaignById(campaignId);
-  const offer = getLongTermOffer();
-
-  return (
-    `Die ${offer.name} liegt regulär bei ${offer.priceText}.\n` +
-    `Wenn du vorher das 5-Wochen-Coaching für 499 € gemacht hast, werden die 499 € angerechnet. Dann bleiben noch ${offer.upgradeBalanceEur?.toLocaleString("de-DE")} € für die weitere Begleitung.\n` +
-    campaign.texts.longTermReply
-  );
+export function getLongTermReply(_campaignId: string): string {
+  // No fallback to campaign templates: the longer offer is not yet price-approved.
+  return LONG_TERM_PRICE_UNVERIFIED_REPLY;
 }
 
 export function getCoachingEntryCheckoutUrl(campaignId: string): string {
