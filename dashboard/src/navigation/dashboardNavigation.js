@@ -12,6 +12,7 @@ export const ADMIN_NAV = Object.freeze([
   { key: "campaigns", label: "Kampagnen" },
   { key: "settings", label: "Einstellungen" },
   { key: "onboarding", label: "Einrichtung" },
+  { key: "coach-draft", label: "Coach-Vorlage" },
   { key: "booking-events", label: "Buchungsprotokoll" },
 ]);
 
