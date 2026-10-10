@@ -113,6 +113,9 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     const payment = await send("phase46-payment", "Ich habe bezahlt, ist die Zahlung bestätigt?");
     assert.notEqual(payment.state.answers.coachingEntryPurchaseStatus, "paid");
     assert.notEqual(payment.state.answers.starterPurchaseStatus, "paid");
+    const identity = await send("phase46-identity", "Wer schreibt mir?");
+    assert.match(identity.text || "", /KI-Assistent/);
+    assert.equal(identity.state.answers.peteReplySource, "deterministic");
     assert.equal(calls, 0);
   });
 

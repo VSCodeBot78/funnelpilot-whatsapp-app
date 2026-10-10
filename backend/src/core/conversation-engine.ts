@@ -1314,6 +1314,18 @@ export async function processIncomingMessage(
     // Phase 1: an explicitly selected LLM path is separate from the legacy
     // deterministic natural flow. Safety and ownership checks above remain
     // authoritative. Trusted product/transaction requests stay deterministic.
+    // Bot identity is factual, not a model-generated guess. Keep this
+    // deterministic even when the LLM feature has been selected.
+    if (isPeteLlmConversationSelected() &&
+        /\\b(?:wer schreibt mir|wer antwortet mir|bist du (?:ein )?bot|bist du (?:eine )?ki|schreibt jochen (?:pers[oö]nlich)?|bist du jochen)\\b/i.test(input.messageText)) {
+      const identity = "Ich bin Pete, Jochens KI-Assistent. Ich helfe bei der ersten Einordnung. Wenn du persönlich mit Jochen sprechen möchtest, sage es einfach.";
+      updateAnswer(state, "peteReplySource", "deterministic");
+      appendAssistantMessage(state, identity);
+      persistConversationState(state);
+      return { text: identity, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
     if (isPeteLlmConversationSelected() &&
         isExplicitPeteHumanTakeoverRequest(input.messageText)) {
       patchAnswers(state, { peteReplySource: "human_handoff" });
