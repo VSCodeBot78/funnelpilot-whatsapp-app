@@ -93,6 +93,11 @@ router.get("/:provider/callback", async (req, res) => {
 // An authorized provider is not a proof of active synchronization.
 // Intentional server-side disconnect; NGINX must authenticate the admin routes.
 router.post("/:provider/disconnect", (req, res) => {
+  const origin = req.get("origin") || "";
+  const allowed = env.NODE_ENV === "production"
+    ? origin === getDashboardUrl()
+    : ["http://localhost:5173", "http://127.0.0.1:5173"].includes(origin);
+  if (!allowed) return res.status(403).json({ ok: false, error: "dashboard_origin_required" });
   const provider = req.params.provider;
   if (!isOAuthProvider(provider)) return res.status(404).json({ ok: false, error: "unknown_provider" });
   disconnectProvider(provider);
