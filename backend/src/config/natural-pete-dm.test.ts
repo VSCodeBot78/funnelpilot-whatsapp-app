@@ -208,7 +208,7 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
     assert.match(a.text || "", /Drei Kinder, Schichtdienst/);
     assert.match(a.text || "", /Schlaf oder die Arbeit/);
     assert.doesNotMatch(a.text || "", /Kinder, Job und abends komplett leer/);
-    assert.equal((a.text?.match(/\\?/g) || []).length, 1);
+    assert.equal((a.text?.match(/\?/g) || []).length, 1);
 
     const b = await send("natural-shift-two-kids", "Papa von zwei Kindern, Schichtarbeit und total müde.");
     assert.match(b.text || "", /Zwei Kinder, Schichtdienst/);
@@ -220,7 +220,7 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
     assert.match(a.text || "", /ich bin Pete, Jochens KI-Assistent/i);
     assert.match(a.text || "", /nichts kaufen/i);
     assert.doesNotMatch(a.text || "", /solchen Erfahrungen|letzten Angebot|letzten Coaching/i);
-    assert.equal((a.text?.match(/\\?/g) || []).length, 1);
+    assert.equal((a.text?.match(/\?/g) || []).length, 1);
 
     const b = await send("natural-salesbot-history", "Ich wurde beim letzten Coaching nur abgezockt.");
     assert.match(b.text || "", /skeptisch/i);
