@@ -1,6 +1,12 @@
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
+  getPeteLlmConversationReply,
+  isPeteLlmConversationSelected,
+  isTrustedPeteTransactionRequest,
+  PETE_LLM_HANDOFF_REPLY,
+} from "./pete-llm-conversation.js";
+import {
   detectBookingPreference,
   detectBookingRequest,
   detectBookingWindow,
@@ -1300,6 +1306,35 @@ export async function processIncomingMessage(
       persistConversationState(state);
       return { text: null, nextStep: state.currentStep,
         detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
+    }
+
+    // Phase 1: an explicitly selected LLM path is separate from the legacy
+    // deterministic natural flow. Safety and ownership checks above remain
+    // authoritative. Trusted product/transaction requests stay deterministic.
+    if (isPeteLlmConversationSelected() &&
+        !isTrustedPeteTransactionRequest(input.messageText)) {
+      const result = await getPeteLlmConversationReply(state);
+      if (result.kind === "llm") {
+        updateAnswer(state, "peteReplySource", "llm");
+        appendAssistantMessage(state, result.text);
+        persistConversationState(state);
+        return { text: result.text, nextStep: state.currentStep,
+          detectedIntent: "flow_answer", state };
+      }
+      // Fail closed: never silently continue the old broken question loop.
+      patchAnswers(state, {
+        peteReplySource: "llm_handoff",
+        peteLlmFailureReason: result.reason,
+      });
+      patchFlags(state, {
+        peteRuntimeHandoffRequested: true,
+        peteRuntimeHandoffActive: true,
+      });
+      takeOverByHuman(state);
+      appendAssistantMessage(state, PETE_LLM_HANDOFF_REPLY);
+      persistConversationState(state);
+      return { text: PETE_LLM_HANDOFF_REPLY, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
     }
 
     const natural = getNaturalConversationReply({
