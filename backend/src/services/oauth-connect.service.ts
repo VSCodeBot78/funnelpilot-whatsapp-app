@@ -130,6 +130,7 @@ export function listConnectionStatuses() {
     const configured = config(provider);
     const ready = Boolean(
       configured.id && configured.secret && getEncryptionKey() && validRedirect(configured.redirectUri) &&
+      (env.NODE_ENV !== "production" || /^https:\/\//.test(process.env.PUBLIC_DASHBOARD_URL?.trim() || "")) &&
       configured.redirectUri.endsWith(`/integrations/oauth/${provider}/callback`)
     );
     const record = records[provider];
