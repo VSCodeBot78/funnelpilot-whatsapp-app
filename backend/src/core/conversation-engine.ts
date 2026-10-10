@@ -1317,7 +1317,7 @@ export async function processIncomingMessage(
     // Bot identity is factual, not a model-generated guess. Keep this
     // deterministic even when the LLM feature has been selected.
     if (isPeteLlmConversationSelected() &&
-        /\\b(?:wer schreibt mir|wer antwortet mir|bist du (?:ein )?bot|bist du (?:eine )?ki|schreibt jochen (?:pers[oö]nlich)?|bist du jochen)\\b/i.test(input.messageText)) {
+        /\b(?:wer schreibt mir|wer antwortet mir|bist du (?:ein )?bot|bist du (?:eine )?ki|schreibt jochen (?:pers[oö]nlich)?|bist du jochen)\b/i.test(input.messageText)) {
       const identity = "Ich bin Pete, Jochens KI-Assistent. Ich helfe bei der ersten Einordnung. Wenn du persönlich mit Jochen sprechen möchtest, sage es einfach.";
       updateAnswer(state, "peteReplySource", "deterministic");
       appendAssistantMessage(state, identity);
