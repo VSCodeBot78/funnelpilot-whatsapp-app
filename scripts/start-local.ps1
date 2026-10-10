@@ -43,11 +43,11 @@ if ($LASTEXITCODE -ne 0 -or [int]$majorText -lt 20) {
 $currentBranch = (& git.exe -C $repo branch --show-current).Trim()
 if ($LASTEXITCODE -ne 0) { throw "Git-Branch konnte nicht gelesen werden." }
 if ($currentBranch -ne "funnel-pilot-current") {
-  throw "Aktueller Branch: '$currentBranch'. Bitte zuerst 'git switch funnel-pilot-current' und 'git pull --ff-only' ausführen."
+  throw "Aktueller Branch: '$currentBranch'. Bitte zuerst 'git switch funnel-pilot-current' und 'git pull --ff-only' ausfuehren."
 }
 $localChanges = & git.exe -C $repo status --porcelain
 if ($localChanges) {
-  Write-Warning "Lokale Änderungen gefunden. Kein automatischer Git-Pull, Checkout oder Reset."
+  Write-Warning "Lokale Aenderungen gefunden. Kein automatischer Git-Pull, Checkout oder Reset."
 }
 
 $envPath = Join-Path $backend ".env"
@@ -55,13 +55,13 @@ if (-not (Test-Path -LiteralPath $envPath)) {
   $examplePath = Join-Path $backend ".env.example"
   if (-not (Test-Path -LiteralPath $examplePath)) { throw "backend/.env.example fehlt." }
   Copy-Item -LiteralPath $examplePath -Destination $envPath
-  Write-Warning "backend/.env aus Beispiel erzeugt. Die Platzhalter sind KEINE gültigen Anbieter-Zugangsdaten."
+  Write-Warning "backend/.env aus Beispiel erzeugt. Die Platzhalter sind KEINE gueltigen Anbieter-Zugangsdaten."
 }
 if (-not (Test-Path -LiteralPath (Join-Path $backend "node_modules"))) {
-  Invoke-Checked "Backend-Abhängigkeiten installieren" "npm.cmd" @("--prefix", $backend, "ci")
+  Invoke-Checked "Backend-Abhaengigkeiten installieren" "npm.cmd" @("--prefix", $backend, "ci")
 }
 if (-not (Test-Path -LiteralPath (Join-Path $dashboard "node_modules"))) {
-  Invoke-Checked "Dashboard-Abhängigkeiten installieren" "npm.cmd" @("--prefix", $dashboard, "ci")
+  Invoke-Checked "Dashboard-Abhaengigkeiten installieren" "npm.cmd" @("--prefix", $dashboard, "ci")
 }
 Invoke-Checked "Backend: Build und Tests" "npm.cmd" @("--prefix", $backend, "run", "check")
 Invoke-Checked "Dashboard: Build und Tests" "npm.cmd" @("--prefix", $dashboard, "run", "build")
@@ -153,7 +153,7 @@ for ($attempt = 0; $attempt -lt 20; $attempt++) {
   if ($backendReady -and $dashboardReady) { break }
 }
 if (-not $backendReady -or -not $dashboardReady) {
-  throw "Backend oder Dashboard nicht bereit. Bitte die PowerShell-Fenster prüfen."
+  throw "Backend oder Dashboard nicht bereit. Bitte die PowerShell-Fenster pruefen."
 }
 
 # Phase 32: do not open the browser until the webhook relay actually listens

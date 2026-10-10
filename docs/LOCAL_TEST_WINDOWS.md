@@ -230,3 +230,27 @@ Direkt auf der Dashboard-Startseite gibt es zwei Schnellaktionen:
 Der bestehende Sidebar-Eintrag **Einrichtung** bleibt ebenfalls erhalten. Das Schließen des Pop-ups oder sein Neustart ruft **keinen** Reset-/Lösch-Endpunkt auf, entfernt keine OAuth-Tokens und aktiviert keinen Nachrichtenversand. Die neuen Aktionen sind ausschließlich Navigation.
 
 Test auf dem Laptop: Setup schließen, Dashboard aufrufen, beide Buttons prüfen, Felder und Providerstatus vergleichen; sie müssen beim Wiederöffnen erhalten bleiben. Besonders wichtig ist, „Neu durchlaufen“ nicht mit „Werkseinstellungen wiederherstellen“ zu verwechseln.
+
+
+## Windows PowerShell 5.1: Fehler "Die Zeichenfolge hat kein Abschlusszeichen"
+
+Falls `start-local.ps1 -CheckOnly` beim Parsen vermeintlich an Zeile 125
+(`local-webhook-relay.mjs`) oder an einer schliessenden Klammer scheitert:
+Ein Umlaut (`Ä`) in UTF-8 ohne BOM kann beim Einlesen mit Windows
+PowerShell 5.1 durch die ANSI-Codepage als Anfuehrungszeichen
+interpretiert werden. Das ist keine fehlerhafte Webhook-Logik.
+
+Der Launcher verwendet nach dem Fix nur noch ASCII-Quelltext, damit die
+Syntax unter Windows PowerShell 5.1 und PowerShell 7 gleich gelesen
+werden kann. Ein Regressionstest prueft alle Bytes.
+
+Aktualisierung ohne Zuruecksetzen persoenlicher lokaler Dateien:
+
+```powershell
+git status --short
+git pull --ff-only origin funnel-pilot-current
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1 -CheckOnly
+```
+
+Falls Git einen lokalen Konflikt anzeigt: nicht `reset --hard`,
+nicht `clean`, sondern zuerst den konkreten Konflikt pruefen.
