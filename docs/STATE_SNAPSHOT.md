@@ -112,3 +112,17 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Instagram und WhatsApp bleiben offen, bis echte Anbieter-End-to-End-Tests vorliegen.
 - Drei neue Dashboard-Tests gegen Fehlklassifikation bei OAuth, Meta- und Sendestatus.
 - Echter Windows- und Browser-Test bleibt offen.
+
+
+## Phase 23 – Master-Prompt, echte DM-Review und expliziter KI-Schalter (10.10.2026)
+
+- Im bestehenden lokalen Eltern-fit-&-vital-Workspace ist ein ausführlicher **editierbarer Master-Prompt** als DEFAULT_SETTINGS hinterlegt, mit Zielgruppe 35–55, alltagsnaher Sprache, Coachinghaltung, Keto ohne Dogma, Ernährungsplan-/Sicherheitsgrenzen und transparentem Pete-KI-Namen.
+- Das Onboarding-Pop-up und Pete-Einstellungen bieten einen mehrzeiligen Master-Prompt-Editor; Änderungen werden im Backend gespeichert.
+- Die OpenAI-basierte KI-Brücke für strukturierte Einwände bzw. freie Zwischenantworten erhält nun Firmenkontext, Zielgruppe, Markenstimme, Angebote und den gespeicherten Master-Prompt. Preise/Links, Sicherheitsregeln und Buchungswahrheit dürfen dadurch nicht überschrieben werden.
+- **Wichtige Grenze:** Viele normale Funnel- und Sicherheitsantworten bleiben noch feste Entscheidungs-/Antwortbausteine. Diese werden nicht rückwirkend in freie LLM-Antworten verwandelt. Der spätere SaaS braucht eigene pro-Tenant-Prompts, separates Daten-/Account-Modell und nicht Eltern-fixierte Flows.
+- Verbindlicher Opt-in: OpenAI wird erst angerufen, wenn serverseitiger API-Key vorhanden UND im Pete-Einstellungsbereich `aiEnabled=true` gesetzt ist. Standard AUS. Dies gilt sowohl für KI-Zwischenantworten als auch die freie Wahlinterpretation.
+- Automatischer API-Mock-Test bestätigt, dass der Kundentext wirklich in der OpenAI-Anfrage ankommt; Abschalttest bestätigt, dass kein kostenpflichtiger Aufruf ohne Opt-in ausgelöst wird. Kein realer OpenAI-Account-Test.
+- Reale Ausgabe von zehn Einzel-DM-Szenarien plus 8-stufigem Eltern-Gespräch in CI protokolliert. Qualitätsbericht mit echten Beispieltexten, offenen Tonalitäts-/Fachfragen und Bewertungsbogen: `docs/PETE_DM_QA_2026-10-10.md`.
+- Entdeckter Fehler `Ich bin Papa von zwei Kindern ...` als angeblich mehrere Chatteilnehmer beseitigt. Nun fragt Pete nach Vornamen und merkt sich vorhandenen Elternkontext. Regressionstest bestätigt.
+- Vor echtem Liveversand: 6-Monats-Angebot/Preis aus Repository (2.499 €) gegen den aktuell freigegebenen Geschäftsstand prüfen; Sprache der starren Mehrfachauswahl mit Betreiber abstimmen.
+- Letzter GitHub-CI-Lauf: Backend- und Dashboard-Build grün; 94 Backend-Tests + 5 Relay/Launcher-Tests + 8 Dashboard-Tests = 107 Prüfungen grün.
