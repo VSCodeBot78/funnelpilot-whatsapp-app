@@ -159,15 +159,19 @@ function formatGoogleCalendarDate(input?: string): string | null {
   return parsed.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
 
-function buildGoogleCalendarLink(body: CalendlyPayload): string | null {
-  const start = formatGoogleCalendarDate(body.payload?.event?.start_time);
-  const end = formatGoogleCalendarDate(body.payload?.event?.end_time);
+export function buildGoogleCalendarTemplateLink(params: {
+  startAt?: string;
+  endAt?: string;
+  title?: string;
+}): string | null {
+  const start = formatGoogleCalendarDate(params.startAt);
+  const end = formatGoogleCalendarDate(params.endAt);
 
   if (!start || !end) {
     return null;
   }
 
-  const title = body.payload?.event?.name?.trim() || "Strategiegespräch mit Jochen";
+  const title = params.title?.trim() || "Strategiegespräch mit Jochen";
   const details =
     "Die finalen Termindetails und den Gesprächslink findest du in deiner Calendly-Bestätigung per Mail.";
   const location = "Details siehe Calendly-Bestätigung";
@@ -185,7 +189,11 @@ function buildGoogleCalendarLink(body: CalendlyPayload): string | null {
 
 function buildBookedWhatsappConfirmation(body: CalendlyPayload): string {
   const slotText = formatBookedTime(body.payload?.event?.start_time);
-  const googleCalendarLink = buildGoogleCalendarLink(body);
+  const googleCalendarLink = buildGoogleCalendarTemplateLink({
+    startAt: body.payload?.event?.start_time,
+    endAt: body.payload?.event?.end_time,
+    title: body.payload?.event?.name,
+  });
 
   let message =
     "Perfekt 👍 dein Termin ist jetzt verbindlich eingetragen.\n\n" +
