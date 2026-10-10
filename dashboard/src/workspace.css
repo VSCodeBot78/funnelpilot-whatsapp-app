@@ -245,3 +245,38 @@
 @media (max-width: 480px) {
   .fp-coach-draft-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Phase 42: single-pane mobile inbox, real status filters and touch-sized actions.
+   Desktop retains the existing three-column workspace. */
+.fp-mobile-inbox-nav { display: none; }
+.fp-inbox-priority-filters {
+  display: flex; gap: 6px; flex-wrap: wrap; padding: 9px 10px;
+  border-bottom: 1px solid; border-color: inherit;
+}
+.fp-inbox-priority-filters button { min-height: 40px; padding: 7px 10px; cursor: pointer; }
+.fp-inbox-compose { display: flex; gap: 8px; min-width: 0; }
+.fp-inbox-compose input { min-width: 0; }
+@media (max-width: 850px) {
+  .fp-mobile-inbox-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .fp-mobile-inbox-nav button { padding: 10px 4px; min-height: 44px; cursor: pointer; font-size: 13px; }
+  .fp-mobile-inbox-nav button:disabled { cursor: default; opacity: 0.48; }
+  .fp-mobile-inbox-nav button:focus-visible, .fp-inbox-priority-filters button:focus-visible,
+  .fp-inbox-owner-action:focus-visible { outline: 3px solid #ff914d; outline-offset: 2px; }
+  .fp-inbox-grid { min-height: 0 !important; }
+  .fp-inbox-grid[data-mobile-pane="list"] .fp-inbox-chat-column,
+  .fp-inbox-grid[data-mobile-pane="list"] .fp-inbox-context-column,
+  .fp-inbox-grid[data-mobile-pane="chat"] .fp-inbox-lead-column,
+  .fp-inbox-grid[data-mobile-pane="chat"] .fp-inbox-context-column,
+  .fp-inbox-grid[data-mobile-pane="context"] .fp-inbox-lead-column,
+  .fp-inbox-grid[data-mobile-pane="context"] .fp-inbox-chat-column { display: none; }
+  .fp-inbox-grid .fp-inbox-lead-column {
+    max-height: min(70vh, 650px); min-height: 300px;
+    overflow-y: auto; border-bottom: 0;
+  }
+  .fp-inbox-grid .fp-inbox-chat-column { min-height: 0; }
+  .fp-inbox-grid .fp-inbox-chat-column > div { min-height: min(65vh, 590px) !important; }
+  .fp-inbox-owner-action { min-height: 44px; }
+  .fp-inbox-compose button { min-height: 44px; }
+  .fp-inbox-compose input { font-size: 16px !important; }
+}

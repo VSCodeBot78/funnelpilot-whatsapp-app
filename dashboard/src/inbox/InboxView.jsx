@@ -13,6 +13,8 @@ export default function InboxView({
   openTabContacts = [],
   activeContactBooking = {},
   activeConversation = null,
+  mobilePane = "list",
+  onMobilePaneChange = () => {},
   loading = false,
   message = "",
   newManualMessage,
@@ -25,6 +27,16 @@ export default function InboxView({
   onCloseChatTab,
   onReloadInbox,
 }) {
+  const showConversation = Boolean(activeContact);
+  const stopped = activeConversation?.flags?.stopped === true;
+  const confirmRelease = () => {
+    if (stopped) return;
+    if (typeof window !== "undefined" && !window.confirm(
+      "Chat wirklich an Pete zurückgeben? Pete darf nur antworten, wenn alle weiteren Freigaben aktiv sind."
+    )) return;
+    onReleaseConversation?.();
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
@@ -65,8 +77,31 @@ export default function InboxView({
         </div>
       ) : null}
 
+      <nav className="fp-mobile-inbox-nav" aria-label="Mobile Inbox-Ansicht">
+        {[
+          { key: "list", label: "Chats" },
+          { key: "chat", label: "Unterhaltung" },
+          { key: "context", label: "Infos" },
+        ].map(({ key, label }) => (
+          <button key={key} type="button"
+            aria-pressed={mobilePane === key}
+            disabled={key !== "list" && !showConversation}
+            onClick={() => onMobilePaneChange(key)}
+            style={{
+              border: `1px solid ${colors.border}`,
+              borderRadius: 9,
+              color: colors.text,
+              background: mobilePane === key ? colors.hover : colors.panel,
+              fontWeight: mobilePane === key ? 750 : 500,
+            }}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
       <div
         className="fp-inbox-grid"
+        data-mobile-pane={mobilePane}
         style={{
           display: "grid",
           gap: 0,
@@ -111,7 +146,7 @@ export default function InboxView({
             onNewManualMessageChange={onNewManualMessageChange}
             onSendManualMessage={onSendManualMessage}
             onTakeOverConversation={onTakeOverConversation}
-            onReleaseConversation={onReleaseConversation}
+            onReleaseConversation={confirmRelease}
             onSetActiveContactId={onSetActiveContactId}
             onCloseChatTab={onCloseChatTab}
           />

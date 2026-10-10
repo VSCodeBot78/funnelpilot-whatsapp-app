@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { filterInboxContacts, getInboxFilterCounts } from "./mobileInboxFilters";
 import {
   formatRelativeMinutes,
   getCampaignById,
@@ -14,6 +15,9 @@ export default function InboxLeadList({
   activeContactId,
   onOpenChat,
 }) {
+  const [filter, setFilter] = useState("all");
+  const counts = getInboxFilterCounts(contacts);
+  const visible = filterInboxContacts(contacts, filter);
   return (
     <div
       style={{
@@ -38,13 +42,39 @@ export default function InboxLeadList({
         <div style={{ color: colors.sub, fontSize: 11 }}>{contacts.length} Leads</div>
       </div>
 
+      <div className="fp-inbox-priority-filters" role="group" aria-label="Lead-Filter">
+        {[
+          ["all", "Alle", counts.all],
+          ["hot", "Heiß", counts.hot],
+          ["human", "Übernommen", counts.human],
+        ].map(([key, label, count]) => (
+          <button type="button" key={key} aria-pressed={filter === key}
+            onClick={() => setFilter(key)}
+            style={{
+              background: filter === key ? colors.hover : colors.panel,
+              color: colors.text,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 8,
+              fontWeight: filter === key ? 750 : 500,
+            }}>
+            {label} ({count})
+          </button>
+        ))}
+      </div>
       <div
         style={{
           overflow: "auto",
           flex: 1,
         }}
       >
-        {contacts.map((contact) => {
+        {visible.length === 0 ? (
+          <div style={{ padding: 15, fontSize: 12, color: colors.sub }}>
+            {contacts.length === 0
+              ? "Keine Leads geladen. Verbindung prüfen oder Inbox neu laden."
+              : "Keine Leads mit diesem gespeicherten Status."}
+          </div>
+        ) : null}
+        {visible.map((contact) => {
           const lastMessage = getLastMessage(contact);
           const isActive = activeContactId === contact.id;
           const campaign = getCampaignById(campaigns, contact.campaignId);
@@ -137,6 +167,12 @@ export default function InboxLeadList({
                     }}
                   >
                     {campaign.name}
+                  </span>
+                ) : null}
+
+                {contact.inboxOwner === "human" || contact.inboxAiPaused === true ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: colors.warning }}>
+                    Jochen · Pete pausiert
                   </span>
                 ) : null}
 

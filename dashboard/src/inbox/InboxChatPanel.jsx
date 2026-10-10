@@ -72,7 +72,9 @@ export default function InboxChatPanel({
   const owner = activeConversation?.owner || "ai";
   const aiPaused = activeConversation?.aiPaused === true;
   const humanOwned = owner === "human" || aiPaused;
-  const manualInputDisabled = false;
+  const stopped = activeConversation?.flags?.stopped === true;
+  // A disconnected inbox must never display a fake locally "sent" message.
+  const manualInputDisabled = !activeConversation;
 
   return (
     <div
@@ -161,20 +163,28 @@ export default function InboxChatPanel({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {activeConversation ? (
             humanOwned ? (
-              <button
-                type="button"
-                onClick={onReleaseConversation}
-                style={primaryButtonStyle(colors)}
-              >
-                An KI zurückgeben
-              </button>
+              stopped ? (
+                <span style={{ color: colors.warning, fontSize: 12, fontWeight: 700 }}>
+                  STOP aktiv · Pete bleibt gesperrt
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onReleaseConversation}
+                  className="fp-inbox-owner-action"
+                  style={primaryButtonStyle(colors)}
+                >
+                  An Pete zurückgeben
+                </button>
+              )
             ) : (
               <button
                 type="button"
                 onClick={onTakeOverConversation}
+                className="fp-inbox-owner-action"
                 style={ghostButtonStyle(colors)}
               >
-                Übernehmen
+                Pete pausieren · Übernehmen
               </button>
             )
           ) : null}
@@ -258,22 +268,15 @@ export default function InboxChatPanel({
           flexDirection: "column",
         }}
       >
-        {activeConversation ? (
-          <div
-            style={{
-              fontSize: 12,
-              color: colors.sub,
-              lineHeight: 1.5,
-            }}
-          >
-            Manuelle Nachricht übernimmt den Chat automatisch und pausiert die KI.
-            Der Versand läuft über den Kanal des Leads. Ist der Transport noch im
-            Dry-run oder nicht freigeschaltet, bleibt die Nachricht im Eingabefeld
-            und wird ausdrücklich als nicht gesendet gemeldet.
-          </div>
-        ) : null}
+        <div
+          style={{ fontSize: 12, color: colors.sub, lineHeight: 1.5 }}
+        >
+          {activeConversation
+            ? "Manuelle Nachricht pausiert Pete. Im Testmodus bleibt sie ungesendet und im Eingabefeld."
+            : "Kein bestätigter Backend-Chat. Manuelle Nachrichten sind gesperrt, bis der Status geladen ist."}
+        </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="fp-inbox-compose">
           <input
             value={newManualMessage}
             onChange={(e) => onNewManualMessageChange(e.target.value)}

@@ -56,7 +56,7 @@ test("Simplified workspace preserves explicit testchat access and hidden admin t
   assert.match(home, /<details className="fp-home-setup"/);
 });
 
-test("Mobile Inbox stacks panels and offline backend displays no dummy pipeline", () => {
+test("Mobile Inbox retains a safe offline backend and single-column layout", () => {
   const css = read("../workspace.css");
   const inbox = read("../inbox/InboxView.jsx");
   const leads = read("../hooks/useLeads.js");
