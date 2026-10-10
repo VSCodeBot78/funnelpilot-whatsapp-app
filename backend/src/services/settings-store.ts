@@ -183,7 +183,14 @@ export function readSettings(): SettingsConfig {
 
   try {
     const raw = fs.readFileSync(SETTINGS_FILE, "utf8");
+    if (env.NODE_ENV === "production" && !raw.trim()) {
+      throw new Error("empty_production_settings");
+    }
     const parsed = JSON.parse(raw || "{}") as Partial<SettingsConfig>;
+    if (env.NODE_ENV === "production" &&
+        (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) {
+      throw new Error("invalid_production_settings_shape");
+    }
 
     return {
       ...DEFAULT_SETTINGS,
