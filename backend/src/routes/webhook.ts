@@ -290,7 +290,8 @@ router.post("/checkout", genericWebhookGuard, (req, res) => {
       starterProductId: payload.productId?.trim(),
 
       onboardingBookingUrl,
-      onboardingPromptSentAt: now,
+      // Checkout only prepares the message; it does not send via Meta.
+      onboardingPromptPreparedAt: now,
     });
 
     patchFlags(state, {
