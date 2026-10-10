@@ -12,6 +12,7 @@ import {
   persistConversationState,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { readSettings } from "../services/settings-store.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
 import { evaluateInstagramAutomationGate } from "../services/instagram-automation-gate.service.js";
@@ -505,6 +506,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
           leadId: leadSync.lead.id,
           campaignId: leadSync.campaignId,
           messageText: event.text,
+          conversationMode: readSettings().dmConversationMode === "natural" ? "natural" : "legacy",
         });
 
         engineProcessed = true;
