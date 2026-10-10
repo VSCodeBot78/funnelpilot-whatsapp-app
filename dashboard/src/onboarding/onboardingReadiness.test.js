@@ -23,6 +23,7 @@ test("unreachable backend is never treated as configured or safely locked", () =
 
 test("configured credentials are never a live Meta verification", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramVerifyTokenConfigured: true,
     instagramAppSecretConfigured: true,
@@ -43,6 +44,7 @@ test("configured credentials are never a live Meta verification", () => {
 
 test("missing app secret prevents configured Instagram status", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramVerifyTokenConfigured: true,
     instagramAppSecretConfigured: false,
@@ -55,6 +57,7 @@ test("missing app secret prevents configured Instagram status", () => {
 
 test("enabled channel send is flagged as unsafe during initial laptop test", () => {
   const state = getOnboardingReadiness({
+    ...safeLocalFlags,
     ok: true,
     instagramSendEnabled: true,
     whatsappSendEnabled: false,
