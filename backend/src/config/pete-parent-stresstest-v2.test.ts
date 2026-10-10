@@ -198,6 +198,32 @@ test("Phase 30: 70 roleplayed parent conversations, 210 lead turns, no live API"
           } else {
             totalSuppressed++;
           }
+
+          if (section.focus === "free_guide" && si === 0 && turnIndex === 2) {
+            assert.doesNotMatch(pete ?? "", /\?/,
+              "Closing an info-only conversation must not restart qualification");
+          }
+          if (section.focus === "no_sales" && si === 0 && turnIndex === 2) {
+            assert.doesNotMatch(pete ?? "", /\?/,
+              "A parent who may return later is not an invitation to qualify");
+          }
+          if (section.focus === "budget" && turnIndex === 0) {
+            assert.doesNotMatch(pete ?? "", /größte Knackpunkt im Alltag/i,
+              "Explicit affordability concerns must not fall into generic opening");
+            assert.match(pete ?? "", /Geld|Preis|leisten|finanz|Budget/i);
+          }
+          if (section.focus === "approved_price" && si === 0 && turnIndex === 1) {
+            assert.match(pete ?? "", /no-bullshit-elternfitness-selbststarter/,
+              "Concrete Selfstarter contents question needs grounded product information");
+          }
+          if (section.focus === "unapproved_price" && si === 0 && turnIndex === 1) {
+            assert.match(pete ?? "", /Jochen persönlich|klärt Jochen/i,
+              "Unverified credit question must not restart qualification");
+          }
+          if (section.focus === "trust" && si === 0 && turnIndex === 2) {
+            assert.match(pete ?? "", /Ernährung|Bewegung|Schlaf/i);
+            assert.doesNotMatch(pete ?? "", /größte Knackpunkt im Alltag/i);
+          }
           if (section.focus === "no_sales" && turnIndex === 0) {
             assert.doesNotMatch(pete ?? "", /499\s*€|14,95\s*€|checkout|calendly|jetzt buchen/i);
           }
