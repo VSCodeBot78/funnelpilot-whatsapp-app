@@ -14,6 +14,7 @@ delete process.env.OPENAI_API_KEY;
 const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
 const { clearConversationStore } = await import("../data/store.js");
+const { isMultiplePeopleIntroduction, parseName } = await import("../domain/name-parser.js");
 
 const samples = [
   ["Selbststarter und Preis", "Was kostet der Selbststarter?"],
@@ -90,4 +91,42 @@ test("Founder review: real short natural DM conversation for a parent", async ()
     }));
     assert.ok(result.text || result.replySuppressedReason);
   }
+});
+
+test("Parent without first name is not interpreted as a multi-person introduction", async () => {
+  clearConversationStore();
+  const parentText = "Ich bin Papa von zwei Kindern und abends immer platt";
+  assert.equal(isMultiplePeopleIntroduction(parentText), false);
+  assert.equal(isMultiplePeopleIntroduction("Max und Lena"), true);
+  assert.equal(parseName(parentText), null);
+
+  const first = await processIncomingMessage({
+    leadId: "review-parent-intro-no-name",
+    campaignId: DEFAULT_CAMPAIGN_ID,
+    messageText: parentText,
+  });
+  assert.equal(first.nextStep, "ask_name");
+  assert.doesNotMatch(first.text || "", /falls ihr zu zweit seid/i);
+  assert.equal(first.state.answers.parentRole, "papa");
+
+  const second = await processIncomingMessage({
+    leadId: "review-parent-intro-no-name",
+    campaignId: DEFAULT_CAMPAIGN_ID,
+    messageText: "Tom",
+  });
+  assert.equal(second.nextStep, "intro_ack");
+  assert.equal(second.state.answers.parentRole, "papa");
+
+  const third = await processIncomingMessage({
+    leadId: "review-parent-intro-no-name",
+    campaignId: DEFAULT_CAMPAIGN_ID,
+    messageText: "Ja, leg los",
+  });
+  assert.equal(third.nextStep, "situation_choice");
+  console.log("FP_DM_FIXED " + JSON.stringify({
+    parentMessage: parentText,
+    firstReply: first.text,
+    followUpAfterFirstName: second.text,
+    afterConsent: third.text,
+  }));
 });
