@@ -25,6 +25,8 @@ const {
   getConversationState,
 } = await import("../data/store.js");
 const { default: app } = await import("../app.js");
+const { syncInstagramLead } = await import("../services/instagram-lead-sync.service.js");
+const { saveLead } = await import("../data/leads.store.js");
 
 function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
@@ -118,6 +120,137 @@ test("Phase 12 real follow-up transport truth", async (t) => {
       sentHistoryBefore,
     );
     assert.equal(persisted.ghosting.lastSentStage, undefined);
+  });
+
+  await t.test("ghosting respects explicit Funnel Pilot handoff and stays silent when bot is disabled", async () => {
+    clearConversationStore();
+
+    const leadSync = syncInstagramLead({
+      instagramScopedId: "followup-handoff-disabled",
+      botEnabledForNewLead: false,
+    });
+    const state = getOrCreateConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+    state.source = "Instagram";
+    state.lastAssistantMessageAt = hoursAgo(96);
+    state.lastUserMessageAt = undefined;
+    state.owner = "ai";
+    state.aiPaused = false;
+    state.flags.stopped = false;
+    state.ghosting = {
+      active: false,
+      cycle: 0,
+      stage: "inactive",
+      isDead: false,
+      sentHistory: [],
+    };
+    persistConversationState(state);
+
+    await withServer(async (baseUrl) => {
+      const response = await fetch(
+        baseUrl +
+          "/ghosting/send-due/" +
+          encodeURIComponent(leadSync.campaignId) +
+          "/" +
+          encodeURIComponent(leadSync.lead.id),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sendAt: new Date().toISOString() }),
+        },
+      );
+
+      assert.equal(response.status, 200);
+      const result = (await response.json()) as {
+        sent?: boolean;
+        sendSkipped?: boolean;
+        sendSkipReason?: string;
+      };
+
+      assert.equal(result.sent, false);
+      assert.equal(result.sendSkipped, true);
+      assert.equal(
+        result.sendSkipReason,
+        "outbound_guard_lead_bot_disabled",
+      );
+    });
+
+    const persisted = getConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+    assert.ok(persisted);
+    assert.equal(persisted.messages.length, 0);
+    assert.equal(persisted.ghosting.sentHistory?.length ?? 0, 0);
+  });
+
+  await t.test("provider follow-up respects excluded leads", async () => {
+    clearConversationStore();
+
+    const leadSync = syncInstagramLead({
+      instagramScopedId: "followup-excluded",
+      botEnabledForNewLead: true,
+    });
+    saveLead({
+      ...leadSync.lead,
+      excluded: true,
+    });
+
+    const state = getOrCreateConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+    state.source = "Instagram";
+    state.owner = "ai";
+    state.aiPaused = false;
+    state.flags.stopped = false;
+    state.providerBooking = {
+      status: "awaiting_booking",
+      active: true,
+      stage: "inactive",
+      linkSentAt: hoursAgo(72),
+      sentHistory: [],
+    };
+    persistConversationState(state);
+
+    await withServer(async (baseUrl) => {
+      const response = await fetch(
+        baseUrl +
+          "/provider-booking/send-due/" +
+          encodeURIComponent(leadSync.campaignId) +
+          "/" +
+          encodeURIComponent(leadSync.lead.id),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sentAt: new Date().toISOString() }),
+        },
+      );
+
+      assert.equal(response.status, 200);
+      const result = (await response.json()) as {
+        sent?: boolean;
+        sendSkipped?: boolean;
+        sendSkipReason?: string;
+      };
+
+      assert.equal(result.sent, false);
+      assert.equal(result.sendSkipped, true);
+      assert.equal(
+        result.sendSkipReason,
+        "outbound_guard_lead_excluded",
+      );
+    });
+
+    const persisted = getConversationState(
+      leadSync.lead.id,
+      leadSync.campaignId,
+    );
+    assert.ok(persisted);
+    assert.equal(persisted.messages.length, 0);
+    assert.equal(persisted.providerBooking.sentHistory.length, 0);
   });
 
   await t.test("provider booking dry-run stays pending and is not faked into history", async () => {

@@ -1,11 +1,14 @@
 import { getConversationState } from "../data/store.js";
+import { getLeadById } from "../data/leads.store.js";
 import { isAiReplyAllowed } from "../core/state-manager.js";
 
 export type AiOutboundGuardReason =
   | "conversation_missing"
   | "human_owned"
   | "ai_paused"
-  | "stopped";
+  | "stopped"
+  | "lead_bot_disabled"
+  | "lead_excluded";
 
 export type AiOutboundGuardResult =
   | { allowed: true; reason: null }
@@ -31,6 +34,15 @@ export function evaluateLatestAiOutboundPermission(params: {
 
   if (state.aiPaused === true) {
     return { allowed: false, reason: "ai_paused" };
+  }
+
+  const lead = getLeadById(params.leadId);
+  if (lead?.excluded) {
+    return { allowed: false, reason: "lead_excluded" };
+  }
+
+  if (lead && !lead.botEnabled) {
+    return { allowed: false, reason: "lead_bot_disabled" };
   }
 
   return isAiReplyAllowed(state)
