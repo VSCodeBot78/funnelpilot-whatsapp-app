@@ -331,6 +331,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
       return (
         <DashboardHome
           colors={colors}
+          apiBaseUrl={settings.apiBaseUrl}
           campaigns={campaigns}
           contacts={contacts}
           sortedContacts={sortedContacts}
