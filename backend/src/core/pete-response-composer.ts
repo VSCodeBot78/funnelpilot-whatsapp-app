@@ -87,8 +87,8 @@ function getCoachingEntryPriceText(_campaign: CampaignConfig): string {
 function buildDirectPriceReply(campaign: CampaignConfig): string {
   return (
     `Das 5-Wochen-Coaching liegt bei ${getCoachingEntryPriceText(campaign)}.\n` +
-    `Wenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.\n` +
-    "Wichtig ist, was zu deiner Situation und deinem Unterstützungsbedarf passt."
+    `Der Selbststarter liegt bei ${OFFER_TRUTH.selfstarter.priceText}.\n` +
+    `Die 6-Monats-Begleitung liegt regulär bei ${OFFER_TRUTH.longTerm.priceText}; nach dem 5-Wochen-Coaching bleiben durch die Anrechnung noch ${OFFER_TRUTH.longTerm.upgradeBalanceEur?.toLocaleString("de-DE")} € offen.`
   );
 }
 
