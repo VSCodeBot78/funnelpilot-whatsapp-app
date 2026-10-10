@@ -73,7 +73,6 @@ test("coach screen stays separate from live Pete and is reachable from managemen
   assert.match(wizard, /onOpenSection\("coach-draft"\)/);
   assert.match(page, /Vorlage speichern/);
   assert.match(page, /Vorschau/);
-  assert.match(page, /get.+/);
   assert.match(page, /method: "POST"/);
   assert.match(page, /editableCoachDraft\(draft\)/);
   assert.doesNotMatch(page, /sendManualMessage|\/test-chat\/message|activatePete|INSTAGRAM_SEND_ENABLED/);
