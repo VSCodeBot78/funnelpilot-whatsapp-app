@@ -919,6 +919,13 @@ function applyPeteDecisionStatePatch(params: {
   if (decision.decisionType === "price_objection") {
     patchFlags(state, { askedPrice: true });
 
+    if (decision.metadata?.shouldSetInfoOnly) {
+      resetPriceFlowState(state);
+      patchFlags(state, { wantsInfoOnly: true });
+      setCurrentStep(state, "info_only");
+      return;
+    }
+
     if (decision.action === "offer_booking") {
       resetPriceFlowState(state);
       patchFlags(state, { wantsBooking: true });
