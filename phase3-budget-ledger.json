@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "capMicroUsd": 8000000,
+  "spentMicroUsd": 0,
+  "reservedMicroUsd": 0,
+  "completedBatches": [],
+  "activeReservations": {},
+  "createdAt": "2026-10-11",
+  "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset."
+}
