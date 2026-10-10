@@ -71,6 +71,26 @@ if ($CheckOnly) {
   exit 0
 }
 
+# Refuse an existing service on any test port. It could run with unsafe old flags.
+foreach ($port in @(3001, 5173, 3002)) {
+  $client = New-Object System.Net.Sockets.TcpClient
+  try {
+    $connect = $client.BeginConnect("127.0.0.1", $port, $null, $null)
+    try {
+      if ($connect.AsyncWaitHandle.WaitOne(250)) {
+        try {
+          $client.EndConnect($connect)
+          throw "Port $port ist bereits belegt. Alte Testprozesse schliessen und erneut starten."
+        } catch [System.Net.Sockets.SocketException] { }
+      }
+    } finally {
+      $connect.AsyncWaitHandle.Close()
+    }
+  } finally {
+    $client.Close()
+  }
+}
+
 $escapedBackend = $backend.Replace("'", "''")
 $escapedDashboard = $dashboard.Replace("'", "''")
 $escapedRepo = $repo.Replace("'", "''")
