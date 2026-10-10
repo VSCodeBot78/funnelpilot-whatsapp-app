@@ -100,14 +100,14 @@ export default function SetupWizardModal({
   }
 
   function input(label, key, options = {}) {
-    const { multiline = false, placeholder = "" } = options;
+    const { multiline = false, placeholder = "", rows = 3 } = options;
     const style = { padding: "11px 12px", width: "100%", boxSizing: "border-box",
       border: "1px solid #cbd5e1", borderRadius: 9, color: "#0f172a",
       background: "#ffffff", fontSize: 14, marginTop: 6 };
     return <label style={{ fontSize: 13, color: "#334155", fontWeight: 700 }}>
       {label}
       {multiline
-        ? <textarea rows={3} style={{ ...style, resize: "vertical" }}
+        ? <textarea rows={rows} style={{ ...style, resize: "vertical" }}
             value={settings[key] || ""} placeholder={placeholder}
             onChange={e => update(key, e.target.value)} />
         : <input style={style} value={settings[key] || ""} placeholder={placeholder}
@@ -321,7 +321,7 @@ export default function SetupWizardModal({
                 {input("Markensprache / Tonalität", "brandVoice")}
                 <div>
                   {input("Master-Prompt: So soll Pete mit deinen Leads sprechen",
-                    "masterPrompt", { multiline: true,
+                    "masterPrompt", { multiline: true, rows: 9,
                     placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
                   <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
                     Für Eltern fit &amp; vital ist eine Startvorlage hinterlegt.
