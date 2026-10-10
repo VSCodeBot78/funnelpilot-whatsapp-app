@@ -347,6 +347,15 @@ function classifyLinkTarget(
     ]) !== undefined;
   const currentHasVideoContext =
     includesAnyKeyword(normalized, [
+      "elterncheck",
+      "eltern check",
+      "keto guide",
+      "keto-guide",
+      "ketoguide",
+      "selbststarter",
+      "selfstarter",
+      "eltern vital",
+      "eltern vital methode",
       "video",
       "anleitung",
       "kostenlos",
