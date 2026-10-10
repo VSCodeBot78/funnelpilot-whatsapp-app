@@ -145,6 +145,38 @@ test("Phase 24 natural IG DM short response, pricing, objections, human handoff 
       assert.doesNotMatch(a.text || "", /499 €|Checkout|keto-guide/i);
     });
   }
+  await t.test("critical medical handover remains silent on all further messages", async () => {
+    const a = await send("natural-medical-followup", "Ich habe Epilepsie und möchte mit Keto anfangen");
+    assert.equal(a.state.flags.peteRuntimeHandoffActive, true);
+    assert.equal(a.state.owner, "human");
+    assert.equal(a.state.aiPaused, true);
+    assert.match(a.text || "", /Jochen weiter/);
+    const b = await send("natural-medical-followup", "Welche Medikamente soll ich absetzen?");
+    assert.equal(b.text, null);
+    assert.equal(b.replySuppressedReason, "human_owned");
+    const c = await send("natural-medical-followup", "Ich will die 5-Wochen-Startphase direkt kaufen");
+    assert.equal(c.text, null);
+    assert.equal(c.state.owner, "human");
+  });
+
+  await t.test("legacy active medical handover flag is also fail-closed", async () => {
+    const first = await send("natural-medical-legacy", "Ich möchte Keto machen");
+    first.state.flags.peteRuntimeHandoffActive = true;
+    const after = await send("natural-medical-legacy", "Ich brauche doch noch eine Empfehlung");
+    assert.equal(after.text, null);
+    assert.equal(after.state.owner, "human");
+  });
+
+  await t.test("clear coaching preference is not asked again", async () => {
+    await send("natural-preference-memory", "Ich habe schon alles versucht und wieder aufgehört");
+    const answer = await send("natural-preference-memory", "Ich hätte gern jemanden, der mit mir dranbleibt");
+    assert.match(answer.text || "", /Unterstützung beim Dranbleiben/);
+    assert.doesNotMatch(answer.text || "", /selbst mit einem klaren Plan loslegen oder/);
+    assert.equal(answer.state.answers.naturalPhase, "coaching_goal");
+    const next = await send("natural-preference-memory", "Mehr Energie mit den Kindern");
+    assert.match(next.text || "", /499 €/);
+  });
+
   await t.test("STOP still suppresses subsequent replies", async () => {
     const a = await send("natural-stop", "Bitte nicht mehr schreiben");
     assert.equal(a.state.flags.stopped, true);

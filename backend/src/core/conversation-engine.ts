@@ -875,6 +875,9 @@ function applyPeteDecisionStatePatch(params: {
       peteRuntimeSafetyReason: decision.reason,
       peteRuntimeSafetyLastAt: nowIso(),
     });
+    // A critical safety escalation belongs to a human. Taking ownership now
+    // prevents a second automatic medical answer on the next incoming DM.
+    takeOverByHuman(state);
     return;
   }
 
@@ -1250,6 +1253,15 @@ export async function processIncomingMessage(
       state,
       replySuppressedReason: "human_owned",
     };
+  }
+
+  // Older conversations can be marked for handover before the owner field is
+  // migrated. Never re-run medical/sales decisions while such a handover awaits.
+  if (state.flags.peteRuntimeHandoffActive) {
+    takeOverByHuman(state);
+    persistConversationState(state);
+    return { text: null, nextStep: state.currentStep,
+      detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
   }
 
   if (input.conversationMode === "natural") {
