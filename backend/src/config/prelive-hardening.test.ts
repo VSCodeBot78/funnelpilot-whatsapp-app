@@ -86,6 +86,17 @@ test("Phase 6 pre-live hardening", async (t) => {
       }),
       { allowed: true, reason: null },
     );
+
+    state.flags.stopped = true;
+    persistConversationState(state);
+
+    assert.deepEqual(
+      evaluateLatestAiOutboundPermission({
+        leadId: state.leadId,
+        campaignId: state.campaignId,
+      }),
+      { allowed: false, reason: "stopped" },
+    );
   });
 
   await t.test("dashboard offer links are used by Pete at runtime", () => {
@@ -117,14 +128,26 @@ test("Phase 6 pre-live hardening", async (t) => {
       runtimeCampaign.offerContext?.infoLink3Url,
       customCheckUrl,
     );
+    assert.equal(
+      runtimeCampaign.offerContext?.priceInquiryText,
+      "Test",
+    );
 
-    const reply = buildPeteRuntimeInfoLinkReply(
+    const checkReply = buildPeteRuntimeInfoLinkReply(
       "Schick mir den Elterncheck",
       runtimeCampaign,
     );
 
-    assert.match(reply, /custom-elterncheck/);
-    assert.doesNotMatch(reply, /check\.jochen-kammerer\.de/);
+    assert.match(checkReply, /custom-elterncheck/);
+    assert.doesNotMatch(checkReply, /check\.jochen-kammerer\.de/);
+
+    const ketoReply = buildPeteRuntimeInfoLinkReply(
+      "Schick mir den Keto Guide",
+      runtimeCampaign,
+    );
+
+    assert.match(ketoReply, /example\.test\/keto-guide/);
+    assert.doesNotMatch(ketoReply, /jochen-kammerer\.de\/keto-guide/);
   });
 
   await t.test("generic info request exposes the editable link labels", () => {
