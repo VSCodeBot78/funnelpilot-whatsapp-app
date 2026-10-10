@@ -24,6 +24,7 @@ const {
 } = await import("../data/leads.store.js");
 const {
   clearConversationStore,
+  getConversationState,
 } = await import("../data/store.js");
 
 function sign(raw: string): string {
@@ -133,6 +134,115 @@ test("Phase 6 WhatsApp transport safety", async (t) => {
       assert.equal(json.sendSkipped, true);
 
       deleteLead(`whatsapp:${from}`);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  await t.test("WhatsApp Business App coexistence echo takes human ownership and keeps Pete silent", async () => {
+    clearConversationStore();
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const baseUrl = `http://127.0.0.1:${address.port}`;
+      const customer = "491708888888";
+      const leadId = `whatsapp:${customer}`;
+
+      const echoPayload = {
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            id: "test-waba",
+            changes: [
+              {
+                field: "smb_message_echoes",
+                value: {
+                  messaging_product: "whatsapp",
+                  metadata: {
+                    display_phone_number: "491111111111",
+                    phone_number_id: "test-phone-number-id",
+                  },
+                  message_echoes: [
+                    {
+                      from: "491111111111",
+                      to: customer,
+                      id: "wa-business-app-echo-1",
+                      timestamp: String(Math.floor(Date.now() / 1000)),
+                      type: "text",
+                      text: {
+                        body: "Hier ist Jochen persönlich.",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      const echoResult = await postSigned(baseUrl, echoPayload);
+      assert.equal(echoResult.response.status, 200);
+      assert.equal(echoResult.json.ok, true);
+      assert.equal(echoResult.json.humanEchoTakeovers, 1);
+      assert.equal(echoResult.json.conversationUpdated, true);
+      assert.equal(echoResult.json.messageAppended, true);
+
+      const humanOwned = getConversationState(
+        leadId,
+        "eltern-vital-fit",
+      );
+      assert.ok(humanOwned);
+      assert.equal(humanOwned.owner, "human");
+      assert.equal(humanOwned.aiPaused, true);
+      assert.equal(humanOwned.lastActor, "human");
+      assert.equal(humanOwned.messages.at(-1)?.actor, "human");
+      assert.equal(
+        humanOwned.messages.at(-1)?.text,
+        "Hier ist Jochen persönlich.",
+      );
+      assert.equal(
+        humanOwned.messages.at(-1)?.transport,
+        "whatsapp_business_app",
+      );
+      assert.equal(humanOwned.messages.at(-1)?.sent, true);
+      assert.equal(
+        humanOwned.messages.at(-1)?.metaMessageId,
+        "wa-business-app-echo-1",
+      );
+
+      const inboundAfterTakeover = await postSigned(
+        baseUrl,
+        buildPayload({
+          messageId: "wa-after-business-app-takeover",
+          from: customer,
+          text: "Danke dir",
+          name: "Coexistence Test",
+        }),
+      );
+
+      assert.equal(inboundAfterTakeover.response.status, 200);
+      assert.equal(inboundAfterTakeover.json.ok, true);
+      assert.equal(inboundAfterTakeover.json.processed, 1);
+      assert.equal(inboundAfterTakeover.json.engineProcessed, true);
+      assert.equal(inboundAfterTakeover.json.botReplyPrepared, false);
+      assert.equal(inboundAfterTakeover.json.sent, false);
+
+      const stillHumanOwned = getConversationState(
+        leadId,
+        "eltern-vital-fit",
+      );
+      assert.ok(stillHumanOwned);
+      assert.equal(stillHumanOwned.owner, "human");
+      assert.equal(stillHumanOwned.aiPaused, true);
+
+      deleteLead(leadId);
+      clearConversationStore();
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
