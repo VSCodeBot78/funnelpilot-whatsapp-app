@@ -442,8 +442,10 @@ export default function SetupWizardModal({
 
           {stage === 4 && <div>
             <h3 style={{ marginTop: 0 }}>Teste Funnel Pilot vor dem Start</h3>
-            <p style={small}>Das Dashboard, Pete, Leads, Inbox, Termine und Follow-ups
-              lassen sich lokal prüfen. Echte Meta-Sends bleiben deaktiviert.</p>
+            <p style={small}>Dashboard, Leads, Inbox, Termine und Follow-ups
+              lassen sich lokal prüfen. Der Pete-Testchat verwendet weiterhin
+              den bestehenden Single-Workspace, NICHT automatisch den neuen
+              Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert.</p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button type="button" style={primary} onClick={onOpenTestChat}>Pete-Testgespräch öffnen</button>
               <button type="button" style={btn} onClick={() => onOpenSection("inbox")}>Inbox / Human Takeover</button>
