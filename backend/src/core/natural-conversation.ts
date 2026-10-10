@@ -6,7 +6,11 @@
  * This is a deterministic, inspectable baseline, NOT a live LLM claim.
  * Central safety/stop/human ownership checks run before this module.
  */
-import { OFFER_TRUTH } from "../config/offer-truth.js";
+import {
+  OFFER_TRUTH,
+  LONG_TERM_PRICE_UNVERIFIED_REPLY,
+  isUnverifiedLongTermPriceQuestion,
+} from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 
 export type NaturalReply = {
@@ -243,11 +247,8 @@ export function getNaturalConversationReply(params: {
   // Price reference: first use the present chat context, never a three-product list.
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
       !matches(input, /\b(nicht leisten|zu teuer|kein geld|kein budget|budget problem|finanziell nicht)\b/)) {
-    if (matches(input, /\b(6[\s-]*monat(?:e|s)|sechs[\s-]*monat(?:e|s)|premium|advanced)\b/)) {
-      return {
-        text: "Den konkreten Preis und Umfang der längeren Begleitung klärt Jochen aktuell persönlich. Ich möchte dir hier nichts Falsches nennen.\nMöchtest du dazu direkt mit ihm sprechen?",
-        phase: "human_choice",
-      };
+    if (isUnverifiedLongTermPriceQuestion(input)) {
+      return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, phase: "info", infoOnly: true };
     }
     if (matches(input, /\b(selbststarter|buch)\b/) || lastTrack === "selfstarter") {
       return { text: "Der Selbststarter liegt bei " + OFFER_TRUTH.selfstarter.priceText + ".",
