@@ -34,7 +34,8 @@ function wantsPersonalSupport(value: string): boolean {
   return /\b(begleitung|coaching|coach|unterstutzung|personliche hilfe|gemeinsam|jemand(?:en)?|dranbleib(?:en|t|e|st)?|an meiner seite)\b/.test(text);
 }
 function wantsSelfGuided(value: string): boolean {
-  return /\b(selbst|allein|selber|ohne coach|erstmal infos|selbststarter)\b/.test(normalize(value));
+  const input = normalize(value);
+  return /\b(ohne coach|erstmal infos|selbststarter|selbst (?:versuchen|machen|loslegen|starten|angehen|probieren)|selber (?:versuchen|machen|loslegen|starten|angehen|probieren)|allein (?:versuchen|machen|loslegen|starten|angehen|probieren))\b/.test(input);
 }
 const bookingLink = (url?: string) =>
   url && /^https:\/\//i.test(url) ? url : null;
@@ -62,9 +63,37 @@ export function getNaturalConversationReply(params: {
   // Provider booking follows its verified legacy webhook confirmation flow.
   // A self-reported "I booked" must never be treated as verified.
   if (state.currentStep === "booking" &&
-      /^(hab(e)? gebucht|ist gebucht|termin steht|bin eingetragen)$/i.test(input)) {
-    return null;
+      /\b(hab(?:e)? gebucht|ist gebucht|termin steht|bin eingetragen|termin bestatigt|bestatigung|termin jetzt|hab den termin)\b/i.test(input)) {
+    // Only a signed provider callback can mark a booking as confirmed.
+    return state.providerBooking?.status === "booked"
+      ? { text: "Ja, dein Termin ist im Buchungssystem bestätigt.", phase: "booking_confirmed" }
+      : { text: "Ich kann den Termin hier noch nicht als bestätigt sehen. Bitte prüf, ob du von Calendly eine Bestätigung erhalten hast.",
+          phase: "booking_offered" };
   }
+
+  // A human may reject marketing or call out mechanical questioning without
+  // issuing a formal STOP. Respect that boundary instead of repeating a pitch.
+  if (matches(input,
+      /\b(keine werbung|kein verkaufsgesprach|keine verkaufsgesprach|kein interesse|nicht interessiert|nur schauen|ich schaue nur|ich will keine werbung|will nichts kaufen|bitte nicht verkaufen)\b/)) {
+    return {
+      text: "Alles gut. Kein Verkaufsgespräch. Wenn du irgendwann eine konkrete Frage hast, kannst du dich einfach melden.",
+      phase: "info", infoOnly: true,
+    };
+  }
+  if (matches(input,
+      /\b(das hast du mich|hast du mich (doch )?(schon|gerade)|schon gefragt|gleiche frage|immer wieder das gleiche|fragst du nochmal)\b/)) {
+    return {
+      text: "Stimmt, das war doppelt. Danke für den Hinweis. Ich will dich nicht mit Fragen nerven. Sag einfach, was du gerade wissen möchtest.",
+      phase: "info", infoOnly: true,
+    };
+  }
+  if (phase === "info" && matches(input,
+      /\b(danke|vielleicht spater|alles klar|passt so|ok danke)\b/)) {
+    return { text: "Gerne. Meld dich einfach, wenn du noch eine Frage hast.",
+      phase: "info", infoOnly: true };
+  }
+
+  const rejectsCall = matches(input, /\b(kein(?:en)?|ohne|nicht)\s+(gesprach|strategiegesprach|termin|call)\b/);
 
   // "Mit Jochen sprechen" is ambiguous: live chat or booking? Ask only once.
   if (phase === "human_choice") {
@@ -95,7 +124,7 @@ export function getNaturalConversationReply(params: {
     return { text: "Klar. Ich gebe den Chat an Jochen weiter.",
       phase: "human_handover", handoff: true };
   }
-  if (matches(input, /\b(strategiegesprach|termin buchen|termin vereinbaren)\b/)) {
+  if (!rejectsCall && matches(input, /\b(strategiegesprachstermin|strategiegesprach|termin buchen|termin vereinbaren|termin ausmachen|termin machen)\b/)) {
     return bookingUrl
       ? { text: "Hier kannst du dir direkt ein Strategiegespräch aussuchen:\n" + bookingUrl,
           phase: "booking_offered", booking: true }
@@ -103,6 +132,24 @@ export function getNaturalConversationReply(params: {
           phase: "human_handover", handoff: true };
   }
 
+  if (matches(input, /\b(wie kann ich wissen|was ist anders|warum sollte ich vertrauen|woran erkenne ich)\b/)) {
+    return {
+      text: "Das musst du nicht blind glauben. Jochen kann dir konkret erklären, wie er arbeitet und was die Begleitung beinhaltet. Du kannst dann in Ruhe entscheiden.\nWas wäre dir dabei am wichtigsten?",
+      phase: "trust_clarify",
+    };
+  }
+  if (phase === "trust_clarify") {
+    return {
+      text: "Kann ich verstehen. Du musst hier keine Entscheidung treffen.\nWas wäre dir wichtig, damit du dich bei einer Begleitung gut aufgehoben fühlst?",
+      phase: "info",
+    };
+  }
+  if (matches(input, /\b(verkaufsbot|wieder so ein verkauf|abzock|abgezockt|abgezock|scam|verarscht|vertrauen|vertraue|geldmacherei)\b/)) {
+    return {
+      text: "Verstehe, dass du nach solchen Erfahrungen skeptisch bist. Ich bin Pete, Jochens KI-Assistent, und du musst hier nichts kaufen.\nWas war beim letzten Angebot für dich das größte Problem?",
+      phase: "trust_clarify",
+    };
+  }
   if (matches(input, /\b(bist du eine ki|schreibt jochen|bist du ein bot)\b/)) {
     return {
       text: "Ich bin Pete, Jochens KI-Assistent. Ich helfe hier bei der ersten Einordnung. Wenn es persönlicher wird, übernimmt Jochen.",
@@ -166,6 +213,29 @@ export function getNaturalConversationReply(params: {
       infoOnly: true };
   }
 
+  if (phase === "budget_clarify") {
+    if (matches(input, /\b(preis|geld|budget|finanziell|kann ich nicht|zu teuer|kita[\s-]*kosten|wirklich das geld)\b/) &&
+        !matches(input, /\b(unsicher|zweifel|weis nicht|weiss nicht)\b/)) {
+      return { text: "Dann macht es gerade keinen Sinn, dich in eine Begleitung zu drängen.\n" +
+        "Wäre ein selbstständiger Einstieg für 14,95 € eine Option oder ist im Moment auch das zu viel?",
+        phase: "selfstarter_budget_offer", track: "coaching" };
+    }
+    return { text: "Verstanden. Was müsste für dich klarer sein, damit du einschätzen kannst, ob die Begleitung passt?",
+      phase: "coaching_next", track: "coaching" };
+  }
+  if (phase === "selfstarter_budget_offer") {
+    if (matches(input, /\b(auch das zu viel|auch nicht|gerade nicht|kein geld|kein budget|nichts kaufen|nein danke)\b/)) {
+      return { text: "Verstanden. Dann lassen wir das erstmal. Wenn du später eine Frage hast, meld dich gern.",
+        phase: "info", infoOnly: true };
+    }
+    if (matches(input, /\b(ja|okay|ok|interessiert|anschauen|selbststarter|geht|machbar|passt)\b/)) {
+      return { text: selfstarterText, phase: "selfstarter_offered",
+        track: "selfstarter", infoOnly: true };
+    }
+    return { text: "Kein Stress. Du musst dich jetzt nicht entscheiden.",
+      phase: "info", infoOnly: true };
+  }
+
   // Price reference: first use the present chat context, never a three-product list.
   if (matches(input, /\b(was kostet|preis|kosten|wie teuer|investition|sag mir jetzt den preis)\b/) &&
       !matches(input, /\b(nicht leisten|zu teuer|kein geld|kein budget|budget problem|finanziell nicht)\b/)) {
@@ -204,7 +274,7 @@ export function getNaturalConversationReply(params: {
     return { text: "Verstanden. Was wäre für dich gerade der wichtigste Punkt, damit du entscheiden kannst, ob die Begleitung sinnvoll ist?",
       phase: "coaching_next", track: "coaching" };
   }
-  if (matches(input, /\b(ich muss uberlegen|muss ich uberlegen|ich uberlege es mir|bin noch unsicher|ich weiss nicht|ich weiß nicht|brauche bedenkzeit|noch nicht sicher)\b/)) {
+  if (matches(input, /\b(ich muss uberlegen|muss ich uberlegen|ich uberlege es mir|bin noch unsicher|brauche bedenkzeit|noch nicht sicher)\b/)) {
     return {
       text: "Klar, nimm dir die Zeit. Ist noch etwas zur Begleitung offen oder passt der Zeitpunkt gerade nicht?",
       phase: "think_clarify",
@@ -221,17 +291,9 @@ export function getNaturalConversationReply(params: {
         track: matches(input, /keto/) ? "keto" : "coaching" };
     }
   }
-  if (phase === "budget_clarify") {
-    if (matches(input, /\b(preis|geld|budget|finanziell|kann ich nicht|zu teuer)\b/) &&
-        !matches(input, /\b(unsicher|zweifel|weis nicht|weiss nicht)\b/)) {
-      return { text: "Dann macht es gerade keinen Sinn, dich in eine Begleitung zu drängen.\n" + selfstarterText,
-        phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
-    }
-    return { text: "Verstanden. Was müsste für dich klarer sein, damit du einschätzen kannst, ob die Begleitung passt?",
-      phase: "coaching_next", track: "coaching" };
-  }
-
-  if (matches(input, /\b(keine zeit fur sport|keine zeit zum trainieren|keine zeit fur training|keine zeit fur fitness)\b/)) {
+  if ((matches(input, /\b(keine zeit|wenig zeit|keinen freiraum)\b/) &&
+       matches(input, /\b(sport|training|fitness|trainieren)\b/)) ||
+       matches(input, /\b(fur sport .*keine zeit)\b/)) {
     return {
       text: "Das ist bei vielen Eltern genau der Knackpunkt. Job, Kinder und Alltag sind schon voll.\n" +
         "Was wäre bei dir realistisch: 10–20 Minuten ein paarmal pro Woche oder ist selbst das gerade schwierig?",
@@ -250,6 +312,13 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "keto_need") {
+    if (matches(input, /\b(familie|familienessen|kochen|extra kochen|alle|kinder)\b/)) {
+      return {
+        text: "Wenn du für alle kochst, darf Keto nicht bedeuten, dass du jeden Abend zwei Gerichte machen musst.\n" +
+          "Wo hakt es eher: beim gemeinsamen Essen oder bei der Planung?",
+        phase: "blocker", track: "keto",
+      };
+    }
     return {
       text: "Verstanden. Die Ernährung muss zu deinem Alltag passen, nicht umgekehrt.\n" +
         "Woran hakt es bei Keto bisher am meisten?",
@@ -271,14 +340,14 @@ export function getNaturalConversationReply(params: {
 
   if (phase === "coaching_close" || phase === "coaching_next") {
     if (matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
-        !matches(input, /\b(gesprach|strategie|termin)\b/)) {
+        (rejectsCall || !matches(input, /\b(gesprach|strategie|termin)\b/))) {
       return {
         text: "Hier kannst du dir die 5-Wochen-Startphase ansehen und direkt starten:\n" +
           OFFER_TRUTH.coachingEntry.checkoutUrl,
         phase: "checkout_offered", track: ketoInConversation ? "keto" : "coaching",
       };
     }
-    if (matches(input, /\b(termin|gesprach|strategie)\b/)) {
+    if (!rejectsCall && matches(input, /\b(termin|gesprach|strategie)\b/)) {
       return bookingUrl
         ? { text: "Hier kannst du dir ein Strategiegespräch aussuchen:\n" + bookingUrl,
             phase: "booking_offered", booking: true }
@@ -293,6 +362,10 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "preference") {
+    if (matches(input, /\b(keinen starren plan|nicht schon wieder einen starren plan|keine starre diat|keine strenge diat)\b/)) {
+      return { text: "Das verstehe ich. Noch ein starrer Plan, der nicht zum Familienalltag passt, bringt dir nichts.\nWäre dir flexible Unterstützung beim Umsetzen lieber?",
+        phase: "preference", track: ketoInConversation ? "keto" : undefined };
+    }
     if (wantsSelfGuided(input)) {
       return { text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter", infoOnly: true };
     }
@@ -325,6 +398,12 @@ export function getNaturalConversationReply(params: {
   }
 
   if (phase === "attempts") {
+    if (matches(input, /\b(noch nie|nie richtig|gar nichts|noch nichts|nichts probiert|noch nicht angefangen)\b/)) {
+      return {
+        text: "Dann bist du eher am Anfang, und das ist völlig okay. Was würde dir den Einstieg gerade am meisten erleichtern?",
+        phase: "blocker", track: ketoInConversation ? "keto" : undefined,
+      };
+    }
     return {
       text: "Du hast also schon etwas probiert, aber es hat nicht dauerhaft gepasst.\n" +
         "Woran ist es bisher meistens gescheitert?",
@@ -332,6 +411,23 @@ export function getNaturalConversationReply(params: {
     };
   }
   if (phase === "blocker") {
+    if (matches(input, /\b(job|familie|kinder|schlaf|schichten)\b/) &&
+        matches(lastMessages, /\b(nicht mal zehn|wirklich null|gar keine zeit)\b/)) {
+      return {
+        text: "Mit Job und Familie ist bei dir gerade wirklich alles voll. Da muss jetzt nicht noch ein Trainingsprogramm oben drauf. Wenn wieder etwas Luft ist, können wir einen kleinen Einstieg suchen.",
+        phase: "info", infoOnly: true,
+      };
+    }
+    if (matches(input, /\b(unsicher|ob ich das packe|nicht schaffen|schaffe es nicht|angst dass)\b/)) {
+      return {
+        text: "Klar, wenn du erst anfängst, ist das eine Hürde. Es muss nicht gleich ein perfekter Trainingsplan sein.\nWas wäre für dich ein kleiner realistischer Anfang?",
+        phase: "preference",
+      };
+    }
+    if (matches(input, /\b(weiss nicht|weis nicht|keine ahnung|nicht sagen|weiss selber nicht|unsicher ob)\b/)) {
+      return { text: "Okay, dann will ich dir keine Ursache unterstellen.\nWas kommt dir am ehesten dazwischen: Zeit, Energie oder Planung?",
+        phase: "blocker", track: ketoInConversation ? "keto" : undefined };
+    }
     if (wantsPersonalSupport(input)) {
       return {
         text: "Du willst also nicht noch einen Plan, sondern Unterstützung beim Dranbleiben.\n" +
@@ -354,8 +450,8 @@ export function getNaturalConversationReply(params: {
       "Was hast du bisher versucht, um daran etwas zu ändern?", phase: "attempts" };
   }
 
-  if (matches(input, /\b(papa|mama|zwei kinder|kindern)\b/) &&
-      matches(input, /\b(platt|mude|erschopft|leer|keine energie)\b/)) {
+  if (matches(input, /\b(papa|mama|vater|mutter|kinder|kindern|schichtdienst|schichtarbeit)\b/) &&
+      matches(input, /\b(platt|mude|erschopft|leer|keine energie|kaputt|fertig)\b/)) {
     return {
       text: "Kinder, Job und abends komplett leer – dann fehlt dir wahrscheinlich nicht einfach nur Wissen 😅\n" +
         "Was zieht dir aktuell am meisten Energie: Job, Schlaf oder der ganze Alltag?",
