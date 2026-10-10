@@ -166,6 +166,20 @@ export default function SettingsBotPanel({
 
             <div style={{ marginTop: 12 }}>
               <FieldLabelWithInfo
+                label="Gesprächsmodus"
+                title="Natürliche DMs oder alter Auswahl-Funnel"
+                text="Natürlich: aufgreifen, spiegeln, eine Frage. Klassisch: bisheriger A-B-C-D-Ablauf. Betrifft den Testchat und Instagram, nicht rückwirkend WhatsApp."
+                placement="right"
+              />
+              <select style={inputStyle(colors)} value={safeSettings.dmConversationMode || "natural"}
+                onChange={event => updateField("dmConversationMode", event.target.value)}>
+                <option value="natural">Natürliches Gespräch (Standard)</option>
+                <option value="legacy">Klassischer A-B-C-D-Flow (Altmodus)</option>
+              </select>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
                 label="Master-Prompt für Pete"
                 title="Marken- und Zielgruppenprompt"
                 text="Eigene Sprache, Zielgruppe, Coach-Angebote, Gesprächsführung und Tabus. Der Text fließt in die OpenAI-Antwortschicht ein; feste Funnel-Antworten und Sicherheitsregeln gelten zusätzlich."
