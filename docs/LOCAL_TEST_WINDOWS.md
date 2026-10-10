@@ -284,3 +284,38 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps
 
 Sichere Freigabe nur nach gruener dynamischer Readiness und Preflight.
 Nicht selbst Allowlist-Inhalte oder Provider-Secrets im Chat posten.
+
+
+## Windows-Test 10.10.2026 – Preflight-Webhooks bei abgeschaltetem Testmodus
+
+Echte lokale Startausgabe: Readiness und alle sechs Relay-Tests waren gruen,
+aber `POST /webhook/checkout` und `POST /booking-events/provider`
+lieferten HTTP 400 statt des fuer abgeschaltete Routen erwarteten HTTP 404.
+
+**Ursache:** Die zwei `*WebhookGuard`-Middlewares sperrten die generischen
+Routen bislang nur bei `NODE_ENV=production`. Im gezielt auf
+`NODE_ENV=development` gesetzten sicheren Laptop-Testmodus konnten
+leere Test-Payloads die Eingabevalidierung erreichen, obwohl
+`ENABLE_GENERIC_WEBHOOKS=false` war.
+
+**Korrektur:** Auch bei `FUNNELPILOT_LOCAL_TEST_MODE=true` und
+`ENABLE_GENERIC_WEBHOOKS=false` liefern die Routen 404 **vor**
+Payloadverarbeitung. Ebenso der unsignierte Legacy-Calendly-Alias unter
+`/webhook/calendly`. Der signaturgeschuetzte offizielle Endpoint
+`/booking-events/calendly` bleibt unveraendert. Kein Live-Flag wird
+freigeschaltet.
+
+Ein neuer **echter Express-HTTP-Regressionstest** startet den App-Router
+an einem ephemeren localhost-Port mit synthetischem Temp-Datenordner und
+prueft sechs generische Webhook-Pfade, einen wie erfolgreich bezahlten
+manipulierten Checkout sowie unveraenderte gespeicherte
+Gespreche/Booking-Events. Alle Backend-/Dashboard-Tests muessen gruen sein.
+
+Wenn die drei Fenster nach einem roten STOP geschlossen sind:
+
+```powershell
+git pull --ff-only origin funnel-pilot-current
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+Den Browser nur nach vollstaendig bestandenem lokalem Preflight oeffnen.

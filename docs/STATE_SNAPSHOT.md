@@ -342,3 +342,18 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
   Calendly, globale JSON-Stores oder realen Coach-Wizard angebunden.
   Keine echten Coach-Konten oder produktive Mandantentrennung.
 - Detail: `docs/PHASE43_COACH_WORKSPACE_ISOLATION_2026-10-10.md`.
+
+
+## Phase 44 – lokaler Preflight schliesst generische Webhooks in Development (10.10.2026)
+- Realer Windows-Sicherheitscheck meldete fuer die bereits deaktivierten,
+  aber bisher nur in Produktion gesperrten `/webhook/checkout` und
+  `/booking-events/provider` jeweils 400 statt erforderlicher 404.
+- Webhook-Guards sperren diese generischen Routen nun auch in
+  `FUNNELPILOT_LOCAL_TEST_MODE=true` bei `ENABLE_GENERIC_WEBHOOKS=false`.
+  Der unsignierte Legacy-Alias `/webhook/calendly` nutzt denselben Guard.
+- Echte localhost-Express-HTTP-Regression testet die Guards und prueft,
+  dass ein scheinbar bezahlter Checkout nicht persistiert wird.
+- Signierter Calendly-Endpoint, Meta-Webhooks, bestehende
+  Nicht-Laptop-Entwicklungsablaeufe und Produktivgates unveraendert.
+- Keine realen Nachrichten/Provider-Calls, keine neue Infrastruktur oder
+  Datenmigration. Echter Windows-Neustart noch abzunehmen.
