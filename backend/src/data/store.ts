@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { writePrivateJsonAtomic } from "./private-json-file.js";
 import type { ConversationState, StoreRecord } from "../types/types.js";
 
 const DATA_DIR = env.DATA_DIR;
@@ -43,7 +44,7 @@ function readConversationsFile(): StoreRecord {
 
 function writeConversationsFile(data: StoreRecord): void {
   ensureDataDir();
-  fs.writeFileSync(CONVERSATIONS_FILE, JSON.stringify(data, null, 2), "utf8");
+  writePrivateJsonAtomic(CONVERSATIONS_FILE, data);
 }
 
 function persistStore(): void {
