@@ -246,7 +246,9 @@ function mapCalendlyEventType(rawEventType: string): string {
 function mapCalendlyPayloadToBookingEvent(payload: CalendlyPayload): BookingEventResult {
   const body = getObject(payload);
   const nested = getObject(body.payload);
-  const event = getObject(body.event ?? nested.event);
+  // Calendly's actual envelope uses body.event as the event *name* and
+  // body.payload.event as the scheduled-event object. Do not discard the latter.
+  const event = getObject(typeof body.event === "object" ? body.event : nested.event);
   const invitee = getObject(body.invitee ?? nested.invitee);
   const tracking = getObject(body.tracking ?? nested.tracking);
 
