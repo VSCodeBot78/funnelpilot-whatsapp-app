@@ -7,11 +7,16 @@ import {
   type MessageEventStatus,
 } from "../data/message-events.store.js";
 import {
+  appendHumanMessage,
   getOrCreateConversationState,
   persistConversationState,
+  takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
-import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
+import {
+  buildInstagramLeadId,
+  syncInstagramLead,
+} from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
 import { evaluateInstagramAutomationGate } from "../services/instagram-automation-gate.service.js";
 import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
@@ -25,6 +30,10 @@ import {
   updateLatestAssistantMessageSendResult,
 } from "../services/conversation-outbound.service.js";
 import { verifyMetaWebhookSignature } from "../services/meta-webhook-signature.service.js";
+import { consumeKnownAiInstagramEcho } from "../services/instagram-outbound-echo.service.js";
+import { getConversationStatesByLeadId } from "../data/store.js";
+import { getLeadById } from "../data/leads.store.js";
+import { getCampaignById } from "../config/campaigns.js";
 
 const router = Router();
 const PROVIDER = "meta_instagram" as const;
@@ -211,6 +220,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let ignoredEchoes = 0;
   let ignoredUnsupported = 0;
   let ignoredAutomationPaused = 0;
+  let externalTakeovers = 0;
   let failed = 0;
   let leadAction: "found" | "created" | undefined;
   let leadId: string | undefined;
@@ -276,6 +286,63 @@ router.post("/", async (req: RawBodyRequest, res) => {
 
       if (event.isEcho) {
         ignoredEchoes += 1;
+
+        const echoRecipientId = normalizeString(event.recipientId);
+        const echoLeadId = echoRecipientId
+          ? buildInstagramLeadId(echoRecipientId)
+          : "";
+        const existingStates = echoLeadId
+          ? getConversationStatesByLeadId(echoLeadId)
+          : [];
+        let echoState = existingStates[0];
+
+        const knownAiEcho = consumeKnownAiInstagramEcho({
+          recipientId: echoRecipientId,
+          messageId: event.messageId,
+          text: event.text,
+          state: echoState,
+        });
+
+        let echoReason = knownAiEcho
+          ? "instagram_ai_echo"
+          : "instagram_untracked_echo";
+
+        if (!knownAiEcho && echoLeadId) {
+          const existingLead = getLeadById(echoLeadId);
+
+          if (!echoState && existingLead) {
+            const campaignId = getCampaignById(
+              existingLead.campaignId,
+            ).id;
+            echoState = getOrCreateConversationState(
+              echoLeadId,
+              campaignId,
+            );
+            echoState.backendLeadId =
+              existingLead.backendLeadId || existingLead.id;
+            echoState.leadName = existingLead.name;
+            echoState.phone = existingLead.phone;
+            echoState.source = "Instagram";
+            echoState.notes = existingLead.note;
+            echoState.bookingData = existingLead.bookingData;
+          }
+
+          if (echoState) {
+            if (event.text) {
+              appendHumanMessage(echoState, event.text);
+              messageAppended = true;
+            } else {
+              takeOverByHuman(echoState, receivedAt);
+            }
+
+            persistConversationState(echoState);
+            externalTakeovers += 1;
+            conversationUpdated = true;
+            leadId = echoLeadId;
+            echoReason = "instagram_external_outbound_takeover";
+          }
+        }
+
         saveMessageEventLogEntry(
           buildLogEntry({
             messageId: event.messageId,
@@ -286,7 +353,11 @@ router.post("/", async (req: RawBodyRequest, res) => {
             raw: {
               ...raw,
               incomingStatus: "processed",
-              reason: "instagram_echo",
+              reason: echoReason,
+              leadId: echoLeadId || undefined,
+              campaignId: echoState?.campaignId,
+              owner: echoState?.owner,
+              aiPaused: echoState?.aiPaused,
               engineProcessed: false,
               sent: false,
             },
@@ -296,6 +367,10 @@ router.post("/", async (req: RawBodyRequest, res) => {
           messageId: event.messageId,
           from: event.senderId,
           status: "ignored_status",
+          leadId: echoLeadId || undefined,
+          campaignId: echoState?.campaignId,
+          engineProcessed: false,
+          sent: false,
         });
         continue;
       }
@@ -545,6 +620,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               ignoredEchoes,
               ignoredUnsupported,
               ignoredAutomationPaused,
+              externalTakeovers,
               failed,
               dryRun: false,
               leadAction,
@@ -659,6 +735,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       ignoredEchoes,
       ignoredUnsupported,
       ignoredAutomationPaused,
+      externalTakeovers,
       failed,
       dryRun,
       leadAction,
