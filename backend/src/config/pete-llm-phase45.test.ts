@@ -161,6 +161,20 @@ test("Phase 45: model route is opt-in and preserves all trusted safety interlock
     assert.equal(calls, 0);
   });
 
+  await t.test("self-reported booking is never treated as confirmed by LLM", async () => {
+    clearConversationStore();
+    writeSettings({ aiEnabled: true });
+    process.env.OPENAI_API_KEY = "test-never-send";
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("model must not confirm bookings"); };
+    const first = await send("phase45-booking", "Ich möchte ein Strategiegespräch buchen");
+    assert.equal(first.state.currentStep, "booking");
+    const claim = await send("phase45-booking", "Hab gebucht, ist der Termin sicher bestätigt?");
+    assert.notEqual(claim.state.providerBooking.status, "booked");
+    assert.match(claim.text || "", /noch nicht|bestätigung|bestätigt|prüf/i);
+    assert.equal(calls, 0);
+  });
+
   await t.test("style validator rejects artificial claims and extra questions", () => {
     assert.equal(validatePeteLlmReply({ reply: "https://fake.example", needsHuman: false }), null);
     assert.equal(validatePeteLlmReply({ reply: "Ich kann das! Was? Warum?", needsHuman: false }), null);

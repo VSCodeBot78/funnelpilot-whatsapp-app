@@ -25,7 +25,7 @@ export function isPeteLlmConversationSelected(): boolean {
  * This match is conservative by design and will be reviewed in Phase 2.
  */
 export function isTrustedPeteTransactionRequest(input: string): boolean {
-  return /keto[\s-]*(?:guide|pdf|anleitung)|eltern[\s-]*check|selbststarter|strategiegespr[aä]ch|calendly|checkout|buchungslink|(?:\b(?:einen?|der|den|kein(?:en)?)\s+termin\b)|(?:\btermin\s+(?:buchen|vereinbaren)\b)|(?:\bmit\s+jochen\s+(?:sprechen|reden|chatten)\b)|(?:\bjochen\s+(?:soll|bitte)\s+(?:antworten|übernehmen)\b)|(?:\b(?:was|wie viel|wieviel)\s+kostet\b)|(?:\b(?:preis|preise|rabatt|ratenzahlung|zahlung|kaufen)\b)|(?:\b5[\s-]*wochen[\s-]*(?:begleitung|coaching|startphase)\b)|(?:\b(?:kostenloser|kostenlosen)\s+(?:guide|check)\b)/i.test(input);
+  return /keto[\s-]*(?:guide|pdf|anleitung)|eltern[\s-]*check|selbststarter|strategiegespr[aä]ch|calendly|checkout|buchungslink|(?:\b(?:einen?|der|den|kein(?:en)?)\s+termin\b)|(?:\btermin\s+(?:buchen|vereinbaren)\b)|(?:\bmit\s+jochen\s+(?:sprechen|reden|chatten)\b)|(?:\bjochen\s+(?:soll|bitte)\s+(?:antworten|übernehmen)\b)|(?:\b(?:was|wie viel|wieviel)\s+kostet\b)|(?:\b(?:preis|preise|rabatt|ratenzahlung|zahlung|bezahlt|gebucht|gekauft|bestellt|best[aä]tigt|kaufen|buchung|buchen)\b)|(?:\b5[\s-]*wochen[\s-]*(?:begleitung|coaching|startphase)\b)|(?:\b(?:kostenloser|kostenlosen)\s+(?:guide|check)\b)/i.test(input);
 }
 
 export function buildPeteContext(state: ConversationState) {
