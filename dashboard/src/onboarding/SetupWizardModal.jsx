@@ -61,17 +61,28 @@ export default function SetupWizardModal({
 
   const reload = useCallback(async () => {
     setLoading(true);
+    // Keep the local safety reading even when optional OAuth diagnostics fail.
+    // Both requests are read-only. No secrets or provider access is exposed.
     try {
-      const [health, status] = await Promise.all([
-        fetch(buildApiUrl("/health/readiness", settings.apiBaseUrl), { cache: "no-store" }),
-        fetch(buildApiUrl("/integrations/oauth/status", settings.apiBaseUrl), { cache: "no-store" }),
+      const [health, provider] = await Promise.allSettled([
+        fetch(buildApiUrl("/health/readiness", settings.apiBaseUrl), { cache: "no-store" })
+          .then(async response => {
+            if (!response.ok) throw new Error("Backend-Status HTTP " + response.status);
+            return response.json();
+          }),
+        fetch(buildApiUrl("/integrations/oauth/status", settings.apiBaseUrl), { cache: "no-store" })
+          .then(async response => {
+            if (!response.ok) throw new Error("Integrationsstatus HTTP " + response.status);
+            return response.json();
+          }),
       ]);
-      setReadiness(health.ok ? await health.json() : null);
-      setIntegrations(status.ok ? await status.json() : null);
-    } catch {
-      setMessage("Backend nicht erreichbar. Bitte den lokalen Server prüfen.");
-      setReadiness(null);
-      setIntegrations(null);
+      setReadiness(health.status === "fulfilled" ? health.value : null);
+      setIntegrations(provider.status === "fulfilled" ? provider.value : null);
+      if (health.status === "rejected") {
+        setMessage("Lokaler Backend-Status fehlt. Backend-Fenster prüfen; kein Live-Test.");
+      } else if (provider.status === "rejected") {
+        setMessage("Backend erreichbar, aber Anbieterstatus nicht abrufbar. Kalender/CRM bleiben ungeprüft.");
+      }
     } finally { setLoading(false); }
   }, [settings.apiBaseUrl]);
 
@@ -417,8 +428,8 @@ export default function SetupWizardModal({
               <strong>Einrichtungs- und Sicherheitsdiagnose</strong>
               <p style={{ ...small, fontWeight: 700, marginTop: 8 }}>
                 {diagnostics.localTestReady
-                  ? "Lokaler Test vorbereitet – keine Freigabe für echte Nachrichten."
-                  : "Für den lokalen Test sind noch Prüfungen offen."}
+                  ? "Lokale Backend-Flags geprüft. Relay-Test und echte Zustellung bleiben separat offen."
+                  : "Für den lokalen Test sind noch Prüfungen offen. Keine Live-Freigabe."}
               </p>
               <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                 {diagnostics.checks.map(item => (
@@ -432,6 +443,9 @@ export default function SetupWizardModal({
                     <div style={{ display: "grid", gap: 3, fontSize: 13 }}>
                       <strong>{item.label}</strong>
                       <span style={{ color: "#475569" }}>{item.detail}</span>
+                      {item.nextStep && <span style={{ color: "#334155" }}>
+                        <strong>Nächster Schritt:</strong> {item.nextStep}
+                      </span>}
                     </div>
                   </div>
                 ))}
