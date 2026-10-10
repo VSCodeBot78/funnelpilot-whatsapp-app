@@ -58,6 +58,7 @@ export function getNaturalConversationReply(params: {
   const { text, state } = params;
   const input = normalize(text);
   const phase = String(state.answers.naturalPhase ?? "opening");
+  const alreadyChoosingCheckout = phase === "coaching_close" || phase === "coaching_next";
   const lastTrack = String(state.answers.naturalTrack ?? "");
   const lastMessages = state.messages.slice(-8)
     .filter(m => m.role === "user").map(m => normalize(m.text)).join(" ");
@@ -110,20 +111,31 @@ export function getNaturalConversationReply(params: {
 
   const rejectsCall = matches(input, /\b(kein(?:en)?|ohne|nicht)\s+(gesprach|strategiegesprach|termin|call)\b/);
 
+  // A new explicit question must override the previous "chat or appointment"
+  // choice. Otherwise "No appointment, send me the Keto Guide" can wrongly
+  // become a booking just because the word "Termin" occurs in the refusal.
+  const newExplicitTopic = matches(input,
+    /\b(keto[\s-]*(?:guide|pdf|anleitung)|eltern[\s-]*check|selbststarter|was kostet|wie teuer|preise?|kosten|investition)\b/);
+
   // "Mit Jochen sprechen" is ambiguous: live chat or booking? Ask only once.
-  if (phase === "human_choice") {
+  if (phase === "human_choice" && !newExplicitTopic) {
     if (matches(input, /\b(hier|chat|dm|nachricht|personlich ubernehmen|im gespräch hier)\b/)) {
       return {
         text: "Klar 👍 Ich gebe das an Jochen weiter. Er meldet sich hier persönlich bei dir.",
         phase: "human_handover", handoff: true,
       };
     }
-    if (matches(input, /\b(termin|strategiegesprach|gesprach|buchen|vereinbaren|kalender)\b/)) {
+    if (!rejectsCall && matches(input, /\b(termin|strategiegesprach|gesprach|buchen|vereinbaren|kalender)\b/)) {
       return bookingUrl
         ? { text: "Klar, hier kannst du dir ein Strategiegespräch aussuchen:\n" + bookingUrl,
             phase: "booking_offered", booking: true }
         : { text: "Klar, ich gebe deinen Terminwunsch an Jochen weiter.",
             phase: "human_handover", handoff: true };
+    }
+    if (matches(input,
+      /\b(nein danke|doch nicht|kein bedarf|kein(?:en)? (?:termin|gesprach|call)|nur infos|nur informationen|lieber nicht)\b/)) {
+      return { text: "Alles klar, kein Termin. Wenn du eine konkrete Frage hast, kannst du sie hier stellen.",
+        phase: "info", infoOnly: true };
     }
     return { text: "Magst du hier im Chat direkt mit Jochen schreiben oder lieber ein Strategiegespräch vereinbaren?", phase };
   }
@@ -193,7 +205,7 @@ export function getNaturalConversationReply(params: {
 
   // An explicit buying request must not be sent back into an opening
   // qualification flow, including when someone wants Keto coaching.
-  if (matches(input,
+  if (!alreadyChoosingCheckout && matches(input,
       /\b(ich (mochte|will) (die |das )?(5[\s-]*wochen[\s-]*)?(begleitung|startphase|coaching) (buchen|kaufen)|ich will die begleitung|ich mochte die begleitung|ich will starten|ich mochte starten|direkt kaufen)\b/)) {
     return {
       text: (ketoSupport || ketoInConversation
@@ -420,7 +432,7 @@ export function getNaturalConversationReply(params: {
     };
   }
 
-  if (matches(input, /\b(ich will starten|ich mochte starten|will ich buchen|ich will das buchen|direkt kaufen|ich will die begleitung)\b/)) {
+  if (!alreadyChoosingCheckout && matches(input, /\b(ich will starten|ich mochte starten|will ich buchen|ich will das buchen|direkt kaufen|ich will die begleitung)\b/)) {
     if (lastTrack === "selfstarter") return {
       text: selfstarterText, phase: "selfstarter_offered", track: "selfstarter", infoOnly: true,
     };
@@ -438,7 +450,16 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true };
   }
   if (phase === "coaching_close" || phase === "coaching_next") {
-    if (matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
+    // Do not turn an explicit "NOT directly buy" into an unintended checkout.
+    // A request for a strategy appointment in the same message can still
+    // reach the booking branch below.
+    const declinesDirectCheckout = matches(input,
+      /\b(nicht|noch nicht|erstmal nicht|erst mal nicht)\s+(?:(?:jetzt|sofort|direkt|gleich)\s+)?(?:kaufen|starten|loslegen|beginnen|buchen)\b|\b(direkt|jetzt)\s+(?:nicht|noch nicht)\s+(?:kaufen|starten|loslegen|beginnen)\b/);
+    if (declinesDirectCheckout && !matches(input, /\b(strategiegesprach|gesprach|termin)\b/)) {
+      return { text: "Alles klar, kein direkter Kauf. Du musst dich jetzt nicht entscheiden. Wenn du noch eine konkrete Frage hast, meld dich einfach.",
+        phase: "info", infoOnly: true };
+    }
+    if (!declinesDirectCheckout && matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
         (rejectsCall || !matches(input, /\b(gesprach|strategie|termin)\b/))) {
       return {
         text: "Hier kannst du dir die 5-Wochen-Startphase ansehen und direkt starten:\n" +
