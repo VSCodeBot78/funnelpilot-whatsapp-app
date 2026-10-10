@@ -326,3 +326,19 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Keine neue mobile App/PWA, kein Push, keine Live-Sends und keine
   Backend-API-Freigabe über das Netz. Reales Android-/Windows-Gerät,
   mobile Tastatur und Screenreader bleiben gesondert abzunehmen.
+
+
+## Phase 43 – Coach-Datentrennung als isolierter Prototyp (10.10.2026)
+- Ein neues **nicht angebundenes** Backend-Sandbox-Modul bietet synthetische
+  Workspace-Namespace-Speicherung `workspaces/ws_<id>/<resource>.json`
+  für Leads, Gespräche, Settings, Kampagnen, Buchungen und Events.
+- Kein automatischer Fallback auf Jochen-Daten; nur ausdrücklich
+  autorisierte Workspace-Memberships, Owner/Operator/Viewer-Rechte,
+  nicht fälschbare In-Process-Grants und strikte IDs/Pfade.
+- Neue Tests prüfen u.a. Coach A vs. Coach B bei gleicher Lead-ID,
+  unberechtigten Zugriff, falsche Grants, Viewer, ungültige Dateien,
+  Symlink-Schutz und Unverändertheit bestehender Daten.
+- **Bewusst noch NICHT** an HTTP-Routen, Login, Pete, Meta, HubSpot,
+  Calendly, globale JSON-Stores oder realen Coach-Wizard angebunden.
+  Keine echten Coach-Konten oder produktive Mandantentrennung.
+- Detail: `docs/PHASE43_COACH_WORKSPACE_ISOLATION_2026-10-10.md`.
