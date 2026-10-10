@@ -231,11 +231,11 @@ export default function ChatTest() {
         <h1
           style={{
             textAlign: "center",
-            fontSize: 56,
+            fontSize: 32,
             marginBottom: 20,
           }}
         >
-          WhatsApp Funnel Chat Test
+          Pete im Testchat
         </h1>
 
         <div
