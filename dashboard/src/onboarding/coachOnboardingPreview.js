@@ -6,11 +6,14 @@ export const EMPTY_COACH_DRAFT = Object.freeze({
 // not generate an AI prompt, a sellable offer, a paid checkout or live sends.
 export function getCoachOnboardingPreview(settings = {}) {
   const draft = settings.coachOnboardingDraft || EMPTY_COACH_DRAFT;
-  const brand = String(settings.companyName || "").trim();
-  const operator = String(settings.adminName || "").trim();
-  const assistant = String(settings.assistantName || "").trim();
-  const audience = String(settings.companyAudience || "").trim();
-  const tone = String(settings.brandVoice || "").trim();
+  // Only the new coach's inert identity belongs in this preview.
+  // NEVER use active Jochen fields as implicit values for another coach.
+  const identity = draft.identity || {};
+  const brand = String(identity.brandName || "").trim();
+  const operator = String(identity.coachName || "").trim();
+  const assistant = String(identity.assistantName || "").trim();
+  const audience = String(identity.audience || "").trim();
+  const tone = String(identity.brandVoice || "").trim();
   const offers = (Array.isArray(draft.offers) ? draft.offers : [])
     .filter(item => item && String(item.name || "").trim());
   const faqs = (Array.isArray(draft.faqs) ? draft.faqs : [])
@@ -21,6 +24,8 @@ export function getCoachOnboardingPreview(settings = {}) {
     warnings.push("Marke, Betreiber, Assistent und Zielgruppe vollständig eintragen.");
   if (!offers.length)
     warnings.push("Für neue Coaches mindestens ein eigenes Angebot als Entwurf hinterlegen.");
+  // Active settings may still contain Jochen links; they never populate
+  // this future coach preview, but should be checked before eventual activation.
   const isOtherBrand = brand && !/eltern\s*fit\s*&\s*vital/i.test(brand);
   const jochenRefs = [
     settings.masterPrompt, settings.defaultBookingUrl, settings.starterCheckoutUrl,
