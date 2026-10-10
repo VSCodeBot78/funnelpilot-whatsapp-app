@@ -15,6 +15,7 @@ import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
 import { sendMetaInstagramTextMessage } from "../services/meta-instagram-api.service.js";
 import { evaluateInstagramAutomationGate } from "../services/instagram-automation-gate.service.js";
 import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
+import { handleInstagramEcho } from "../services/instagram-echo-handoff.service.js";
 import {
   instagramTimestampToIso,
   parseInstagramMessageEvents,
@@ -209,6 +210,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let processed = 0;
   let duplicates = 0;
   let ignoredEchoes = 0;
+  let humanEchoTakeovers = 0;
   let ignoredUnsupported = 0;
   let ignoredAutomationPaused = 0;
   let failed = 0;
@@ -275,7 +277,51 @@ router.post("/", async (req: RawBodyRequest, res) => {
       );
 
       if (event.isEcho) {
+        const echoResult = handleInstagramEcho(event);
+
+        if (echoResult.action === "human_takeover") {
+          humanEchoTakeovers += 1;
+          leadId = echoResult.leadId;
+          conversationUpdated = true;
+          messageAppended = Boolean(event.text);
+
+          saveMessageEventLogEntry(
+            buildLogEntry({
+              messageId: event.messageId,
+              from: event.senderId,
+              receivedAt,
+              type: "echo",
+              status: "processed",
+              raw: {
+                ...raw,
+                incomingStatus: "processed",
+                reason: "instagram_human_echo_takeover",
+                leadId: echoResult.leadId,
+                campaignId: echoResult.campaignId,
+                engineProcessed: false,
+                sent: false,
+              },
+            }),
+          );
+
+          logInstagramMessage({
+            messageId: event.messageId,
+            from: event.senderId,
+            status: "processed",
+            leadId: echoResult.leadId,
+            campaignId: echoResult.campaignId,
+            engineProcessed: false,
+            sent: false,
+          });
+          continue;
+        }
+
         ignoredEchoes += 1;
+        const reason =
+          echoResult.action === "ignored_bot_echo"
+            ? "instagram_bot_echo"
+            : "instagram_unknown_echo";
+
         saveMessageEventLogEntry(
           buildLogEntry({
             messageId: event.messageId,
@@ -286,7 +332,9 @@ router.post("/", async (req: RawBodyRequest, res) => {
             raw: {
               ...raw,
               incomingStatus: "processed",
-              reason: "instagram_echo",
+              reason,
+              leadId: echoResult.leadId,
+              campaignId: echoResult.campaignId,
               engineProcessed: false,
               sent: false,
             },
@@ -296,6 +344,8 @@ router.post("/", async (req: RawBodyRequest, res) => {
           messageId: event.messageId,
           from: event.senderId,
           status: "ignored_status",
+          leadId: echoResult.leadId,
+          campaignId: echoResult.campaignId,
         });
         continue;
       }
@@ -657,6 +707,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       processed,
       duplicates,
       ignoredEchoes,
+      humanEchoTakeovers,
       ignoredUnsupported,
       ignoredAutomationPaused,
       failed,
