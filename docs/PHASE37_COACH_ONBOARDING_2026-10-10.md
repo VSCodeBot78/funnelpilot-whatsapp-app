@@ -84,3 +84,17 @@ Die sieben geplanten Entwicklungsprioritäten sind damit zwar als Code-/Konzeptg
 - Später eigener mobiler Arbeitsplatz/PWA (Backlog M-02) und einfache native Link-/Button-Flows (M-01) statt ManyChat.
 
 **Go/No-Go:** Geeignet als **technische Coach-Onboarding-Vorbereitung und Demo in isolierter Testumgebung**. Noch **nicht** geeignet, um einen fremden Coach einzuladen oder Zugriff auf vorhandene Gespräche/Daten zu gewähren.
+
+## 7. Nachbesserung: sichere Coach-Identität als eigenständiger Entwurf (10.10.2026)
+
+Nach Prüfung der bereits integrierten PR #60 wurde eine Lücke gefunden: Die Vorschau nutzte die **aktiven** Felder `companyName`, `adminName`, `assistantName`, `companyAudience`, `brandVoice`. Damit sah ein unvollständiges fremdes Coach-Profil irreführend wie Jochens Profil aus. Der eigene „Coach-Entwurf speichern“-Knopf verwendete außerdem den allgemeinen Settings-Speicherweg und konnte dadurch neben dem Entwurf auch andere bislang ungespeicherte Live-Einstellungen mitschreiben.
+
+**Gezielter Fix ohne zweite Onboarding-Implementierung:**
+
+- Das bestehende Coach-Entwurfsschema akzeptiert optional den neuen Block `identity` mit **Marke, Coach-Name, Nische, Zielgruppe, Website, Assistentenname, Markenstimme, Eskalation und fachlichen Grenzen**. Servervalidierung erzwingt ausschließlich die erwarteten String-Felder, Längenbegrenzung und gegebenenfalls sichere HTTPS-Website ohne eingebettete Zugangsdaten.
+- Die **CoachProfilePreview** liest die künftige Identität **ausschließlich** aus `coachOnboardingDraft.identity`. Leere Profile zeigen keine impliziten Jochen-Werte. Alte Version-1-Entwürfe ohne `identity` bleiben lesbar.
+- Der Knopf **„Coach-Entwurf speichern“** sendet nun nur das Entwurfsobjekt über `POST /coach-onboarding-draft`. Serverseitig wird ausschließlich `coachOnboardingDraft` verändert; die anderen aktiven Einstellungen werden nicht aus der Browser-Form mitgeschrieben. Der Backend-Produktions-Admin-Guard schützt auch diesen Pfad; es gibt keine Live-Aktivierung.
+- **Bestehender Wizard bleibt erhalten:** Die normalen Felder „Firmenname“, „Buchungslink“, „Master-Prompt“ und der Button **„Weiter“** bearbeiten und speichern weiterhin die aktiven Einstellungen des einen Arbeitsbereichs. Für fremde Coaches daher ausschließlich die **separate Entwurfssektion** verwenden; noch keine echten Coach-Konten.
+- Zusätzliche Testfälle prüfen, dass beim Speichern der Coach-Identität **aktives Unternehmen, Admin, Pete, Master-Prompt, AI- und Testmodus sowie Checkout-/Buchungslinks unangetastet** bleiben; fremde technische Felder und unsichere URLs werden abgewiesen.
+
+**Wichtig:** Das ist eine gezielte Schutzverbesserung des einen bestehenden Settings-Speichers, **keine getrennte Workspace-Datenbank, kein echtes Coach-Login und kein SaaS-Produktivbetrieb**. Die eigene Session-/Mandantentrennung bleibt Go-/No-Go-Voraussetzung. PR #61 wurde als doppelte, nicht integrierte Alternative geschlossen und wird nicht übernommen.
