@@ -319,6 +319,17 @@ export default function SetupWizardModal({
               <div style={{ display: "grid", gap: 12 }}>
                 {input("Assistentenname", "assistantName")}
                 {input("Markensprache / Tonalität", "brandVoice")}
+                <div>
+                  {input("Master-Prompt: So soll Pete mit deinen Leads sprechen",
+                    "masterPrompt", { multiline: true,
+                    placeholder: "Beschreibe Zielgruppe, Sprache, Einwände, Fachgrenzen und Sales-Haltung." })}
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    Für Eltern fit &amp; vital ist eine Startvorlage hinterlegt.
+                    Andere Unternehmen tragen später ihren eigenen Master-Prompt ein.
+                    Der Prompt steuert die freie KI-Antwortschicht; feste Sicherheits-
+                    und Funnel-Antworten werden zusätzlich getrennt geprüft.
+                  </p>
+                </div>
                 {input("Eskalation an einen Menschen", "escalationHint", { multiline: true })}
                 {input("Was Pete niemals tun darf", "noGos", { multiline: true })}
               </div>
