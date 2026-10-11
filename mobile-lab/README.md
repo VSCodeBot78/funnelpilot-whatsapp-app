@@ -50,3 +50,9 @@ Railway nennt für neue Accounts **30 Tage mit einmaligen 5 USD Guthaben**, im T
 ### Sicherheitsstopp bei Datenverzeichnissen
 
 Der Launcher akzeptiert beim **ersten** Start ausschließlich ein **leeres** persistentes Volume-Verzeichnis und legt eine eindeutige interne Kennzeichnung für das private Testlabor an. Ein bestehendes fremdes/leaddatenhaltiges Verzeichnis oder eine manipulierte Kennzeichnung führt zum Startabbruch. Bei Wiederholung darf nur dieses markierte Testvolume verwendet werden. Niemals ein Produktiv-Volume eintragen. Dies ersetzt nicht den echten Android-/Provider-Live-Sicherheitstest.
+
+## Railway-Build-Konfiguration (11.10.2026)
+
+Die dedizierte Root-Datei `railway.json` erzwingt für den derzeitigen temporären Testbranch den Builder `DOCKERFILE` mit `Dockerfile.pete-lab`, plus `/healthz`-Readiness. Railway kann den einmal nur **vorgemerkten** Service noch nicht über `update_service` konfigurieren (`Service Instance not found`), weshalb dieser Buildpfad vor dem ersten Start verbindlich im Repository hinterlegt ist. Railway kündigt `railway.json`/Config-as-Code für Dezember 2026 ab; für den nur rund einmonatigen Test ist dies eine Übergangslösung, kein zukünftiges SaaS-Bereitstellungsmodell.
+
+Die `/healthz`-Antwort enthält ausschließlich `ok` und erlaubt den Railway-Prüfhost. Alle geschützten Routen prüfen weiterhin Host, Anmeldung und Origin. Neue Bereitstellung erst nach expliziter Freigabe und sicher konfigurierten Secret-/Volume-/Kostenlimits.
