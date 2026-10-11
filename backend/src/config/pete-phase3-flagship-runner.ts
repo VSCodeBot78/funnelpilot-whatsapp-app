@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { PETE_PHASE3_PERSONAS, getPhase3LeadMessage } from "./pete-phase3-scenarios.js";
+import { PETE_PHASE3_PERSONAS } from "./pete-phase3-scenarios.js";
+import { PETE_PHASE3_REALISTIC, getRealisticPhase3Message } from "./pete-phase3-realistic-scenarios.js";
 
 /** Independent ten-case flagship A/B sample: entirely fictional, no outbound. */
 const batch = Number(process.argv[2]);
@@ -39,6 +40,9 @@ const selected = [
   "knowledge-02", "budget-05", "handoff-02", "handoff-03",
   "handoff-05", "switch-03",
 ];
+if (PETE_PHASE3_REALISTIC.length !== 10 ||
+    selected.some(id => !PETE_PHASE3_REALISTIC.some(c => c.id === id)))
+  throw Error("Phase3 flagship scenario list is incomplete");
 const target = selected.slice(batch * 2, (batch + 1) * 2);
 const personas = target.map(id => {
   const match = PETE_PHASE3_PERSONAS.find(p => p.id === id);
@@ -54,6 +58,8 @@ const report: any = {
   warnings: [],
   completedPersonas: 0,
   totalLeadMessages: 0,
+  plannedLeadMessages: 0,
+  avoidedAfterTakeover: 0,
   providerCalls: 0,
   cases: [],
   startedAt: new Date().toISOString(),
@@ -71,12 +77,17 @@ for (const persona of personas) {
     id: persona.id, category: persona.category,
     fictionalPersona: persona.opener, messages: [], warnings: [],
     llmReplies: 0, deterministicReplies: 0, suppressedReplies: 0,
+    safeNoncriticalReplies: 0, endedBy: "script_end",
     qualityStatus: "manual_review_required",
   };
   report.cases.push(entry);
   let previousReply = "";
-  for (let turn = 0; turn < 10; turn += 1) {
-    const userText = getPhase3LeadMessage(persona, turn, previousReply);
+  const scenario = PETE_PHASE3_REALISTIC.find(c => c.id === persona.id);
+  if (!scenario) throw Error("Missing dialogue for " + persona.id);
+  report.plannedLeadMessages += scenario.turns.length;
+  for (let turn = 0; turn < scenario.turns.length; turn += 1) {
+    const userText = getRealisticPhase3Message(persona.id, turn, previousReply);
+    if (!userText) throw Error("Missing scripted user message");
     const result = await processIncomingMessage({
       leadId, campaignId: DEFAULT_CAMPAIGN_ID,
       messageText: userText, conversationMode: "natural",
@@ -93,7 +104,10 @@ for (const persona of personas) {
     });
     if (reply === null) entry.suppressedReplies++;
     else if (source === "llm") entry.llmReplies++;
-    else entry.deterministicReplies++;
+    else if (source === "safe_noncritical") {
+      entry.safeNoncriticalReplies++;
+      entry.deterministicReplies++;
+    } else entry.deterministicReplies++;
     if (reply) {
       previousReply = reply;
       if ((reply.match(/\?/g) ?? []).length > 1)
@@ -114,6 +128,16 @@ for (const persona of personas) {
     }
     if (getPeteBudgetStatus().requestsStarted > 20)
       throw Error("phase3_flagship_batch_more_than_20_provider_calls");
+    // A legitimate STOP, explicit human takeover or verified order handover
+    // ends this fictional conversation. Do NOT keep submitting 9 more user
+    // messages and count silence as a model-quality result.
+    if (result.state.flags.stopped || result.state.owner === "human" ||
+        result.state.aiPaused === true) {
+      entry.endedBy = result.state.flags.stopped ? "stop" : "human_handover";
+      report.avoidedAfterTakeover += scenario.turns.length - turn - 1;
+      persist();
+      break;
+    }
     persist();
   }
   report.completedPersonas++;
@@ -127,6 +151,10 @@ report.completedAt = new Date().toISOString();
 report.summary = {
   personaCount: report.completedPersonas,
   leadTurns: report.totalLeadMessages,
+  plannedTurns: report.plannedLeadMessages,
+  avoidedAfterTakeover: report.avoidedAfterTakeover,
+  handovers: report.cases.filter((c: any) => c.endedBy === "human_handover").length,
+  safeNoncriticalReplies: report.cases.reduce((n: number, c: any) => n + c.safeNoncriticalReplies, 0),
   modelReplies: report.cases.reduce((n: number, c: any) => n + c.llmReplies, 0),
   safetyOrDeterministicReplies: report.cases.reduce((n: number, c: any) => n + c.deterministicReplies, 0),
   suppressedReplies: report.cases.reduce((n: number, c: any) => n + c.suppressedReplies, 0),
@@ -135,6 +163,9 @@ report.summary = {
 };
 persist();
 if (fatal) throw Error("phase3_abort_after_provider_or_budget_error_" + fatal);
-if (report.completedPersonas !== 2 || report.totalLeadMessages !== 20)
-  throw Error("phase3_incomplete_batch");
-if (report.providerCalls === 0) throw Error("phase3_no_real_model_calls");
+if (report.completedPersonas !== 2 ||
+    report.totalLeadMessages < 2 || report.totalLeadMessages > report.plannedLeadMessages ||
+    report.avoidedAfterTakeover + report.totalLeadMessages !== report.plannedLeadMessages)
+  throw Error("phase3_incomplete_or_inflated_batch");
+if (batch <= 2 && report.providerCalls === 0)
+  throw Error("phase3_no_real_model_calls_for_knowledge_or_family_batch");

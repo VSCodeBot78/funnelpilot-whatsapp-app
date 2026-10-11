@@ -7,7 +7,7 @@
 import { containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { readSettings } from "../services/settings-store.js";
-import { normalizePeteReplyStyle, isUnsafeLlmClaim } from "./pete-conversation-quality.js";
+import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
@@ -15,6 +15,7 @@ export const PETE_LLM_HANDOFF_REPLY =
 
 export type PeteLlmResult =
   | { kind: "llm"; text: string }
+  | { kind: "safe_reply"; text: string }
   | { kind: "handoff"; reason: "not_authorized" | "provider_unavailable" | "invalid_output" | "model_handoff" | "budget_exhausted" | "budget_unavailable"; detail?: string };
 
 export function isPeteLlmConversationSelected(): boolean {
@@ -37,6 +38,7 @@ export function isPeteLlmReadyForProvider(): boolean {
  */
 export function isExplicitPeteHumanTakeoverRequest(text: string): boolean {
   const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (/\bjochen\s+(?:(?:soll|kann|konnte)\s+)?(?:bitte\s+)?(?:hier\s+)?(?:(?:in\s+diesem|im)\s+chat\s+)?(?:ubernehm\w*|antwort\w*|schreib\w*)\b/i.test(input)) return true;
   return /\b(?:jochen\s+(?:soll\s+)?(?:bitte\s+)?(?:hier\s+)?(?:ubernehmen|antworten|schreiben)|(?:ich\s+mochte|ich\s+will|bitte)\s+(?:mit\s+)?(?:einem\s+)?(?:echten?\s+)?menschen\s+(?:hier\s+)?(?:schreiben|reden|sprechen)|(?:ubergeb|gib|verbinde)\w*\s+(?:den\s+chat\s+)?(?:an\s+)?jochen|jochen\s+hier\s+(?:im\s+)?chat\s+(?:personlich\s+)?(?:ubernehm|schreib|antwort)|personliche\s+ubernahme\s+ist\s+mir\s+wichtiger|(?:ich\s+will|ich\s+mochte)\s+(?:lieber\s+)?(?:hier\s+)?mit\s+jochen\s+(?:schreiben|reden)|bitte\s+kein(?:en)?\s+bot\s+mehr)\b/i.test(input);
 }
 
@@ -78,7 +80,7 @@ export function buildPeteContext(state: ConversationState) {
 
 const PETE_SYSTEM_INSTRUCTIONS = [
   "Du bist Pete, der KI-Assistent von Jochen für Eltern fit & vital. Du bist nicht Jochen; auf Nachfrage sagst du offen, dass du ein KI-Assistent bist.",
-  "Schreibe auf Deutsch wie ein ruhiger, direkter Mensch. Kurz, alltagsnah, verständlich, ohne KI-Floskeln, Smileys oder lange Gedankenstriche.",
+  "Schreibe auf Deutsch wie ein ruhiger, direkter Mensch. Kurz, alltagsnah, verständlich, ohne KI-Floskeln, Smileys oder lange Gedankenstriche. Nur bei Nachfrage die KI-Identität erklären. Der Name ist Pete, und du bist Jochens KI-Assistent. Sage niemals Petes KI-Assistent.",
   "WICHTIG: Lies die vollständige Konversation chronologisch. Die letzte Nachricht und offene Frage haben Vorrang vor jedem Fragenkatalog.",
   "Wenn der Lead eine konkrete Frage stellt, BEANTWORTE sie sachlich zuerst. Stelle nur dann eine weitere Frage, wenn sie wirklich nötig ist. Null Fragen ist oft die richtige Antwort; maximal eine.",
   "Wurde ein Grund schon genannt, frage nicht noch einmal danach. Wenn ein krankes Kind einen Drei-Abende-Trainingsplan unterbrochen hat, ist diese Ursache bereits bekannt.",
@@ -228,7 +230,16 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     }
     const validated = validatePeteLlmReply(parsed);
     if (!validated) return { kind: "handoff", reason: "invalid_output", detail: classifyPeteOutputRejection(parsed) };
-    if (validated.needsHuman) return { kind: "handoff", reason: "model_handoff", detail: "model_requested_human" };
+    if (validated.needsHuman) {
+      // A model's conservative preference for human review is NOT by itself
+      // a reason to permanently mute a buyer who only declined a sales pitch.
+      // Fallback uses no model-generated claims and is allowed only for an
+      // explicitly narrow, non-medical, non-transactional budget boundary.
+      const latestLeadText = state.messages.at(-1)?.text ?? "";
+      const safe = peteSafeBudgetBoundaryReply(latestLeadText);
+      if (safe) return { kind: "safe_reply", text: safe };
+      return { kind: "handoff", reason: "model_handoff", detail: "model_requested_human" };
+    }
     return { kind: "llm", text: validated.reply };
   } catch {
     // No low-quality question-flow fallback on API errors.
