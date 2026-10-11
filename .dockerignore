@@ -1,0 +1,17 @@
+.git
+.github
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/data
+backend/data
+backend/.phase3-data
+**/*.log
+**/*.pem
+**/*.key
+**/*.p12
+**/secrets*
+mobile-lab-dist
+.DS_Store
+*.pdf
