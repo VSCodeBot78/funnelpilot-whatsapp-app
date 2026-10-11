@@ -225,7 +225,7 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
-  if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin|medikament|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
+  if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
   // zwei Jahre her" is not current pregnancy. Red-flag symptoms remain gated.
@@ -236,7 +236,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   if (/\b(?:ohne (?:eine )?(?:medizinische )?(?:fern)?diagnose|keine ferndiagnose)\b/.test(input) &&
       /\b(?:evidenz|studien|wissenschaft|allgemein|training|ernahrung|schlaf|stoffwechsel)\b/.test(input)) return true;
   if (/\b(?:blutwerte|arzt|arztlich)\b/.test(input) &&
-      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht)\b/.test(input) &&
+      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht|uberpruft|gepruft)\b/.test(input) &&
       !/\b(?:was bedeuten meine werte|diagnostizier|behandlung|dosis)\b/.test(input)) return true;
   return false;
 }
