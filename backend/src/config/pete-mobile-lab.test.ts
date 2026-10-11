@@ -94,7 +94,7 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
 
     await t.test("backend-owned entry scenarios create real conversation state and verified links", async () => {
       const ids = [
-        ["check", "lab_checkscenario12345678901234567890", /check\\.jochen-kammerer\\.de/i],
+        ["check", "lab_checkscenario12345678901234567890", /check\.jochen-kammerer\.de/i],
         ["keto", "lab_ketoscenario123456789012345678901", /keto-guide/i],
         ["bullshit", "lab_bullshitscenario123456789012345", /no-bullshit-elternfitness/i],
       ] as const;
