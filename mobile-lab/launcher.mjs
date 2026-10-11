@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync, readdirSync, readFileSync, writeFileSync, lstatSync } from "node:fs";
 import { resolve, join, isAbsolute } from "node:path";
 import { createMobileLabGateway } from "./gateway.mjs";
 
@@ -16,6 +16,17 @@ if (process.env.LAB_DATA_DIR.startsWith(root+ "/"))
   throw Error("lab_data_dir_must_be_separate");
 const dataDir = realpathSync(process.env.LAB_DATA_DIR);
 if (dataDir === "/" || dataDir.length < 7) throw Error("lab_data_dir_unsafe");
+// Hard stop on a reused real-customer directory. First launch must be empty.
+// Later restarts require the exact lab-only marker; do not silently reset.
+const marker=join(dataDir,".funnelpilot-private-lab");
+if (!existsSync(marker)) {
+  if (readdirSync(dataDir).length!==0) throw Error("lab_data_dir_not_empty");
+  writeFileSync(marker,"funnelpilot-isolated-synthetic-only-v1\\n",
+    {flag:"wx",mode:0o600});
+} else if (!lstatSync(marker).isFile() ||
+    readFileSync(marker,"utf8")!=="funnelpilot-isolated-synthetic-only-v1\\n") {
+  throw Error("lab_data_marker_invalid");
+}
 const gatewayPort=Number(process.env.PORT ?? "8080");
 const backendPort=3011;
 if (!Number.isSafeInteger(gatewayPort) || gatewayPort<1024 ||
