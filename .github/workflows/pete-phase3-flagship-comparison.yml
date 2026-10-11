@@ -81,6 +81,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Retry only identical signed budget-branch pushes; no spending occurs
+          # until this returns success. Never fetch/reset/force-push to bypass a
+          # rejected remote update or weaken a branch protection policy.
+          push_budget_confirmed() {
+            local attempt
+            for attempt in 1 2 3; do
+              if git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger; then
+                return 0
+              fi
+              echo "::warning::Budget ledger push failed attempt $attempt/3. Pete stays blocked until GitHub confirms."
+              if [ "$attempt" -lt 3 ]; then sleep 4; fi
+            done
+            echo "::error::Budget update cannot be confirmed. Failing closed with no further API calls."
+            return 1
+          }
           for batch in 0 1 2 3 4; do
             echo "Phase 3: reserve protected batch $batch of 5"
             export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-$batch"
@@ -89,7 +104,7 @@ jobs:
             git -C budget-ledger add phase3-budget-ledger.json
             git -C budget-ledger commit -m "Reserve Phase3 job $GITHUB_RUN_ID batch $batch"
             # Required remote confirmation BEFORE any paid API call.
-            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            push_budget_confirmed
             echo "Phase 3: running two flagship synthetic personas in protected batch $batch"
             set +e
             (cd backend && npx tsx src/config/pete-phase3-flagship-runner.ts "$batch")
@@ -98,7 +113,7 @@ jobs:
             node scripts/pete-phase3-ledger.mjs settle "$batch"
             git -C budget-ledger add phase3-budget-ledger.json
             git -C budget-ledger commit -m "Settle Phase3 job $GITHUB_RUN_ID batch $batch"
-            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            push_budget_confirmed
             if [ "$result" -ne 0 ]; then
               echo "::error::Phase 3 batch $batch stopped; no more API calls."
               exit "$result"
