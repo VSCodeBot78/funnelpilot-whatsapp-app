@@ -107,6 +107,13 @@ export function getPeteVerifiedTransactionAnswer(
       : { text: "Deine Nachricht allein bestätigt die Buchung noch nicht. Bitte prüf die Buchungsbestätigung. Wenn sie fehlt, kann Jochen das persönlich klären." };
   }
 
+  // A historical bad checkout experience is not a current payment dispute.
+  if (/\b(?:checkout|kasse|bestellprozess)\b/.test(input) &&
+      /\b(?:uberrasch\w*|schlechte\s+erfahrung\w*|abofalle|reingefallen)\b/.test(input) &&
+      !/\b(?:bezahlt|gekauft|bestellt|zahlungseingang)\b/.test(input)) {
+    return { text: "Bei einer schlechten Checkout-Erfahrung lohnt es sich, die Bedingungen vor einem Kauf genau anzusehen. Ich kann hier keine ungeprueften Vertragsdetails versprechen. Du musst nichts kaufen, bevor Preis und Konditionen fuer dich klar sind." };
+  }
+
   // Fearing checkout extras is a factual trust question, not proof of a
   // purchase or an invitation to make unverified "no extra charges" claims.
   if (/\b(?:versteckte kosten|versteckte gebuhren|zusatzkosten|ungewollte extras|versteckte extras|unerwartete gebuhren)\b/.test(input)) {
