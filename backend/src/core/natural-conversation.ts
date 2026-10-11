@@ -231,7 +231,17 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true,
     };
   }
-  if (matches(input, /\b(elterncheck|eltern[\s-]*check|check schicken)\b/)) {
+  if (matches(input, /^bullshit$/)) {
+    // Explicit keyword from the No Bullshit Elternfitness entry, not a price
+    // invention. Use the verified Selfstarter product link only.
+    return {
+      text: "Klar, hier findest du den No Bullshit Elternfitness Selbststarter:\n" +
+        OFFER_TRUTH.selfstarter.productUrl,
+      phase: "selfstarter_offered", track: "selfstarter", infoOnly: true,
+    };
+  }
+  if (matches(input, /^(?:check)$/) ||
+      matches(input, /\b(elterncheck|eltern[\s-]*check|check schicken)\b/)) {
     return {
       text: "Klar, hier findest du den kostenlosen Elternfitness-Check:\n" +
         OFFER_TRUTH.resources.elterncheck.url,
