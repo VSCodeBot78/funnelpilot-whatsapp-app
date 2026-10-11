@@ -24,6 +24,35 @@ export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
   const input = norm(text);
+  // Cross-channel delivery is not verifiable from this single chat.
+  // Never promise Instagram or WhatsApp automation will stop elsewhere.
+  const twoChannels = /\binstagram\b/.test(input) && /\bwhatsapp\b/.test(input);
+  const crossChannelConcern = /\b(?:doppel\w*|beide\w*|kanal\w*|chat\w*)\b/.test(input) &&
+    /\b(?:antwort\w*|nachricht\w*|bot\w*|schreib\w*|automatisch)\b/.test(input);
+  if (twoChannels && crossChannelConcern) {
+    return {
+      text: "Doppelte Antworten auf Instagram und WhatsApp wären nervig. Ich kann in diesem Chat nicht prüfen oder garantieren, dass die Automatik im anderen Kanal pausiert. Das sollte Jochen im System prüfen. Ich behaupte nicht, dass es schon abgeschaltet ist.",
+    };
+  }
+  if (/\b(?:garantier\w*|sicherstell\w*|versprech\w*)\b/.test(input) &&
+      /\b(?:kanal\w*|doppel\w*|chat\w*|whatsapp|instagram)\b/.test(input)) {
+    return {
+      text: "Eine automatische Sperre über beide Kanäle hinweg kann ich hier nicht verifizieren oder garantieren. Jochen muss die konkreten Einstellungen prüfen, bevor ich dazu eine Zusage machen dürfte.",
+    };
+  }
+
+  // "Bought yesterday, access email missing" is an ownership issue even when
+  // the lead does not use the exact word "payment" or "receipt".
+  if (/\b(?:selbststarter|buch|produkt|coaching)\b/.test(input) &&
+      /\b(?:gekauft|bestellt|bezahlt)\b/.test(input) &&
+      /\b(?:zugangs\w*|zugang|freischalt\w*|login)\b/.test(input) &&
+      /\b(?:nicht|kein\w*|fehl\w*|vermisse\w*|finde\w*\s+nicht)\b/.test(input)) {
+    return {
+      text: "Ob der Kauf erfasst wurde und warum deine Zugangs-Mail fehlt, kann ich hier nicht verlässlich prüfen. Bitte prüf auch den Spam-Ordner. Wenn nichts angekommen ist, gebe ich den Vorgang an Jochen zur tatsächlichen Bestellprüfung weiter, ohne einen Zahlungseingang zu bestätigen.",
+      handoff: true,
+    };
+  }
+
   const asksVerifiedStatus =
     /\b(?:bestatigt|bestatigung|verifiziert|wirklich gebucht|tatsachlich gebucht|sicher gebucht|angekommen|zahlungseingang|habe bezahlt|hab bezahlt|zugang fehlt|bestellung|kaufbeleg|abbuchung)\b/.test(input) &&
     /\b(?:termin|kalender|calendly|buchung|gebucht|zahlung|bezahlt|gekauft|bestellung|zugang|kauf|rechnung|bezahlen)\b/.test(input);
@@ -92,6 +121,14 @@ export function getPeteVerifiedTransactionAnswer(
   if (/\b(?:was ist|was genau|was bekomme|was beinhaltet|was umfasst)\b/.test(input) &&
       /\b(?:angebot|coaching|begleitung|selbststarter)\b/.test(input) &&
       /\b(?:verbindlich|zahlen|kosten|preis|enthalten)\b/.test(input)) {
+    if (/\bselbststarter\b/.test(input) && !/\b(?:coaching|begleitung)\b/.test(input)) {
+      return {
+        text: "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText +
+          " und ist für die eigenständige Umsetzung gedacht. Die genaue Inhaltsliste findest du auf der Produktseite: " +
+          OFFER_TRUTH.selfstarter.productUrl +
+          ". Zu möglichen Zusatzkosten oder Vertragsdetails kann ich ohne die konkrete Kaufübersicht keine verbindliche Zusage machen.",
+      };
+    }
     return {
       text: "Der Selbststarter für " + OFFER_TRUTH.selfstarter.priceText +
         " ist zum eigenständigen Einstieg gedacht. Die persönliche 5-Wochen-Begleitung kostet " +
@@ -162,6 +199,10 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
   if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin|medikament|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
+  // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
+  // zwei Jahre her" is not current pregnancy. Red-flag symptoms remain gated.
+  if (/\b(?:letzte|fruhere|vorige)\s+schwangerschaft\s+ist\s+(?:(?:uber|mehr als|rund|fast|schon)\s+)*(?:\d+|ein|eine|zwei|drei|vier|funf|sechs)\s+jahre?\s+her\b/.test(input) &&
+      /\b(?:trainier\w*|krafttraining|abnehm\w*|gewicht\w*|bewegun\w*|fitness)\b/.test(input)) return true;
   if (/\b(?:nach der schwangerschaft|nach schwangerschaft|seit der geburt|nach der geburt)\b/.test(input) &&
       /\b(?:trainier\w*|abnehm\w*|gewicht\w*|energie|fitness|bewegung|nehme\w*|nimmt)\b/.test(input)) return true;
   if (/\b(?:ohne (?:eine )?(?:medizinische )?(?:fern)?diagnose|keine ferndiagnose)\b/.test(input) &&
@@ -196,7 +237,7 @@ export function isUnsafeLlmClaim(reply: string): boolean {
   if (/\b(?:ich antworte personlich|ich bleibe personlich|ich bleibe hier[^.?!]{0,90}antworte personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
   // Never claim that an unverified commerce or cross-channel infrastructure
   // guarantee is already in force.
-  if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|ohne automatische nachsendungen|keine doppelantworten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
+  if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|ohne automatische nachsendungen|keine doppelantworten|ich schreibe dir nur hier weiter|wir halten es ab jetzt hier|die ki stoppt automatisch|keine weiteren automatischen nachrichten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
   return false;
 }
 
