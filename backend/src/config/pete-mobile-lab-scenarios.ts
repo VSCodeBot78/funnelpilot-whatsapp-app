@@ -8,6 +8,7 @@ export const PETE_LAB_SCENARIOS = {
   keto: { label: "KETO", text: "KETO" },
   video: { label: "VIDEO", text: "Ich hätte gern dein Video." },
   guide: { label: "GUIDE", text: "GUIDE" },
+  reel_only: { label: "Geteiltes Reel ohne Text", text: "", hasAttachments: true },
   reel_fun: { label: "Privates Reel / 😂", text: "😂 Haha, genau so!", hasAttachments: true },
   reel_question: { label: "Reel mit Frage", text: "Wie geht die Übung aus dem Reel genau?", hasAttachments: true },
   reel_keyword: { label: "Reel + KETO", text: "KETO", hasAttachments: true },
