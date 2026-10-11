@@ -117,7 +117,7 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
-  if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin|medikament|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie)\b/.test(input))
+  if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin|medikament|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   if (/\b(?:nach der schwangerschaft|nach schwangerschaft|seit der geburt|nach der geburt)\b/.test(input) &&
       /\b(?:trainier\w*|abnehm\w*|gewicht\w*|energie|fitness|bewegung|nehme\w*|nimmt)\b/.test(input)) return true;
@@ -135,7 +135,7 @@ export function isUnsafeLlmClaim(reply: string): boolean {
   if (/\b(?:ich antworte personlich|ich bleibe personlich|ich bleibe hier[^.?!]{0,90}antworte personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
   // Never claim that an unverified commerce or cross-channel infrastructure
   // guarantee is already in force.
-  if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
+  if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|ohne automatische nachsendungen|keine doppelantworten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
   return false;
 }
 

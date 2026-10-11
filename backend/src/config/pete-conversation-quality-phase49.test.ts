@@ -123,6 +123,8 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
     assert.match(reply.text || "", /Energiebilanz/);
     assert.equal(calls, 1);
     assert.equal(isGeneralNonMedicalKnowledgeRequest("Ich bin nach der Schwangerschaft nicht mehr so fit und trainiere."), true);
+    assert.equal(isGeneralNonMedicalKnowledgeRequest(
+      "Nach der Schwangerschaft habe ich starke Schmerzen beim Training."), false);
   });
 
   await t.test("general evidence without diagnosis may get a general answer", async () => {
@@ -161,6 +163,7 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
       "Hier gibt es keine versteckten Kosten oder Extras.",
       "Alles basiert auf echten Informationen.",
       "Garantiert keine Doppelantworten auf Instagram und WhatsApp.",
+      "Hier gibt es klare Antworten ohne automatische Nachsendungen.",
       "Deine Zahlung ist verifiziert.",
     ]) {
       assert.equal(isUnsafeLlmClaim(reply), true, reply);
