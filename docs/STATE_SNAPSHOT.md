@@ -366,3 +366,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Pete-Instruktionen verbessert: Keine ungefragten Pitches nach Ablehnung, keine wiederholten Drei-/Vierer-Tipplisten und keine ungeprüfte Kausalität aus Schlafmangel, Sitzen oder Stress bei Gewichtsstagnation.
 - CI-Regression `backend/src/config/pete-phase59-sales-optout.test.ts` nutzt ausschließlich einen simulierten Provider. Prüft Formulierungserkennung, Persistenz, Guards, Dialogfortsetzung und vorrangigen STOP. PR #93.
 - Der Scope ist **Code-/synthetische Sicherheit**, keine menschliche Qualitätsfreigabe, keine echte OpenAI-Dialogvalidierung dieser neuen Promptänderungen, keine Meta-/WhatsApp-End-to-End- oder Windows-/Phase-4-Abnahme. Sende-Flags bleiben aus. Issue #80 bleibt zur unabhängigen Gesprächsqualitätsprüfung offen.
+
+## CEO-Feedback / UX, Pete-Stil und Live-Gates (11.10.2026)
+
+- Persönliches Geschäftsführer-Feedback in `docs/CEO_FEEDBACK_DASHBOARD_PETE_2026-10-11.md` als umsetzbare Abnahme- und Backlogkriterien aufgenommen.
+- **UI-01:** Doppelte Eingabefelder in Settings und wiederöffnendem Onboarding reduzieren, ohne produktive Einstellungen, Sicherheitsoptionen oder Legacy-Werte zu verlieren.
+- **UI-02:** Helle/kaum lesbare Sekundärschrift in Light-/Dark-Mode auf realen Geräten kontraststärker gestalten.
+- **PETE-01:** Lange KI-Gedankenstriche sind im LLM-Normalizer abgefangen; alle anderen Antwortpfade noch gezielt prüfen.
+- **LIVE-01:** Drei getrennte Prozentwerte sind Schätzwerte; Phase-4- und Provider-Gates zusätzlich mit konkreten erledigten/offenen Punkten berichten. Conversion nur mit echten Leads und providerverifizierten Transaktionen bewerten.
+- **OPTIONAL-01:** Ggf. ein Monat Claude Code als unabhängiger PR-Reviewer, **kein** Abo oder technische Kopplung beauftragt.
+- Nur Dokumentation: kein Dashboard-Umbau, kein echter Versand, keine neue API-Rechnung, keine Live-/SaaS-Freigabe.
