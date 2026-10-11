@@ -12,6 +12,8 @@ const STATIC = new Set([
 ]);
 const API_ROUTES = [
   ["GET", /^\/test-chat\/lab\/budget$/],
+  ["GET", /^\/test-chat\/lab\/scenarios$/],
+  ["POST", /^\/test-chat\/lab\/start$/],
   ["GET", /^\/test-chat\/lab\/state\/lab_[A-Za-z0-9_-]{20,90}$/],
   ["POST", /^\/test-chat\/lab\/message$/],
 ];
