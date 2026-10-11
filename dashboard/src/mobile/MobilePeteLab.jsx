@@ -121,7 +121,7 @@ export default function MobilePeteLab() {
       recognition.onend = () => {
         if (recognitionRef.current === recognition) recognitionRef.current = null;
         setListening(false);
-        setSpeechStatus(previous => previous || "Diktat beendet. Text bitte prüfen.");
+        setSpeechStatus(previous => previous.startsWith("Mikrofon aktiv:") ? "Diktat beendet. Text bitte prüfen." : previous || "Diktat beendet. Text bitte prüfen.");
       };
       recognitionRef.current = recognition;
       setSpeechStatus("Mikrofon aktiv: Jetzt sprechen. Beim ersten Mal Zugriff erlauben.");
@@ -370,7 +370,7 @@ export default function MobilePeteLab() {
         <textarea id="pete-lab-input" rows="2" value={draft}
           onChange={e => setDraft(e.target.value)}
           placeholder="Hier tippen oder unten aufs Mikrofon tippen..."
-          disabled={busy || !budget || budget.blocked} />
+          disabled={busy || listening || !budget || budget.blocked} />
         <button type="button" className={"pete-lab-mic-button" + (listening ? " is-listening" : "")}
           aria-pressed={listening} onClick={toggleSpeech} disabled={busy}>
           {listening ? "⏹ Diktat beenden" : "🎤 Nachricht diktieren"}
