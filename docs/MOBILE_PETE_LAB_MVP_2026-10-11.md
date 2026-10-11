@@ -47,3 +47,13 @@
 - Export enthält die jeweils vorherige fiktive Eltern-Nachricht, Pete-Antwort, Bewertung und Korrekturtext. Explizites Kopieren in die Zwischenablage, **kein** automatisches Teilen/Senden an ChatGPT oder Instagram.
 - Aus Sicherheits-/Kostengründen werden bei unklaren Verbindungsfehlern **keine** gesendeten Testnachrichten wiederholt. Der diktierte Eingabetext wird behalten; vor erneutem Versand bitte Verlauf/Budget prüfen.
 - Code- und UI-Regressionen sind nicht gleichzusetzen mit einer Android-Geräteabnahme. **Vor Installation** fehlen weiterhin isoliertes Backend, authentisierter HTTPS-Zugang, externe Betriebskostenentscheidung und explizite Modellbudgetfreigabe. Für die mobile Test-App weiterhin **keine Hosting-Bestellung jetzt**.
+
+## M-LAB-04 – eigene Mikrofontaste für Android-Testchat (11.10.2026)
+
+Der Geschäftsführer möchte auch ohne aktivierte Android-Tastatur-Diktierfunktion direkt in der Pete-App sprechen können. **Eigener sichtbarer Button „🎙️ Nachricht diktieren“** im Nachrichteneditor: Tippen startet browsernative `SpeechRecognition`/`webkitSpeechRecognition` auf Deutsch (`de-DE`), nochmaliges Tippen stoppt. Erkanntes Gesprochenes ergänzt den bestehenden fiktiven Textentwurf; vor dem Senden kann er kontrolliert und bearbeitet werden. **Kein Auto-Send, kein Gesprächs-/Audio-Upload durch Funnel Pilot zum Transkribieren, keine neuen Pete-/OpenAI-Transkriptionskosten.**
+
+Browser-Einschränkung: SpeechRecognition ist nicht in jedem Android-WebView/In-App-Browser verfügbar. Der Button zeigt dann an, dass man die App **direkt in Google Chrome öffnen** sollte. Nach dem Antippen kann Chrome eine Mikrofonfreigabe verlangen; Ablehnung/Netzwerkfehler werden verständlich angezeigt. Einige Browser verwenden bei der Spracheingabe einen **externen Spracherkennungsdienst**; keine Zusage zu lokaler Offline-Sprachverarbeitung. Keine Audioaufnahme wird durch die Test-App gespeichert. Live-Verhalten kann nur auf dem tatsächlichen Android-Gerät abschließend bestätigt werden.
+
+Der isolierte HTTPS-Gateway erlaubt dafür `Permissions-Policy: microphone=(self)`, während Kamera und Geolocation weiter gesperrt bleiben. Separate Unit- und Gateway-Regressionstests; keine Änderung an Social-Send-Flags oder aktiver OpenAI-Kostenfreigabe.
+
+**Betriebsgate:** Änderungen erst nach grüner CI und erfolgreichem isoliertem Railway-Testlabor-Build in den temporären Deployment-Branch übernehmen; Nutzer führt dann einen echten Android-Mikrofontest durch.
