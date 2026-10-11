@@ -9,6 +9,7 @@ process.env.NODE_ENV = "test";
 process.env.DATA_DIR = dir;
 process.env.PETE_MOBILE_LAB_ENABLED = "false";
 process.env.PETE_MOBILE_LAB_ISOLATED_DATA = "false";
+process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "4323801";
 process.env.INSTAGRAM_SEND_ENABLED = "false";
 process.env.INSTAGRAM_ENGINE_ENABLED = "false";
 process.env.WHATSAPP_SEND_ENABLED = "false";
@@ -61,7 +62,9 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       assert.equal(res.status, 200);
       const budget = await res.json();
       assert.equal(budget.hardCapUsd, 8);
-      assert.equal(budget.confirmedUsd, 0);
+      assert.equal(budget.confirmedUsd, 4.323801);
+      assert.equal(budget.priorConfirmedUsd, 4.323801);
+      assert.equal(budget.remainingUsd, 3.676199);
       assert.equal(budget.requestsStarted, 0);
       assert.equal(res.headers.get("cache-control"), "no-store");
     });
@@ -86,6 +89,7 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       assert.equal(saved.state.flags, undefined);
       const b = await (await fetch(url + "/budget")).json();
       assert.equal(b.requestsStarted, 0, "no unapproved model API calls");
+      assert.equal(b.committedUsd, 4.323801, "historical spend preserved");
     });
   });
 });

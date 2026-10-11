@@ -31,3 +31,11 @@
 - Nur zufällig erzeugte `lab_`-Test-IDs, fixierte Kampagne und bis 1.000 Zeichen Text pro Nachricht. Keine frei gewählten echten Lead-IDs/Kampagnen und keine Ausgabe von internem Conversation-State, Einstellungen oder Leadprofilen. Budget-Endpoint ist read-only.
 - Der Betreiber **muss** eine separate frische `DATA_DIR`/Instanz ohne Live-Kundendaten starten. Das Acknowledgement-Flag garantiert diese Trennung nicht technisch; es ist nur eine Fail-Closed-Konfigurationshürde. Proxy darf **ausschließlich** diese 3 API-Routen + statische Test-App unter authentisiertem Zugriff freigeben, niemals `/test-chat/message` oder allgemeine `/leads`, `/settings`, `/conversations`.
 - Lab-API selbst ist **kein Login**, keine CSRF-Abwehr und keine Mandantenisolierung. Immer geschütztes HTTPS-Gateway mit serverseitig gesicherter Anmeldung, Session-/Origin-/Rate-Limits erforderlich. Deployment separat freigeben.
+
+
+## Abgleich bisheriger Projektkosten
+
+- GitHub `pete-phase3-budget-ledger/phase3-budget-ledger.json` am 11.10.2026 verifiziert: `spentMicroUsd=4323801`, `reservedMicroUsd=0` = **4,323801 USD bereits verbucht; 3,676199 USD bis zum internen 8-USD-Limit frei**. Kein OpenAI-Prepaid-Kontostand.
+- Vor dem ersten externen Start **erneut prüfen** und den bestätigten Projektverbrauch als `PETE_PROJECT_PRIOR_SPEND_MICRO_USD` setzen. Der Wert ist eine nichtgeheime manuelle Ausgangssumme und **keine** laufende GitHub-/Billing-Synchronisierung.
+- Bei `PETE_MOBILE_LAB_ENABLED=true` wird der historische Verbrauch zum lokalen Backend-Ledger addiert und gegen dasselbe 8-USD-Limit gerechnet. Neue isolierte `DATA_DIR`-Instanzen erhalten nicht erneut volle 8 USD frei.
+- Nach der ersten reservierten Anfrage wird der Baseline-Wert im Ledger gespeichert. Ein späteres Ändern/Entfernen dieses Werts stoppt die Budgetfunktion und erfordert bewusste Reconciliation. Keine parallelen unabhängigen API-Ausgaben mit derselben Budgetfreigabe.

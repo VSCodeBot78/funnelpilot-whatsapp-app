@@ -38,6 +38,29 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
     fs.rmSync(temp, { recursive: true, force: true });
   });
 
+  await t.test("mobile lab imports verified historical spend and fails closed if changed", () => {
+    resetLedger();
+    process.env.PETE_MOBILE_LAB_ENABLED = "true";
+    process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "4323801";
+    try {
+      const initial = budget.getPeteBudgetStatus();
+      assert.equal(initial.priorConfirmedUsd, 4.323801);
+      assert.equal(initial.committedUsd, 4.323801);
+      assert.equal(initial.remainingUsd, 3.676199);
+      const id = budget.reservePeteBudget(request(1000));
+      assert.ok(id);
+      assert.ok(budget.getPeteBudgetStatus().remainingUsd < 3.676199);
+      process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "0";
+      assert.equal(budget.getPeteBudgetStatusSafe().ok, false);
+      assert.throws(() => budget.reservePeteBudget(request(1000)),
+        (err: any) => err?.reason === "unavailable");
+    } finally {
+      delete process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD;
+      process.env.PETE_MOBILE_LAB_ENABLED = "false";
+      resetLedger();
+    }
+  });
+
   await t.test("new counter is empty and explicitly priced for mini only", () => {
     resetLedger();
     const s = budget.getPeteBudgetStatus();

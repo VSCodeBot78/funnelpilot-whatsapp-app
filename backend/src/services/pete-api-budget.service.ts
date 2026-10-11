@@ -34,6 +34,7 @@ const LOCK_FILE = path.join(env.DATA_DIR, "pete-api-budget.lock");
 type Reservation = { microUsd: number; createdAt: string; model?: PricedModel };
 type Ledger = {
   version: 1;
+  priorSpentMicroUsd?: number;
   capMicroUsd: number;
   committedMicroUsd: number;
   confirmedMicroUsd: number;
@@ -49,9 +50,22 @@ export class PeteBudgetStop extends Error {
     super("pete_budget_" + reason);
   }
 }
+// Historical project spend is a fixed local reconciliation snapshot,
+// not the OpenAI account balance or live billing history.
+function priorSpentMicros(): number {
+  if (process.env.PETE_MOBILE_LAB_ENABLED !== "true") return 0;
+  const raw = process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD?.trim();
+  if (!raw || !/^(0|[1-9][0-9]{0,6})$/.test(raw)) throw new PeteBudgetStop("unavailable");
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed > USD_MICROS_CAP)
+    throw new PeteBudgetStop("unavailable");
+  return parsed;
+}
+
 function emptyLedger(): Ledger {
   return {
-    version: 1, capMicroUsd: USD_MICROS_CAP, committedMicroUsd: 0,
+    version: 1, priorSpentMicroUsd: priorSpentMicros(),
+    capMicroUsd: USD_MICROS_CAP, committedMicroUsd: 0,
     confirmedMicroUsd: 0, reservedMicroUsd: 0, requestsStarted: 0,
     requestsMetered: 0, billedInputTokens: 0, billedOutputTokens: 0, pending: {},
   };
@@ -72,7 +86,9 @@ function load(): Ledger {
     "billedInputTokens", "billedOutputTokens"]) {
     if (!isWhole(data[key])) throw new PeteBudgetStop("unavailable");
   }
-  if (data.version !== 1 || data.capMicroUsd !== USD_MICROS_CAP ||
+  const prior = data.priorSpentMicroUsd ?? 0;
+  if (!isWhole(prior) || prior !== priorSpentMicros() ||
+      data.version !== 1 || data.capMicroUsd !== USD_MICROS_CAP ||
       !data.pending || typeof data.pending !== "object" || Array.isArray(data.pending) ||
       (data.confirmedMicroUsd as number) + (data.reservedMicroUsd as number) !== data.committedMicroUsd ||
       (data.requestsMetered as number) > (data.requestsStarted as number))
@@ -106,13 +122,14 @@ export function getPeteBudgetStatus() {
   const data = load();
   return {
     model: MODEL, hardCapUsd: USD_MICROS_CAP / 1_000_000,
-    committedUsd: data.committedMicroUsd / 1_000_000,
-    confirmedUsd: data.confirmedMicroUsd / 1_000_000,
+    priorConfirmedUsd: priorSpentMicros() / 1_000_000,
+    committedUsd: (priorSpentMicros() + data.committedMicroUsd) / 1_000_000,
+    confirmedUsd: (priorSpentMicros() + data.confirmedMicroUsd) / 1_000_000,
     reservedUsd: data.reservedMicroUsd / 1_000_000,
-    remainingUsd: Math.max(0, USD_MICROS_CAP - data.committedMicroUsd) / 1_000_000,
+    remainingUsd: Math.max(0, USD_MICROS_CAP - priorSpentMicros() - data.committedMicroUsd) / 1_000_000,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
-    blocked: data.committedMicroUsd >= USD_MICROS_CAP,
+    blocked: priorSpentMicros() + data.committedMicroUsd >= USD_MICROS_CAP,
   };
 }
 export function getPeteBudgetStatusSafe() {
@@ -147,7 +164,7 @@ export function reservePeteBudget(params: {
     throw new PeteBudgetStop("exhausted");
   return locked(() => {
     const data = load();
-    if (data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
+    if (priorSpentMicros() + data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
       throw new PeteBudgetStop("exhausted");
     const id = crypto.randomUUID();
     data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(), model: params.model as PricedModel };

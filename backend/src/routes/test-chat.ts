@@ -14,6 +14,7 @@ const router = Router();
 function guardMobileLab(_req: Request, res: Response, next: NextFunction): void {
   const permitted = process.env.PETE_MOBILE_LAB_ENABLED === "true" &&
     process.env.PETE_MOBILE_LAB_ISOLATED_DATA === "true" &&
+    /^[0-9]{1,7}$/.test(process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD ?? "") &&
     !env.INSTAGRAM_SEND_ENABLED && !env.WHATSAPP_SEND_ENABLED &&
     !env.INSTAGRAM_ENGINE_ENABLED && !env.INSTAGRAM_ALLOW_ALL_SENDERS &&
     !env.WHATSAPP_ALLOW_ALL_RECIPIENTS;
