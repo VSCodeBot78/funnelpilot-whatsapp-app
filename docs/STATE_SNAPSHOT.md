@@ -400,3 +400,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Bestehender Pete-Backend-Einstieg bindet aus Sicherheitsgründen nur Loopback; vor PWA-Handyinstallation sind separater abgesicherter Ingress, persistentes isoliertes Testdatenverzeichnis und Kostenkontrolle erforderlich.
 - **NIGHT-01 vorgemerkt:** Lead-DMs nachts auch bei Handy-Flugmodus serverseitig sicher empfangen; automatische Antworten bis morgens zurückstellen und unmittelbar vor Send STOP, Human, Opt-out, 24h-Meta-Fenster, Duplikate und Providerfreigabe prüfen. Derzeit fehlt diese nächtliche Queue/Guard-Logik; **kein** Live-Nachtmodus aktiviert.
 - Telefon als dauerhafter Meta-Server nicht empfohlen. Windows mit „Beim Zuklappen: Nichts unternehmen“ nur bedingt für kontrollierte Tests; unabhängiger Cloud-Receiver bevorzugt.
+
+## BETA-05 – Infrastrukturplanung für 2–5 externe Coach-Tester (11.10.2026)
+
+- Geschäftsführer-Wunsch protokolliert: **temporäres internes mobiles Pete-Testlabor höchstens ca. 1 Monat und möglichst kostenlos, aktuell keine Einrichtung/Buchung**. Spätere **2–5 Coach-Beta-Tester** optional gratis oder mit noch nicht festgelegter Aufwandsentschädigung.
+- Ein gemeinsamer günstiger Hetzner-Server mit **2 vCPU/4 GB RAM als Startkandidat** erscheint für kleine Beta-Last plausibel, ist **ohne Lasttest kein Kapazitätsnachweis**. Die Zahl der DMs und parallelen Requests ist entscheidend, nicht nur die Zahl der Coach-Accounts.
+- **Preisvorbehalt:** CX23 Listenpreis seit Juni 2026 **5,49 € netto ohne IPv4**, zuzüglich optional IPv4 (0,50 € netto) und Backup (~20 % Serverpreis). Aktuelle Hetzner-Webseite markiert CX23 jedoch als **nicht verfügbar**; keinen 5,49-€-Server als sicher buchbar voraussetzen.
+- Variable Kosten: OpenAI-API-Aufrufe pro Coach (getrenntes Ledger, Warnungen, harte Grenzen, manuelle Freigabe), optionale WhatsApp-/Anbieterkosten, Backup/Monitoring. Ein gemeinsamer Server spart Fixkosten, **keine** gemeinschaftlich unkontrollierten KI-Budgets.
+- **SaaS-Gate unverändert:** Workspace-Sandbox noch nicht in aktive Routen integriert. Echtes Login, durchgängige Tenant-Isolation, DSGVO/Provider-Secrets, Backup/Restore und Meta-Tests nötig, bevor echte Coaches eingeladen werden.
+- Detail: `docs/BETA_2_5_COACHES_INFRASTRUCTURE_COSTS_2026-10-11.md`. **Nur Protokoll**, keine Kosten, keine Coach-Zugänge oder Live-Freigaben.
