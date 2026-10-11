@@ -357,3 +357,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
   Nicht-Laptop-Entwicklungsablaeufe und Produktivgates unveraendert.
 - Keine realen Nachrichten/Provider-Calls, keine neue Infrastruktur oder
   Datenmigration. Echter Windows-Neustart noch abzunehmen.
+
+## Phase 59 – Verkaufs-Follow-ups nach expliziter Absage (11.10.2026)
+
+- Anlass: Echtes GPT-5.4-Synthetic-Transcript `frustration-06` respektierte „keine Verkaufsnachricht“ sprachlich, aber zuvor ohne persistente Sperre für proaktive Erinnerungen.
+- `salesFollowUpsOptedOut` wird beim Eingang entsprechender Nachrichten gesetzt und sofort gespeichert. Bestehende gespeicherte Gespräche erhalten konservativ den Standard `false`, ein gesetztes Opt-out wird nicht zurückgesetzt.
+- Ghosting- und Provider-Booking-Nachfasser sind bei Opt-out inaktiv; beide `send-due`-Routen prüfen direkt vor Versand nochmals das aktuell persistierte Flag. Direkte Antworten auf neue Fragen bleiben möglich. Globaler STOP/DNC, Human-Takeover und Provider-Wahrheit bleiben separat vorrangig.
+- Pete-Instruktionen verbessert: Keine ungefragten Pitches nach Ablehnung, keine wiederholten Drei-/Vierer-Tipplisten und keine ungeprüfte Kausalität aus Schlafmangel, Sitzen oder Stress bei Gewichtsstagnation.
+- CI-Regression `backend/src/config/pete-phase59-sales-optout.test.ts` nutzt ausschließlich einen simulierten Provider. Prüft Formulierungserkennung, Persistenz, Guards, Dialogfortsetzung und vorrangigen STOP. PR #93.
+- Der Scope ist **Code-/synthetische Sicherheit**, keine menschliche Qualitätsfreigabe, keine echte OpenAI-Dialogvalidierung dieser neuen Promptänderungen, keine Meta-/WhatsApp-End-to-End- oder Windows-/Phase-4-Abnahme. Sende-Flags bleiben aus. Issue #80 bleibt zur unabhängigen Gesprächsqualitätsprüfung offen.
