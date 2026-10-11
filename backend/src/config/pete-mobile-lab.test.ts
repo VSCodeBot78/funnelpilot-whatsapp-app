@@ -114,7 +114,7 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       const checkId = "lab_123456789012345678901255";
       const check = await (await start(checkId,"check")).json();
       assert.equal(check.ok,true);
-      assert.match(check.state.messages.at(-1).text,/check\\.jochen-kammerer\\.de/);
+      assert.ok(check.state.messages.at(-1).text.includes("https://check.jochen-kammerer.de"));
       const bullshitId = "lab_123456789012345678901256";
       const bullshit = await (await start(bullshitId,"bullshit")).json();
       assert.equal(bullshit.ok,true);
