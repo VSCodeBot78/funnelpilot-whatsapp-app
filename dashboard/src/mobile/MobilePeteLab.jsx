@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
 import { budgetCounterChange, formatUsd, readPeteBudget } from "./peteLabBudget";
+import { isSyntheticLabId, loadTestHistory, rememberTest, saveTestHistory, loadReviews, saveReviews, buildReviewExport } from "./peteLabReview";
 import "./mobilePeteLab.css";
 
-const CAMPAIGN = "eltern-vital-fit";
 const STORAGE_KEY = "fp-temporary-pete-lab-lead-v1";
 
 function newSyntheticId() {
@@ -14,7 +14,7 @@ function newSyntheticId() {
 function getSavedId() {
   try {
     const value = localStorage.getItem(STORAGE_KEY);
-    return value && /^lab_[a-zA-Z0-9_-]{8,90}$/.test(value) ? value : newSyntheticId();
+    return isSyntheticLabId(value) ? value : newSyntheticId();
   } catch {
     return newSyntheticId();
   }
@@ -30,6 +30,10 @@ function moneyText(value) { return formatUsd(value, 4); }
 
 export default function MobilePeteLab() {
   const [id, setId] = useState(getSavedId);
+  const [history, setHistory] = useState(() =>
+    rememberTest(loadTestHistory(window.localStorage), id, "Test " + new Date().toLocaleString("de-DE")));
+  const [reviews, setReviews] = useState(() => loadReviews(window.localStorage, id));
+  const sendLock = useRef(false);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [budget, setBudget] = useState(null);
@@ -38,12 +42,12 @@ export default function MobilePeteLab() {
   const [status, setStatus] = useState("Verbinde...");
   const [busy, setBusy] = useState(false);
   const [replySource, setReplySource] = useState("");
-  const [votes, setVotes] = useState({});
   const lastRef = useRef(null);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, id); } catch { /* storage optional */ }
   }, [id]);
+  useEffect(() => { saveTestHistory(window.localStorage, history); }, [history]);
 
   useEffect(() => {
     // A service worker with *no cache* satisfies app-shell installation without
@@ -100,11 +104,13 @@ export default function MobilePeteLab() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || busy || !budget || budget.blocked) return;
+    if (!text || busy || sendLock.current || !budget || budget.blocked) return;
+    sendLock.current = true;
     setBusy(true);
     setStatus("Pete antwortet...");
     const before = await loadBudget();
     if (!before || before.blocked) {
+      sendLock.current = false;
       setBusy(false);
       setStatus("Kostenkontrolle gesperrt oder nicht erreichbar");
       return;
@@ -124,24 +130,46 @@ export default function MobilePeteLab() {
         ? "Pete pausiert: " + data.replySuppressedReason
         : "Testantwort erhalten");
     } catch {
-      // Do not fabricate a Pete response or reverse a potentially billed call.
-      setStatus("Test fehlgeschlagen. Bitte Verlauf und Budget neu laden.");
+      // Preserve a long dictated message, but never auto-retry a potentially billed call.
+      setDraft(previous => previous || text);
+      setStatus("Antwort unklar. Zuerst Verlauf und Budget aktualisieren, nicht blind erneut senden.");
     } finally {
       const after = await loadBudget();
       setLastChange(budgetCounterChange(before, after));
+      sendLock.current = false;
       setBusy(false);
     }
   };
 
-  const newConversation = () => {
-    if (busy) return;
-    setId(newSyntheticId());
+  const selectConversation = nextId => {
+    if (busy || !history.some(test => test.id === nextId)) return;
+    setId(nextId);
     setMessages([]);
     setDraft("");
-    setVotes({});
+    setReviews(loadReviews(window.localStorage, nextId));
+    setReplySource("");
+    setLastChange(null);
+    setStatus("Testverlauf wird geladen...");
+  };
+  const newConversation = () => {
+    if (busy) return;
+    const newId = newSyntheticId();
+    setHistory(previous => rememberTest(previous, newId,
+      "Test " + new Date().toLocaleString("de-DE")));
+    setId(newId);
+    setMessages([]);
+    setDraft("");
+    setReviews({});
     setReplySource("");
     setLastChange(null);
     setStatus("Neuer fiktiver Testkontakt");
+  };
+  const rateReply = (messageId, patch) => {
+    setReviews(previous => {
+      const next = { ...previous, [messageId]: { ...previous[messageId], ...patch } };
+      saveReviews(window.localStorage, id, next);
+      return next;
+    });
   };
 
   const refresh = async () => {
@@ -162,11 +190,10 @@ export default function MobilePeteLab() {
   };
 
   const copyFeedback = async () => {
-    const rated = messages.filter(m => m.role === "assistant" && votes[m.id]);
-    if (!rated.length) { setStatus("Bitte zuerst eine Pete-Antwort bewerten."); return; }
-    const summary = rated.map(m => "Pete: " + m.text + "\nBewertung: " + votes[m.id]).join("\n\n");
+    const summary = buildReviewExport(messages, reviews);
+    if (!summary) { setStatus("Bitte zuerst eine Pete-Antwort bewerten."); return; }
     try {
-      await navigator.clipboard.writeText("Pete Testfeedback (nur fiktive Daten)\n\n" + summary);
+      await navigator.clipboard.writeText(summary);
       setStatus("Feedback kopiert. Du kannst es mir hier schicken.");
     } catch {
       setStatus("Kopieren nicht verfügbar. Nutze die Chat-Auswahl.");
@@ -216,6 +243,13 @@ export default function MobilePeteLab() {
         ) : <p className="pete-lab-warning" role="alert">Zähler nicht erreichbar. Senden aus Sicherheitsgründen gesperrt.</p>}
         <p className="pete-lab-disclaimer">Nur dieser Backend-Pete-Zähler. <strong>Kein OpenAI-Kontoguthaben</strong>, keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
       </section>
+      <div className="pete-lab-sessions">
+        <label htmlFor="pete-lab-session">Fiktiven Chat fortsetzen</label>
+        <select id="pete-lab-session" value={id}
+          onChange={e => selectConversation(e.target.value)} disabled={busy}>
+          {history.map(entry => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
+        </select>
+      </div>
       <div className="pete-lab-actions">
         <button type="button" onClick={newConversation} disabled={busy}>+ Neuer Test</button>
         <button type="button" onClick={copyFeedback}>Bewertungen kopieren</button>
@@ -230,11 +264,20 @@ export default function MobilePeteLab() {
             </div>
             {m.role === "assistant" && (
               <div className="pete-lab-votes" aria-label="Antwort bewerten">
-                <button type="button" aria-pressed={votes[m.id] === "gut"}
-                  onClick={() => setVotes(v => ({ ...v, [m.id]: "gut" }))}>👍 Gut</button>
-                <button type="button" aria-pressed={votes[m.id] === "verbessern"}
-                  onClick={() => setVotes(v => ({ ...v, [m.id]: "verbessern" }))}>👎 Verbessern</button>
+                <button type="button" aria-pressed={reviews[m.id]?.rating === "gut"}
+                  onClick={() => rateReply(m.id, { rating: "gut" })}>👍 Gut</button>
+                <button type="button" aria-pressed={reviews[m.id]?.rating === "verbessern"}
+                  onClick={() => rateReply(m.id, { rating: "verbessern" })}>👎 Verbessern</button>
               </div>
+            )}
+            {m.role === "assistant" && (reviews[m.id]?.rating === "verbessern" || reviews[m.id]?.note) && (
+              <label className="pete-lab-note">
+                Was sollte Pete anders machen?
+                <textarea maxLength={400} rows={2}
+                  value={reviews[m.id]?.note || ""}
+                  placeholder="Kurze Korrektur für Pete diktieren oder tippen..."
+                  onChange={e => rateReply(m.id, { note: e.target.value })} />
+              </label>
             )}
           </div>
         ))}
@@ -252,7 +295,7 @@ export default function MobilePeteLab() {
         </button>
       </form>
       <p className="pete-lab-status" role="status">{status}{replySource ? " · Quelle: " + replySource : ""}</p>
-      <footer>Testmodus. Feedback wird nur bis zum Schließen der App gehalten; kopiere es bei Bedarf. Kein automatisches KI-Training.</footer>
+      <footer>Testmodus. Fiktive Chatverläufe liegen im Test-Backend; deine Bewertungen bleiben nur auf diesem Handy gespeichert. Kein automatisches KI-Training.</footer>
     </main>
   );
 }
