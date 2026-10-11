@@ -171,7 +171,7 @@ if (!fatal && report.completedPersonas === 2 &&
   const status = getPeteBudgetStatus();
   if (status.requestsStarted !== 0 || status.committedUsd !== 0 ||
       status.reservedUsd !== 0) throw Error("phase3_zero_calls_not_proven");
-  const evidencePath = path.resolve("..", ".phase3-data",
+  const evidencePath = path.resolve(".phase3-data",
     "batch-" + batch, "pete-phase3-zero-calls.json");
   fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
   fs.writeFileSync(evidencePath, JSON.stringify({
