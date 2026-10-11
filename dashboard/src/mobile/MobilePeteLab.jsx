@@ -64,6 +64,10 @@ export default function MobilePeteLab() {
       const res = await fetch(buildApiUrl("/test-chat/lab/budget"), {
         credentials: "same-origin", cache: "no-store",
       });
+      if (res.status === 401 && import.meta.env.PROD) {
+        window.location.assign("/lab-login");
+        return null;
+      }
       if (!res.ok) throw Error("Keine Budgetfreigabe");
       const value = readPeteBudget(await res.json());
       if (!value) throw Error("Budgetdaten ungültig");
@@ -120,7 +124,7 @@ export default function MobilePeteLab() {
       const res = await fetch(buildApiUrl("/test-chat/lab/message"), {
         method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: id, campaignId: CAMPAIGN, messageText: text }),
+        body: JSON.stringify({ leadId: id, messageText: text }),
       });
       const data = await res.json();
       if (!res.ok || data.ok !== true) throw Error(data.error || "Test nicht möglich");
