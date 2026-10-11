@@ -73,3 +73,34 @@ body:has(.pete-mobile-lab) { background: #121820; }
   color: #18232d; background: #fff; border: 1px solid #bccbd8;
   border-radius: 9px; resize: vertical; font: 14px/1.5 system-ui, sans-serif; }
 .pete-lab-note textarea:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }
+
+/* Prominent built-in Android dictation button, independent of keyboard layout. */
+.pete-lab-composer .pete-lab-mic-button {
+  min-height: 52px;
+  background: #29435a;
+  color: #fff;
+  border: 2px solid #aac4da;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 750;
+  width: 100%;
+}
+.pete-lab-composer .pete-lab-mic-button.is-listening {
+  background: #713621;
+  color: #fff;
+  border-color: #ffbd85;
+}
+.pete-lab-speech-status {
+  margin: 0;
+  color: #f5f7fa;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pete-lab-speech-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #8299ac;
+  border-radius: 8px;
+  color: #d0dbe5;
+  font-size: 12px;
+}
