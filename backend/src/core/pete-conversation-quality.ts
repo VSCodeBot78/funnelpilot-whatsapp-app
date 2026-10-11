@@ -235,8 +235,18 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
       /\b(?:trainier\w*|abnehm\w*|gewicht\w*|energie|fitness|bewegung|nehme\w*|nimmt)\b/.test(input)) return true;
   if (/\b(?:ohne (?:eine )?(?:medizinische )?(?:fern)?diagnose|keine ferndiagnose)\b/.test(input) &&
       /\b(?:evidenz|studien|wissenschaft|allgemein|training|ernahrung|schlaf|stoffwechsel)\b/.test(input)) return true;
+  // "Keine Ferndiagnose. Meine Werte wurden beim Arzt schon überprüft"
+  // describes a past check, not a request to interpret labs or change care.
+  // This is a deliberately narrow allowance, NEVER a waiver for active
+  // symptoms, medication, pregnancy or treatment advice.
+  if (/\b(?:keine ferndiagnose|ohne ferndiagnose|keine medizinische ferndiagnose)\b/.test(input) &&
+      /\b(?:werte|blutwerte)\b/.test(input) &&
+      /\b(?:arzt|arztlich)\b/.test(input) &&
+      /\b(?:uberpruft|gepruft|kontrolliert|untersucht|abgeklart)\b/.test(input) &&
+      !/\b(?:was bedeuten|bewerte|interpretiere|diagnostizier|behandlung|dosis|anpassen)\b/.test(input))
+    return true;
   if (/\b(?:blutwerte|arzt|arztlich)\b/.test(input) &&
-      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht)\b/.test(input) &&
+      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht|uberpruft|gepruft|abgeklart)\b/.test(input) &&
       !/\b(?:was bedeuten meine werte|diagnostizier|behandlung|dosis)\b/.test(input)) return true;
   return false;
 }

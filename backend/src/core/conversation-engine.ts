@@ -1306,6 +1306,9 @@ export async function processIncomingMessage(
         applyPeteDecisionStatePatch({
           decision, composed: guarded, state, runtimeBookingUrl: bookingUrl,
         });
+        // The last LLM reply's source must NOT leak into a later, rule-based
+        // medical/STOP/privacy handoff. Accurate provenance is part of QA.
+        updateAnswer(state, "peteReplySource", "guarded_safety");
         appendAssistantMessage(state, guarded.text);
         persistConversationState(state);
         return { text: guarded.text, nextStep: state.currentStep,
