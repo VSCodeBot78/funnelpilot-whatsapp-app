@@ -2,6 +2,22 @@
 
 **Idee und Geschäftsführerrückmeldung vom 11.10.2026.** Status: **vorgemerkt**, noch kein neuer mobiler Cloud-Dienst, kein echter Coach-SaaS-Zugang, keine Kostenfreigabe und keine Live-Nachrichten. Diese Idee ergänzt **M-02 (mobile Web-App / PWA)** und das bestehende Coach-Onboarding.
 
+## Verbindliche UX-Anforderung: temporäre Ein-Tipp-App nur für interne Entwicklung
+
+**Präzisierung durch den Geschäftsführer am 11.10.2026:** Die **jetzt** geplante mobile Pete-Testlabor-Installation ist **ausschließlich temporär** für die Funnel-Pilot-/Pete-Entwicklung. Sie soll **nicht** als zusätzliche dauerhafte Kunden- oder Coach-App verkauft, freigeschaltet oder gepflegt werden. Nach Abschluss der persönlichen Test- und Qualitätsphase kann das Startbildschirm-Icon wieder entfernt werden. Die separate, später mögliche Coach-Trainingsfunktion in Stufe B bleibt lediglich eine Produktidee im Backlog.
+
+**Pflicht-UX für Stufe A:**
+- Eine installierbare Browser-Verknüpfung bzw. kleine PWA mit eindeutigem Icon **„Pete Testlabor“** auf dem Android-Startbildschirm.
+- Einmal tippen → direkt die geschützte mobile Testchat-Ansicht. **Kein GitHub öffnen, Codespace starten oder Laptop einschalten** für normale tägliche Tests.
+- Sprachdiktat der Android-Tastatur im normalen Nachrichtenfeld, Gespräch fortsetzen, neue fiktive Persona starten, Antwort gut/schlecht bewerten.
+- Testdaten rein synthetisch; klar sichtbares **TEST – kein IG-/WhatsApp-Versand**; kein Zugriff auf bestehende Live-Leads oder Admin-Funktionen über eine öffentliche URL.
+- Authentifizierter, stabil erreichbarer Testdienst. Ein automatisch anhaltender GitHub Codespace erfüllt den Ein-Tipp-Wunsch **nicht zuverlässig**, auch wenn er für die Erstentwicklung praktisch sein kann; keine falsche 24/7-Zusage.
+- Sichere, auch unterwegs erreichbare Bereitstellung **ohne direkte Freigabe der lokalen Ports 3001/5173**; App-Icon selbst ist keine sichere Anmeldung. Die Sitzung kann aus Sicherheitsgründen gelegentliche erneute Anmeldung erfordern.
+- Kein natives Android-APK, kein Play Store, kein Mikrofon- oder Audiospeicherzwang. Installationsweg über Chrome/Android-Startbildschirm. Entfernen über Startbildschirm/App-Verwaltung; produktive Pete-/Funnel-Pilot-Daten dürfen dadurch nicht berührt werden.
+- Vor der Umsetzung Kosten, Laufzeit, Provider-/Sitzungsgrenzen und Authentisierung prüfen. **Keine kostenpflichtige Infrastruktur oder externe KI-Aufrufe stillschweigend aktivieren**.
+
+**Nicht vermischen:** Die spätere SaaS-Coach-Testfunktion darf diese temporäre interne PWA konzeptionell wiederverwenden, benötigt aber eigene Accounts, echtes Tenant-Isolation-Gate, getrennte Daten und eine separate Freigabe.
+
 ## Kernidee
 
 Den bereits vorhandenen lokalen Pete-Testchat so weiterentwickeln, dass er zuerst für die eigene, geschützte Qualitätsabnahme auf Android nutzbar ist, später aber auch **als optionales, mandantengetrenntes Coach-Trainingsstudio** in die Coach-App übernommen werden kann.
