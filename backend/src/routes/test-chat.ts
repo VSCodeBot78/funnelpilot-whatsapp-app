@@ -3,6 +3,14 @@ import { env } from "../config/env.js";
 import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
+import {
+  appendAssistantMessage, appendUserMessage, getOrCreateConversationState,
+  persistConversationState,
+} from "../core/state-manager.js";
+import {
+  PETE_LAB_SCENARIOS, PETE_LAB_FOLLOWER_GREETING, PETE_LAB_REEL_MARKER,
+  isPeteLabScenarioId, isReelScenario, peteLabEntryMessage,
+} from "../core/pete-lab-scenarios.js";
 import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 
@@ -41,6 +49,69 @@ router.get("/lab/budget", guardMobileLab, (_req, res) => {
   const status = getPeteBudgetStatusSafe();
   if (!status.ok) return res.status(503).json(status);
   return res.json(status);
+});
+
+// Fixed server-owned scenarios: the browser cannot supply campaigns, AI prompts,
+// message history, product URLs or arbitrary assistant text.
+router.get("/lab/scenarios", guardMobileLab, (_req, res) =>
+  res.json({ ok: true, scenarios: PETE_LAB_SCENARIOS }));
+
+router.post("/lab/start", guardMobileLab, async (req, res) => {
+  const leadId = req.body?.leadId;
+  const scenarioId = req.body?.scenarioId;
+  if (!isLabId(leadId) || !isPeteLabScenarioId(scenarioId)) {
+    return res.status(400).json({ ok: false, error: "invalid_synthetic_scenario" });
+  }
+  if (getConversationState(leadId, DEFAULT_CAMPAIGN_ID)) {
+    return res.status(409).json({ ok: false, error: "test_session_already_exists" });
+  }
+  if (!getPeteBudgetStatusSafe().ok) {
+    return res.status(503).json({ ok: false, error: "pete_budget_unavailable" });
+  }
+  try {
+    const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+    state.source = "Instagram (fiktives Pete-Labor)";
+    state.answers.labScenarioId = scenarioId;
+    // This is a *sample*, not a claim that the live Instagram flow sent it.
+    if (scenarioId === "follower") {
+      appendAssistantMessage(state, PETE_LAB_FOLLOWER_GREETING);
+      state.answers.peteReplySource = "lab_welcome_example";
+    } else if (isReelScenario(scenarioId)) {
+      // Real Instagram can provide a shared-media attachment without any
+      // intelligible Reel content. Never invent the visual meaning.
+      appendUserMessage(state, PETE_LAB_REEL_MARKER);
+      if (scenarioId === "reel_casual") {
+        appendUserMessage(state, "😂😂");
+        state.answers.peteReplySource = "lab_media_simulation_suppressed";
+      } else if (scenarioId === "reel_only") {
+        state.answers.peteReplySource = "lab_media_simulation_suppressed";
+      }
+    }
+    persistConversationState(state);
+    const entryText = peteLabEntryMessage(scenarioId);
+    if (entryText) {
+      // Run the *real* engine for keyword/interest cases so a missing link or
+      // wrong response remains visible and can be rated in this lab.
+      const result = await processIncomingMessage({
+        leadId, campaignId: DEFAULT_CAMPAIGN_ID,
+        messageText: entryText, conversationMode: "natural",
+      });
+      return res.json({
+        ok: true, scenarioId, simulated: true,
+        replySource: String(result.state.answers.peteReplySource ?? "deterministic"),
+        replySuppressedReason: result.replySuppressedReason ?? null,
+        state: { messages: publicLabMessages(result.state.messages) },
+      });
+    }
+    return res.json({
+      ok: true, scenarioId, simulated: true,
+      replySource: String(state.answers.peteReplySource ?? "lab_empty"),
+      replySuppressedReason: isReelScenario(scenarioId) ? "shared_media_no_sales" : null,
+      state: { messages: publicLabMessages(state.messages) },
+    });
+  } catch {
+    return res.status(500).json({ ok: false, error: "pete_mobile_lab_scenario_failed" });
+  }
 });
 
 router.post("/lab/message", guardMobileLab, async (req, res) => {
