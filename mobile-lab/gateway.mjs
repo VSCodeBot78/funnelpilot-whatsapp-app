@@ -71,10 +71,10 @@ function csrfFor(secret) {
 }
 function validCsrf(req, supplied, secret) {
   const existing = cookieValue(req, LOGIN_CSRF_COOKIE);
-  if (!/^(\\d{10})\\.([a-f0-9]{32})\\.([a-f0-9]{64})$/.test(existing) ||
+  if (!/^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.test(existing) ||
       typeof supplied !== "string" || supplied.length !== existing.length ||
       !timingSafeEqual(Buffer.from(supplied), Buffer.from(existing))) return false;
-  const match = /^(\\d{10})\\.([a-f0-9]{32})\\.([a-f0-9]{64})$/.exec(existing);
+  const match = /^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.exec(existing);
   const now = Math.floor(Date.now() / 1000);
   const created = Number(match[1]);
   if (created > now + 60 || now - created > LOGIN_CSRF_SECONDS) return false;
