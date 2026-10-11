@@ -120,7 +120,7 @@ export default function MobilePeteLab() {
       const res = await fetch(buildApiUrl("/test-chat/lab/message"), {
         method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: id, campaignId: CAMPAIGN, messageText: text }),
+        body: JSON.stringify({ leadId: id, messageText: text }),
       });
       const data = await res.json();
       if (!res.ok || data.ok !== true) throw Error(data.error || "Test nicht möglich");
