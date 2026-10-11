@@ -43,6 +43,8 @@ export default function MobilePeteLab() {
   const [status, setStatus] = useState("Verbinde...");
   const [busy, setBusy] = useState(false);
   const [replySource, setReplySource] = useState("");
+  const [scenarios, setScenarios] = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState("follower");
   const lastRef = useRef(null);
   const recognitionRef = useRef(null);
   const [listening, setListening] = useState(false);
@@ -53,6 +55,26 @@ export default function MobilePeteLab() {
     try { localStorage.setItem(STORAGE_KEY, id); } catch { /* storage optional */ }
   }, [id]);
   useEffect(() => { saveTestHistory(window.localStorage, history); }, [history]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadScenarios() {
+      try {
+        const res = await fetch(buildApiUrl("/test-chat/lab/scenarios"), {
+          credentials: "same-origin", cache: "no-store",
+        });
+        if (!res.ok) throw Error("scenarios_not_available");
+        const data = await res.json();
+        if (active && data.ok && Array.isArray(data.scenarios))
+          setScenarios(data.scenarios.filter(s => typeof s.id === "string" &&
+            typeof s.label === "string" && typeof s.note === "string"));
+      } catch {
+        if (active) setStatus("Test-Einstiege derzeit nicht erreichbar.");
+      }
+    }
+    loadScenarios();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     // A service worker with *no cache* satisfies app-shell installation without
@@ -245,6 +267,44 @@ export default function MobilePeteLab() {
     setLastChange(null);
     setStatus("Neuer fiktiver Testkontakt");
   };
+  const startScenario = async () => {
+    if (busy || listening || !budget || budget.blocked ||
+        !scenarios.some(s => s.id === selectedScenario)) return;
+    cancelSpeech();
+    setBusy(true);
+    setStatus("Fiktiven Einstieg vorbereiten...");
+    const nextId = newSyntheticId();
+    try {
+      const res = await fetch(buildApiUrl("/test-chat/lab/start"), {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: nextId, scenarioId: selectedScenario }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok !== true)
+        throw Error("scenario_start_failed");
+      const selected = scenarios.find(s => s.id === selectedScenario);
+      const title = selected?.label || "Fiktiver Einstieg";
+      setHistory(previous => rememberTest(previous, nextId,
+        title + " " + new Date().toLocaleString("de-DE")));
+      setId(nextId);
+      setMessages(parseMessages(data.state));
+      setDraft("");
+      setReviews({});
+      setReplySource(String(data.replySource || ""));
+      setLastChange(null);
+      setStatus(data.replySuppressedReason
+        ? "Kein automatischer Sales-Reply. Nur Simulation, noch keine Instagram-Live-Regel."
+        : selectedScenario === "follower"
+          ? "Muster-Begrüßung eingefügt. Noch kein Live-Welcome-Flow."
+          : "Einstieg erzeugt. Pete-Antwort und Links bitte prüfen.");
+    } catch {
+      setStatus("Einstieg konnte nicht gestartet werden. Bitte kurz aktualisieren.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const rateReply = (messageId, patch) => {
     setReviews(previous => {
       const next = { ...previous, [messageId]: { ...previous[messageId], ...patch } };
@@ -323,6 +383,29 @@ export default function MobilePeteLab() {
           </>
         ) : <p className="pete-lab-warning" role="alert">Zähler nicht erreichbar. Senden aus Sicherheitsgründen gesperrt.</p>}
         <p className="pete-lab-disclaimer">Nur dieser Backend-Pete-Zähler. <strong>Kein OpenAI-Kontoguthaben</strong>, keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
+      </section>
+      <section className="pete-lab-entry" aria-label="Instagram-Einstieg simulieren">
+        <label htmlFor="pete-lab-entry-picker">Gesprächseinstieg testen</label>
+        <select id="pete-lab-entry-picker" value={selectedScenario}
+          onChange={e => setSelectedScenario(e.target.value)}
+          disabled={busy || listening || scenarios.length === 0}>
+          {scenarios.length === 0
+            ? <option value="follower">Einstiege werden geladen...</option>
+            : scenarios.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        <p className="pete-lab-entry-note">
+          {scenarios.find(s => s.id === selectedScenario)?.note ||
+            "Die Einstiege werden vom sicheren Testserver bereitgestellt."}
+        </p>
+        <button type="button" onClick={startScenario}
+          disabled={busy || listening || scenarios.length === 0 || !budget || budget.blocked}>
+          {busy ? "Bitte warten..." : "▶ Einstieg als neuer Test starten"}
+        </button>
+        <p className="pete-lab-entry-note">
+          Nur fiktive Chats. Bei CHECK, KETO, BULLSHIT, GUIDE und VIDEO
+          antwortet die echte Pete-Engine. Reel-Schutz ohne Text ist
+          ein sicherer Simulationsfall, noch nicht live bei Instagram aktiv.
+        </p>
       </section>
       <div className="pete-lab-sessions">
         <label htmlFor="pete-lab-session">Fiktiven Chat fortsetzen</label>
