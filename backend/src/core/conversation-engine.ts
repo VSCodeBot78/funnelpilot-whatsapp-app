@@ -1413,6 +1413,7 @@ export async function processIncomingMessage(
       patchAnswers(latest, {
         peteReplySource: "llm_handoff",
         peteLlmFailureReason: result.reason,
+        peteLlmFailureDetail: result.detail ?? "unspecified",
       });
       patchFlags(latest, {
         peteRuntimeHandoffRequested: true,

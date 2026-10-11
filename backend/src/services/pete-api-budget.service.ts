@@ -24,7 +24,10 @@ function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
   return Object.prototype.hasOwnProperty.call(MODEL_PRICES, name)
     ? MODEL_PRICES[name as PricedModel] : null;
 }
-const MAX_OUTPUT_TOKENS = 400;
+const MAX_OUTPUT_BY_MODEL: Record<PricedModel, number> = {
+  "gpt-4.1-mini": 400,
+  "gpt-5.4": 800,
+};
 const LEDGER_FILE = path.join(env.DATA_DIR, "pete-api-budget.json");
 const LOCK_FILE = path.join(env.DATA_DIR, "pete-api-budget.lock");
 
@@ -121,23 +124,25 @@ export function reservePeteBudget(params: {
   model: string; requestBody: string; maxOutputTokens: number;
 }): string {
   const pricing = priceFor(params.model);
-  if (!pricing || params.maxOutputTokens !== MAX_OUTPUT_TOKENS)
+  if (!pricing || params.maxOutputTokens !== MAX_OUTPUT_BY_MODEL[params.model as PricedModel])
     throw new PeteBudgetStop("model_not_priced");
   // Each token represents >=1 byte of text in the encoded payload; an extra
   // 6k-token overhead covers API wrappers and hidden roles. No tools are enabled.
   // GitHub Phase 3 envelopes reserve 1.50 USD for exactly 100 calls.
   // At most 26k request bytes + 6k wrapper tokens and 400 output tokens
-  // cost less than 0.0135 USD per call, safely below the envelope.
+  // Mini remains under 1.50 USD per batch. GPT-5.4 with 18k bytes,
+  // 6k input overhead and 800 output tokens costs at most 0.072 USD/call;
+  // 20 calls cost at most 1.44 USD, below the persisted 1.50 USD reserve.
   const bytes = Buffer.byteLength(params.requestBody, "utf8");
   if (process.env.PETE_PHASE3_FLAGSHIP_ENVELOPE === "true" &&
-      params.model === "gpt-5.4" && bytes > 20000)
+      params.model === "gpt-5.4" && bytes > 18000)
     throw new PeteBudgetStop("exhausted");
   if (process.env.PETE_PHASE3_BUDGET_ENVELOPE === "true" &&
       params.model === "gpt-4.1-mini" && bytes > 26000)
     throw new PeteBudgetStop("exhausted");
   const maximumInputTokens = bytes + 6000;
   const reservedMicros = Math.ceil(maximumInputTokens * pricing.input +
-    MAX_OUTPUT_TOKENS * pricing.output);
+    params.maxOutputTokens * pricing.output);
   if (!Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || reservedMicros > USD_MICROS_CAP)
     throw new PeteBudgetStop("exhausted");
   return locked(() => {

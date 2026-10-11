@@ -57,6 +57,25 @@ export function getPeteVerifiedTransactionAnswer(
       : { text: "Deine Nachricht allein bestätigt die Buchung noch nicht. Bitte prüf die Buchungsbestätigung. Wenn sie fehlt, kann Jochen das persönlich klären." };
   }
 
+  // Fearing checkout extras is a factual trust question, not proof of a
+  // purchase or an invitation to make unverified "no extra charges" claims.
+  if (/\b(?:versteckte kosten|versteckte gebuhren|zusatzkosten|ungewollte extras|versteckte extras|unerwartete gebuhren)\b/.test(input)) {
+    return {
+      text: "Du sollst vor dem Kauf wissen, was du bezahlst. Verbindlich kann ich dir hier nur die ausgewiesenen Einstiegspreise nennen. Ob weitere Bedingungen gelten, prüf bitte in der Kaufübersicht oder lass sie von Jochen klären. Ich verspreche dir keine ungeprüften Zusatzkosten-Regeln.",
+    };
+  }
+
+  // A lead's own claim is not a verified payment; missing access requires
+  // actual owner intervention, even if the user's wording is elliptical.
+  if (/\b(?:zahlung|bezahlt|gekauft|bestellung|kauf)\b/.test(input) &&
+      /\b(?:zugang|freischaltung|freigeschaltet|login)\b/.test(input) &&
+      /\b(?:fehlt|vermisst|nicht erhalten|nicht bekommen|pruf\w*|problem)\b/.test(input)) {
+    return {
+      text: "Das sollte niemand raten: Ob die Zahlung angekommen ist und warum der Zugang fehlt, muss anhand der tatsächlichen Bestellung geprüft werden. Ich gebe den Vorgang an Jochen weiter, ohne den Kauf als bestätigt zu markieren.",
+      handoff: true,
+    };
+  }
+
   if (isUnverifiedLongTermPriceQuestion(text)) {
     return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, nextPhase: "longterm_unverified" };
   }
