@@ -152,15 +152,29 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     }
     assert.equal(received.length,0,"no non-lab routes forwarded");
 
+    result=await withLogin("/test-chat/lab/scenarios");
+    assert.equal(result.status,200,"only authenticated lab scenario list is forwarded");
+    result=await withLogin("/test-chat/lab/start",{
+      method:"POST",headers:{"content-type":"application/json",origin},
+      body:JSON.stringify({leadId:"lab_123456789012345678901234",scenarioId:"follower"}),
+    });
+    assert.equal(result.status,200,"only authenticated lab start is forwarded");
+    result=await withLogin("/test-chat/lab/start",{
+      method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({leadId:"lab_123456789012345678901234",scenarioId:"follower"}),
+    });
+    assert.equal(result.status,403,"scenario start requires exact POST origin");
     result=await withLogin("/test-chat/lab/budget");
     assert.equal(result.status,200);
     assert.equal((await result.json()).remainingUsd,3.676199);
     assert.equal(received[0].secret,ingressSecret);
-    assert.equal(received[0].path,"/test-chat/lab/budget");
+    assert.equal(received[0].path,"/test-chat/lab/scenarios");
+    assert.equal(received[1].path,"/test-chat/lab/start");
+    assert.equal(received[2].path,"/test-chat/lab/budget");
 
     result=await withLogin("/test-chat/lab/state/lab_123456789012345678901234");
     assert.equal(result.status,200);
-    assert.equal(received[1].path,"/test-chat/lab/state/lab_123456789012345678901234");
+    assert.equal(received[3].path,"/test-chat/lab/state/lab_123456789012345678901234");
 
     result=await withLogin("/test-chat/lab/message",{
       method:"POST",headers:{"content-type":"application/json",origin:"https://evil.example"},
@@ -177,15 +191,15 @@ test("private mobile gateway denies admin and requires session + same-origin pos
       body:JSON.stringify({leadId:"lab_123456789012345678901234",messageText:"Hallo"}),
     });
     assert.equal(result.status,200);
-    assert.equal(received.length,3);
-    assert.equal(received[2].method,"POST");
-    assert.equal(received[2].secret,ingressSecret);
+    assert.equal(received.length,5);
+    assert.equal(received[4].method,"POST");
+    assert.equal(received[4].secret,ingressSecret);
     result=await withLogin("/test-chat/lab/message",{
       method:"POST",headers:{"content-type":"application/json",origin},
       body:"x".repeat(5000),
     });
     assert.equal(result.status,503); // bounded gateway body, backend never reached
-    assert.equal(received.length,3);
+    assert.equal(received.length,5);
     result=await withLogin("/lab-logout",{method:"POST",headers:{origin}});
     assert.equal(result.status,303);
     assert.match(result.headers.get("set-cookie"),/Max-Age=0/);
