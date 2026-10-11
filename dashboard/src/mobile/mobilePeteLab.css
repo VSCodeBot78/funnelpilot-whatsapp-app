@@ -57,3 +57,19 @@ body:has(.pete-mobile-lab) { background: #121820; }
 .pete-lab-status { margin: 9px 0; font-size: 12px; color: var(--lab-sub); min-height: 18px; }
 .pete-mobile-lab footer { margin: 14px 0; font-size: 11px; color: var(--lab-sub); }
 @media (min-width: 600px) { .pete-mobile-lab { padding-left: 28px; padding-right: 28px; } }
+
+/* Mobile-specific return-to-chat and review editor, with strong legibility. */
+.pete-lab-sessions { display: flex; flex-direction: column; gap: 5px; margin: 12px 0; }
+.pete-lab-sessions label { color: #d0dbe5; font-size: 13px; font-weight: 700; }
+.pete-lab-sessions select {
+  width: 100%; min-height: 44px; padding: 9px 12px;
+  border: 1px solid #8b9eaf; border-radius: 10px;
+  background: #263542; color: #f8fafc; font: inherit; font-size: 14px;
+}
+.pete-lab-sessions select:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }
+.pete-lab-note { display: flex; flex-direction: column; margin-top: 7px;
+  gap: 4px; color: #d0dbe5; font-size: 12px; font-weight: 650; }
+.pete-lab-note textarea { width: 100%; min-height: 60px; padding: 9px 10px;
+  color: #18232d; background: #fff; border: 1px solid #bccbd8;
+  border-radius: 9px; resize: vertical; font: 14px/1.5 system-ui, sans-serif; }
+.pete-lab-note textarea:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }

@@ -39,3 +39,11 @@
 - Vor dem ersten externen Start **erneut prüfen** und den bestätigten Projektverbrauch als `PETE_PROJECT_PRIOR_SPEND_MICRO_USD` setzen. Der Wert ist eine nichtgeheime manuelle Ausgangssumme und **keine** laufende GitHub-/Billing-Synchronisierung.
 - Bei `PETE_MOBILE_LAB_ENABLED=true` wird der historische Verbrauch zum lokalen Backend-Ledger addiert und gegen dasselbe 8-USD-Limit gerechnet. Neue isolierte `DATA_DIR`-Instanzen erhalten nicht erneut volle 8 USD frei.
 - Nach der ersten reservierten Anfrage wird der Baseline-Wert im Ledger gespeichert. Ein späteres Ändern/Entfernen dieses Werts stoppt die Budgetfunktion und erfordert bewusste Reconciliation. Keine parallelen unabhängigen API-Ausgaben mit derselben Budgetfreigabe.
+
+## M-LAB-02 – mobile Arbeit über mehrere kurze Sitzungen (11.10.2026)
+
+- **Bis zu zwölf fiktive Chats** als lokale Verweisliste auf dem Android-Gerät, Auswahl „Fiktiven Chat fortsetzen“. Die eigentlichen Unterhaltungen bleiben **auf dem isolierten Testbackend**, nicht im Handy-LocalStorage.
+- Pete-Antworten per „Gut“ oder „Verbessern“ bewerten, bei „Verbessern“ kurze **diktierbare Korrektur-Notiz** hinterlassen. Nur Bewertung und Notiz werden **gerätebezogen lokal** gespeichert, nicht als Promptrückkopplung oder ungeprüftes KI-Training.
+- Export enthält die jeweils vorherige fiktive Eltern-Nachricht, Pete-Antwort, Bewertung und Korrekturtext. Explizites Kopieren in die Zwischenablage, **kein** automatisches Teilen/Senden an ChatGPT oder Instagram.
+- Aus Sicherheits-/Kostengründen werden bei unklaren Verbindungsfehlern **keine** gesendeten Testnachrichten wiederholt. Der diktierte Eingabetext wird behalten; vor erneutem Versand bitte Verlauf/Budget prüfen.
+- Code- und UI-Regressionen sind nicht gleichzusetzen mit einer Android-Geräteabnahme. **Vor Installation** fehlen weiterhin isoliertes Backend, authentisierter HTTPS-Zugang, externe Betriebskostenentscheidung und explizite Modellbudgetfreigabe. Für die mobile Test-App weiterhin **keine Hosting-Bestellung jetzt**.
