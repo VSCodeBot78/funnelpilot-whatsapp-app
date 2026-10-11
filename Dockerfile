@@ -1,0 +1,24 @@
+# One-month Railway deployment branch ONLY, distinct from funnel-pilot-current.
+# Temporary synthetic Pete lab only. No Admin Dashboard in public bundle.
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+COPY backend/package*.json ./backend/
+RUN npm ci --prefix backend
+COPY backend/ ./backend/
+RUN npm run build --prefix backend
+COPY dashboard/package*.json ./dashboard/
+RUN npm ci --prefix dashboard
+COPY dashboard/ ./dashboard/
+RUN npm run build:lab --prefix dashboard
+
+FROM node:22-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/backend/node_modules ./backend/node_modules
+COPY --from=builder /app/mobile-lab-dist ./mobile-lab-dist
+COPY mobile-lab/gateway.mjs mobile-lab/launcher.mjs ./mobile-lab/
+# The only public process is the authenticated gateway.
+# Pete itself binds 127.0.0.1:3011 only.
+EXPOSE 8080
+CMD ["node", "mobile-lab/launcher.mjs"]
