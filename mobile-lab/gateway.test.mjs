@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createServer } from "node:http";
+import { createServer, request as rawHttpRequest } from "node:http";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,7 +65,20 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     });
     await listen(gateway,publicPort);
     const get=(path,opts={})=>fetch(origin+path,{redirect:"manual",...opts});
-    let result=await get("/pete-test");
+    let result=await get("/healthz",{headers:{host:"railway-healthcheck"}});
+    assert.equal(result.status,200);
+    assert.equal(await result.text(),"ok");
+    const untrustedHostStatus = await new Promise((resolve,reject) => {
+      const req = rawHttpRequest({host:"127.0.0.1",port:publicPort,path:"/pete-test",
+        headers:{Host:"untrusted.example"}}, res => {
+          res.resume();
+          res.on("end", () => resolve(res.statusCode));
+        });
+      req.on("error", reject);
+      req.end();
+    });
+    assert.equal(untrustedHostStatus,421);
+    result=await get("/pete-test");
     assert.equal(result.status,303);
     assert.equal(result.headers.get("location"),"/lab-login");
     result=await get("/test-chat/lab/budget");

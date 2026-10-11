@@ -13,3 +13,7 @@
 - **Anforderung:** Testlabor nur ungefähr einen Monat verwenden und anschließend Service, Volume, Domain und Geheimnisse in Railway bewusst deaktivieren oder löschen. Externe Beta-Coaches nicht über dieses Ein-Personen-Testlabor einladen.
 
 **Nächster erforderlicher Nutzer-Schritt:** In Railway die GitHub-Verbindung zu `VSCodeBot78` autorisieren und Zugriff auf das Repository `funnelpilot-whatsapp-app` gestatten. Eine kostenpflichtige Planänderung ist hierfür **nicht** freigegeben.
+
+## Repository-Zugriff bestätigt (11.10.2026, nach Benutzerfreigabe)
+
+Railway hat `VSCodeBot78/funnelpilot-whatsapp-app` auf Branch `funnel-pilot-current` über den `connect_service_source`-Vorgang erfolgreich **im bestehenden Staging-Entwurf** hinterlegt. `describe_environment` zeigt `source.repo` und `source.branch`; der Service ist weiterhin `staged-create`, das Volume `staged-create`, `latestDeployment=null`. Diese Verbindung ist ein nachweisbarer Repositoryzugriff, **keine Deployment-Freigabe und kein laufender Server**. Wegen `Service Instance not found` bei zusätzlicher vorgemerkter Buildkonfiguration stellt ein codebasierter `railway.json`-Eintrag den privaten Docker-Build sicher. Kein neuer Tarif gewählt und kein OpenAI-Aufruf ausgelöst.
