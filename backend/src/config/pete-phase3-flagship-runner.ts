@@ -88,6 +88,8 @@ for (const persona of personas) {
       turn: turn + 1, lead: userText,
       pete: reply, source, owner: result.state.owner,
       suppressed: result.replySuppressedReason ?? null,
+      handoffReason: result.state.answers.peteLlmFailureReason ?? null,
+      handoffDetail: result.state.answers.peteLlmFailureDetail ?? null,
     });
     if (reply === null) entry.suppressedReplies++;
     else if (source === "llm") entry.llmReplies++;
