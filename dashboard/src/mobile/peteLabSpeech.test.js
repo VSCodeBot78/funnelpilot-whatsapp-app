@@ -26,6 +26,7 @@ test("interim and final speech segments become editable text only", () => {
     "Hallo Ich bin Mama und habe wenig Zeit");
   assert.equal(withRecognizedText("", ""), "");
   assert.equal(withRecognizedText("Text behalten", ""), "Text behalten");
+  assert.equal(withRecognizedText("A".repeat(998), "B".repeat(100)).length, 1000);
   assert.equal(recognizedSpeech(null), "");
   assert.equal(recognizedSpeech({ results: [{ "0": { transcript: 5 } }] }), "");
   assert.equal(recognizedSpeech({ results: [[{ transcript: "x".repeat(2000) }]] }).length, 1000);
