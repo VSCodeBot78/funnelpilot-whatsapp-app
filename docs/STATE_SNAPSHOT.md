@@ -393,3 +393,10 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **Remote-Lab-Sicherheit:** eingeschränkte Test-API nur für zufällige `lab_`-IDs und feste Kampagne; aktiv nur bei zwei expliziten Testflags, deaktivierter Meta-Send-/Engine-Konfiguration. Response enthält keine ganzen Admin-/Lead-State-Objekte. Authentifizierter HTTPS-Ingress, separate leere `DATA_DIR`, private API-Routen-Whitelist, CSRF-/Sitzungs-/Rate-Limits sind zusätzliche **offene Deployment-Gates**.
 - **Noch nicht installiert/hosted:** Keine öffentliche URL, keine Android-Abnahme, keine Live-IG/WA-Zustellung. Kein Hetzner-Kauf, keine API-Calls oder kostenpflichtige Infrastruktur durch #97. Stufe B Coach-Trainingsstudio bleibt späterer Backlog M-03.
 - Betriebshinweise: `docs/MOBILE_PETE_LAB_MVP_2026-10-11.md`.
+
+## Kostenfreier Fernbetrieb / NIGHT-01 (Recherche 11.10.2026)
+
+- Hostingalternativen (Railway 30-Tage-Testkredit/Free, Google Always Free e2-micro, Render Free, vorhandener Windows-Laptop + geschützter Tunnel, Railway Hobby, Hetzner) und belegte Grenzen dokumentiert: `docs/MOBILE_PETE_HOSTING_AND_NIGHT_POLICY_2026-10-11.md`. **Noch kein Provider verbunden oder Deployment durchgeführt.**
+- Bestehender Pete-Backend-Einstieg bindet aus Sicherheitsgründen nur Loopback; vor PWA-Handyinstallation sind separater abgesicherter Ingress, persistentes isoliertes Testdatenverzeichnis und Kostenkontrolle erforderlich.
+- **NIGHT-01 vorgemerkt:** Lead-DMs nachts auch bei Handy-Flugmodus serverseitig sicher empfangen; automatische Antworten bis morgens zurückstellen und unmittelbar vor Send STOP, Human, Opt-out, 24h-Meta-Fenster, Duplikate und Providerfreigabe prüfen. Derzeit fehlt diese nächtliche Queue/Guard-Logik; **kein** Live-Nachtmodus aktiviert.
+- Telefon als dauerhafter Meta-Server nicht empfohlen. Windows mit „Beim Zuklappen: Nichts unternehmen“ nur bedingt für kontrollierte Tests; unabhängiger Cloud-Receiver bevorzugt.
