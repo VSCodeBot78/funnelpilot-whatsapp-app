@@ -26,7 +26,7 @@ export function getPeteVerifiedTransactionAnswer(
   const input = norm(text);
   // Cross-channel delivery is not verifiable from this single chat.
   // Never promise Instagram or WhatsApp automation will stop elsewhere.
-  const recentMultiChannelComplaint = state.messages.slice(-8).some(message =>
+  const recentMultiChannelComplaint = (state.messages ?? []).slice(0, -1).slice(-8).some(message =>
     message.role === "user" &&
     /\binstagram\b/.test(norm(message.text)) &&
     /\bwhatsapp\b/.test(norm(message.text)));
