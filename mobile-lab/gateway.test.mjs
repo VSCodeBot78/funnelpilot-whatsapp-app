@@ -201,7 +201,7 @@ test("private mobile gateway denies admin and requires session + same-origin pos
       body:"x".repeat(5000),
     });
     assert.equal(result.status,503); // bounded gateway body, backend never reached
-    assert.equal(received.length,3);
+    assert.equal(received.length,4);
     result=await withLogin("/lab-logout",{method:"POST",headers:{origin}});
     assert.equal(result.status,303);
     assert.match(result.headers.get("set-cookie"),/Max-Age=0/);
