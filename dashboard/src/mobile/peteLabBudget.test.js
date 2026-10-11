@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import zlib from "node:zlib";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readPeteBudget, formatUsd, budgetCounterChange } from "./peteLabBudget.js";
@@ -33,4 +35,34 @@ test("clearly shows tiny call charges and fail-closed threshold", () => {
     remainingUsd: .6 }).low, true);
   assert.equal(readPeteBudget({ ...sample, committedUsd: 8, confirmedUsd: 7.98,
     remainingUsd: 0, blocked: true }).blocked, true);
+});
+
+
+test("temporary Pete PWA manifest and generated icons are structurally valid", () => {
+  const manifest = JSON.parse(fs.readFileSync(
+    new URL("../../public/pete-lab.webmanifest", import.meta.url), "utf8"));
+  assert.equal(manifest.start_url, "/pete-test");
+  assert.equal(manifest.scope, "/pete-test");
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.icons.length, 2);
+  for (const size of [192, 512]) {
+    const png = fs.readFileSync(new URL(
+      "../../public/pete-lab-icon-" + size + ".png", import.meta.url));
+    assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(png.readUInt32BE(16), size);
+    assert.equal(png.readUInt32BE(20), size);
+    const idat = [];
+    let cursor = 8;
+    while (cursor < png.length - 12) {
+      const length = png.readUInt32BE(cursor);
+      const type = png.subarray(cursor + 4, cursor + 8).toString("ascii");
+      if (type === "IDAT") idat.push(png.subarray(cursor + 8, cursor + 8 + length));
+      cursor += length + 12;
+      if (type === "IEND") break;
+    }
+    assert.ok(idat.length > 0, "PNG must have image data");
+    assert.equal(zlib.inflateSync(Buffer.concat(idat)).length, size * (size + 1));
+  }
+  const sw = fs.readFileSync(new URL("../../public/pete-lab-sw.js", import.meta.url), "utf8");
+  assert.doesNotMatch(sw, /caches\.open|CacheStorage|put\(/);
 });
