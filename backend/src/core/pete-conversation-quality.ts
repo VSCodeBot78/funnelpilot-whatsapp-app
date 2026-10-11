@@ -236,7 +236,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   if (/\b(?:ohne (?:eine )?(?:medizinische )?(?:fern)?diagnose|keine ferndiagnose)\b/.test(input) &&
       /\b(?:evidenz|studien|wissenschaft|allgemein|training|ernahrung|schlaf|stoffwechsel)\b/.test(input)) return true;
   if (/\b(?:blutwerte|arzt|arztlich)\b/.test(input) &&
-      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht)\b/.test(input) &&
+      /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht|uberpruft|gepruft)\b/.test(input) &&
       !/\b(?:was bedeuten meine werte|diagnostizier|behandlung|dosis)\b/.test(input)) return true;
   return false;
 }
