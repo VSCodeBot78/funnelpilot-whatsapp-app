@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import AppDashboard from "./App.dashboard.jsx";
 import ChatTest from "./App.chat.jsx";
+import MobilePeteLab from "./mobile/MobilePeteLab.jsx";
 
-// No competing global tab bar: daily navigation lives inside the workspace,
-// and the test chat is always one clearly labelled action away.
+// Only the temporary synthetic test lab is available at /pete-test.
+// Deployment MUST require a private authenticated ingress before exposing it.
 export default function App() {
   const [view, setView] = useState("dashboard");
+
+  if (window.location.pathname === "/pete-test" || window.location.pathname === "/pete-test/") {
+    return <MobilePeteLab />;
+  }
 
   if (view === "chat") {
     return (

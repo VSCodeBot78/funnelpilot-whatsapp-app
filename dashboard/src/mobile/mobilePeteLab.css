@@ -1,0 +1,59 @@
+.pete-mobile-lab {
+  --lab-bg: #121820;
+  --lab-card: #1e2731;
+  --lab-line: #364452;
+  --lab-text: #f5f7fa;
+  --lab-sub: #d0dbe5;
+  --lab-accent: #ff914d;
+  --lab-dark: #2e2c2c;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 14px max(28px, env(safe-area-inset-bottom));
+  font: 16px/1.45 system-ui, "Segoe UI", sans-serif;
+  color: var(--lab-text);
+  background: var(--lab-bg);
+}
+body:has(.pete-mobile-lab) { background: #121820; }
+.pete-mobile-lab *, .pete-mobile-lab *::before { box-sizing: border-box; }
+.pete-mobile-lab button { font: inherit; cursor: pointer; min-height: 42px; }
+.pete-mobile-lab button:focus-visible,
+.pete-mobile-lab textarea:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }
+.pete-mobile-lab button:disabled { opacity: .6; cursor: not-allowed; }
+.pete-lab-header { display: flex; align-items: center; gap: 12px; margin: 2px 0 14px; }
+.pete-lab-header h1 { color: #fff; margin: 0 0 3px; font-size: 23px; font-weight: 800; letter-spacing: -.02em; }
+.pete-lab-header p { color: var(--lab-sub); margin: 0; font-size: 12px; }
+.pete-lab-mark { width: 46px; height: 46px; display: grid; place-items: center; flex-shrink: 0; background: var(--lab-accent); color: var(--lab-dark); font-size: 26px; font-weight: 900; border-radius: 13px; }
+.pete-lab-budget { padding: 14px; background: var(--lab-card); border: 1px solid var(--lab-line); border-radius: 16px; }
+.pete-lab-budget-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pete-lab-budget-title button { background: transparent; color: #fff; border: 1px solid #667b8d; border-radius: 9px; padding: 5px 12px; font-size: 13px; }
+.pete-lab-finances { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin: 13px 0; }
+.pete-lab-finances div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pete-lab-finances span { color: var(--lab-sub); font-size: 12px; }
+.pete-lab-finances strong { font-size: clamp(13px,3.7vw,20px); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pete-lab-meter { width: 100%; height: 9px; border-radius: 999px; background: #455260; overflow: hidden; }
+.pete-lab-meter div { height: 100%; background: var(--lab-accent); border-radius: 999px; }
+.pete-lab-subcost { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 9px; font-size: 12px; color: var(--lab-sub); }
+.pete-lab-disclaimer { color: var(--lab-sub); font-size: 11px; margin: 12px 0 0; }
+.pete-lab-warning { background: #46311f; border: 1px solid #cf9551; color: #ffe4bd; border-radius: 9px; padding: 9px; font-size: 13px; margin: 10px 0 0; }
+.pete-lab-actions { display: flex; gap: 9px; flex-wrap: wrap; margin: 12px 0; }
+.pete-lab-actions button { flex: 1; border: 1px solid var(--lab-line); color: #fff; background: #293644; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 650; }
+.pete-lab-conversation { display: flex; flex-direction: column; gap: 12px; padding: 18px 8px; min-height: 260px; max-height: 50dvh; overflow-y: auto; border-top: 1px solid var(--lab-line); border-bottom: 1px solid var(--lab-line); }
+.pete-lab-empty { margin: auto; max-width: 310px; text-align: center; color: var(--lab-sub); font-size: 14px; }
+.pete-lab-message { max-width: 88%; align-self: flex-start; }
+.pete-lab-message.is-lead { align-self: flex-end; }
+.pete-lab-bubble { padding: 11px 13px; border-radius: 14px; background: #2c3c4c; color: #f8fafc; overflow-wrap: anywhere; }
+.is-lead .pete-lab-bubble { background: #49382b; border: 1px solid #8a6344; }
+.pete-lab-bubble strong { display: block; font-size: 11px; opacity: .9; margin-bottom: 4px; }
+.pete-lab-bubble p { white-space: pre-wrap; margin: 0; font-size: 15px; }
+.pete-lab-votes { display: flex; gap: 7px; margin-top: 5px; }
+.pete-lab-votes button { min-height: 32px; border-radius: 8px; border: 1px solid #8495a3; color: #f7f9fd; background: #24303b; padding: 4px 10px; font-size: 12px; }
+.pete-lab-votes button[aria-pressed="true"] { color: #221509; background: #ffb17f; border-color: #ffb17f; font-weight: 750; }
+.pete-lab-composer { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0; }
+.pete-lab-composer label { font-size: 13px; color: var(--lab-sub); font-weight: 700; }
+.pete-lab-composer textarea { width: 100%; background: #f9fafb; color: #17212b; border: 2px solid #b6c3cd; padding: 12px; border-radius: 12px; resize: vertical; min-height: 72px; font: 16px/1.4 system-ui, sans-serif; }
+.pete-lab-composer button { background: var(--lab-accent); color: #242424; font-weight: 800; border: none; border-radius: 12px; padding: 12px; }
+.pete-lab-status { margin: 9px 0; font-size: 12px; color: var(--lab-sub); min-height: 18px; }
+.pete-mobile-lab footer { margin: 14px 0; font-size: 11px; color: var(--lab-sub); }
+@media (min-width: 600px) { .pete-mobile-lab { padding-left: 28px; padding-right: 28px; } }
