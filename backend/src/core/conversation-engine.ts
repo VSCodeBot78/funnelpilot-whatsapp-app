@@ -1306,6 +1306,9 @@ export async function processIncomingMessage(
         applyPeteDecisionStatePatch({
           decision, composed: guarded, state, runtimeBookingUrl: bookingUrl,
         });
+        // A previous LLM reply must not remain the reported source of this
+        // deterministic STOP/medical/privacy response in QA transcripts.
+        updateAnswer(state, "peteReplySource", "guarded_safety");
         appendAssistantMessage(state, guarded.text);
         persistConversationState(state);
         return { text: guarded.text, nextStep: state.currentStep,

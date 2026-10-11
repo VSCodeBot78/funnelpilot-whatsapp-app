@@ -80,4 +80,29 @@ test("Phase57: historical doctor check and declined remote diagnosis retain safe
   assert.equal(blocked.state.aiPaused,true);
   assert.equal(calls,0);
  });
+ await t.test("acute Brustschmerzen alone override negated diagnosis and reviewed values",async()=>{
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+   "Keine Ferndiagnose. Meine Werte wurden beim Arzt überprüft, jetzt habe ich Brustschmerzen."),false);
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+   "Keine Ferndiagnose. Meine Werte wurden beim Arzt überprüft, jetzt habe ich Herzschmerzen."),false);
+ });
+ await t.test("a guard reply is never miscounted as the previous AI model reply",async()=>{
+  clearConversationStore();
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  process.env.PETE_LLM_API_CALLS_APPROVED="true";
+  process.env.OPENAI_API_KEY="mock-only";
+  process.env.OPENAI_MODEL="gpt-4.1-mini";
+  writeSettings({aiEnabled:true});
+  let calls=0;
+  globalThis.fetch=async()=>{calls++;return mock("Allgemein helfen Schlaf und Bewegung, ohne eine Diagnose zu stellen.");};
+  const lead="phase58-source";
+  const first=await send(lead,"Ich möchte wieder mehr Energie, aber arbeite viel.");
+  assert.equal(first.state.answers.peteReplySource,"llm");
+  const urgent=await send(lead,"Ich habe Brustschmerzen beim Training.");
+  assert.equal(urgent.state.owner,"human");
+  assert.equal(urgent.state.answers.peteReplySource,"guarded_safety");
+  assert.equal(urgent.state.aiPaused,true);
+  assert.equal(calls,1);
+ });
+
 });

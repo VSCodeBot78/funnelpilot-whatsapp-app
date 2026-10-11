@@ -225,7 +225,7 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
-  if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
+  if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
   // zwei Jahre her" is not current pregnancy. Red-flag symptoms remain gated.
