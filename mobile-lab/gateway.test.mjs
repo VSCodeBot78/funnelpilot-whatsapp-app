@@ -65,7 +65,12 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     });
     await listen(gateway,publicPort);
     const get=(path,opts={})=>fetch(origin+path,{redirect:"manual",...opts});
-    let result=await get("/pete-test");
+    let result=await get("/healthz",{headers:{host:"railway-healthcheck"}});
+    assert.equal(result.status,200);
+    assert.equal(await result.text(),"ok");
+    result=await get("/pete-test",{headers:{host:"untrusted.example"}});
+    assert.equal(result.status,421);
+    result=await get("/pete-test");
     assert.equal(result.status,303);
     assert.equal(result.headers.get("location"),"/lab-login");
     result=await get("/test-chat/lab/budget");
