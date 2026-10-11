@@ -191,7 +191,7 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     const old = await pending;
     assert.equal(old.text, null);
     assert.equal(old.replySuppressedReason, "superseded");
-    assert.equal(old.state.answers.peteReplySource, "deterministic");
+    assert.equal(old.state.answers.peteReplySource, "verified_transaction");
     assert.equal(old.state.messages.some(m => m.text.includes("Hast du Zeit für Sport")), false);
   });
 

@@ -120,7 +120,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   if (/\b(?:brustschmerz|atemnot|schwindel|ohnmacht|insulin|medikament|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie)\b/.test(input))
     return false;
   if (/\b(?:nach der schwangerschaft|nach schwangerschaft|seit der geburt|nach der geburt)\b/.test(input) &&
-      /\b(?:trainier|abnehm|gewicht|energie|fitness|bewegung)\b/.test(input)) return true;
+      /\b(?:trainier\w*|abnehm\w*|gewicht\w*|energie|fitness|bewegung|nehme\w*|nimmt)\b/.test(input)) return true;
   if (/\b(?:ohne (?:eine )?(?:medizinische )?(?:fern)?diagnose|keine ferndiagnose)\b/.test(input) &&
       /\b(?:evidenz|studien|wissenschaft|allgemein|training|ernahrung|schlaf|stoffwechsel)\b/.test(input)) return true;
   if (/\b(?:blutwerte|arzt|arztlich)\b/.test(input) &&
@@ -132,7 +132,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 export function isUnsafeLlmClaim(reply: string): boolean {
   const input = norm(reply);
   // User's desire for a human is not proof that Pete is that human.
-  if (/\b(?:ich antworte personlich|ich bleibe personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
+  if (/\b(?:ich antworte personlich|ich bleibe personlich|ich bleibe hier[^.?!]{0,90}antworte personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
   // Never claim that an unverified commerce or cross-channel infrastructure
   // guarantee is already in force.
   if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
