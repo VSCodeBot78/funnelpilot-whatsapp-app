@@ -111,6 +111,15 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       assert.equal(casual.replySuppressedReason,"shared_media_no_sales");
       assert.deepEqual(casual.state.messages.map((m:{role:string})=>m.role),["user","user"]);
       assert.equal(casual.state.messages[1].text,"😂😂");
+      const checkId = "lab_123456789012345678901255";
+      const check = await (await start(checkId,"check")).json();
+      assert.equal(check.ok,true);
+      assert.match(check.state.messages.at(-1).text,/check\\.jochen-kammerer\\.de/);
+      const bullshitId = "lab_123456789012345678901256";
+      const bullshit = await (await start(bullshitId,"bullshit")).json();
+      assert.equal(bullshit.ok,true);
+      assert.match(bullshit.state.messages.at(-1).text,
+        /no-bullshit-elternfitness-selbststarter/);
       const ketoId = "lab_123456789012345678901253";
       const keto = await (await start(ketoId,"keto")).json();
       assert.equal(keto.ok,true);
