@@ -87,6 +87,19 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // Combined scope-and-cost question: answer only approved product facts.
+  // Do not assert absence of extras, discounts or contract conditions.
+  if (/\b(?:was ist|was genau|was bekomme|was beinhaltet|was umfasst)\b/.test(input) &&
+      /\b(?:angebot|coaching|begleitung|selbststarter)\b/.test(input) &&
+      /\b(?:verbindlich|zahlen|kosten|preis|enthalten)\b/.test(input)) {
+    return {
+      text: "Der Selbststarter für " + OFFER_TRUTH.selfstarter.priceText +
+        " ist zum eigenständigen Einstieg gedacht. Die persönliche 5-Wochen-Begleitung kostet " +
+        OFFER_TRUTH.coachingEntry.priceText +
+        " und verbindet Bewegung, Ernährung, Schlaf und die Umsetzung im Elternalltag. Details zu Vertragsbedingungen oder möglichen Zusatzkosten kann ich ohne die konkrete Kaufübersicht nicht verbindlich bestätigen.",
+    };
+  }
+
   if (isUnverifiedLongTermPriceQuestion(text)) {
     return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, nextPhase: "longterm_unverified" };
   }
@@ -157,6 +170,24 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
       /\b(?:schon|bereits)\b/.test(input) && /\b(?:kontrolliert|untersucht)\b/.test(input) &&
       !/\b(?:was bedeuten meine werte|diagnostizier|behandlung|dosis)\b/.test(input)) return true;
   return false;
+}
+
+
+/**
+ * The model sometimes asks for a human for a simple budget boundary or a
+ * refusal of sales pressure. Such a request is not a purchase dispute.
+ * Permit ONLY this narrow, noncritical case to continue, with a verified,
+ * non-commercial reply. Unknown and safety-related cases still fail closed.
+ */
+export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
+  const input = norm(latestText);
+  if (!/\b(?:geld|budget|finanziell|leisten|verkaufsshow|verkaufsgespr[a-z]*|verkaufsdruck|aufgedrangt|gedrangt)\b/.test(input))
+    return null;
+  if (/\b(?:arzt|medizin|krankheit|medikament|insulin|schwindel|schmerz|brust|schwanger|essstorung|suizid|angst|krise|akut|rezept|datenschutz|losch|stop|nicht mehr schreiben|nicht mehr kontaktieren)\b/.test(input))
+    return null;
+  if (/\b(?:jochen|mensch|personlich|ubernimm|ubernehm|bitte weitergeben|direkt sprechen|bitte jemand|bezahl|zahlung|gekauft|bestell|buchung|gebucht|rechnung|beleg|zugang|vertragsbruch|widerruf)\b/.test(input))
+    return null;
+  return "Verstanden. Dann geht es erst mal um Orientierung, nicht um einen Kauf. Du musst hier nichts entscheiden. Wenn du etwas zu Ablauf oder Inhalten wissen möchtest, beantworte ich es dir sachlich, ohne Verkaufsdruck.";
 }
 
 export function isUnsafeLlmClaim(reply: string): boolean {

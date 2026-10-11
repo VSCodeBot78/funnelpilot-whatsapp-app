@@ -1402,8 +1402,8 @@ export async function processIncomingMessage(
           detectedIntent: "unknown", state: latest,
           replySuppressedReason: "superseded" };
       }
-      if (result.kind === "llm") {
-        updateAnswer(latest, "peteReplySource", "llm");
+      if (result.kind === "llm" || result.kind === "safe_reply") {
+        updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" : "safe_noncritical");
         appendAssistantMessage(latest, result.text);
         persistConversationState(latest);
         return { text: result.text, nextStep: latest.currentStep,

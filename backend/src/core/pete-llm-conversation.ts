@@ -7,7 +7,7 @@
 import { containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { readSettings } from "../services/settings-store.js";
-import { normalizePeteReplyStyle, isUnsafeLlmClaim } from "./pete-conversation-quality.js";
+import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
@@ -15,6 +15,7 @@ export const PETE_LLM_HANDOFF_REPLY =
 
 export type PeteLlmResult =
   | { kind: "llm"; text: string }
+  | { kind: "safe_reply"; text: string }
   | { kind: "handoff"; reason: "not_authorized" | "provider_unavailable" | "invalid_output" | "model_handoff" | "budget_exhausted" | "budget_unavailable"; detail?: string };
 
 export function isPeteLlmConversationSelected(): boolean {
@@ -228,7 +229,16 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     }
     const validated = validatePeteLlmReply(parsed);
     if (!validated) return { kind: "handoff", reason: "invalid_output", detail: classifyPeteOutputRejection(parsed) };
-    if (validated.needsHuman) return { kind: "handoff", reason: "model_handoff", detail: "model_requested_human" };
+    if (validated.needsHuman) {
+      // A model's conservative preference for human review is NOT by itself
+      // a reason to permanently mute a buyer who only declined a sales pitch.
+      // Fallback uses no model-generated claims and is allowed only for an
+      // explicitly narrow, non-medical, non-transactional budget boundary.
+      const latestLeadText = state.messages.at(-1)?.text ?? "";
+      const safe = peteSafeBudgetBoundaryReply(latestLeadText);
+      if (safe) return { kind: "safe_reply", text: safe };
+      return { kind: "handoff", reason: "model_handoff", detail: "model_requested_human" };
+    }
     return { kind: "llm", text: validated.reply };
   } catch {
     // No low-quality question-flow fallback on API errors.
