@@ -106,14 +106,14 @@ export function createMobileLabGateway({
     let path;
     try { path = new URL(req.url || "/", publicOrigin).pathname; }
     catch { return send(res,400,"Ungültige URL"); }
+    // Railway readiness probes may send their own Host header; /healthz has no private data.
+    if (verb==="GET" && path==="/healthz")
+      return send(res,200,"ok");
     if (req.headers.host !== hostname) return send(res,421,"Host gesperrt");
     if (verb === "POST" &&
         (req.headers.origin !== publicOrigin ||
          req.headers["sec-fetch-site"] === "cross-site"))
       return send(res,403,"Ursprung gesperrt");
-
-    if (verb==="GET" && path==="/healthz")
-      return send(res,200,"ok"); // No state, secrets or provider info.
 
     if (verb==="GET" && path==="/lab-login")
       return send(res,200,loginPage(false),"text/html; charset=utf-8");
