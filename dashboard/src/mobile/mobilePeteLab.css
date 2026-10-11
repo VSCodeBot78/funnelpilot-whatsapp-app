@@ -73,3 +73,29 @@ body:has(.pete-mobile-lab) { background: #121820; }
   color: #18232d; background: #fff; border: 1px solid #bccbd8;
   border-radius: 9px; resize: vertical; font: 14px/1.5 system-ui, sans-serif; }
 .pete-lab-note textarea:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }
+
+/* Native Android browser speech recognition – no external transcription API. */
+.pete-mobile-lab .pete-lab-microphone {
+  background: #293b4b;
+  color: #fff;
+  border: 2px solid #93aec3;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-weight: 750;
+  width: 100%;
+  min-height: 50px;
+}
+.pete-mobile-lab .pete-lab-microphone.is-recording {
+  background: #694025;
+  border-color: #ffb17f;
+  color: #fff;
+}
+.pete-mobile-lab .pete-lab-microphone:disabled {
+  opacity: .75;
+}
+.pete-mobile-lab .pete-lab-voice-hint {
+  color: #d0dbe5;
+  margin: 1px 0 3px;
+  font-size: 12px;
+  line-height: 1.5;
+}
