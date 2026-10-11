@@ -13,14 +13,22 @@ import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 const USD_MICROS_CAP = 8_000_000; // Conservative internal limit for 10 EUR authorization.
-const MODEL = "gpt-4.1-mini";
-const INPUT_USD_MICROS_PER_TOKEN = 0.4;
-const OUTPUT_USD_MICROS_PER_TOKEN = 1.6;
+const MODEL = "gpt-4.1-mini"; // backward compatible default
+// Official OpenAI pay-as-you-go prices in USD per million tokens, checked 2026-10-11.
+const MODEL_PRICES = {
+  "gpt-4.1-mini": { input: 0.4, output: 1.6 },
+  "gpt-5.4": { input: 2.5, output: 15.0 },
+} as const;
+type PricedModel = keyof typeof MODEL_PRICES;
+function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
+  return Object.prototype.hasOwnProperty.call(MODEL_PRICES, name)
+    ? MODEL_PRICES[name as PricedModel] : null;
+}
 const MAX_OUTPUT_TOKENS = 400;
 const LEDGER_FILE = path.join(env.DATA_DIR, "pete-api-budget.json");
 const LOCK_FILE = path.join(env.DATA_DIR, "pete-api-budget.lock");
 
-type Reservation = { microUsd: number; createdAt: string };
+type Reservation = { microUsd: number; createdAt: string; model?: PricedModel };
 type Ledger = {
   version: 1;
   capMicroUsd: number;
@@ -71,7 +79,8 @@ function load(): Ledger {
   for (const val of Object.values(pending)) {
     if (!val || typeof val !== "object" ||
         !isWhole((val as Reservation).microUsd) ||
-        typeof (val as Reservation).createdAt !== "string")
+        typeof (val as Reservation).createdAt !== "string" ||
+        ((val as Reservation).model !== undefined && !priceFor((val as Reservation).model!)))
       throw new PeteBudgetStop("unavailable");
     reserved += (val as Reservation).microUsd;
   }
@@ -111,20 +120,24 @@ export function getPeteBudgetStatusSafe() {
 export function reservePeteBudget(params: {
   model: string; requestBody: string; maxOutputTokens: number;
 }): string {
-  if (params.model !== MODEL || params.maxOutputTokens !== MAX_OUTPUT_TOKENS)
+  const pricing = priceFor(params.model);
+  if (!pricing || params.maxOutputTokens !== MAX_OUTPUT_TOKENS)
     throw new PeteBudgetStop("model_not_priced");
   // Each token represents >=1 byte of text in the encoded payload; an extra
   // 6k-token overhead covers API wrappers and hidden roles. No tools are enabled.
   // GitHub Phase 3 envelopes reserve 1.50 USD for exactly 100 calls.
   // At most 26k request bytes + 6k wrapper tokens and 400 output tokens
   // cost less than 0.0135 USD per call, safely below the envelope.
-  if (process.env.PETE_PHASE3_BUDGET_ENVELOPE === "true" &&
-      Buffer.byteLength(params.requestBody, "utf8") > 26000) {
+  const bytes = Buffer.byteLength(params.requestBody, "utf8");
+  if (process.env.PETE_PHASE3_FLAGSHIP_ENVELOPE === "true" &&
+      params.model === "gpt-5.4" && bytes > 20000)
     throw new PeteBudgetStop("exhausted");
-  }
-  const maximumInputTokens = Buffer.byteLength(params.requestBody, "utf8") + 6000;
-  const reservedMicros = Math.ceil(maximumInputTokens * INPUT_USD_MICROS_PER_TOKEN +
-    MAX_OUTPUT_TOKENS * OUTPUT_USD_MICROS_PER_TOKEN);
+  if (process.env.PETE_PHASE3_BUDGET_ENVELOPE === "true" &&
+      params.model === "gpt-4.1-mini" && bytes > 26000)
+    throw new PeteBudgetStop("exhausted");
+  const maximumInputTokens = bytes + 6000;
+  const reservedMicros = Math.ceil(maximumInputTokens * pricing.input +
+    MAX_OUTPUT_TOKENS * pricing.output);
   if (!Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || reservedMicros > USD_MICROS_CAP)
     throw new PeteBudgetStop("exhausted");
   return locked(() => {
@@ -132,7 +145,7 @@ export function reservePeteBudget(params: {
     if (data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
       throw new PeteBudgetStop("exhausted");
     const id = crypto.randomUUID();
-    data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString() };
+    data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(), model: params.model as PricedModel };
     data.reservedMicroUsd += reservedMicros;
     data.committedMicroUsd += reservedMicros;
     data.requestsStarted += 1;
@@ -153,8 +166,10 @@ export function settlePeteBudget(id: string, usage: unknown): boolean {
     const data = load();
     const pending = data.pending[id];
     if (!pending) return false;
-    const actualMicros = Math.ceil(u.input_tokens as number * INPUT_USD_MICROS_PER_TOKEN +
-      (u.output_tokens as number) * OUTPUT_USD_MICROS_PER_TOKEN);
+    const pricing = priceFor(pending.model ?? MODEL);
+    if (!pricing) throw new PeteBudgetStop("unavailable");
+    const actualMicros = Math.ceil(u.input_tokens as number * pricing.input +
+      (u.output_tokens as number) * pricing.output);
     if (!isWhole(actualMicros)) throw new PeteBudgetStop("unavailable");
     data.confirmedMicroUsd += actualMicros;
     data.reservedMicroUsd -= pending.microUsd;

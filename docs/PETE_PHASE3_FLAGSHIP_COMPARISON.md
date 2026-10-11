@@ -1,0 +1,9 @@
+# Phase 3, zehn anspruchsvolle GPT-5.4-Vergleichsgespräche
+
+Der Nutzer autorisierte maximal 10 EUR API-Guthaben mit deaktivierter automatischer Aufladung. Der bestehende Pete-weite kumulative Budgetdeckel bleibt bei 8 USD. Der stärkere Modellvergleich nutzt ausdrücklich GPT-5.4 zu den am 11.10.2026 verifizierten Listenpreisen 2,50 USD/M Eingabe-Tokens und 15 USD/M Ausgabe-Tokens (Quelle OpenAI Modell-Dokumentation).
+
+Verwendet werden zehn aus dem 50er-Härtetest ausgewählte, künstliche Elternprofile mit je zehn Nachrichten: Familienalltag, Kritik, wissenschaftliche Fragen nach Schwangerschaft, Budget, Buchung, Zahlung und Kanalübergabe. Diese Profile werden nach dem Vergleich unabhängig aus Lead- und Coachingperspektive bewertet. Der Vergleich alleine ist keine automatische Live-Freigabe.
+
+Spezielle GitHub Action ist ausschließlich auf dem Branch phase3-flagship-approved-run-20261011 und mit einem genauen Freigabe-Commitnamen startbar. Der OPENAI_API_KEY wird nur aus dem bestehenden Repository-Secret in den isolierten Runner injiziert. GitHub Actions behalten die globale Prozess-Serialisierung und schreiben VOR jedem Block eine auf dem gemeinsamen Budget-Branch persistierte Reservierung von 1,50 USD. Höchstens zwei Profile mit 10 Leadnachrichten pro Block bedeuten höchstens 20 API-Requests; jeder Request ist auf 20.000 Bytes plus 6.000 overhead-Tokens und 400 Ausgabe-Tokens beschränkt. Bei 2,50 USD bzw. 15 USD/M Token entspricht das höchstens 1,42 USD pro Block. Dazu gibt es weiterhin die lokale 8-USD-Sperre. Bei Crash bleibt die 1,50-USD-Reservierung bestehen, nie automatische Budgetrücksetzung.
+
+Keine echten Kundendaten, keine Meta-/WhatsApp-Nachrichten, kein automatischer Produktrollout. Neue Modellpreise gelten NUR für diesen genau benannten Kandidaten, unbekannte Modellnamen werden geblockt.
