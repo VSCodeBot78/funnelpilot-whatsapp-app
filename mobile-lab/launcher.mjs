@@ -20,7 +20,17 @@ if (dataDir === "/" || dataDir.length < 7) throw Error("lab_data_dir_unsafe");
 // Later restarts require the exact lab-only marker; do not silently reset.
 const marker=join(dataDir,".funnelpilot-private-lab");
 if (!existsSync(marker)) {
-  if (readdirSync(dataDir).length!==0) throw Error("lab_data_dir_not_empty");
+  // Fresh ext4 volumes can contain an empty filesystem-owned lost+found.
+  // Never accept an arbitrary non-empty customer/project data directory.
+  const initialEntries = readdirSync(dataDir);
+  const otherEntries = initialEntries.filter(name => name !== "lost+found");
+  if (otherEntries.length > 0) throw Error("lab_data_dir_not_empty");
+  if (initialEntries.includes("lost+found")) {
+    const fsRecovery = join(dataDir, "lost+found");
+    if (!lstatSync(fsRecovery).isDirectory() || readdirSync(fsRecovery).length > 0) {
+      throw Error("lab_volume_recovery_dir_not_empty");
+    }
+  }
   writeFileSync(marker,"funnelpilot-isolated-synthetic-only-v1\\n",
     {flag:"wx",mode:0o600});
 } else if (!lstatSync(marker).isFile() ||
