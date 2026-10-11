@@ -1,11 +1,14 @@
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
+import {
+  getPeteVerifiedTransactionAnswer,
+  isGeneralNonMedicalKnowledgeRequest,
+} from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
   getPeteLlmConversationReply,
   isExplicitPeteHumanTakeoverRequest,
   isPeteLlmConversationSelected,
-  isTrustedPeteTransactionRequest,
   PETE_LLM_HANDOFF_REPLY,
 } from "./pete-llm-conversation.js";
 import {
@@ -1284,10 +1287,15 @@ export async function processIncomingMessage(
 
     // Preserve precedence of STOP, medical crises, legal/privacy and hard
     // safety handoffs even if the user asks a sales-related question.
+    const safeGeneralKnowledge =
+      isPeteLlmConversationSelected() &&
+      isGeneralNonMedicalKnowledgeRequest(input.messageText);
     if ([
       "hard_stop", "medical_critical", "medical_soft",
       "emotional_crisis", "legal_privacy",
-    ].includes(decision.decisionType)) {
+    ].includes(decision.decisionType) &&
+        !(safeGeneralKnowledge &&
+          ["medical_critical", "medical_soft"].includes(decision.decisionType))) {
       const guarded = composePeteResponse(decision, {
         campaign, currentStep: state.currentStep,
         userText: input.messageText,
@@ -1341,8 +1349,38 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
-    if (isPeteLlmConversationSelected() &&
-        !isTrustedPeteTransactionRequest(input.messageText)) {
+    // A mention of prices, terms or appointments must NOT force a
+    // context-rich question into the mechanical legacy funnel. First answer
+    // ONLY a verifiable transaction request, otherwise let the LLM respond.
+    if (isPeteLlmConversationSelected()) {
+      const verified = getPeteVerifiedTransactionAnswer(input.messageText, state, bookingUrl);
+      if (verified) {
+        updateAnswer(state, "peteReplySource", "verified_transaction");
+        if (verified.nextPhase) updateAnswer(state, "naturalPhase", verified.nextPhase);
+        if (verified.handoff) {
+          patchFlags(state, {
+            peteRuntimeHandoffRequested: true,
+            peteRuntimeHandoffActive: true,
+          });
+          takeOverByHuman(state);
+        }
+        if (verified.nextPhase === "booking_offered" && bookingUrl) {
+          patchFlags(state, { wantsBooking: true });
+          setCurrentStep(state, "booking");
+          state.providerBooking = activateProviderBookingState({
+            current: state.providerBooking,
+            provider: inferBookingProviderFromUrl(bookingUrl),
+            bookingUrl, linkSentAt: nowIso(),
+          });
+        }
+        appendAssistantMessage(state, verified.text);
+        persistConversationState(state);
+        return { text: verified.text, nextStep: state.currentStep,
+          detectedIntent: "flow_answer", state };
+      }
+    }
+
+    if (isPeteLlmConversationSelected()) {
       const result = await getPeteLlmConversationReply(state);
       // The LLM call is asynchronous. A human may take over, STOP may arrive,
       // or another incoming message may supersede this one during the await.
