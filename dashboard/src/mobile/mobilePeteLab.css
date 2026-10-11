@@ -104,3 +104,45 @@ body:has(.pete-mobile-lab) { background: #121820; }
   color: #d0dbe5;
   font-size: 12px;
 }
+
+/* Test entries are actual backend scenarios, not illustrative labels. */
+.pete-lab-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #1e2731;
+  border: 1px solid #364452;
+  border-radius: 14px;
+  margin: 12px 0;
+}
+.pete-lab-entry label { font-size: 14px; font-weight: 750; }
+.pete-lab-entry select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #8b9eaf;
+  border-radius: 9px;
+  background: #263542;
+  color: #fff;
+  font: inherit;
+  padding: 9px;
+}
+.pete-lab-entry button {
+  border: none;
+  border-radius: 10px;
+  color: #242424;
+  background: #ff914d;
+  font-weight: 750;
+  padding: 11px;
+}
+.pete-lab-entry p { margin: 0; font-size: 12px; color: #d0dbe5; }
+.pete-lab-entry .pete-lab-entry-result {
+  padding: 8px 9px;
+  border-left: 3px solid #ff914d;
+  background: #293644;
+  color: #f5f7fa;
+}
+.pete-lab-message.is-human .pete-lab-bubble {
+  background: #35415e;
+  border: 1px solid #7f95c0;
+}

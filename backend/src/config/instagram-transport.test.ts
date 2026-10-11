@@ -55,6 +55,7 @@ const {
   persistConversationState,
 } = await import("../core/state-manager.js");
 const { env } = await import("../config/env.js");
+const { evaluateInstagramSharedMedia } = await import("../services/instagram-shared-media-policy.js");
 const {
   isKnownAiOutboundEcho,
 } = await import("../services/conversation-outbound.service.js");
@@ -330,6 +331,26 @@ test("Phase 4 Instagram transport foundation", async (t) => {
 
     assert.equal(event.text, "");
     assert.equal(event.hasAttachments, true);
+  });
+
+  await t.test("shared Reel plus small talk cannot become a Pete sales lead", () => {
+    assert.equal(evaluateInstagramSharedMedia(true,""),"human_review");
+    assert.equal(evaluateInstagramSharedMedia(true,"😂"),"human_review");
+    assert.equal(evaluateInstagramSharedMedia(true,"Check das mal 😂"),"human_review");
+    assert.equal(evaluateInstagramSharedMedia(true,"Wie geht die Übung aus dem Reel?"),"human_review");
+    assert.equal(evaluateInstagramSharedMedia(true,"KETO"),"explicit_keyword");
+    assert.equal(evaluateInstagramSharedMedia(true," check "),"explicit_keyword");
+    assert.equal(evaluateInstagramSharedMedia(true,"BULLSHIT"),"explicit_keyword");
+    assert.equal(evaluateInstagramSharedMedia(false,"😂"),"normal_text");
+    const [parsed] = parseInstagramMessageEvents({
+      object:"instagram", entry:[{ messaging:[{
+        sender:{id:"route-test-igsid"}, recipient:{id:"17841400000000000"},
+        message:{mid:"reel-private-1",text:"😂 Das sind wir",attachments:[{type:"share"}]},
+      }] }],
+    });
+    assert.equal(parsed.hasAttachments,true);
+    assert.equal(parsed.text,"😂 Das sind wir");
+    assert.equal(evaluateInstagramSharedMedia(parsed.hasAttachments,parsed.text),"human_review");
   });
 
   await t.test("timestamp conversion uses Instagram millisecond timestamps", () => {
