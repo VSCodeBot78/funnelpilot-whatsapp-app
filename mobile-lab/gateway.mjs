@@ -33,7 +33,7 @@ function securityHeaders() {
     "x-content-type-options": "nosniff",
     "referrer-policy": "no-referrer",
     "x-frame-options": "DENY",
-    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "permissions-policy": "camera=(), microphone=(self), geolocation=()",
     "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   };
 }
