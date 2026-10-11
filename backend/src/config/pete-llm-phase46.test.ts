@@ -109,7 +109,7 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     ]) assert.equal(isTrustedPeteTransactionRequest(input), true, input);
     const price = await send("phase46-price", "Wie teuer ist das?");
     assert.match(price.text || "", /5-Wochen|Selbststarter/);
-    assert.equal(price.state.answers.peteReplySource, "deterministic");
+    assert.equal(price.state.answers.peteReplySource, "verified_transaction");
     const payment = await send("phase46-payment", "Ich habe bezahlt, ist die Zahlung bestätigt?");
     assert.notEqual(payment.state.answers.coachingEntryPurchaseStatus, "paid");
     assert.notEqual(payment.state.answers.starterPurchaseStatus, "paid");
