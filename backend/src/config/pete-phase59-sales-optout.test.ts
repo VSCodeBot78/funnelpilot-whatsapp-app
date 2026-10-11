@@ -91,10 +91,10 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
     persistConversationState(state);
     const ghosting = evaluateGhostingState(state, state.ghosting);
     assert.equal(ghosting.dueNow, false);
-    assert.match(ghosting.reason, /Verkaufsnachfass/);
+    assert.match(ghosting.reason ?? "", /Verkaufsnachfass/);
     const booking = evaluateProviderBookingFollowUp(state);
     assert.equal(booking.dueNow, false);
-    assert.match(booking.reason, /Verkaufsnachfass/);
+    assert.match(booking.reason ?? "", /Verkaufsnachfass/);
     const guarded = evaluateLatestAiOutboundPermission({
       leadId: id, campaignId: DEFAULT_CAMPAIGN_ID, purpose: "automated_followup",
     });

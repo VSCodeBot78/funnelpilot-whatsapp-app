@@ -56,6 +56,7 @@ function createInitialConversationState(
       askedPrice: false,
       wantsInfoOnly: false,
       wantsInfoLinkOnly: false,
+      salesFollowUpsOptedOut: false,
     },
     messages: [],
     ghosting: {
@@ -94,6 +95,11 @@ export function getOrCreateConversationState(
 export function ensureOwnershipState(state: ConversationState): void {
   if (!state.owner) {
     state.owner = "ai";
+  }
+
+  // Upgrade old persisted conversations without resetting an existing opt-out.
+  if (typeof state.flags.salesFollowUpsOptedOut !== "boolean") {
+    state.flags.salesFollowUpsOptedOut = false;
   }
 
   if (typeof state.aiPaused !== "boolean") {

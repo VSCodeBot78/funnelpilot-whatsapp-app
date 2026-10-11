@@ -228,7 +228,7 @@ export type ConversationFlags = {
   wantsInfoOnly: boolean;
   wantsInfoLinkOnly: boolean;
   /** Persistent refusal of proactive sales follow-ups, not global DNC. */
-  salesFollowUpsOptedOut?: boolean;
+  salesFollowUpsOptedOut: boolean;
 };
 
 export type ConversationOwner = "ai" | "human";
