@@ -4,7 +4,6 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { extname, join, resolve, sep } from "node:path";
 
 const COOKIE = "__Host-pete_lab";
-const LOGIN_CSRF_COOKIE = "__Host-pete_lab_login_csrf";
 const LOGIN_CSRF_SECONDS = 15 * 60;
 const SESSION_SECONDS = 7 * 24 * 3600;
 const STATIC = new Set([
@@ -56,25 +55,19 @@ function tokenFor(secret) {
   const sig = createHmac("sha256", secret).update(prefix).digest("hex");
   return prefix + "." + sig;
 }
-function cookieValue(req, name) {
-  const segment = String(req.headers.cookie || "").split(";")
-    .map(x => x.trim()).find(x => x.startsWith(name + "="));
-  return segment ? segment.slice(name.length + 1) : "";
-}
-
-// Signed, short-lived form-specific double-submit CSRF token. It is not a
-// session and cannot substitute for the user's private lab password.
+// Signed, short-lived anti-CSRF token embedded only in the same-origin login
+// form. No login-stage cookie is required: some Android in-app browsers omit
+// cookies on native form POSTs. Strict cross-site rejection remains in force.
+// A valid token is NOT authentication: the private password is still mandatory.
 function csrfFor(secret) {
   const prefix = Math.floor(Date.now() / 1000) + "." + randomBytes(16).toString("hex");
   const signature = createHmac("sha256", secret).update("login-csrf:" + prefix).digest("hex");
   return prefix + "." + signature;
 }
-function validCsrf(req, supplied, secret) {
-  const existing = cookieValue(req, LOGIN_CSRF_COOKIE);
-  if (!/^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.test(existing) ||
-      typeof supplied !== "string" || supplied.length !== existing.length ||
-      !timingSafeEqual(Buffer.from(supplied), Buffer.from(existing))) return false;
-  const match = /^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.exec(existing);
+function validCsrf(supplied, secret) {
+  if (typeof supplied !== "string") return false;
+  const match = /^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.exec(supplied);
+  if (!match) return false;
   const now = Math.floor(Date.now() / 1000);
   const created = Number(match[1]);
   if (created > now + 60 || now - created > LOGIN_CSRF_SECONDS) return false;
@@ -82,14 +75,9 @@ function validCsrf(req, supplied, secret) {
     .update("login-csrf:" + match[1] + "." + match[2]).digest("hex");
   return timingSafeEqual(Buffer.from(match[3], "hex"), Buffer.from(expected, "hex"));
 }
-function loginForm(res, status, failed, secret, httpTest, extra = {}) {
-  const token = csrfFor(secret);
-  const flags = httpTest ? "" : "; Secure";
-  return send(res, status, loginPage(failed, token), "text/html; charset=utf-8", {
-    ...extra,
-    "set-cookie": LOGIN_CSRF_COOKIE + "=" + token +
-      "; Path=/; HttpOnly; SameSite=Strict; Max-Age=" + LOGIN_CSRF_SECONDS + flags,
-  });
+function loginForm(res, status, failed, secret, _httpTest, extra = {}) {
+  return send(res, status, loginPage(failed, csrfFor(secret)),
+    "text/html; charset=utf-8", extra);
 }
 function hasSession(req, secret) {
   const part = String(req.headers.cookie || "").split(";").map(x=>x.trim())
@@ -147,10 +135,9 @@ export function createMobileLabGateway({
     if (verb==="GET" && path==="/healthz")
       return send(res,200,"ok");
     if (req.headers.host !== hostname) return send(res,421,"Host gesperrt");
-    // Embedded Android browsers sometimes send no Origin (or Origin: null)
-    // for a normal HTML form. A signed CSRF token + matching Strict cookie
-    // protects ONLY that login route. Authenticated JSON APIs still insist
-    // on the exact expected Origin.
+    // Embedded Android browsers may omit Origin or login cookies.
+    // Only login accepts missing/null Origin, protected by signed short-lived
+    // HTML token + cross-site-header rejection. JSON APIs require exact Origin.
     if (verb === "POST" &&
         (req.headers["sec-fetch-site"] === "cross-site" ||
          (path === "/lab-login"
@@ -175,7 +162,7 @@ export function createMobileLabGateway({
         raw = await bodyBounded(req);
       } catch { return send(res,413,"Ungültige Anmeldung"); }
       const form = new URLSearchParams(raw);
-      if (!validCsrf(req, form.get("csrf_token"), key))
+      if (!validCsrf(form.get("csrf_token"), key))
         return loginForm(res,403,true,key,httpTest);
       const guess = form.get("password") || "";
       if (!safeEqual(guess, password)) {
@@ -186,10 +173,7 @@ export function createMobileLabGateway({
       const flags = httpTest ? "" : "; Secure";
       return send(res,303,"","text/plain; charset=utf-8",{
         location:"/pete-test",
-        "set-cookie":[
-          COOKIE+"="+tokenFor(key)+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+SESSION_SECONDS+flags,
-          LOGIN_CSRF_COOKIE+"=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"+flags,
-        ],
+        "set-cookie":COOKIE+"="+tokenFor(key)+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+SESSION_SECONDS+flags,
       });
     }
     if (!hasSession(req,key)) {
