@@ -3,6 +3,8 @@ import { env } from "../config/env.js";
 import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
+import { appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState } from "../core/state-manager.js";
+import { PETE_LAB_SCENARIOS, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 
@@ -32,7 +34,7 @@ function isLabId(value: unknown): value is string {
 
 function publicLabMessages(messages: { id?: string; role: string; text: string }[]) {
   return messages.filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({ id: m.id, role: m.role, text: m.text }));
+    .map(m => ({ id: m.id, role: m.role, actor: "actor" in m ? m.actor : undefined, text: m.text }));
 }
 
 // Purpose-specific routes: never allow remote lab clients to choose a campaign,
@@ -41,6 +43,61 @@ router.get("/lab/budget", guardMobileLab, (_req, res) => {
   const status = getPeteBudgetStatusSafe();
   if (!status.ok) return res.status(503).json(status);
   return res.json(status);
+});
+
+// Scenario scripts are entirely backend-owned: clients cannot inject a fake
+// official opening, change campaign, select a real lead, or send to Meta.
+// Start always creates a fresh, empty synthetic conversation.
+router.post("/lab/start", guardMobileLab, async (req, res) => {
+  const leadId = req.body?.leadId;
+  const scenarioId = req.body?.scenarioId;
+  if (!isLabId(leadId) || !isPeteLabScenarioId(scenarioId)) {
+    return res.status(400).json({ ok: false, error: "invalid_synthetic_scenario" });
+  }
+  if (!getPeteBudgetStatusSafe().ok) {
+    return res.status(503).json({ ok: false, error: "pete_budget_unavailable" });
+  }
+  if (getConversationState(leadId, DEFAULT_CAMPAIGN_ID)) {
+    return res.status(409).json({ ok: false, error: "lab_scenario_already_started" });
+  }
+
+  const scenario = PETE_LAB_SCENARIOS[scenarioId];
+  try {
+    if ("humanText" in scenario) {
+      const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+      appendHumanMessage(state, scenario.humanText);
+      persistConversationState(state);
+      return res.json({
+        ok: true, scenarioId, replySource: "human_manual",
+        replySuppressedReason: "human_owned",
+        state: { messages: publicLabMessages(state.messages) },
+      });
+    }
+    if (labScenarioPolicy(scenarioId) === "human_review") {
+      const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+      // Synthetic-only diagnostic marker. Never invent the Reel's actual contents.
+      appendUserMessage(state,
+        "[Instagram-Anhang geteilt - Inhalt für Pete nicht sichtbar] " + scenario.text);
+      persistConversationState(state);
+      return res.json({
+        ok: true, scenarioId, replySource: "media_guard",
+        replySuppressedReason: "shared_media_needs_human_review",
+        state: { messages: publicLabMessages(state.messages) },
+      });
+    }
+    const result = await processIncomingMessage({
+      leadId, campaignId: DEFAULT_CAMPAIGN_ID, messageText: scenario.text,
+      conversationMode: "natural",
+    });
+    return res.json({
+      ok: true, scenarioId, reply: result.text,
+      replySource: result.state.answers.peteReplySource ?? "deterministic",
+      replySuppressedReason: result.replySuppressedReason ?? null,
+      state: { messages: publicLabMessages(result.state.messages) },
+    });
+  } catch {
+    return res.status(500).json({ ok: false, error: "pete_mobile_lab_scenario_failed" });
+  }
 });
 
 router.post("/lab/message", guardMobileLab, async (req, res) => {
