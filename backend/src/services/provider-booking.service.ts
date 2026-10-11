@@ -154,6 +154,17 @@ export function evaluateProviderBookingFollowUp(
     };
   }
 
+  if (state.flags?.salesFollowUpsOptedOut) {
+    return {
+      shouldActivate: false,
+      active: false,
+      status: state.providerBooking?.status ?? "inactive",
+      stage: "inactive",
+      dueNow: false,
+      reason: "Lead lehnt Verkaufsnachfassnachrichten ab. Booking-Follow-up pausiert.",
+    };
+  }
+
   const providerBooking = state.providerBooking;
 
   if (!providerBooking || providerBooking.status === "inactive") {

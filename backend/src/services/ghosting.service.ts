@@ -218,6 +218,10 @@ export function evaluateGhostingState(
     return buildInactiveResult("Automation gestoppt. Ghosting pausiert.");
   }
 
+  if (state.flags?.salesFollowUpsOptedOut) {
+    return buildInactiveResult("Lead lehnt Verkaufsnachfassnachrichten ab. Ghosting pausiert.");
+  }
+
   const outboundAt = getReferenceOutboundAt(state);
 
   if (!outboundAt) {

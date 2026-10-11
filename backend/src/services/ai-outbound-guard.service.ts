@@ -8,7 +8,8 @@ export type AiOutboundGuardReason =
   | "ai_paused"
   | "stopped"
   | "lead_bot_disabled"
-  | "lead_excluded";
+  | "lead_excluded"
+  | "sales_followup_opt_out";
 
 export type AiOutboundGuardResult =
   | { allowed: true; reason: null }
@@ -17,6 +18,7 @@ export type AiOutboundGuardResult =
 export function evaluateLatestAiOutboundPermission(params: {
   leadId: string;
   campaignId: string;
+  purpose?: "conversation_reply" | "automated_followup";
 }): AiOutboundGuardResult {
   const state = getConversationState(params.leadId, params.campaignId);
 
@@ -34,6 +36,11 @@ export function evaluateLatestAiOutboundPermission(params: {
 
   if (state.aiPaused === true) {
     return { allowed: false, reason: "ai_paused" };
+  }
+
+  // A late opt-out also blocks already-prepared reminders at send time.
+  if (params.purpose === "automated_followup" && state.flags.salesFollowUpsOptedOut) {
+    return { allowed: false, reason: "sales_followup_opt_out" };
   }
 
   const lead = getLeadById(params.leadId);
