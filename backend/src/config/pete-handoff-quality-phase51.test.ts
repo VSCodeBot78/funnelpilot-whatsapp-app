@@ -126,6 +126,28 @@ test("Phase 51: high-quality model headroom, no unverified cost claims", async t
     assert.equal(classifyPeteOutputRejection({ reply: "Die Rechnung ist 500 Euro.", needsHuman: false }), "invented_price");
   });
 
+  await t.test("Pete identity is canonical even when a model swaps ownership", async () => {
+    enable("gpt-5.4");
+    globalThis.fetch = async () => provider({
+      reply: "Ich bin übrigens Petes KI-Assistent für Jochen, nicht Jochen selbst.",
+      needsHuman: false,
+    });
+    const result = await getPeteLlmConversationReply(state("Ich habe Angst vor Doppelantworten."));
+    assert.equal(result.kind, "llm");
+    if (result.kind !== "llm") throw Error("expected repaired identity");
+    assert.match(result.text, /Ich bin Pete, Jochens KI-Assistent/);
+    assert.doesNotMatch(result.text, /Petes KI-Assistent/);
+  });
+
+  await t.test("an uncertain purchase without receipt must not become a sales quiz", () => {
+    const answer = getPeteVerifiedTransactionAnswer(
+      "Ich bin Selbststarter-Käufer, vermute eine Zahlung, finde aber keinen Beleg.",
+      state(),
+    );
+    assert.equal(answer?.handoff, true);
+    assert.match(answer?.text || "", /verifiziert|Bestell/);
+  });
+
   await t.test("approved flagship envelope remains within 1.50 USD for 20 worst-case calls", () => {
     process.env.PETE_PHASE3_FLAGSHIP_ENVELOPE = "true";
     assert.throws(() => reservePeteBudget({

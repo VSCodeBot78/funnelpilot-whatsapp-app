@@ -76,6 +76,17 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // "I may have bought it but cannot find a receipt" is about verifying a
+  // transaction, not a lead to ask about their training motivation.
+  if (/\b(?:selbststarter|produkt|buch|kauf|zahlung|bestellung|gekauft)\b/.test(input) &&
+      /\b(?:beleg|bestatigung|rechnung|abgebucht)\b/.test(input) &&
+      /\b(?:kein\w*|nicht|fehlt|finde\w*\s+nicht|vermut\w*|unsicher)\b/.test(input)) {
+    return {
+      text: "Ob dein Kauf wirklich erfasst wurde, kann ich ohne einen verifizierten Beleg nicht bestätigen. Bitte prüfe zuerst die Bestell- oder Zahlungsbestätigung. Wenn sie fehlt, übernimmt Jochen die Klärung.",
+      handoff: true,
+    };
+  }
+
   if (isUnverifiedLongTermPriceQuestion(text)) {
     return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, nextPhase: "longterm_unverified" };
   }
@@ -161,6 +172,8 @@ export function isUnsafeLlmClaim(reply: string): boolean {
 /** Typography cleanup must never introduce a stray dot in the sentence. */
 export function normalizePeteReplyStyle(reply: string): string {
   return reply
+    .replace(/ich bin (?:übrigens )?Petes KI-Assistent(?: für Jochen)?/gi,
+      "Ich bin Pete, Jochens KI-Assistent")
     .replace(/\s*[–—]\s*/g, ", ")
     .replace(/\p{Extended_Pictographic}/gu, "")
     .replace(/\s+([,.;:!?])/g, "$1")
