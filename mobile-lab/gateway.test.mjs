@@ -134,6 +134,7 @@ test("private mobile gateway denies admin and requires session + same-origin pos
 
     result=await withLogin("/pete-test");
     assert.equal(result.status,200);
+    assert.match(result.headers.get("permissions-policy"),/microphone=\(self\)/);
     assert.match(await result.text(),/Pete Testlabor/);
     result=await withLogin("/pete-lab.webmanifest");
     assert.equal(result.status,200);
