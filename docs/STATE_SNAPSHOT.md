@@ -424,3 +424,12 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Der Testlab-Start ist bewusst **Fail-Closed** ohne gesicherten Provider-HTTPS-Origin, Secret-Store, eigenes Datenvolume und historischen Pete-Ledger-Abgleich. Provider-Login/Deployment fehlen noch: **Railway ist nicht verbunden**, daher **keine** Remote-URL und noch **keine** Android-Installation.
 - Aktuelle offizielle Railway-Free/Trial-Grenzen: bis zu 30 Tage/5 USD Testguthaben, Trial-Speichervolume bis 0,5 GB; Full-vs-Limited-Trial unterscheidet sich u. a. beim ausgehenden Netzwerk. **Nicht** garantierter 24/7-Gratis-Monat. Aktuell keine Hosting- oder API-Ausgaben freigegeben/ausgelöst.
 - Bedienungs-/Sicherheitsbeschreibung: `mobile-lab/README.md`. Eigenen realen Browser-/Android-/Railway-Test und externe OpenAI-Antworten **nicht** mit synthetischem GitHub-CI verwechseln.
+
+## M-LAB-04 – Railway Trial Test-App live (11.10.2026)
+
+- Railway `pete-testlabor-temp-2026` mit isoliertem Deployment-Branch `deploy-pete-testlabor-temp-20261011` erfolgreich gestartet (Deployment `c483934c`, Status SUCCESS; Gateway- und lokaler Backendprozess laufen). Öffentliche HTTPS-Domain: `https://pete-lab-private-testlabor.up.railway.app/pete-test`.
+- Passwortgeschützter Gateway, drei ausschließlich synthetische Lab-API-Routen, gesondertes 256-MB-Volume, CPU/RAM je auf 0,5 begrenzt, Sleeping-Modus. Externer POST ohne Origin wird als 403 abgewiesen. **Echter Android-Login/PWA-/Budget-Test noch offen.**
+- Railway-Trial: keine kostenpflichtige Planbuchung. OpenAI-billable Modellaufrufe, IG-/WA-Send und -Engine deaktiviert; 8-USD-Projektbudget weiterhin mit historischer Baseline 4,323801 USD geführt. Trial-Serververbrauch kann kostenloses $5 Guthaben aufbrauchen.
+- Bugs im temporären Deploy-Branch behoben: `.dockerignore` darf `backend/src/data` nicht ausschließen; neuer ext4-Volume-Systemordner `lost+found` ist nur im leeren Zustand zulässig.
+- Eingetragener Plan: nach maximal ca. einem Monat temporären Railway-Dienst und Testgeheimnisse bewusst entfernen; keine Verlängerung/Upgrade ohne ausdrückliche Freigabe.
+- Vollständiges, nichtgeheimes Betriebsprotokoll: `docs/RAILWAY_MOBILE_LAB_LIVE_2026-10-11.md`.
