@@ -92,7 +92,7 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     assert.match(cookieHeader,/SameSite=Strict/);
     const cookie=cookieHeader.split(";")[0];
     const withLogin=(path,opts={})=>get(path,{
-      headers:{cookie,...opts.headers},...opts,
+      ...opts, headers:{cookie,...opts.headers},
     });
 
     result=await withLogin("/pete-test");
