@@ -491,6 +491,7 @@ router.post("/conversations/ensure", (req, res) => {
         askedPrice: false,
         wantsInfoOnly: false,
         wantsInfoLinkOnly: false,
+        salesFollowUpsOptedOut: false,
       },
       messages: [
         {
