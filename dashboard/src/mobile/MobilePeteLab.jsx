@@ -64,6 +64,10 @@ export default function MobilePeteLab() {
       const res = await fetch(buildApiUrl("/test-chat/lab/budget"), {
         credentials: "same-origin", cache: "no-store",
       });
+      if (res.status === 401 && import.meta.env.PROD) {
+        window.location.assign("/lab-login");
+        return null;
+      }
       if (!res.ok) throw Error("Keine Budgetfreigabe");
       const value = readPeteBudget(await res.json());
       if (!value) throw Error("Budgetdaten ungültig");
