@@ -376,3 +376,10 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - **LIVE-01:** Drei getrennte Prozentwerte sind Schätzwerte; Phase-4- und Provider-Gates zusätzlich mit konkreten erledigten/offenen Punkten berichten. Conversion nur mit echten Leads und providerverifizierten Transaktionen bewerten.
 - **OPTIONAL-01:** Ggf. ein Monat Claude Code als unabhängiger PR-Reviewer, **kein** Abo oder technische Kopplung beauftragt.
 - Nur Dokumentation: kein Dashboard-Umbau, kein echter Versand, keine neue API-Rechnung, keine Live-/SaaS-Freigabe.
+
+## M-03 – mobiles Pete-Testlabor als späteres Coach-Trainingsstudio (Idee 11.10.2026)
+
+- Geschäftsführer-Idee dokumentiert: die mobile Pete-Testumgebung zunächst für eigene synthetische Dialogtests nutzen, später als optionales **Coach-spezifisches Test-/Feedback-/Trainingsstudio** in der mobilen Coach-App anbieten.
+- Coach kann dann vom Handy diktierte Texte testen, Antworten bewerten, Wunschformulierung/FAQs/Markenstil als versionierte Entwürfe verbessern und Änderungen bewusst freigeben. **Kein automatisches Modell-Finetuning, keine ungeprüften Prompt-Änderungen, keine echten Sends im Trainingsmodus.**
+- Klare Trennung von Stufe A (internes, geschütztes Testlabor) und Stufe B (SaaS nur mit authentisierten, mandantensicheren Accounts, Datenschutz und Budgetgrenzen). Ergänzt M-02 PWA, verdrängt aber **nicht** die Phase-4- und Meta-Live-Freigabe.
+- Detail-/Abnahmekriterien: `docs/MOBILE_PETE_TESTLAB_COACH_TRAINING_2026-10-11.md`. **Nur protokolliert, noch keine Implementierung oder Kosten.**
