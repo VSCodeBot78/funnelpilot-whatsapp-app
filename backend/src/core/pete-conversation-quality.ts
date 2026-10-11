@@ -26,6 +26,27 @@ export function getPeteVerifiedTransactionAnswer(
   const input = norm(text);
   // Cross-channel delivery is not verifiable from this single chat.
   // Never promise Instagram or WhatsApp automation will stop elsewhere.
+  const recentMultiChannelComplaint = state.messages.slice(-8).some(message =>
+    message.role === "user" &&
+    /\binstagram\b/.test(norm(message.text)) &&
+    /\bwhatsapp\b/.test(norm(message.text)));
+  const asksWhoStopsWhenHumanWrites =
+    /\b(?:jochen|menschen|personlich)\b/.test(input) &&
+    /\b(?:ki|bot|automatik)\b/.test(input) &&
+    /\b(?:stopp\w*|aufhor\w*|paus\w*|nicht mehr|ubernehm\w*)\b/.test(input);
+  if (recentMultiChannelComplaint && asksWhoStopsWhenHumanWrites) {
+    return {
+      text: "Sobald Jochen diesen Chat tatsächlich übernimmt, muss Pete dort pausiert bleiben. Ob die Automatik in einem anderen Kanal ebenfalls gestoppt ist, kann ich hier nicht verifizieren oder garantieren. Jochen muss das im System prüfen.",
+      handoff: true,
+    };
+  }
+  if (recentMultiChannelComplaint &&
+      /\b(?:zwei\s+bots|doppel\w*|gleichzeitig|beide\w*|kanal\w*)\b/.test(input) &&
+      /\b(?:nicht|nerv\w*|schreib\w*|antwort\w*|angeschrieb\w*|angequatscht)\b/.test(input)) {
+    return {
+      text: "Das verstehe ich. Ich kann hier nicht zuverlässig feststellen, was auf dem anderen Kanal noch automatisch läuft. Ich verspreche daher nicht, dass schon alles stillgelegt ist. Jochen kann die Kanalsteuerung prüfen.",
+    };
+  }
   const twoChannels = /\binstagram\b/.test(input) && /\bwhatsapp\b/.test(input);
   const crossChannelConcern = /\b(?:doppel\w*|beide\w*|kanal\w*|chat\w*)\b/.test(input) &&
     /\b(?:antwort\w*|nachricht\w*|bot\w*|schreib\w*|automatisch)\b/.test(input);
