@@ -22,9 +22,9 @@ test("Pete laboratory renders only valid backend ledger, not assumed API credit"
 test("clearly shows tiny call charges and fail-closed threshold", () => {
   assert.equal(formatUsd(0.00028), "$0.0003");
   assert.equal(formatUsd(undefined), "nicht verfügbar");
-  assert.equal(budgetCounterChange(readPeteBudget(sample),
+  assert.ok(Math.abs(budgetCounterChange(readPeteBudget(sample),
     readPeteBudget({ ...sample, committedUsd: 4.32028, confirmedUsd: 4.30028,
-      remainingUsd: 3.67972 })), 0.0002799999999991698);
+      remainingUsd: 3.67972 })) - 0.00028) < 1e-8);
   assert.equal(budgetCounterChange(readPeteBudget(sample), null), null);
   assert.equal(budgetCounterChange(readPeteBudget(sample),
     readPeteBudget({ ...sample, committedUsd: 3, confirmedUsd: 2.98,
