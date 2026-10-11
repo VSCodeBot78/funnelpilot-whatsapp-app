@@ -13,6 +13,7 @@ import {
   takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { evaluateInstagramSharedMedia } from "../services/instagram-shared-media-policy.js";
 import { getConversationState } from "../data/store.js";
 import { readSettings } from "../services/settings-store.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
@@ -413,7 +414,10 @@ router.post("/", async (req: RawBodyRequest, res) => {
         continue;
       }
 
-      if (!event.text) {
+      // A Reel/share with text is not proof of sales intent. Do not claim
+      // to have seen the content or push a funnel on "😂", "schau mal" etc.
+      // A deliberate standalone CHECK/KETO/BULLSHIT keyword remains actionable.
+      if (!event.text || evaluateInstagramSharedMedia(event.hasAttachments, event.text) === "human_review") {
         ignoredUnsupported += 1;
         saveMessageEventLogEntry(
           buildLogEntry({
@@ -426,7 +430,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               ...raw,
               incomingStatus: "processed",
               reason: event.hasAttachments
-                ? "attachment_without_text"
+                ? (event.text ? "attachment_with_text_needs_human_review" : "attachment_without_text")
                 : "message_without_text",
               engineProcessed: false,
               sent: false,
