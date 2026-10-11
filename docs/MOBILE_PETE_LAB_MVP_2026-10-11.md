@@ -47,3 +47,12 @@
 - Export enthält die jeweils vorherige fiktive Eltern-Nachricht, Pete-Antwort, Bewertung und Korrekturtext. Explizites Kopieren in die Zwischenablage, **kein** automatisches Teilen/Senden an ChatGPT oder Instagram.
 - Aus Sicherheits-/Kostengründen werden bei unklaren Verbindungsfehlern **keine** gesendeten Testnachrichten wiederholt. Der diktierte Eingabetext wird behalten; vor erneutem Versand bitte Verlauf/Budget prüfen.
 - Code- und UI-Regressionen sind nicht gleichzusetzen mit einer Android-Geräteabnahme. **Vor Installation** fehlen weiterhin isoliertes Backend, authentisierter HTTPS-Zugang, externe Betriebskostenentscheidung und explizite Modellbudgetfreigabe. Für die mobile Test-App weiterhin **keine Hosting-Bestellung jetzt**.
+
+## M-LAB-04 – Diktier-Button direkt in der Android-App (11.10.2026)
+
+- Sichtbarer Button **„🎤 Nachricht diktieren“ / „⏹ Diktat beenden“** direkt unter dem fiktiven Nachrichtenfeld, unabhängig vom Mikrofon der Android-Tastatur.
+- Verwendet ausschließlich die **Spracherkennungsfunktion des unterstützenden Browsers** (`SpeechRecognition` / `webkitSpeechRecognition`, Deutsch `de-DE`). Die erste Benutzung fragt ggf. nach der Mikrofonberechtigung. Der vom Browser erkannte Text erscheint im editierbaren Eingabefeld. **Nie automatisch senden**; gesendet wird erst über `An Pete senden`. Beim Testwechsel/Verlassen wird eine aktive Aufnahme beendet.
+- Der Gateway erlaubt Mikrofonzugriff **nur für die eigene HTTPS-Origin** (`Permissions-Policy: microphone=(self)`); alle Admin-/Meta-Routen und die KI-Kostenfreigabe bleiben unverändert gesperrt. Keine OpenAI-Audio-API aktiviert und keine gespeicherten Audiodateien auf unserem Server.
+- **Achtung Datenverarbeitung:** Je nach Android-Browser/Sprachdienst kann Sprache zur Erkennung beim Browseranbieter verarbeitet werden. Deshalb ausschließlich **fiktive Eltern-/Lead-Gespräche**, keine echten personenbezogenen Sprachnachrichten.
+- **Browser-Kompatibilität:** In-App-WebViews (z. B. der ChatGPT-Linkbrowser) können die Web Speech API blockieren. Der Button zeigt dann eine verständliche Nachricht mit Hinweis auf **Google Chrome direkt**; er darf keine Aufnahme oder angeblich erfolgreiche Transkription vortäuschen. Für die spätere PWA Chrome direkt öffnen und Mikrofonberechtigung der Webseite erlauben.
+- Tests: Browser-Unterstützung erkennen, erkannte deutsche Teilsätze zusammenfügen, vorhandenen Entwurf erhalten, Ausgabebegrenzung, Fehlermeldungen und same-origin Mikrofon-Policy. **Echte Android-Spracherkennung ist erst nach Geräteprüfung bestätigt.**
