@@ -433,3 +433,8 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Bugs im temporären Deploy-Branch behoben: `.dockerignore` darf `backend/src/data` nicht ausschließen; neuer ext4-Volume-Systemordner `lost+found` ist nur im leeren Zustand zulässig.
 - Eingetragener Plan: nach maximal ca. einem Monat temporären Railway-Dienst und Testgeheimnisse bewusst entfernen; keine Verlängerung/Upgrade ohne ausdrückliche Freigabe.
 - Vollständiges, nichtgeheimes Betriebsprotokoll: `docs/RAILWAY_MOBILE_LAB_LIVE_2026-10-11.md`.
+
+## M-LAB-04 – Android-Mikrofontaste für fiktive Pete-Tests (11.10.2026)
+
+- Produktfeedback: Keine Android-Tastatur-Mikrofontaste verfügbar. Deshalb im **temporären** mobilen Pete-Testlabor eigene Sprachdiktat-Taste (de-DE Web Speech API, Browserberechtigung, Textvorschau, manuelles Senden), verständliche Chrome-Fallbackmeldung für WebViews ohne Unterstützung. Weder lokale Speicherung von Audio durch Funnel Pilot noch kostenpflichtige Transkriptions-API eingerichtet; Browser kann eigenen Cloud-Sprachdienst nutzen.
+- Isolierter Gateway gibt ausschließlich das eigene Mikrofon frei; Kamera/Standort gesperrt. Zusätzliches Security- und Sprach-Helfermodul-Testpaket. Noch kein Android-Geräte-E2E-Nachweis. Keine IG-/WA-Sends und keine API-Budgeterhöhung.
