@@ -409,3 +409,8 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Variable Kosten: OpenAI-API-Aufrufe pro Coach (getrenntes Ledger, Warnungen, harte Grenzen, manuelle Freigabe), optionale WhatsApp-/Anbieterkosten, Backup/Monitoring. Ein gemeinsamer Server spart Fixkosten, **keine** gemeinschaftlich unkontrollierten KI-Budgets.
 - **SaaS-Gate unverändert:** Workspace-Sandbox noch nicht in aktive Routen integriert. Echtes Login, durchgängige Tenant-Isolation, DSGVO/Provider-Secrets, Backup/Restore und Meta-Tests nötig, bevor echte Coaches eingeladen werden.
 - Detail: `docs/BETA_2_5_COACHES_INFRASTRUCTURE_COSTS_2026-10-11.md`. **Nur Protokoll**, keine Kosten, keine Coach-Zugänge oder Live-Freigaben.
+
+## M-LAB-02 / SaaS Landingpage – 11.10.2026
+
+- Temporäre mobile Pete-Test-App nach M-LAB-01 für Alltagstests erweitert: bis zu 12 fiktive Gespräche gerätebezogen auswählen, Bewertungen/Notizen über Neustarts hinweg lokal behalten, verständlichen Qualitätsauszug mit Kontext kopieren, Eingabetext nach Netzwerkfehler ohne automatischen kostenpflichtigen Retry sichern. Mobile UI-/Regressions-PR gesondert dokumentieren. **Keine echte Android- oder Remote-Abnahme, kein Hosting, keine echten IG/WA-Sends.**
+- **Coach-Landingpage-Idee protokolliert** in `docs/COACH_SAAS_LANDINGPAGE_BETA_PACKAGES_2026-10-11.md`: später separate Website-Seite bei vorhandenem ALL-INKL-Hosting für Information, Anmeldung und Paketbuchung; vier vorläufig genannte Paketnamen `Minimal / Starter / Basis / VIP` (trotz „drei Pakete“, Anzahl später entscheiden), keine Preise/Features beschlossen. Bestehende Coaching-Website ist **nicht** zugleich Funnel-Pilot-Backend. Providerverifizierte Zahlung und sichere Coach-Berechtigung sind Voraussetzung. Nicht jetzt implementieren.
