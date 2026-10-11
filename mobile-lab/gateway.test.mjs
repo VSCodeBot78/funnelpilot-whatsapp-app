@@ -89,18 +89,16 @@ test("private mobile gateway denies admin and requires session + same-origin pos
       assert.match(page,/Testlabor-Passwort/);
       const match=/name="csrf_token" value="([^"]+)"/.exec(page);
       assert.ok(match,"login form must include hidden CSRF token");
-      const setCookie=response.headers.get("set-cookie");
-      assert.match(setCookie,/__Host-pete_lab_login_csrf=/);
-      return {token:match[1],cookie:setCookie.split(";")[0]};
+      assert.equal(response.headers.get("set-cookie"),null,
+        "login form must not depend on browser cookie persistence");
+      return {token:match[1]};
     };
     result=await get("/lab-login");
     assert.equal(result.status,200);
     let loginCsrf=await extractCsrf(result);
     const login=(secret, reqOrigin=origin, options={})=>{
-      const headers={
-        "content-type":"application/x-www-form-urlencoded",
-        cookie:options.cookie ?? loginCsrf.cookie,
-      };
+      const headers={"content-type":"application/x-www-form-urlencoded"};
+      if(options.cookie) headers.cookie=options.cookie;
       if(reqOrigin!==null)headers.origin=reqOrigin;
       if(options.fetchSite)headers["sec-fetch-site"]=options.fetchSite;
       return get("/lab-login",{
@@ -121,8 +119,9 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     result=await login("wrong test password!",null);
     assert.equal(result.status,401,"Android missing-origin POST reaches password checker");
     loginCsrf=await extractCsrf(result);
-    result=await login(password,null);
-    assert.equal(result.status,303,"Android missing-origin POST succeeds with signed CSRF");
+    result=await login(password,null,{csrf:loginCsrf.token});
+    assert.equal(result.status,303,"Android missing-origin POST succeeds without a login cookie");
+    assert.match(result.headers.get("set-cookie"),/__Host-pete_lab=/);
     assert.equal(result.headers.get("location"),"/pete-test");
     const cookieHeader=result.headers.get("set-cookie");
     assert.match(cookieHeader,/HttpOnly/);
