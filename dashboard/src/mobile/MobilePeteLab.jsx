@@ -57,7 +57,7 @@ export default function MobilePeteLab() {
 
   const loadBudget = useCallback(async () => {
     try {
-      const res = await fetch(buildApiUrl("/test-chat/budget"), {
+      const res = await fetch(buildApiUrl("/test-chat/lab/budget"), {
         credentials: "same-origin", cache: "no-store",
       });
       if (!res.ok) throw Error("Keine Budgetfreigabe");
@@ -80,7 +80,7 @@ export default function MobilePeteLab() {
       if (!active) return;
       setStatus(budgetData ? "Testbereit" : "Kostenkontrolle nicht erreichbar");
       try {
-        const res = await fetch(buildApiUrl("/test-chat/state/" + CAMPAIGN + "/" +
+        const res = await fetch(buildApiUrl("/test-chat/lab/state/" +
           encodeURIComponent(id)), { credentials: "same-origin", cache: "no-store" });
         if (res.status === 404) { setMessages([]); return; }
         if (!res.ok) throw Error("Chat nicht verfügbar");
@@ -111,7 +111,7 @@ export default function MobilePeteLab() {
     }
     setDraft("");
     try {
-      const res = await fetch(buildApiUrl("/test-chat/message"), {
+      const res = await fetch(buildApiUrl("/test-chat/lab/message"), {
         method: "POST", credentials: "same-origin", cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId: id, campaignId: CAMPAIGN, messageText: text }),
@@ -149,7 +149,7 @@ export default function MobilePeteLab() {
     setBusy(true);
     const b = await loadBudget();
     try {
-      const res = await fetch(buildApiUrl("/test-chat/state/" + CAMPAIGN + "/" +
+      const res = await fetch(buildApiUrl("/test-chat/lab/state/" +
         encodeURIComponent(id)), { credentials: "same-origin", cache: "no-store" });
       if (res.status === 404) setMessages([]);
       else if (res.ok) setMessages(parseMessages((await res.json()).state));
@@ -204,7 +204,7 @@ export default function MobilePeteLab() {
             </div>
             <div className="pete-lab-subcost">
               <span>Seit App-Öffnung: {sessionSpend === null ? "–" : moneyText(sessionSpend)}</span>
-              <span>Letzte Zähleränderung: {lastChange === null ? "–" : moneyText(lastChange)}</span>
+              <span>Letzte Zähleränderung: {lastChange === null ? "–" : formatUsd(lastChange, 6)}</span>
             </div>
             <div className="pete-lab-subcost">
               <span>Bestätigt: {moneyText(budget.confirmed)}</span>
