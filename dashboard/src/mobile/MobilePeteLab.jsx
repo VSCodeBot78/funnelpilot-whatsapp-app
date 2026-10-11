@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
 import { budgetCounterChange, formatUsd, readPeteBudget } from "./peteLabBudget";
 import { isSyntheticLabId, loadTestHistory, rememberTest, saveTestHistory, loadReviews, saveReviews, buildReviewExport } from "./peteLabReview";
+import { recognitionConstructor, speechText, withDictation, speechErrorMessage } from "./peteLabSpeech";
 import "./mobilePeteLab.css";
 
 const STORAGE_KEY = "fp-temporary-pete-lab-lead-v1";
@@ -34,6 +35,11 @@ export default function MobilePeteLab() {
     rememberTest(loadTestHistory(window.localStorage), id, "Test " + new Date().toLocaleString("de-DE")));
   const [reviews, setReviews] = useState(() => loadReviews(window.localStorage, id));
   const sendLock = useRef(false);
+  const speechRef = useRef(null);
+  const voiceStartDraft = useRef("");
+  const voiceHadError = useRef(false);
+  const speechSupported = Boolean(recognitionConstructor(typeof window === "undefined" ? null : window));
+  const [isDictating, setIsDictating] = useState(false);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [budget, setBudget] = useState(null);
@@ -48,6 +54,67 @@ export default function MobilePeteLab() {
     try { localStorage.setItem(STORAGE_KEY, id); } catch { /* storage optional */ }
   }, [id]);
   useEffect(() => { saveTestHistory(window.localStorage, history); }, [history]);
+
+  useEffect(() => () => {
+    const recognizer = speechRef.current;
+    speechRef.current = null;
+    try { recognizer?.abort(); } catch { /* browser may already have stopped */ }
+  }, []);
+
+  const stopDictation = () => {
+    const recognizer = speechRef.current;
+    if (!recognizer) return;
+    try { recognizer.stop(); } catch {
+      speechRef.current = null;
+      setIsDictating(false);
+    }
+  };
+
+  const toggleDictation = () => {
+    if (speechRef.current) { stopDictation(); return; }
+    if (busy || !budget || budget.blocked) return;
+    const Recognition = recognitionConstructor(window);
+    if (!Recognition) {
+      setStatus("Mikrofon hier nicht unterstützt. Bitte direkt in Chrome öffnen.");
+      return;
+    }
+    let recognizer;
+    try {
+      recognizer = new Recognition();
+      recognizer.lang = "de-DE";
+      recognizer.continuous = false;
+      recognizer.interimResults = true;
+      recognizer.maxAlternatives = 1;
+      voiceStartDraft.current = draft;
+      voiceHadError.current = false;
+      recognizer.onresult = event => {
+        if (speechRef.current !== recognizer) return;
+        setDraft(withDictation(voiceStartDraft.current, speechText(event)));
+      };
+      recognizer.onerror = event => {
+        if (speechRef.current !== recognizer) return;
+        voiceHadError.current = true;
+        setStatus(speechErrorMessage(event?.error));
+        setIsDictating(false);
+      };
+      recognizer.onend = () => {
+        if (speechRef.current !== recognizer) return;
+        speechRef.current = null;
+        setIsDictating(false);
+        if (!voiceHadError.current)
+          setStatus("Diktat beendet. Text prüfen und dann an Pete senden.");
+      };
+      // Must run synchronously from the real tap for browser microphone permission.
+      speechRef.current = recognizer;
+      recognizer.start();
+      setIsDictating(true);
+      setStatus("Mikrofon aktiv. Sprich jetzt. Erkennung endet bei einer Sprechpause.");
+    } catch {
+      speechRef.current = null;
+      setIsDictating(false);
+      setStatus("Mikrofon konnte nicht gestartet werden. Bitte Chrome-Berechtigung prüfen.");
+    }
+  };
 
   useEffect(() => {
     // A service worker with *no cache* satisfies app-shell installation without
@@ -108,7 +175,7 @@ export default function MobilePeteLab() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || busy || sendLock.current || !budget || budget.blocked) return;
+    if (!text || busy || isDictating || sendLock.current || !budget || budget.blocked) return;
     sendLock.current = true;
     setBusy(true);
     setStatus("Pete antwortet...");
@@ -146,7 +213,7 @@ export default function MobilePeteLab() {
   };
 
   const selectConversation = nextId => {
-    if (busy || !history.some(test => test.id === nextId)) return;
+    if (busy || isDictating || !history.some(test => test.id === nextId)) return;
     setId(nextId);
     setMessages([]);
     setDraft("");
@@ -156,7 +223,7 @@ export default function MobilePeteLab() {
     setStatus("Testverlauf wird geladen...");
   };
   const newConversation = () => {
-    if (busy) return;
+    if (busy || isDictating) return;
     const newId = newSyntheticId();
     setHistory(previous => rememberTest(previous, newId,
       "Test " + new Date().toLocaleString("de-DE")));
@@ -250,16 +317,16 @@ export default function MobilePeteLab() {
       <div className="pete-lab-sessions">
         <label htmlFor="pete-lab-session">Fiktiven Chat fortsetzen</label>
         <select id="pete-lab-session" value={id}
-          onChange={e => selectConversation(e.target.value)} disabled={busy}>
+          onChange={e => selectConversation(e.target.value)} disabled={busy || isDictating}>
           {history.map(entry => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
         </select>
       </div>
       <div className="pete-lab-actions">
-        <button type="button" onClick={newConversation} disabled={busy}>+ Neuer Test</button>
+        <button type="button" onClick={newConversation} disabled={busy || isDictating}>+ Neuer Test</button>
         <button type="button" onClick={copyFeedback}>Bewertungen kopieren</button>
       </div>
       <section className="pete-lab-conversation" aria-label="Fiktives Pete-Testgespräch">
-        {!messages.length && <div className="pete-lab-empty">Starte als Mama oder Papa. Sprich deinen Text einfach über die Mikrofontaste deiner Android-Tastatur ein.</div>}
+        {!messages.length && <div className="pete-lab-empty">Starte als Mama oder Papa. Tippe unten auf „🎙️ Nachricht diktieren“ oder schreibe einen Text.</div>}
         {messages.map(m => (
           <div className={"pete-lab-message " + (m.role === "user" ? "is-lead" : "is-pete")} key={m.id}>
             <div className="pete-lab-bubble">
@@ -292,9 +359,25 @@ export default function MobilePeteLab() {
         <label htmlFor="pete-lab-input">Fiktive Testnachricht</label>
         <textarea id="pete-lab-input" rows="2" value={draft}
           onChange={e => setDraft(e.target.value)}
-          placeholder="Hier tippen oder mit der Tastatur diktieren..."
-          disabled={busy || !budget || budget.blocked} />
-        <button type="submit" disabled={busy || !draft.trim() || !budget || budget.blocked}>
+          placeholder="Hier erscheint dein Diktat. Danach prüfen oder bearbeiten."
+          disabled={busy || isDictating || !budget || budget.blocked} />
+        <button type="button"
+          className={"pete-lab-microphone" + (isDictating ? " is-recording" : "")}
+          onClick={toggleDictation}
+          aria-pressed={isDictating}
+          disabled={busy || !budget || budget.blocked || (!speechSupported && !isDictating)}>
+          <span aria-hidden="true">{isDictating ? "⏹️" : "🎙️"}</span>
+          {isDictating ? " Diktat beenden" : " Nachricht diktieren"}
+        </button>
+        {!speechSupported && <p className="pete-lab-voice-hint" role="status">
+          Spracherkennung wird in diesem Browser nicht angeboten. Öffne das Testlabor
+          direkt in Google Chrome. Tippen funktioniert weiterhin.
+        </p>}
+        <p className="pete-lab-voice-hint">
+          Erst prüfen, dann senden. Es wird kein Audio in Pete gespeichert.
+          Die Browser-Spracherkennung kann einen externen Sprachdienst verwenden.
+        </p>
+        <button type="submit" disabled={busy || isDictating || !draft.trim() || !budget || budget.blocked}>
           {busy ? "Warten..." : "An Pete senden"}
         </button>
       </form>
