@@ -138,7 +138,7 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
     });
 
     await t.test("Reel/emoji and Reel question are visibly recorded but never cause an AI pitch", async () => {
-      for(const scenarioId of ["reel_fun","reel_question"]) {
+      for(const scenarioId of ["reel_only","reel_fun","reel_question"]) {
         const leadId="lab_mediatest"+scenarioId+"123456789012";
         const response=await fetch(url + "/start",{
           method:"POST",headers:{"Content-Type":"application/json"},

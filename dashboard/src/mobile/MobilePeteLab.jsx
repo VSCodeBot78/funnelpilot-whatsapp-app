@@ -14,6 +14,7 @@ const ENTRY_SCENARIOS = [
   ["keto", "KETO - Gratis-Guide"],
   ["video", "VIDEO - Inhalt anfragen"],
   ["guide", "GUIDE - Info anfragen"],
+  ["reel_only", "Nur Reel geteilt (kein Text)"],
   ["reel_fun", "Privates Reel + 😂 (kein Verkauf)"],
   ["reel_question", "Reel mit Frage (menschlich prüfen)"],
   ["reel_keyword", "Reel + KETO (explizites Interesse)"],
