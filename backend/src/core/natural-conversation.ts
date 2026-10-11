@@ -224,6 +224,15 @@ export function getNaturalConversationReply(params: {
       phase: "keto_need", track: "keto",
     };
   }
+  // Exact DM keyword from the No-Bullshit lead magnet. Never treat a normal
+  // conversational use of "bullshit" as a sales request.
+  if (/^(no )?bullshit$/.test(input)) {
+    return {
+      text: "Klar 😊 Hier findest du den No Bullshit Elternfitness Selbststarter:\n" +
+        OFFER_TRUTH.selfstarter.productUrl,
+      phase: "selfstarter_offered", track: "selfstarter", infoOnly: true,
+    };
+  }
   if (guideRequest) {
     return {
       text: "Klar 😊 Jochens Keto Guide ist kostenlos. Du bekommst ihn als PDF und als Hörversion.\n" +
@@ -231,7 +240,7 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true,
     };
   }
-  if (matches(input, /\b(elterncheck|eltern[\s-]*check|check schicken)\b/)) {
+  if (input === "check" || matches(input, /\b(elterncheck|eltern[\s-]*check|check schicken)\b/)) {
     return {
       text: "Klar, hier findest du den kostenlosen Elternfitness-Check:\n" +
         OFFER_TRUTH.resources.elterncheck.url,

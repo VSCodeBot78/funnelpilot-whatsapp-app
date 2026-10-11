@@ -6,6 +6,18 @@ import { isSyntheticLabId, loadTestHistory, rememberTest, saveTestHistory, loadR
 import "./mobilePeteLab.css";
 
 const STORAGE_KEY = "fp-temporary-pete-lab-lead-v1";
+const ENTRY_SCENARIOS = [
+  ["follower", "Neuer Follower begrüßt Pete"],
+  ["jochen_greeting", "Jochen begrüßt persönlich (KI pausiert)"],
+  ["check", "CHECK - Elternfitness-Check"],
+  ["bullshit", "BULLSHIT - No-Bullshit-Angebot"],
+  ["keto", "KETO - Gratis-Guide"],
+  ["video", "VIDEO - Inhalt anfragen"],
+  ["guide", "GUIDE - Info anfragen"],
+  ["reel_fun", "Privates Reel + 😂 (kein Verkauf)"],
+  ["reel_question", "Reel mit Frage (menschlich prüfen)"],
+  ["reel_keyword", "Reel + KETO (explizites Interesse)"],
+];
 
 function newSyntheticId() {
   return "lab_" + (typeof crypto !== "undefined" && crypto.randomUUID
@@ -24,7 +36,7 @@ function parseMessages(state) {
   if (!Array.isArray(state?.messages)) return [];
   return state.messages.filter(m => (m.role === "user" || m.role === "assistant") &&
     typeof m.text === "string").map((m, i) => ({
-    id: String(m.id || i), role: m.role, text: m.text,
+    id: String(m.id || i), role: m.role, actor: m.actor, text: m.text,
   }));
 }
 function moneyText(value) { return formatUsd(value, 4); }
@@ -43,6 +55,8 @@ export default function MobilePeteLab() {
   const [status, setStatus] = useState("Verbinde...");
   const [busy, setBusy] = useState(false);
   const [replySource, setReplySource] = useState("");
+  const [selectedScenario, setSelectedScenario] = useState("follower");
+  const [scenarioSummary, setScenarioSummary] = useState("");
   const lastRef = useRef(null);
   const recognitionRef = useRef(null);
   const [listening, setListening] = useState(false);
@@ -220,10 +234,53 @@ export default function MobilePeteLab() {
     }
   };
 
+  const startScenario = async () => {
+    if (busy || sendLock.current || listening || !budget || budget.blocked) return;
+    sendLock.current = true;
+    cancelSpeech();
+    setBusy(true);
+    setStatus("Einstieg wird im echten Testverlauf angelegt...");
+    const freshId = newSyntheticId();
+    try {
+      const before = await loadBudget();
+      if (!before || before.blocked) {
+        setStatus("Kostenkontrolle gesperrt. Szenario nicht gestartet.");
+        return;
+      }
+      const response = await fetch(buildApiUrl("/test-chat/lab/start"), {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: freshId, scenarioId: selectedScenario }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok !== true) throw Error(data.error || "Szenario nicht möglich");
+      const title = ENTRY_SCENARIOS.find(([value]) => value === selectedScenario)?.[1] || "Fiktiver Test";
+      setHistory(previous => rememberTest(previous, freshId, title));
+      setId(freshId);
+      setMessages(parseMessages(data.state));
+      setReviews({});
+      setDraft("");
+      setReplySource(String(data.replySource || ""));
+      setLastChange(budgetCounterChange(before, await loadBudget()));
+      setScenarioSummary(data.replySuppressedReason === "shared_media_needs_human_review"
+        ? "Reel/Anhang ist nicht auslesbar: Pete bleibt still. Dieser Chat braucht persönliche Prüfung."
+        : data.replySuppressedReason === "human_owned"
+          ? "Jochen hat persönlich geschrieben: Pete pausiert, bis Jochen die KI ausdrücklich freigibt."
+          : "Der Einstieg und Petes Antwort gehören jetzt zum selben gespeicherten Testgespräch.");
+      setStatus("Szenario gestartet");
+    } catch {
+      setStatus("Szenario-Start unklar. Bitte erst Verlauf und Budget prüfen, nicht blind wiederholen.");
+    } finally {
+      sendLock.current = false;
+      setBusy(false);
+    }
+  };
+
   const selectConversation = nextId => {
     if (busy || !history.some(test => test.id === nextId)) return;
     cancelSpeech();
     setId(nextId);
+    setScenarioSummary("");
     setMessages([]);
     setDraft("");
     setReviews(loadReviews(window.localStorage, nextId));
@@ -238,6 +295,7 @@ export default function MobilePeteLab() {
     setHistory(previous => rememberTest(previous, newId,
       "Test " + new Date().toLocaleString("de-DE")));
     setId(newId);
+    setScenarioSummary("");
     setMessages([]);
     setDraft("");
     setReviews({});
@@ -324,6 +382,21 @@ export default function MobilePeteLab() {
         ) : <p className="pete-lab-warning" role="alert">Zähler nicht erreichbar. Senden aus Sicherheitsgründen gesperrt.</p>}
         <p className="pete-lab-disclaimer">Nur dieser Backend-Pete-Zähler. <strong>Kein OpenAI-Kontoguthaben</strong>, keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
       </section>
+      <section className="pete-lab-entry" aria-label="Gesprächseinstieg simulieren">
+        <label htmlFor="pete-lab-entry">Gesprächseinstieg testen</label>
+        <select id="pete-lab-entry" value={selectedScenario}
+          onChange={e => setSelectedScenario(e.target.value)}
+          disabled={busy || listening}>
+          {ENTRY_SCENARIOS.map(([value, label]) =>
+            <option key={value} value={value}>{label}</option>)}
+        </select>
+        <button type="button" onClick={startScenario}
+          disabled={busy || listening || !budget || budget.blocked}>
+          Einstieg als neuen Test starten
+        </button>
+        <p>Der Einstieg wird im Test-Backend gespeichert. Keine Nachricht geht an Instagram.</p>
+        {scenarioSummary && <p className="pete-lab-entry-result" role="status">{scenarioSummary}</p>}
+      </section>
       <div className="pete-lab-sessions">
         <label htmlFor="pete-lab-session">Fiktiven Chat fortsetzen</label>
         <select id="pete-lab-session" value={id}
@@ -338,12 +411,12 @@ export default function MobilePeteLab() {
       <section className="pete-lab-conversation" aria-label="Fiktives Pete-Testgespräch">
         {!messages.length && <div className="pete-lab-empty">Starte als Mama oder Papa. Nutze unten den Mikrofon-Button oder tippe deine Nachricht ein.</div>}
         {messages.map(m => (
-          <div className={"pete-lab-message " + (m.role === "user" ? "is-lead" : "is-pete")} key={m.id}>
+          <div className={"pete-lab-message " + (m.role === "user" ? "is-lead" : m.actor === "human" ? "is-human" : "is-pete")} key={m.id}>
             <div className="pete-lab-bubble">
-              <strong>{m.role === "user" ? "Test-Elternteil" : "Pete"}</strong>
+              <strong>{m.role === "user" ? "Test-Elternteil" : m.actor === "human" ? "Jochen (persönlich)" : "Pete"}</strong>
               <p>{m.text}</p>
             </div>
-            {m.role === "assistant" && (
+            {m.role === "assistant" && m.actor !== "human" && (
               <div className="pete-lab-votes" aria-label="Antwort bewerten">
                 <button type="button" aria-pressed={reviews[m.id]?.rating === "gut"}
                   onClick={() => rateReply(m.id, { rating: "gut" })}>👍 Gut</button>
@@ -351,7 +424,7 @@ export default function MobilePeteLab() {
                   onClick={() => rateReply(m.id, { rating: "verbessern" })}>👎 Verbessern</button>
               </div>
             )}
-            {m.role === "assistant" && (reviews[m.id]?.rating === "verbessern" || reviews[m.id]?.note) && (
+            {m.role === "assistant" && m.actor !== "human" && (reviews[m.id]?.rating === "verbessern" || reviews[m.id]?.note) && (
               <label className="pete-lab-note">
                 Was sollte Pete anders machen?
                 <textarea maxLength={400} rows={2}

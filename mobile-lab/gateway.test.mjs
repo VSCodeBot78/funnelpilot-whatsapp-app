@@ -180,12 +180,28 @@ test("private mobile gateway denies admin and requires session + same-origin pos
     assert.equal(received.length,3);
     assert.equal(received[2].method,"POST");
     assert.equal(received[2].secret,ingressSecret);
+    result=await withLogin("/test-chat/lab/start",{
+      method:"POST",headers:{"content-type":"application/json",origin},
+      body:JSON.stringify({leadId:"lab_123456789012345678901234",scenarioId:"check"}),
+    });
+    assert.equal(result.status,200,"only authenticated synthetic scenario starts are proxied");
+    assert.equal(received[3].path,"/test-chat/lab/start");
+    result=await get("/test-chat/lab/start",{
+      method:"POST",headers:{"content-type":"application/json",origin},
+      body:"{}",
+    });
+    assert.equal(result.status,401,"anonymous scenario start must not reach backend");
+    result=await withLogin("/test-chat/lab/anything-else",{
+      method:"POST",headers:{"content-type":"application/json",origin},body:"{}",
+    });
+    assert.equal(result.status,404,"no additional remote administration routes");
+
     result=await withLogin("/test-chat/lab/message",{
       method:"POST",headers:{"content-type":"application/json",origin},
       body:"x".repeat(5000),
     });
     assert.equal(result.status,503); // bounded gateway body, backend never reached
-    assert.equal(received.length,3);
+    assert.equal(received.length,4);
     result=await withLogin("/lab-logout",{method:"POST",headers:{origin}});
     assert.equal(result.status,303);
     assert.match(result.headers.get("set-cookie"),/Max-Age=0/);
