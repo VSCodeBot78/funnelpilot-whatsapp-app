@@ -104,3 +104,17 @@ body:has(.pete-mobile-lab) { background: #121820; }
   color: #d0dbe5;
   font-size: 12px;
 }
+
+/* Compact, readable real-entry test picker, kept separate from the chat composer. */
+.pete-lab-entry { border: 1px solid #546a7a; border-radius: 14px;
+  background: #1b2936; padding: 13px; margin: 14px 0 10px;
+  display: flex; flex-direction: column; gap: 8px; }
+.pete-lab-entry label { font-size: 14px; font-weight: 800; color: #f9fafc; }
+.pete-lab-entry select { min-height: 44px; width: 100%; padding: 9px 12px;
+  border: 1px solid #9cafbc; border-radius: 10px; color: #fff;
+  background: #263542; font-size: 15px; }
+.pete-lab-entry button { min-height: 48px; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 800; background: #ff914d; color: #242424; }
+.pete-lab-entry-note { color: #d0dbe5; font-size: 12px; line-height: 1.5;
+  margin: 0; }
+.pete-lab-entry select:focus-visible { outline: 3px solid #ffb17f; outline-offset: 2px; }
