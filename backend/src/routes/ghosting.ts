@@ -179,6 +179,7 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
     const outboundPermission = evaluateLatestAiOutboundPermission({
       leadId,
       campaignId,
+      purpose: "automated_followup",
     });
 
     if (!outboundPermission.allowed) {

@@ -1,6 +1,7 @@
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
+  isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
 } from "./pete-conversation-quality.js";
@@ -1241,6 +1242,11 @@ export async function processIncomingMessage(
   const state = getOrCreateConversationState(input.leadId, campaign.id);
 
   appendUserMessage(state, input.messageText);
+  // Persist before an async model call; later scheduled sends must see refusal.
+  if (isSalesFollowUpOptOut(input.messageText)) {
+    patchFlags(state, { salesFollowUpsOptedOut: true });
+    persistConversationState(state);
+  }
   const lastIncomingMessageId = state.messages.at(-1)?.id;
 
   if (state.flags.stopped) {

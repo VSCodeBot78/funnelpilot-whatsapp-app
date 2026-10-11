@@ -248,6 +248,17 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
  * Permit ONLY this narrow, noncritical case to continue, with a verified,
  * non-commercial reply. Unknown and safety-related cases still fail closed.
  */
+/** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
+export function isSalesFollowUpOptOut(text: string): boolean {
+  const input = norm(text);
+  return [
+    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
+    /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
+    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
+    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
+  ].some(pattern => pattern.test(input));
+}
+
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
   const input = norm(latestText);
   if (!/\b(?:geld|budget|finanziell|leisten|verkaufsshow|verkaufsgespr[a-z]*|verkaufsdruck|aufgedrangt|gedrangt)\b/.test(input))
