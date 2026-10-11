@@ -20,7 +20,7 @@ function clean() {
   fs.rmSync(path.join(dir, "pete-api-budget.lock"), { force: true });
 }
 const request = (bytes = 1000) => ({
-  model: "gpt-5.4", requestBody: "A".repeat(bytes), maxOutputTokens: 400,
+  model: "gpt-5.4", requestBody: "A".repeat(bytes), maxOutputTokens: 800,
 });
 
 test("Phase 50: flagship cost safety, isolated from real API", async t => {
@@ -33,19 +33,19 @@ test("Phase 50: flagship cost safety, isolated from real API", async t => {
     const id = reservePeteBudget(request());
     const s = getPeteBudgetStatus();
     assert.equal(s.requestsStarted, 1);
-    assert.equal(s.reservedUsd, 0.0235);
+    assert.equal(s.reservedUsd, 0.0295);
     assert.equal(settlePeteBudget(id, { input_tokens: 1000, output_tokens: 150 }), true);
     assert.equal(getPeteBudgetStatus().confirmedUsd, 0.00475);
   });
   await t.test("overlong request cannot escape per-block 1.50 USD envelope", () => {
     clean();
-    assert.throws(() => reservePeteBudget(request(20001)),
+    assert.throws(() => reservePeteBudget(request(18001)),
       (e: any) => e instanceof PeteBudgetStop && e.reason === "exhausted");
     assert.equal(getPeteBudgetStatus().requestsStarted, 0);
   });
   await t.test("20 worst-case requests fit a 1.50 USD block and global 8 USD cap", () => {
     clean();
-    for (let i = 0; i < 20; i++) reservePeteBudget(request(20000));
+    for (let i = 0; i < 20; i++) reservePeteBudget(request(18000));
     const s = getPeteBudgetStatus();
     assert.equal(s.requestsStarted, 20);
     assert.ok(s.committedUsd <= 1.5, "worst 20-call cost should fit block");
