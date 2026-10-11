@@ -46,3 +46,7 @@ Railway nennt für neue Accounts **30 Tage mit einmaligen 5 USD Guthaben**, im T
 **Anleitung für den späteren Android-Abschluss (erst nach Remote-Abnahme):** Chrome → authentisierte `https://...`-Testadresse öffnen → anmelden → Chrome-Menü „Zum Startbildschirm hinzufügen“/„App installieren“. Bei neuer Anmeldung ist GitHub nicht erforderlich. Nach dem Test das Icon/die App entfernen und Trial-/Hosting-Deployment und API-Secrets beim Anbieter deaktivieren/löschen. Kein echter Android-Test wurde bislang durchgeführt.
 
 **Status:** isolierter Bereitstellungsbausatz, **keine installierbare Cloud-URL**, keine Anbieter-Verbindung, keine Kosten oder neue Live-Nachrichten.
+
+### Sicherheitsstopp bei Datenverzeichnissen
+
+Der Launcher akzeptiert beim **ersten** Start ausschließlich ein **leeres** persistentes Volume-Verzeichnis und legt eine eindeutige interne Kennzeichnung für das private Testlabor an. Ein bestehendes fremdes/leaddatenhaltiges Verzeichnis oder eine manipulierte Kennzeichnung führt zum Startabbruch. Bei Wiederholung darf nur dieses markierte Testvolume verwendet werden. Niemals ein Produktiv-Volume eintragen. Dies ersetzt nicht den echten Android-/Provider-Live-Sicherheitstest.
