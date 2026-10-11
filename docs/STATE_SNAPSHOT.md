@@ -383,3 +383,13 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Coach kann dann vom Handy diktierte Texte testen, Antworten bewerten, Wunschformulierung/FAQs/Markenstil als versionierte Entwürfe verbessern und Änderungen bewusst freigeben. **Kein automatisches Modell-Finetuning, keine ungeprüften Prompt-Änderungen, keine echten Sends im Trainingsmodus.**
 - Klare Trennung von Stufe A (internes, geschütztes Testlabor) und Stufe B (SaaS nur mit authentisierten, mandantensicheren Accounts, Datenschutz und Budgetgrenzen). Ergänzt M-02 PWA, verdrängt aber **nicht** die Phase-4- und Meta-Live-Freigabe.
 - Detail-/Abnahmekriterien: `docs/MOBILE_PETE_TESTLAB_COACH_TRAINING_2026-10-11.md`. **Nur protokolliert, noch keine Implementierung oder Kosten.**
+
+## Phase M-LAB-01 – temporäre Android-Pete-Test-App als Code-MVP (11.10.2026)
+
+- **PR #97 auf `funnel-pilot-current` integriert**, Merge-Commit `856fa19a`, Backend- und Dashboard-CI bestanden.
+- Neues eigenständiges mobiles Testlabor `/pete-test`: Android-PWA-Manifest, 192-/512-PNG-Icons, network-only Service Worker ohne Chat-/Budgetcache, kurze synthetische Textgespräche (Android-Tastatur-Diktat), Antworten bewerten/kopieren.
+- **Budgettransparenz:** `/test-chat/lab/budget` liest den serverseitigen Pete-Kostenledger. Anzeige internem Gesamtverbrauch, reservierten/verbuchten Dollar, verbleibendem Testlimit, ungefährer Änderung nach einem Gespräch; **kein** OpenAI-Prepaid-Kontoguthaben oder Autoaufladen.
+- **Phase-3-Testbudget-Abgleich:** Verifizierter GitHub-Stand `spentMicroUsd=4323801`, `reservedMicroUsd=0` = 4,323801 USD verbucht, 3,676199 USD beim internen 8-USD-Limit frei. Per `PETE_PROJECT_PRIOR_SPEND_MICRO_USD` muss vor Start der aktuelle, nochmals geprüfte historische Wert in den isolierten Pete-Ledger übernommen werden; Wechsel der Baseline sperrt danach das Ledger. **Keine Live-Synchronisierung zum OpenAI-Konto.**
+- **Remote-Lab-Sicherheit:** eingeschränkte Test-API nur für zufällige `lab_`-IDs und feste Kampagne; aktiv nur bei zwei expliziten Testflags, deaktivierter Meta-Send-/Engine-Konfiguration. Response enthält keine ganzen Admin-/Lead-State-Objekte. Authentifizierter HTTPS-Ingress, separate leere `DATA_DIR`, private API-Routen-Whitelist, CSRF-/Sitzungs-/Rate-Limits sind zusätzliche **offene Deployment-Gates**.
+- **Noch nicht installiert/hosted:** Keine öffentliche URL, keine Android-Abnahme, keine Live-IG/WA-Zustellung. Kein Hetzner-Kauf, keine API-Calls oder kostenpflichtige Infrastruktur durch #97. Stufe B Coach-Trainingsstudio bleibt späterer Backlog M-03.
+- Betriebshinweise: `docs/MOBILE_PETE_LAB_MVP_2026-10-11.md`.
