@@ -4,6 +4,8 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { extname, join, resolve, sep } from "node:path";
 
 const COOKIE = "__Host-pete_lab";
+const LOGIN_CSRF_COOKIE = "__Host-pete_lab_login_csrf";
+const LOGIN_CSRF_SECONDS = 15 * 60;
 const SESSION_SECONDS = 7 * 24 * 3600;
 const STATIC = new Set([
   "/pete-lab.webmanifest", "/pete-lab-sw.js",
@@ -40,12 +42,12 @@ function send(res, status, body = "", type = "text/plain; charset=utf-8", header
   res.writeHead(status, { ...securityHeaders(), "content-type": type, ...headers });
   res.end(body);
 }
-function loginPage(failed) {
+function loginPage(failed, csrfToken) {
   return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pete Testlabor Anmeldung</title></head>'+
     '<body style="font:16px system-ui;background:#121820;color:#fff;max-width:440px;margin:48px auto;padding:24px">'+
     '<h1>Pete Testlabor</h1><p>Privates Entwicklungslabor. Keine echten Instagram-Nachrichten.</p>'+
     (failed ? '<p role="alert">Anmeldung fehlgeschlagen oder kurzzeitig gesperrt.</p>' : '')+
-    '<form method="post" action="/lab-login"><label for="pwd">Testlabor-Passwort</label>'+
+    '<form method="post" action="/lab-login"><input type="hidden" name="csrf_token" value="'+csrfToken+'"><label for="pwd">Testlabor-Passwort</label>'+
     '<input id="pwd" type="password" name="password" required minlength="16" autocomplete="current-password" style="display:block;width:95%;font-size:16px;padding:12px;margin:12px 0">'+
     '<button type="submit" style="font-size:16px;padding:12px">Anmelden</button></form></body></html>';
 }
@@ -53,6 +55,41 @@ function tokenFor(secret) {
   const prefix = Math.floor(Date.now()/1000) + "." + randomBytes(16).toString("hex");
   const sig = createHmac("sha256", secret).update(prefix).digest("hex");
   return prefix + "." + sig;
+}
+function cookieValue(req, name) {
+  const segment = String(req.headers.cookie || "").split(";")
+    .map(x => x.trim()).find(x => x.startsWith(name + "="));
+  return segment ? segment.slice(name.length + 1) : "";
+}
+
+// Signed, short-lived form-specific double-submit CSRF token. It is not a
+// session and cannot substitute for the user's private lab password.
+function csrfFor(secret) {
+  const prefix = Math.floor(Date.now() / 1000) + "." + randomBytes(16).toString("hex");
+  const signature = createHmac("sha256", secret).update("login-csrf:" + prefix).digest("hex");
+  return prefix + "." + signature;
+}
+function validCsrf(req, supplied, secret) {
+  const existing = cookieValue(req, LOGIN_CSRF_COOKIE);
+  if (!/^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.test(existing) ||
+      typeof supplied !== "string" || supplied.length !== existing.length ||
+      !timingSafeEqual(Buffer.from(supplied), Buffer.from(existing))) return false;
+  const match = /^(\d{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/.exec(existing);
+  const now = Math.floor(Date.now() / 1000);
+  const created = Number(match[1]);
+  if (created > now + 60 || now - created > LOGIN_CSRF_SECONDS) return false;
+  const expected = createHmac("sha256", secret)
+    .update("login-csrf:" + match[1] + "." + match[2]).digest("hex");
+  return timingSafeEqual(Buffer.from(match[3], "hex"), Buffer.from(expected, "hex"));
+}
+function loginForm(res, status, failed, secret, httpTest, extra = {}) {
+  const token = csrfFor(secret);
+  const flags = httpTest ? "" : "; Secure";
+  return send(res, status, loginPage(failed, token), "text/html; charset=utf-8", {
+    ...extra,
+    "set-cookie": LOGIN_CSRF_COOKIE + "=" + token +
+      "; Path=/; HttpOnly; SameSite=Strict; Max-Age=" + LOGIN_CSRF_SECONDS + flags,
+  });
 }
 function hasSession(req, secret) {
   const part = String(req.headers.cookie || "").split(";").map(x=>x.trim())
@@ -110,36 +147,49 @@ export function createMobileLabGateway({
     if (verb==="GET" && path==="/healthz")
       return send(res,200,"ok");
     if (req.headers.host !== hostname) return send(res,421,"Host gesperrt");
+    // Embedded Android browsers sometimes send no Origin (or Origin: null)
+    // for a normal HTML form. A signed CSRF token + matching Strict cookie
+    // protects ONLY that login route. Authenticated JSON APIs still insist
+    // on the exact expected Origin.
     if (verb === "POST" &&
-        (req.headers.origin !== publicOrigin ||
-         req.headers["sec-fetch-site"] === "cross-site"))
+        (req.headers["sec-fetch-site"] === "cross-site" ||
+         (path === "/lab-login"
+           ? Boolean(req.headers.origin && req.headers.origin !== "null" &&
+               req.headers.origin !== publicOrigin)
+           : req.headers.origin !== publicOrigin)))
       return send(res,403,"Ursprung gesperrt");
 
     if (verb==="GET" && path==="/lab-login")
-      return send(res,200,loginPage(false),"text/html; charset=utf-8");
+      return loginForm(res,200,false,key,httpTest);
 
     if (verb==="POST" && path==="/lab-login") {
       const ip = req.socket.remoteAddress || "unknown";
       let item = loginAttempts.get(ip) || { start: Date.now(), fails: 0 };
       if (Date.now()-item.start >= 15*60*1000) item={ start: Date.now(), fails: 0 };
       if (item.fails >= 5)
-        return send(res,429,loginPage(true),"text/html; charset=utf-8",{"retry-after":"900"});
+        return loginForm(res,429,true,key,httpTest,{"retry-after":"900"});
       let raw;
       try {
         if (!/^application\/x-www-form-urlencoded(?:;|$)/i.test(req.headers["content-type"] || ""))
           throw Error("invalid_type");
         raw = await bodyBounded(req);
       } catch { return send(res,413,"Ungültige Anmeldung"); }
-      const guess = new URLSearchParams(raw).get("password") || "";
+      const form = new URLSearchParams(raw);
+      if (!validCsrf(req, form.get("csrf_token"), key))
+        return loginForm(res,403,true,key,httpTest);
+      const guess = form.get("password") || "";
       if (!safeEqual(guess, password)) {
         item.fails++; loginAttempts.set(ip,item);
-        return send(res,401,loginPage(true),"text/html; charset=utf-8");
+        return loginForm(res,401,true,key,httpTest);
       }
       loginAttempts.delete(ip);
       const flags = httpTest ? "" : "; Secure";
       return send(res,303,"","text/plain; charset=utf-8",{
         location:"/pete-test",
-        "set-cookie":COOKIE+"="+tokenFor(key)+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+SESSION_SECONDS+flags,
+        "set-cookie":[
+          COOKIE+"="+tokenFor(key)+"; Path=/; HttpOnly; SameSite=Strict; Max-Age="+SESSION_SECONDS+flags,
+          LOGIN_CSRF_COOKIE+"=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"+flags,
+        ],
       });
     }
     if (!hasSession(req,key)) {
