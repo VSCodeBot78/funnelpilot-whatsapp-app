@@ -70,7 +70,25 @@ if (action === "reserve") {
         usage.committedMicroUsd <= reservedPerBatch) {
       committed = usage.committedMicroUsd;
     }
-  } catch { /* charged full reserve; manual reconciliation only */ }
+  } catch { /* usage file missing: charge full reserve unless proven no-call */ }
+  // Only an explicitly completed, bound-to-this-GitHub-run zero-call
+  // attestation may release a block with no usage ledger. Fail shut on
+  // missing evidence, malformed evidence, or unexpected local usage data.
+  if (committed === reservedPerBatch && !fs.existsSync(local)) {
+    const attestation = path.resolve("backend", ".phase3-data", "batch-" + batch,
+      "pete-phase3-zero-calls.json");
+    try {
+      const evidence = JSON.parse(fs.readFileSync(attestation, "utf8"));
+      if (evidence.version === 1 &&
+          evidence.kind === "successful_flagship_no_provider_calls" &&
+          evidence.runId === process.env.GITHUB_RUN_ID &&
+          evidence.attempt === process.env.GITHUB_RUN_ATTEMPT &&
+          evidence.batch === batch &&
+          evidence.providerCalls === 0 &&
+          evidence.completedPersonas === 2 &&
+          evidence.success === true) committed = 0;
+    } catch { /* no verifiable evidence: retain full reserve */ }
+  }
   ledger.spentMicroUsd += committed;
   ledger.reservedMicroUsd -= pending.heldMicroUsd;
   delete ledger.activeReservations[key];

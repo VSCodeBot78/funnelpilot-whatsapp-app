@@ -162,6 +162,24 @@ report.summary = {
   qualityApproval: "NOT_GRANTED_REQUIRES_HUMAN_REVIEW",
 };
 persist();
+// The local Pete budget file is intentionally absent if every reply came
+// from deterministic rules. Prove zero provider reservations in a separate
+// attest file, tied to this exact job and batch, AFTER the run succeeded.
+if (!fatal && report.completedPersonas === 2 &&
+    report.providerCalls === 0 &&
+    report.totalLeadMessages > 0) {
+  const status = getPeteBudgetStatus();
+  if (status.requestsStarted !== 0 || status.committedUsd !== 0 ||
+      status.reservedUsd !== 0) throw Error("phase3_zero_calls_not_proven");
+  const evidencePath = path.resolve(".phase3-data",
+    "batch-" + batch, "pete-phase3-zero-calls.json");
+  fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
+  fs.writeFileSync(evidencePath, JSON.stringify({
+    version: 1, kind: "successful_flagship_no_provider_calls",
+    runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT,
+    batch, providerCalls: 0, completedPersonas: 2, success: true,
+  }) + "\n", { encoding: "utf8", mode: 0o600 });
+}
 if (fatal) throw Error("phase3_abort_after_provider_or_budget_error_" + fatal);
 if (report.completedPersonas !== 2 ||
     report.totalLeadMessages < 2 || report.totalLeadMessages > report.plannedLeadMessages ||
