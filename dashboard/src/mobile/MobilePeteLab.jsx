@@ -367,7 +367,7 @@ export default function MobilePeteLab() {
       </section>
       <form className="pete-lab-composer" onSubmit={e => { e.preventDefault(); send(); }}>
         <label htmlFor="pete-lab-input">Fiktive Testnachricht</label>
-        <textarea id="pete-lab-input" rows="2" value={draft}
+        <textarea id="pete-lab-input" rows="2" maxLength={1000} value={draft}
           onChange={e => setDraft(e.target.value)}
           placeholder="Hier tippen oder unten aufs Mikrofon tippen..."
           disabled={busy || listening || !budget || budget.blocked} />
