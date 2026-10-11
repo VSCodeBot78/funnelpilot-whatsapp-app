@@ -132,7 +132,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 export function isUnsafeLlmClaim(reply: string): boolean {
   const input = norm(reply);
   // User's desire for a human is not proof that Pete is that human.
-  if (/\b(?:ich antworte personlich|ich bleibe personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|ich kenne das (?:gut|aus eigener erfahrung)|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
+  if (/\b(?:ich antworte personlich|ich bleibe personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
   // Never claim that an unverified commerce or cross-channel infrastructure
   // guarantee is already in force.
   if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
