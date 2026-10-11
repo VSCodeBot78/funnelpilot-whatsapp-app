@@ -433,3 +433,9 @@ Anleitung: [LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md).
 - Bugs im temporären Deploy-Branch behoben: `.dockerignore` darf `backend/src/data` nicht ausschließen; neuer ext4-Volume-Systemordner `lost+found` ist nur im leeren Zustand zulässig.
 - Eingetragener Plan: nach maximal ca. einem Monat temporären Railway-Dienst und Testgeheimnisse bewusst entfernen; keine Verlängerung/Upgrade ohne ausdrückliche Freigabe.
 - Vollständiges, nichtgeheimes Betriebsprotokoll: `docs/RAILWAY_MOBILE_LAB_LIVE_2026-10-11.md`.
+
+## M-LAB-05 – Realistische Instagram-Einstiege im mobilen Pete-Testlabor (11.10.2026)
+
+- Szenario-Auswahl statt ausschließlich leerem Chat. Server-Allowlist und dauerhafter fiktiver Conversation-State; Keyword-Antworten durch echte Engine; geprüfte Links für CHECK und BULLSHIT. Unbekannte VIDEO-Links werden nicht erfunden.
+- Reel ohne Text, beiläufiges Reel+😂 und Reel mit echter Trainingsfrage als getrennte Testfälle. Keine erfundene Reel-Inhaltsbeschreibung. Reel-No-Sales derzeit nur **simulierter sicherer Zielzustand** im Lab; Produktions-IG-Parser/Text+Anhang und Kontakt-Ausnahmen bleiben separate Aufgaben vor Instagram-Live-Freigabe.
+- Keine Änderung an Versandfreigaben, kostenpflichtigen LLM-Modell-Flags, privaten Kontakten oder Railway-Tarif. Gateway lässt nur zwei zusätzliche eng validierte Szenariorouten zu.
