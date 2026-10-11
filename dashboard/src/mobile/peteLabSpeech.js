@@ -25,7 +25,7 @@ export function withRecognizedText(previous, recognized) {
   const before = typeof previous === "string" ? previous.trimEnd() : "";
   const next = typeof recognized === "string" ? recognized.trim() : "";
   if (!next) return before;
-  return (before ? before + " " : "") + next;
+  return ((before ? before + " " : "") + next).slice(0, 1000);
 }
 
 export function speechErrorLabel(code) {
