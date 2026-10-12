@@ -90,9 +90,17 @@ test("Phase 45: model route is opt-in and preserves all trusted safety interlock
       assert.equal(body.model, "gpt-4.1-mini");
       assert.equal((body.text as any).format.strict, true);
       assert.match(String((body.input as any)[0].content), /Mama/);
+      const turnReplies = [
+        "Mit zwei Kindern ist abends oft wenig übrig. Du musst dafür nicht gleich ein ganzes Trainingsprogramm einplanen.",
+        "Wenn abends nur noch das Sofa geht, suchen wir besser einen Zeitpunkt, der tagsüber wirklich machbar ist.",
+        "Drei Trainingsabende waren ein Anfang. Dass dein Kind krank wurde, ist keine persönliche Niederlage.",
+        "Stimmt, du hattest die Unterbrechung bereits erklärt. Mein Fehler, dass ich nochmal nach dem Grund gefragt habe.",
+        "Wenn dein Kind krank ist, darf das Training warten. Danach zählt ein flexibler Wiedereinstieg statt Nachholen.",
+        "Mein Fehler, deine Frage war, wie das bei Krankheit funktioniert: Eine Pause gehört dazu, danach steigst du mit dem kleinsten machbaren Schritt wieder ein.",
+      ];
       return new Response(JSON.stringify({
         output: [{ content: [{ type: "output_text", text: JSON.stringify({
-          reply: "Stimmt, die Frage hattest du schon beantwortet. Mein Fehler. Wenn dein Kind krank ist, hat Training Pause. Wichtig ist, danach ohne Druck wieder einsteigen zu können.",
+          reply: turnReplies[captured.length - 1],
           needsHuman: false,
         }) }] }],
       }), { status: 200 });
