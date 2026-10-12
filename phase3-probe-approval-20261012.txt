@@ -1,0 +1,1 @@
+User approved up to 5 USD in conversation 2026-10-12. This isolated run is restricted to one previously preauthorized batch (USD 1.50 maximum held and charged by shared persistent ledger), from the reviewed Phase 1 feature branch. No production deploy, no live Instagram/WhatsApp contacts. Only fictional parent scenarios. Do not repeat this approval marker for another run.
