@@ -165,7 +165,7 @@ export function getPeteVerifiedTransactionAnswer(
 
   // Fearing checkout extras is a factual trust question, not proof of a
   // purchase or an invitation to make unverified "no extra charges" claims.
-  if (/\b(?:versteckte kosten|versteckte gebuhren|zusatzkosten|ungewollte extras|versteckte extras|unerwartete gebuhren)\b/.test(input)) {
+  if (/\b(?:versteckt\w*\s+(?:kosten|gebuhren|extras)|zusatzkosten|ungewollte extras|unerwartete gebuhren)\b/.test(input)) {
     return {
       text: "Verständlich, dass du vor dem Kauf Klarheit willst. Schau dir bitte die Gesamtsumme und Bedingungen in der Kaufübersicht an. Falls etwas unklar bleibt, prüft Jochen das persönlich. Ich kann zusätzliche Kosten weder ausschließen noch bestätigen.",
     };
