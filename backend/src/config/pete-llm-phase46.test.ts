@@ -265,4 +265,35 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(calls, 2);
   });
 
+  await t.test("semantic repetition blocks a third generic advice but allows new concrete answers", () => {
+    const state = { messages: [
+      { role: "user", text: "Wegen der Kinder passt mein Training nie." },
+      { role: "assistant", text: "Nimm einen flexiblen Trainingsplan mit kurzen Einheiten." },
+      { role: "user", text: "Drei feste Abende klappen nicht." },
+      { role: "assistant", text: "Statt festen Workouts helfen kleine Trainingseinheiten ohne starre Termine." },
+      { role: "user", text: "Ich habe das schon verstanden. Was wäre konkret anders?" },
+    ] } as any;
+    const generic = "Ein flexibler Trainingsplan mit kurzen Einheiten statt starren Tagen hilft in so einem Alltag.";
+    assert.equal(evaluatePeteLlmContinuity(state, generic), "repeated_advice_theme");
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Wenn du einmal 15 Minuten frei hast, kannst du diese bewusst als Trainingsfenster nutzen."), null);
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Nein, verpasste Trainingseinheiten musst du nicht nachholen."), null);
+  });
+
+  await t.test("overconfident keto claims are not sent, qualified evidence statements remain valid", () => {
+    assert.equal(validatePeteLlmReply({
+      reply: "Keto garantiert mehr Fettverlust bei gleichen Kalorien und Proteinen.", needsHuman: false,
+    }), null);
+    assert.equal(validatePeteLlmReply({
+      reply: "Es ist wissenschaftlich bewiesen, dass Keto mehr Fettverlust verursacht.", needsHuman: false,
+    }), null);
+    assert.ok(validatePeteLlmReply({
+      reply: "Nach bisheriger Studienlage gibt es bei vergleichbarer Kalorien- und Eiweißzufuhr keinen verlässlichen Vorteil von Keto beim Fettverlust.", needsHuman: false,
+    }));
+    assert.ok(validatePeteLlmReply({
+      reply: "Keto garantiert nicht automatisch mehr Fettverlust.", needsHuman: false,
+    }));
+  });
+
 });
