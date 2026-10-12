@@ -1,0 +1,124 @@
+name: Pete Phase 1 - Post Merge GPT54 Safe Probe
+
+on:
+  push:
+    branches:
+      - phase1-postmerge-gpt54-probe-20261012
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  isolated-two-fictional-chats:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/phase1-postmerge-gpt54-probe-20261012' &&
+      startsWith(github.event.head_commit.message, 'PETE_POSTMERGE_5USD_PROBE_20261012')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NODE_ENV: test
+      OPENAI_MODEL: gpt-5.4
+      PETE_LLM_CONVERSATION_ENABLED: "true"
+      PETE_LLM_API_CALLS_APPROVED: "true"
+      PETE_PHASE3_FLAGSHIP_ENVELOPE: "true"
+      PETE_PHASE3_APPROVED_RUN: FLAGSHIP_TEN_SYNTHETIC_CHATS
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      ENABLE_GENERIC_WEBHOOKS: "false"
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false"
+      INSTAGRAM_ALLOW_ALL_SENDERS: "false"
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: "false"
+    steps:
+      - name: Checkout post-merge synthetic test code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Checkout shared persistent budget ledger
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Build and run free backend regressions
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          npm test
+      - name: Verify credential and immutable prior ledger
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo "::error::Missing private provider credential. No API test."
+            exit 1
+          fi
+          if [ ! -f budget-ledger/phase3-budget-ledger.json ]; then
+            echo "::error::Missing shared budget ledger. No API test."
+            exit 1
+          fi
+          git -C budget-ledger config user.name "Funnel Pilot phase3 budget bot"
+          git -C budget-ledger config user.email "actions@users.noreply.github.com"
+      - name: One 1.50 USD reservation and two fictional GPT54 dialogues
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const ledger = JSON.parse(fs.readFileSync("budget-ledger/phase3-budget-ledger.json", "utf8"));
+          const previousBeforeUserApproval = 4323801;
+          const additionalUserLimit = 5000000;
+          const nextHold = 1500000;
+          if (ledger.capMicroUsd !== 8000000 ||
+              !Number.isSafeInteger(ledger.spentMicroUsd) ||
+              !Number.isSafeInteger(ledger.reservedMicroUsd) ||
+              ledger.spentMicroUsd < previousBeforeUserApproval ||
+              ledger.spentMicroUsd + ledger.reservedMicroUsd + nextHold - previousBeforeUserApproval > additionalUserLimit) {
+            throw Error("approved_five_usd_scope_invalid");
+          }
+          NODE
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-0"
+          mkdir -p "$DATA_DIR"
+          node scripts/pete-phase3-ledger.mjs reserve 0
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Reserve one post-merge Pete GPT54 test $GITHUB_RUN_ID"
+          # Absolutely no paid call unless durable reservation was accepted.
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          set +e
+          (cd backend && npx tsx src/config/pete-phase3-flagship-runner.ts 0)
+          result=$?
+          set -e
+          # Missing provider usage remains conservatively charged in full.
+          node scripts/pete-phase3-ledger.mjs settle 0
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Settle one post-merge Pete GPT54 test $GITHUB_RUN_ID"
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          if [ "$result" -ne 0 ]; then
+            echo "::error::Test aborted after one reserved batch."
+            exit "$result"
+          fi
+      - name: Archive fictional conversation for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-postmerge-gpt54-two-fictional-conversations
+          path: phase3-flagship-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
