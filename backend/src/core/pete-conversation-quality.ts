@@ -24,6 +24,22 @@ export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
   const input = norm(text);
+  // Exact source keywords are verified resource requests, including when
+  // the genuinely conversational LLM path is selected. Never ask the model
+  // to generate URLs or turn a keyword into a coaching sales pitch.
+  const keyword = input.trim();
+  if (keyword === "check") {
+    return { text: "Hier ist der kostenlose Elternfitness-Check: " +
+      OFFER_TRUTH.resources.elterncheck.url, nextPhase: "info" };
+  }
+  if (keyword === "keto") {
+    return { text: "Hier findest du den kostenlosen Keto Guide als PDF und Hörversion: " +
+      OFFER_TRUTH.resources.ketoGuide.url, nextPhase: "info" };
+  }
+  if (keyword === "bullshit" || keyword === "no bullshit") {
+    return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
+      OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
+  }
   // Cross-channel delivery is not verifiable from this single chat.
   // Never promise Instagram or WhatsApp automation will stop elsewhere.
   const recentMultiChannelComplaint = (state.messages ?? []).slice(0, -1).slice(-8).some(message =>
