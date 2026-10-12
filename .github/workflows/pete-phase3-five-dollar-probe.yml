@@ -1,4 +1,4 @@
-name: Pete Phase 1 - Five Dollar Safety Followup
+name: Pete Phase 1 - Five Dollar Conversational Followup
 
 # Paid API test on a dedicated scratch branch only. No PR or default branch trigger.
 on:
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  four-risk-case-dialogues:
+  four-conversational-personas:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/phase3-five-dollar-probe-20261012' &&
@@ -85,7 +85,7 @@ jobs:
           # the immutable historical project baseline of 4.323801 USD.
           # The first completed probe already consumed 0.090315 USD.
           # Two additional worst-case 1.50 USD reservations stay below 5.
-          for batch in 3 4; do
+          for batch in 1 2; do
             node - <<'NODE'
           const fs = require("fs");
           const ledger = JSON.parse(fs.readFileSync("budget-ledger/phase3-budget-ledger.json", "utf8"));
@@ -120,7 +120,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-phase1-usd5-approved-four-risk-chats
+          name: pete-phase1-usd5-approved-four-special-interest-chats
           path: phase3-flagship-reports/*.json
           if-no-files-found: warn
           retention-days: 30
