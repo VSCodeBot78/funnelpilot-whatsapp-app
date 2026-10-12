@@ -140,6 +140,55 @@ const PETE_SYSTEM_INSTRUCTIONS = [
   "Antworte ausschließlich mit JSON gemäß Schema: reply ist der kurze DM-Text, needsHuman ist ein Boolean.",
 ].join("\n");
 
+/** 
+ * Fail closed for two concrete high-risk conversation loops seen in real
+ * closer benchmarks: repeating a substantive sales paragraph, or asking
+ * the same question again immediately after the lead calls that out.
+ * This does not assess whether a novel answer is factually good.
+ */
+export type PeteContinuityIssue = "repeated_reply" | "repeated_question_after_feedback" | "question_only_after_feedback";
+
+const continuityNorm = (text: string) => text.toLocaleLowerCase("de-DE")
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim();
+
+const extractQuestions = (text: string): string[] =>
+  [...text.matchAll(/([^.!?\n]{8,}\?)/g)]
+    .map(match => continuityNorm(match[1]))
+    .filter(value => value.length >= 12);
+
+export function evaluatePeteLlmContinuity(
+  state: ConversationState, reply: string,
+): PeteContinuityIssue | null {
+  const messages = state.messages ?? [];
+  const previousAnswers = messages.filter(message => message.role === "assistant").slice(-6);
+  const candidate = continuityNorm(reply);
+
+  // Short acknowledgments can legitimately repeat. Longer prose should not
+  // be pasted again to the same lead without context.
+  if (candidate.length >= 45 && previousAnswers.some(message =>
+    continuityNorm(message.text) === candidate)) return "repeated_reply";
+
+  const latestLead = [...messages].reverse().find(message => message.role === "user");
+  if (!latestLead) return null;
+  const complaint = continuityNorm(latestLead.text);
+  const complaintsAboutQuestions = /(?:du fragst|fragst du|schon gesagt|bereits gesagt|doch gesagt|wieder dieselbe|wieder die gleiche|beantwortest (?:meine|mir) (?:frage|fragen) nicht|nur fragen|standig fragen|dauernd fragen)/.test(complaint);
+  if (!complaintsAboutQuestions) return null;
+
+  const currentQuestions = extractQuestions(reply);
+  if (currentQuestions.some(question => previousAnswers.some(previous =>
+    extractQuestions(previous.text).includes(question)))) {
+    return "repeated_question_after_feedback";
+  }
+  // A new stand-alone question cannot repair a complaint that previous
+  // questions went unanswered. Offer a direct explanation or human review.
+  if (currentQuestions.length && !/[.!\n]/.test(reply.replace(/\?+\s*$/, "")) &&
+      reply.trim().length < 180) {
+    return "question_only_after_feedback";
+  }
+  return null;
+}
+
 export function validatePeteLlmReply(value: unknown): { reply: string; needsHuman: boolean } | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
@@ -264,6 +313,10 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     }
     const validated = validatePeteLlmReply(parsed);
     if (!validated) return { kind: "handoff", reason: "invalid_output", detail: classifyPeteOutputRejection(parsed) };
+    if (!validated.needsHuman) {
+      const continuityIssue = evaluatePeteLlmContinuity(state, validated.reply);
+      if (continuityIssue) return { kind: "handoff", reason: "invalid_output", detail: continuityIssue };
+    }
     if (validated.needsHuman) {
       // A model's conservative preference for human review is NOT by itself
       // a reason to permanently mute a buyer who only declined a sales pitch.
