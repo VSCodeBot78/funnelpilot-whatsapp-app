@@ -115,6 +115,10 @@ router.post("/lab/start", guardMobileLab, async (req, res) => {
         state: { messages: publicLabMessages(state.messages) },
       });
     }
+    // Explicitly narrow out scripted scenarios before reading `text`.
+    if (!("text" in scenario)) {
+      return res.status(400).json({ ok: false, error: "invalid_synthetic_scenario_type" });
+    }
     if (labScenarioPolicy(scenarioId) === "human_review") {
       const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
       // Synthetic-only diagnostic marker. Never invent the Reel's actual contents.
