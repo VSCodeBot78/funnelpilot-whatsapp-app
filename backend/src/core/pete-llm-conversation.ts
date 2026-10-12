@@ -119,6 +119,8 @@ const PETE_SYSTEM_INSTRUCTIONS = [
   "Keine ungefragte Angebots- oder Terminwahl, keine künstliche Dringlichkeit, kein Manipulationsdruck. Keine unbegründeten Annahmen über die Person.",
   "Wenn jemand keine Verkaufsnachrichten oder kein Nachfassen möchte: Akzeptiere das sofort. Kein Pitch, Angebotslink, neuer CTA oder erneute Frage; er kann selbst wieder schreiben. Keine Garantie für andere externe Kanäle behaupten.",
   "Reagiere auf den letzten Punkt statt bei jeder Nachricht erneut dieselben Tipps zu Schlaf, Eiweiß und Bewegung aufzuzählen. Wenn bereits konkrete Schritte genannt wurden, verdichte auf höchstens einen neuen, wirklich passenden Gedanken.",
+  "Gesprächsfortschritt schlägt umformulierte Standardtipps: Ist 'flexible kurze Einheiten statt fester Pläne' bereits erklärt, sage das nicht ein drittes Mal. Beantworte stattdessen die NEUE konkrete Frage, gib ein nachvollziehbares Detail oder beende das Thema ohne neue Frage. Erfinde keine individuelle Übungs- oder Ernährungsplanung.",
+  "Wenn ein Lead eine konkrete Situation schildert, nicht reflexartig die alte Lösung wiederholen. Kurze Bestätigung reicht oft. Keine abschließende Gesprächsfrage nur um das Gespräch offen zu halten.",
   "Unterscheide bei allgemeinen Fitness- und Gewichtsfragen mögliche Zusammenhänge von nachgewiesenen individuellen Ursachen. Schlafmangel, Sitzen oder Stress erklären eine Stagnation nicht automatisch; behaupte kein sicheres Kaloriendefizit oder zwangsläufigen Fettverlust. Formuliere vorsichtig und konkret.",
   "Verwende echtes Gesprächsverständnis: Was ist bereits bekannt, welche Ursache hat der Lead genannt, was wurde schon gefragt, welcher Punkt ist noch offen? Nur danach antworten. Nicht dieselben Fragen oder Floskeln wiederholen.",
   "Bei Kritik an dir selbst: Keine Schleife aus Entschuldigungen und 'Sag mir deine Frage'. Wenn eine inhaltliche Frage bereits im Verlauf steht, antworte direkt anhand der früheren Aussagen.",
@@ -127,6 +129,8 @@ const PETE_SYSTEM_INSTRUCTIONS = [
   "Keine ungeprüften Zusagen über Vertragsdetails, Raten, Zusatzkosten, Betreuung, Ergebnisse, sichere Zahlung, Buchungsstatus oder technische Zustellung. Erkläre ehrlich, was du sicher weißt und was Jochen prüfen muss.",
   "Bei allgemeinen Fachfragen zu Ernährung, Krafttraining, Schlaf und Regeneration: Nenne sachliche Zusammenhänge, Unsicherheiten und Grenzen ohne Ferndiagnose. Eine historische Schwangerschaft oder eine abgelehnte Ferndiagnose ist nicht automatisch akute Krankheit.",
   "Keto und Familienernährung: keine Pflicht, keine dogmatischen oder medizinisch unbelegten Überlegenheitsbehauptungen. Wenn keine verlässliche Aussage möglich ist, sag das knapp und schlage persönliche Prüfung vor.",
+  "Keto-Evidenz genau unterscheiden: Studien zeigen bei vergleichbarer Energie- und Proteinzufuhr insgesamt keinen verlässlich größeren Fettverlust durch Keto allein; Unterschiede hängen u.a. von Appetit, Umsetzung und Messdauer ab. Nicht 'wissenschaftlich endgültig gesichert' behaupten, keine Erfolgsgarantie, Wasserverlust nicht mit Fettverlust verwechseln. Persönliches Erleben und Beobachtungsstudien nicht als kontrollierten Wirksamkeitsnachweis ausgeben.",
+  "Wenn zu Studien gefragt wird: Formuliere z.B. 'Nach bisheriger Studienlage gibt es bei vergleichbaren Kalorien und Eiweiß keinen klaren Vorteil beim Fettverlust' statt 'das ist bewiesen'. Grenzen und relevante Unsicherheit kurz benennen; keine erfundene Studie oder Quelle.",
   "Weniger ist mehr: kein Pflichtabschluss mit einer Frage, keine ständige Menüauswahl zwischen Coach und Selbststarter. Erst helfen, dann optional passender nächster Schritt.",
   "Familienalltag: ein alltagstaugliches System darf Pausen bei Krankheit und späteren Wiedereinstieg erlauben; trainieren trotz Krankheit nicht fordern. Kurze Einheiten sind Möglichkeiten, keine Verpflichtungen.",
   "Fitness, Ernährung, Schlaf und Stress allgemein erklären; kein individueller medizinischer Rat, keine Diagnosen, Therapie- oder Heilversprechen, kein konkreter persönlicher Ernährungs- oder Trainingsplan.",
@@ -146,7 +150,7 @@ const PETE_SYSTEM_INSTRUCTIONS = [
  * the same question again immediately after the lead calls that out.
  * This does not assess whether a novel answer is factually good.
  */
-export type PeteContinuityIssue = "repeated_reply" | "repeated_question_after_feedback" | "question_only_after_feedback";
+export type PeteContinuityIssue = "repeated_reply" | "repeated_advice_theme" | "repeated_question_after_feedback" | "question_only_after_feedback";
 
 const continuityNorm = (text: string) => text.toLocaleLowerCase("de-DE")
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -156,6 +160,24 @@ const extractQuestions = (text: string): string[] =>
   [...text.matchAll(/([^.!?\n]{8,}\?)/g)]
     .map(match => continuityNorm(match[1]))
     .filter(value => value.length >= 12);
+
+// High-precision guard for repeatedly pitching the same generic solution.
+// Important: an answer with a NEW concrete detail (duration, number, timing)
+// is not blocked just because it correctly refers back to an earlier idea.
+// The heuristic intentionally covers only frequent benchmark failure motifs.
+const adviceTheme = (text: string): "flexible_training" | "keto_family" | null => {
+  const value = continuityNorm(text);
+  if (/\b(?:training|trainieren|einheiten|workouts?|sport|wochenplan)\b/.test(value) &&
+      /\b(?:flexibel\w*|verschieb\w*|kurze\w*|mini\w*|kleine\w*|starr\w*|feste\w*|festen|nachholen)\b/.test(value))
+    return "flexible_training";
+  if (/\bketo\b/.test(value) &&
+      /\b(?:familie\w*|kindern?|kochen|gerichte|beilage\w*|grundgericht)\b/.test(value))
+    return "keto_family";
+  return null;
+};
+const measurableDetail = (text: string) =>
+  /\b\d+(?:[.,]\d+)?\s*(?:bis\s*\d+\s*)?(?:minuten?|stunden?|tage?|wochen?|mal|x)\b/i.test(text) ||
+  /\b(?:vor der schicht|nach der schicht|vor dem essen|nach dem essen|abends|morgens|mittags)\b/i.test(text);
 
 export function evaluatePeteLlmContinuity(
   state: ConversationState, reply: string,
@@ -168,6 +190,15 @@ export function evaluatePeteLlmContinuity(
   // be pasted again to the same lead without context.
   if (candidate.length >= 45 && previousAnswers.some(message =>
     continuityNorm(message.text) === candidate)) return "repeated_reply";
+
+  // Three consecutive generic answers on the same advice motif are too
+  // repetitive if the newest one contributes no concrete new information.
+  const theme = adviceTheme(reply);
+  if (theme && !measurableDetail(reply) &&
+      previousAnswers.length >= 2 &&
+      previousAnswers.slice(-2).every(message => adviceTheme(message.text) === theme)) {
+    return "repeated_advice_theme";
+  }
 
   const latestLead = [...messages].reverse().find(message => message.role === "user");
   if (!latestLead) return null;
@@ -197,6 +228,12 @@ export function validatePeteLlmReply(value: unknown): { reply: string; needsHuma
   if (!reply || reply.length > 750 || (reply.match(/\?/g) ?? []).length > 1) return null;
   if (containsGeneratedPrice(reply) || /\b(?:EUR|Euro)\b|€/i.test(reply) || /https?:\/\/|www\./i.test(reply)) return null;
   if (isUnsafeLlmClaim(reply)) return null;
+  // No invented scientific certainty about ketosis as a special route
+  // to extra fat loss. Negative statements ("nicht garantiert") stay valid.
+  const scientific = continuityNorm(reply);
+  if (/(?:keto|ketogen)/.test(scientific) &&
+      (/(?:keto|ketogen)\b.{0,85}\b(?:garantiert|bewiesen|zwangslaufig)\b.{0,50}\b(?:mehr|schneller|fettverlust|abnehm)/.test(scientific) ||
+       /\b(?:bewiesen|garantiert|wissenschaftlich gesichert)\b.{0,85}\b(?:keto|ketogen)\b.{0,45}\b(?:mehr|schneller|fettverlust|abnehm)/.test(scientific))) return null;
   // Provider records, never text generated by a model, must confirm bookings or purchases.
   if (/\b(?:termin|buchung|zahlung|kauf|bestellung)\b.{0,42}\b(?:best[aä]tigt|erfolgreich|bezahlt|gebucht)\b/i.test(reply)) return null;
   return { reply, needsHuman: data.needsHuman };
