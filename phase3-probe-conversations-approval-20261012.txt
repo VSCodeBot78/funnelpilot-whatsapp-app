@@ -1,0 +1,1 @@
+Third and last test under user's single 5 USD authorization. Two reserved batches of at most USD 1.50 each, while earlier runs charged USD 0.090315 total. All test characters are fictional. Shared persistent budget ledger, no live messages, no deployment or subscriptions. No further continuation without a distinct review decision.
