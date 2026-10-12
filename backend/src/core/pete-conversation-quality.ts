@@ -40,6 +40,22 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // A CTA-click in an already documented Selfstarter conversation is a
+  // request for the link, not permission to replay the entire advertising pitch.
+  // The old ManyChat word "Bundle" must never invent an unknown other offer.
+  const wantsBundleLink = /\b(?:zeig(?:e)? mir|schick mir|sende mir|link (?:zum|furs|fuer das))\b.{0,38}\bbundle\b/.test(input) ||
+    /\bwo (?:finde|bekomme) ich\b.{0,35}\bbundle\b/.test(input);
+  const previousSelfstarter = state.messages.slice(0, -1).some(message => {
+    const earlier = norm(message.text).trim();
+    return (message.role === "user" && /^(?:no )?bullshit$/.test(earlier)) ||
+      (message.role === "assistant" &&
+        (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
+          /no bullshit elternfitness selbststarter/i.test(message.text)));
+  });
+  if (wantsBundleLink && previousSelfstarter) {
+    return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
+      OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
+  }
   // Cross-channel delivery is not verifiable from this single chat.
   // Never promise Instagram or WhatsApp automation will stop elsewhere.
   const recentMultiChannelComplaint = (state.messages ?? []).slice(0, -1).slice(-8).some(message =>
