@@ -59,23 +59,51 @@ function redactForProvider(text: string): string {
     .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+[A-Za-z0-9._-]{16,})\b/gi, "[Zugangsdaten entfernt]");
 }
 
+// Earlier statements can fall out of the rolling 36-message model window.
+// Keep only direct, quoted evidence from the lead, never a guessed diagnosis,
+// inferred purchase intention, or a fabricated summary.
+const PETE_EVIDENCE_TOPICS = [
+  { topic: "work_and_schedule", pattern: /schicht|arbeitszeit|arbeite|dienstplan|job|zeitlich|zeitmangel/i },
+  { topic: "movement", pattern: /sport|trainier|training|kraft|bewegung|fitness/i },
+  { topic: "nutrition", pattern: /ern[aä]hr|essen|mahlzeit|hunger|snack|keto|kochen/i },
+  { topic: "goals", pattern: /abnehm|bauch|gewicht|energie|fitter|ziel/i },
+  { topic: "family_and_recovery", pattern: /kind|familie|schlaf|stress|regeneration/i },
+  { topic: "previous_attempts", pattern: /versucht|probiert|bisher|fr[uü]her|seit jahren/i },
+] as const;
+
 export function buildPeteContext(state: ConversationState) {
-  // 36 consecutive messages preserve up to 18 complete lead/assistant turns.
-  // Limit payload size to avoid runaway cost and accidental oversized requests.
-  const conversation = state.messages.slice(-36).map(message => ({
+  // Newest messages stay chronological. Structured older evidence is only
+  // supplied when full context would otherwise be truncated.
+  const recentMessages = state.messages.slice(-36);
+  const conversation = recentMessages.map(message => ({
     role: message.role,
     text: redactForProvider(message.text.slice(0, 1500)),
   }));
-  // Hard upper bound on payload cost; prefer the newest complete turns.
-  while (conversation.length > 1 && JSON.stringify(conversation).length > 12000) {
-    conversation.shift();
-  }
-  return {
+  const olderMessages = state.messages.slice(0, Math.max(0, state.messages.length - 36));
+  const earlierLeadEvidence = PETE_EVIDENCE_TOPICS.flatMap(({ topic, pattern }) => {
+    const evidence = [...olderMessages].reverse().find(message =>
+      message.role === "user" && pattern.test(message.text));
+    if (!evidence) return [];
+    return [{
+      topic,
+      // Literal wording matters: e.g. "Sport klappt" must not become
+      // the invented claim "needs more exercise".
+      excerpt: redactForProvider(evidence.text.slice(0, 350)),
+    }];
+  });
+
+  const assemble = () => ({
     campaignId: state.campaignId,
     currentPhase: String(state.answers.naturalPhase ?? "opening").slice(0, 50),
     currentTrack: String(state.answers.naturalTrack ?? "").slice(0, 50),
+    earlierLeadEvidence,
     conversation,
-  };
+  });
+  // Total context, including older evidence, remains within the same limit.
+  while (conversation.length > 1 && JSON.stringify(assemble()).length > 12000) {
+    conversation.shift();
+  }
+  return assemble();
 }
 
 const PETE_SYSTEM_INSTRUCTIONS = [
@@ -84,6 +112,9 @@ const PETE_SYSTEM_INSTRUCTIONS = [
   "WICHTIG: Lies die vollständige Konversation chronologisch. Die letzte Nachricht und offene Frage haben Vorrang vor jedem Fragenkatalog.",
   "Wenn der Lead eine konkrete Frage stellt, BEANTWORTE sie sachlich zuerst. Stelle nur dann eine weitere Frage, wenn sie wirklich nötig ist. Null Fragen ist oft die richtige Antwort; maximal eine.",
   "Wurde ein Grund schon genannt, frage nicht noch einmal danach. Wenn ein krankes Kind einen Drei-Abende-Trainingsplan unterbrochen hat, ist diese Ursache bereits bekannt.",
+  "Falls earlierLeadEvidence vorhanden ist: Das sind wörtliche ältere Lead-Aussagen außerhalb des jüngsten Gesprächsfensters. Nutze sie als Kontext, ohne zusätzliche Schlussfolgerungen zu erfinden. Neuere Aussagen haben Vorrang bei Widersprüchen.",
+  "Wenn jemand wegen Schichtarbeit wenig Zeit hat, aber vier- bis fünfmal wöchentlich trainiert und die Ernährung als Problem nennt: keinen weiteren Sportplan verkaufen oder nach Trainingsmangel fragen. Greife die Ernährung im Schichtalltag auf und frage höchstens einmal gezielt nach.",
+  "Wenn im Verlauf bereits ein Bundle erklärt oder ein Ressourcenlink angeboten wurde, kopiere keinen langen Werbetext erneut. Reagiere auf die konkrete neue Antwort oder Rückfrage. Keine Zusage über tatsächliche Zustellung aus bloß vorbereitetem Chattext.",
   "Bei genervter Reaktion wie 'das habe ich doch gesagt' oder 'du fragst nur': erkenne den eigenen Fehler knapp an, greife die offene Frage auf und repariere das Gespräch, statt zu verkaufen.",
   "Keine ungefragte Angebots- oder Terminwahl, keine künstliche Dringlichkeit, kein Manipulationsdruck. Keine unbegründeten Annahmen über die Person.",
   "Wenn jemand keine Verkaufsnachrichten oder kein Nachfassen möchte: Akzeptiere das sofort. Kein Pitch, Angebotslink, neuer CTA oder erneute Frage; er kann selbst wieder schreiben. Keine Garantie für andere externe Kanäle behaupten.",
