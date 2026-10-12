@@ -208,8 +208,8 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(String((options as RequestInit).body));
       const raw = String(body.input[0].content);
-      const marker = "\\nBeantworte die letzte Lead-Nachricht.";
-      const context = JSON.parse(raw.slice(raw.indexOf("\\n") + 1, raw.lastIndexOf(marker)));
+      const marker = "\nBeantworte die letzte Lead-Nachricht.";
+      const context = JSON.parse(raw.slice(raw.indexOf("\n") + 1, raw.lastIndexOf(marker)));
       prompts.push(context);
       return fake("Du trainierst schon regelmäßig. Bei Schichtarbeit kann die Ernährung im Alltag schwieriger sein. Wann ist das Essen für dich am schwersten zu organisieren?");
     };
@@ -229,7 +229,7 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.ok(last.conversation.some((x: any) => x.text.includes("Schichtarbeit")));
     assert.ok(last.conversation.some((x: any) => x.text.includes("4-5 mal")));
     assert.ok(last.conversation.some((x: any) => x.text.includes("Ernährung")));
-    assert.doesNotMatch(JSON.stringify(last), /https?:\\/\\/api\\.openai\\.com/);
+    assert.doesNotMatch(JSON.stringify(last), /https?:\/\/api\.openai\.com/);
   });
 
   await t.test("Bundle CTA after verified BULLSHIT entry sends just the product link", async () => {
@@ -258,7 +258,7 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     const out = await send(fakeLead, "Zeig mir das Bundle");
     assert.equal(out.state.answers.peteReplySource, "llm");
     assert.equal(calls, 1);
-    assert.doesNotMatch(out.text ?? "", /https?:\\/\\//);
+    assert.doesNotMatch(out.text ?? "", /https?:\/\//);
   });
 
 });
