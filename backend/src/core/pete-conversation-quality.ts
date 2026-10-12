@@ -45,7 +45,7 @@ export function getPeteVerifiedTransactionAnswer(
   // The old ManyChat word "Bundle" must never invent an unknown other offer.
   const wantsBundleLink = /\b(?:zeig(?:e)? mir|schick mir|sende mir|link (?:zum|furs|fuer das))\b.{0,38}\bbundle\b/.test(input) ||
     /\bwo (?:finde|bekomme) ich\b.{0,35}\bbundle\b/.test(input);
-  const previousSelfstarter = state.messages.slice(0, -1).some(message => {
+  const previousSelfstarter = (state.messages ?? []).slice(0, -1).some(message => {
     const earlier = norm(message.text).trim();
     return (message.role === "user" && /^(?:no )?bullshit$/.test(earlier)) ||
       (message.role === "assistant" &&
