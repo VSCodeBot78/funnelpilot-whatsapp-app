@@ -56,6 +56,23 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // An actual report of duplicate cross-channel messages is an incident,
+  // not a multi-turn FAQ. Hand it to Jochen on the FIRST report. Do not
+  // imply that the other provider (e.g. ManyChat) has already been paused.
+  const twoNamedChannels = /\binstagram\b/.test(input) && /\bwhatsapp\b/.test(input);
+  const actualDoubleReply = (
+    /\b(?:bekomm\w*|erhalt\w*|krieg\w*|schreib\w*|antwort\w*|kommen)\b.{0,72}\b(?:beiden? kanal\w*|beiden?|doppelt|zweimal|gleichzeitig)\b/.test(input) ||
+    /\b(?:beiden? kanal\w*|doppelt|zweimal|gleichzeitig)\b.{0,72}\b(?:antwort\w*|nachricht\w*|bots?|geschrieb\w*)\b/.test(input)
+  );
+  const explicitDoubleBotComplaint =
+    /\b(?:zwei\s+bots|doppel\w*|gleichzeitig)\b/.test(input) &&
+    /\b(?:antwort\w*|nachricht\w*|bots?|angeschrieb\w*|angequatscht|schreib\w*|nerv\w*)\b/.test(input);
+  if ((twoNamedChannels && actualDoubleReply) || explicitDoubleBotComplaint) {
+    return {
+      text: "Das klingt nach doppelten Antworten. Ich gebe den Chat an Jochen zur Prüfung weiter und pausiere Pete hier. Ob auf dem anderen Kanal noch etwas läuft, muss Jochen separat prüfen.",
+      handoff: true,
+    };
+  }
   // Cross-channel delivery is not verifiable from this single chat.
   // Never promise Instagram or WhatsApp automation will stop elsewhere.
   const recentMultiChannelComplaint = (state.messages ?? []).slice(0, -1).slice(-8).some(message =>
@@ -143,14 +160,14 @@ export function getPeteVerifiedTransactionAnswer(
   if (/\b(?:checkout|kasse|bestellprozess)\b/.test(input) &&
       /\b(?:uberrasch\w*|schlechte\s+erfahrung\w*|abofalle|reingefallen)\b/.test(input) &&
       !/\b(?:bezahlt|gekauft|bestellt|zahlungseingang)\b/.test(input)) {
-    return { text: "Bei einer schlechten Checkout-Erfahrung lohnt es sich, die Bedingungen vor einem Kauf genau anzusehen. Ich kann hier keine ungeprueften Vertragsdetails versprechen. Du musst nichts kaufen, bevor Preis und Konditionen fuer dich klar sind." };
+    return { text: "Bei einer schlechten Checkout-Erfahrung lohnt es sich, die Bedingungen vor einem Kauf genau anzusehen. Ich kann keine Vertragsdetails bestätigen, die ich nicht geprüft habe. Schau dir die Kaufübersicht in Ruhe an, bevor du dich entscheidest." };
   }
 
   // Fearing checkout extras is a factual trust question, not proof of a
   // purchase or an invitation to make unverified "no extra charges" claims.
   if (/\b(?:versteckte kosten|versteckte gebuhren|zusatzkosten|ungewollte extras|versteckte extras|unerwartete gebuhren)\b/.test(input)) {
     return {
-      text: "Du sollst vor dem Kauf wissen, was du bezahlst. Verbindlich kann ich dir hier nur die ausgewiesenen Einstiegspreise nennen. Ob weitere Bedingungen gelten, prüf bitte in der Kaufübersicht oder lass sie von Jochen klären. Ich verspreche dir keine ungeprüften Zusatzkosten-Regeln.",
+      text: "Verständlich, dass du vor dem Kauf Klarheit willst. Schau dir bitte die Gesamtsumme und Bedingungen in der Kaufübersicht an. Falls etwas unklar bleibt, prüft Jochen das persönlich. Ich kann zusätzliche Kosten weder ausschließen noch bestätigen.",
     };
   }
 
