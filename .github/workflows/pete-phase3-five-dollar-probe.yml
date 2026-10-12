@@ -1,4 +1,4 @@
-name: Pete Phase 1 - Explicit 5 USD Approved Probe
+name: Pete Phase 1 - Five Dollar Safety Followup
 
 # Paid API test on a dedicated scratch branch only. No PR or default branch trigger.
 on:
@@ -15,13 +15,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  two-fictional-parent-chats:
+  four-risk-case-dialogues:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/phase3-five-dollar-probe-20261012' &&
       startsWith(github.event.head_commit.message, 'PETE_5USD_APPROVED_PROBE_20261012')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 70
     env:
       NODE_ENV: test
       OPENAI_MODEL: gpt-5.4
@@ -75,41 +75,52 @@ jobs:
           fi
           git -C budget-ledger config user.name "Funnel Pilot phase3 budget bot"
           git -C budget-ledger config user.email "actions@users.noreply.github.com"
-      - name: Reserve at most 1.50 USD then test two fictional conversations
+      - name: Reserve and settle two separate 1.50 USD safety batches
         shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
-          export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-0"
-          mkdir -p "$DATA_DIR"
-          # The existing ledger has USD 8 lifetime limit, and ~USD 4.32
-          # already counted. A new USD 1.50 reservation respects BOTH the
-          # user's extra USD 5 authorization and the prior global lifetime cap.
-          node scripts/pete-phase3-ledger.mjs reserve 0
-          git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Reserve single approved Pete USD 1.50 probe $GITHUB_RUN_ID"
-          # HARD GATE: no external API calls before this exact push succeeds.
-          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
-          set +e
-          (cd backend && npx tsx src/config/pete-phase3-flagship-runner.ts 0)
-          result=$?
-          set -e
-          # A failed or missing usage ledger is conservatively charged at
-          # the entire preauthorization; never clear or reset the ledger.
-          node scripts/pete-phase3-ledger.mjs settle 0
-          git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Settle approved Pete USD 1.50 probe $GITHUB_RUN_ID"
-          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
-          if [ "$result" -ne 0 ]; then
-            echo "::error::Probe aborted safely; no further batches permitted."
-            exit "$result"
-          fi
+          # The user approved a NEW maximum of 5 USD, starting from
+          # the immutable historical project baseline of 4.323801 USD.
+          # The first completed probe already consumed 0.090315 USD.
+          # Two additional worst-case 1.50 USD reservations stay below 5.
+          for batch in 3 4; do
+            node - <<'NODE'
+          const fs = require("fs");
+          const ledger = JSON.parse(fs.readFileSync("budget-ledger/phase3-budget-ledger.json", "utf8"));
+          const historicalBaseline = 4323801;
+          const maxNew = 5000000;
+          const nextReserve = 1500000;
+          if (ledger.spentMicroUsd + ledger.reservedMicroUsd + nextReserve - historicalBaseline > maxNew) {
+            throw Error("five_usd_incremental_approval_exhausted");
+          }
+          NODE
+            export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-$batch"
+            mkdir -p "$DATA_DIR"
+            node scripts/pete-phase3-ledger.mjs reserve "$batch"
+            git -C budget-ledger add phase3-budget-ledger.json
+            git -C budget-ledger commit -m "Reserve approved Pete USD 1.50 risk batch $batch run $GITHUB_RUN_ID"
+            # No API call unless the irreversible reservation is confirmed by GitHub.
+            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            set +e
+            (cd backend && npx tsx src/config/pete-phase3-flagship-runner.ts "$batch")
+            result=$?
+            set -e
+            node scripts/pete-phase3-ledger.mjs settle "$batch"
+            git -C budget-ledger add phase3-budget-ledger.json
+            git -C budget-ledger commit -m "Settle Pete risk batch $batch run $GITHUB_RUN_ID"
+            git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+            if [ "$result" -ne 0 ]; then
+              echo "::error::Safety test stopped, do not continue."
+              exit "$result"
+            fi
+          done
       - name: Preserve fictional dialogue for independent review
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-phase1-usd5-approved-two-fictional-chats
+          name: pete-phase1-usd5-approved-four-risk-chats
           path: phase3-flagship-reports/*.json
           if-no-files-found: warn
           retention-days: 30
