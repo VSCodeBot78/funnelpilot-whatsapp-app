@@ -54,7 +54,9 @@ test("Phase57: historical doctor check and declined remote diagnosis retain safe
   let calls=0;
   globalThis.fetch=async()=>{
    calls++;
-   return mock("Du hast schon zwei schwere Trainingseinheiten. Ohne Ferndiagnose lassen sich allgemein Schlaf, Energiebilanz und Alltagsbewegung einordnen.");
+   return mock(calls===1
+    ? "Du trainierst bereits regelmäßig. Für eine allgemeine Einordnung sind Schlaf, Energiebilanz und Alltagsbewegung hilfreiche Prüfpunkte."
+    : "Verstanden, du möchtest keine Ferndiagnose. Dass deine Werte bereits geprüft wurden, ist wichtig; hier geht es um die allgemeine Umsetzung im Alltag.");
   };
   const id="phase57-history";
   const first=await send(id,"Meine letzte Schwangerschaft ist über zwei Jahre her. Ich trainiere zweimal pro Woche schwer und die Waage steht still.");
