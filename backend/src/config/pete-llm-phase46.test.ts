@@ -20,7 +20,7 @@ const { getConversationState, clearConversationStore } = await import("../data/s
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { buildPeteContext, validatePeteLlmReply, isTrustedPeteTransactionRequest,
-  isExplicitPeteHumanTakeoverRequest, isPeteLlmReadyForProvider } =
+  isExplicitPeteHumanTakeoverRequest, isPeteLlmReadyForProvider, evaluatePeteLlmContinuity } =
   await import("../core/pete-llm-conversation.js");
 
 async function send(leadId: string, messageText: string) {
@@ -212,4 +212,57 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
       "Hier der Checkout: https://example.com",
     ]) assert.equal(validatePeteLlmReply({ reply, needsHuman: false }), null, reply);
   });
+  await t.test("continuity guard catches repeated substantive pitch but not routine acknowledgments", () => {
+    const state = {
+      messages: [
+        { role: "user", text: "Ich möchte mehr Struktur." },
+        { role: "assistant", text: "Du brauchst nur unseren flexiblen Einstieg und kannst endlich wieder dranbleiben." },
+        { role: "user", text: "Du hast mir noch nicht erklärt, wie das geht." },
+      ],
+    } as any;
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Du brauchst nur unseren flexiblen Einstieg und kannst endlich wieder dranbleiben."), "repeated_reply");
+    assert.equal(evaluatePeteLlmContinuity({ messages: [
+      { role: "assistant", text: "Gerne!" },
+      { role: "user", text: "Danke." },
+    ] } as any, "Gerne!"), null);
+  });
+
+  await t.test("after explicit lead feedback Pete may not repeat the unanswered question", () => {
+    const state = { messages: [
+      { role: "user", text: "Ich komme mit Schichtarbeit und Ernährung nicht klar." },
+      { role: "assistant", text: "Was hast du bisher probiert?" },
+      { role: "user", text: "Das habe ich dir doch gesagt, du fragst nur!" },
+    ] } as any;
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Sorry, das war nicht hilfreich. Was hast du bisher probiert?"),
+      "repeated_question_after_feedback");
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Wie sieht denn dein Tag normalerweise aus?"),
+      "question_only_after_feedback");
+    assert.equal(evaluatePeteLlmContinuity(state,
+      "Stimmt, ich habe dich zweimal gefragt. Deine Schichten sind der Engpass beim Essen, nicht die Trainingshäufigkeit."),
+      null);
+  });
+
+  await t.test("mocked duplicate model pitch hands off without sending it to the lead", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let calls = 0;
+    const repeated = "Wenn du endlich fitter werden willst, kann ein klarer Einstieg im Alltag helfen.";
+    globalThis.fetch = async () => { calls++; return mockResponse(repeated); };
+    const first = await send("phase1-no-repeat-pitch", "Ich möchte mit Fitness beginnen.");
+    assert.equal(first.state.owner, "ai");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+    const next = await send("phase1-no-repeat-pitch", "Und was ist jetzt konkret mein nächster Schritt?");
+    assert.equal(next.state.owner, "human");
+    assert.equal(next.state.aiPaused, true);
+    assert.equal(next.state.answers.peteLlmFailureDetail, "repeated_reply");
+    assert.doesNotMatch(next.text ?? "", /klarer Einstieg/);
+    assert.equal(calls, 2);
+    const after = await send("phase1-no-repeat-pitch", "Hallo?");
+    assert.equal(after.text, null);
+    assert.equal(calls, 2);
+  });
+
 });
