@@ -19,7 +19,8 @@ const { clearConversationStore } = await import("../data/store.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { isGeneralNonMedicalKnowledgeRequest, getPeteVerifiedTransactionAnswer,
   isUnsafeLlmClaim } = await import("../core/pete-conversation-quality.js");
-const { validatePeteLlmReply } = await import("../core/pete-llm-conversation.js");
+const { validatePeteLlmReply, buildPeteContext } = await import("../core/pete-llm-conversation.js");
+const { OFFER_TRUTH } = await import("./offer-truth.js");
 
 function enableMock() {
   process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
@@ -104,24 +105,33 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.match(out.text || "", /Produktseite/);
     assert.equal(calls, 0);
   });
-  await t.test("repeat two-channel complaint cannot produce a control guarantee", async () => {
+  await t.test("actual duplicate Instagram and WhatsApp replies trigger immediate human handoff", async () => {
     clearConversationStore(); enableMock();
     let calls = 0;
-    globalThis.fetch = async () => { calls++; throw Error("must not call"); };
+    globalThis.fetch = async () => { calls++; throw Error("must not fetch"); };
     const first = await send("phase54-two-channels",
-      "Ich hab euch auf Instagram und auf WhatsApp geschrieben und bekomme auf beiden Kanälen Antworten.");
-    assert.equal(first.state.owner, "ai");
-    assert.match(first.text || "", /nicht prüfen oder garantieren/);
+      "Ich hab euch auf Instagram und WhatsApp geschrieben und bekomme auf beiden Kanälen Antworten.");
+    assert.equal(first.state.owner, "human");
+    assert.equal(first.state.aiPaused, true);
+    assert.equal(first.state.flags.peteRuntimeHandoffActive, true);
+    assert.equal(first.state.answers.peteReplySource, "verified_transaction");
+    assert.match(first.text || "", /Jochen/);
+    assert.match(first.text || "", /anderen Kanal/);
+    assert.doesNotMatch(first.text || "", /auch auf WhatsApp pausiert|alles gestoppt/);
     const second = await send("phase54-two-channels",
       "Ich will nicht von zwei Bots gleichzeitig angequatscht werden.");
-    assert.equal(second.state.owner, "ai");
-    assert.match(second.text || "", /nicht zuverlässig feststellen/);
-    const third = await send("phase54-two-channels",
-      "Wenn Jochen persönlich schreibt, muss die KI aufhören. Geht das wirklich?");
-    assert.equal(third.state.owner, "human");
-    assert.match(third.text || "", /pausiert bleiben/);
-    assert.match(third.text || "", /nicht verifizieren oder garantieren/);
+    assert.equal(second.text, null);
+    assert.equal(second.replySuppressedReason, "human_owned");
     assert.equal(calls, 0);
+  });
+  await t.test("two-bot complaint alone escalates but neutral cross-channel question does not", () => {
+    const state = { messages: [] } as any;
+    const complaint = getPeteVerifiedTransactionAnswer(
+      "Ich werde von zwei Bots gleichzeitig angeschrieben. Das nervt.", state);
+    assert.equal(complaint?.handoff, true);
+    const neutral = getPeteVerifiedTransactionAnswer(
+      "Kann ich auf Instagram und WhatsApp Fragen stellen?", state);
+    assert.notEqual(neutral?.handoff, true);
   });
   await t.test("generated promises about dual-channel automation are rejected", () => {
     for (const reply of [
@@ -139,4 +149,146 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
       "Ich habe einen Calendly-Termin gebucht, aber keine Bestätigung bekommen.", state);
     assert.equal(out?.handoff, true);
   });
+  await t.test("exact CHECK KETO and BULLSHIT use verified URLs without paid LLM calls", async () => {
+    clearConversationStore(); enableMock();
+    let providerCalls = 0;
+    globalThis.fetch = async () => {
+      providerCalls++;
+      throw Error("provider must not receive an exact resource keyword");
+    };
+    for (const [keyword, url] of [
+      ["CHECK", OFFER_TRUTH.resources.elterncheck.url],
+      ["KETO", OFFER_TRUTH.resources.ketoGuide.url],
+      ["BULLSHIT", OFFER_TRUTH.selfstarter.productUrl],
+    ]) {
+      const reply = await send("phase1-keyword-" + keyword.toLowerCase(), keyword);
+      assert.equal(reply.state.answers.peteReplySource, "verified_transaction", keyword);
+      assert.equal(reply.state.owner, "ai", keyword);
+      assert.ok(reply.text?.includes(url), keyword);
+      assert.doesNotMatch(reply.text ?? "", /strategiegespräch|499|jetzt buchen/i);
+    }
+    assert.equal(providerCalls, 0);
+  });
+
+  await t.test("older lead facts stay quoted when the latest 36 messages omit them", () => {
+    const older = [
+      { role: "user", text: "Ich arbeite im Schichtdienst. Schreib mir nicht an test@example.com." },
+      { role: "assistant", text: "Wie läuft dein Sport?" },
+      { role: "user", text: "Sport bekomme ich 4-5 mal die Woche gut unter." },
+      { role: "assistant", text: "Was klappt nicht?" },
+      { role: "user", text: "Es hängt bei mir eher an der Ernährung." },
+    ];
+    const newer = Array.from({ length: 50 }, (_, index) => ({
+      role: index % 2 ? "assistant" : "user",
+      text: index % 2 ? "Danke für die Einordnung." : "Verstehe, okay.",
+    }));
+    const context = buildPeteContext({
+      campaignId: DEFAULT_CAMPAIGN_ID, answers: {}, messages: [...older, ...newer],
+    } as any);
+    assert.equal(context.conversation.length, 36);
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "work_and_schedule" && item.excerpt.includes("Schichtdienst")));
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "movement" && item.excerpt.includes("4-5 mal")));
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "nutrition" && item.excerpt.includes("Ernährung")));
+    const json = JSON.stringify(context);
+    assert.ok(json.length <= 12000);
+    assert.doesNotMatch(json, /test@example\.com/);
+    assert.match(json, /\[E-Mail entfernt\]/);
+    assert.doesNotMatch(context.conversation[0]?.text ?? "", /Schichtdienst/);
+  });
+
+  await t.test("context size still caps at 12000 characters including older evidence", () => {
+    const messages = Array.from({ length: 70 }, (_, index) => ({
+      role: index % 2 ? "assistant" : "user",
+      text: ("Fragen und Antworten zu Alltag, Training und Ernährung. ").repeat(29),
+    }));
+    const context = buildPeteContext({
+      campaignId: DEFAULT_CAMPAIGN_ID, answers: {}, messages,
+    } as any);
+    assert.ok(JSON.stringify(context).length <= 12000);
+    assert.ok(context.conversation.length >= 1);
+  });
+
+  await t.test("realistic shift-work conversation keeps the nutrition blocker in every model request", async () => {
+    clearConversationStore(); enableMock();
+    const prompts: any[] = [];
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String((options as RequestInit).body));
+      const raw = String(body.input[0].content);
+      const marker = "\nBeantworte die letzte Lead-Nachricht.";
+      const context = JSON.parse(raw.slice(raw.indexOf("\n") + 1, raw.lastIndexOf(marker)));
+      prompts.push(context);
+      const replies = [
+        "Fitter werden und abnehmen sind verständliche Ziele. Wir müssen nicht alles gleichzeitig verändern.",
+        "Beides lässt sich gemeinsam angehen, ohne einen strengen Plan aus dem Alltag zu machen.",
+        "Mit Schichtarbeit kann ein festes Zeitschema schwierig sein. Ein flexibler Ansatz passt hier eher.",
+        "Du trainierst schon regelmäßig. Bei Schichtarbeit kann die Ernährung im Alltag schwieriger sein. Wann ist das Essen für dich am schwersten zu organisieren?",
+      ];
+      return fake(replies[prompts.length - 1]);
+    };
+    const leadId = "phase1-shift-example";
+    for (const messageText of [
+      "Ich will fitter werden und abnehmen.",
+      "Sowohl als auch.",
+      "Wenig Zeit wegen Schichtarbeit.",
+      "Sport schaffe ich 4-5 mal die Woche, aber die Ernährung ist eher mein Problem.",
+    ]) {
+      const reply = await send(leadId, messageText);
+      assert.equal(reply.state.owner, "ai");
+      assert.equal(reply.state.answers.peteReplySource, "llm");
+    }
+    assert.equal(prompts.length, 4);
+    const last = prompts.at(-1);
+    assert.ok(last.conversation.some((x: any) => x.text.includes("Schichtarbeit")));
+    assert.ok(last.conversation.some((x: any) => x.text.includes("4-5 mal")));
+    assert.ok(last.conversation.some((x: any) => x.text.includes("Ernährung")));
+    assert.doesNotMatch(JSON.stringify(last), /https?:\/\/api\.openai\.com/);
+  });
+
+  await t.test("Bundle CTA after verified BULLSHIT entry sends just the product link", async () => {
+    clearConversationStore(); enableMock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("provider not required for verified CTA"); };
+    const leadId = "phase1-bundle-cta";
+    const entry = await send(leadId, "BULLSHIT");
+    assert.ok(entry.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+    const clicked = await send(leadId, "Zeig mir das Bundle");
+    assert.equal(clicked.state.answers.peteReplySource, "verified_transaction");
+    assert.ok(clicked.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+    assert.ok((clicked.text ?? "").length < 230);
+    assert.doesNotMatch(clicked.text ?? "", /wenig zeit|bauchfett|mehr energie|muskelaufbau/i);
+    assert.equal(calls, 0);
+  });
+
+  await t.test("unrelated Bundle word does not authorize an invented product link", async () => {
+    clearConversationStore(); enableMock();
+    const fakeLead = "phase1-bundle-unrelated";
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return fake("Meinst du den No Bullshit Elternfitness Selbststarter oder ein anderes Bundle?");
+    };
+    const out = await send(fakeLead, "Zeig mir das Bundle");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(calls, 1);
+    assert.doesNotMatch(out.text ?? "", /https?:\/\//);
+  });
+
+  await t.test("verified trust texts are compact and contain natural spelling", () => {
+    const state = { messages: [] } as any;
+    const checkout = getPeteVerifiedTransactionAnswer(
+      "Ich hatte im Checkout eine schlechte Erfahrung.", state);
+    assert.ok(checkout);
+    assert.match(checkout.text, /Kaufübersicht/);
+    assert.doesNotMatch(checkout.text, /ungeprueft|fuer|Zusatzkosten-Regeln|garantiert keine/i);
+    const hidden = getPeteVerifiedTransactionAnswer(
+      "Ich habe Angst vor versteckten Kosten.", state);
+    assert.ok(hidden);
+    assert.match(hidden.text, /Kaufübersicht/);
+    assert.doesNotMatch(hidden.text, /Zusatzkosten-Regeln|ungeprueft/);
+    assert.equal(hidden.handoff, undefined);
+  });
+
 });
