@@ -3,8 +3,8 @@ import { env } from "../config/env.js";
 import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
-import { appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState } from "../core/state-manager.js";
-import { PETE_LAB_SCENARIOS, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
+import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState, releaseToAi } from "../core/state-manager.js";
+import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 
@@ -34,7 +34,9 @@ function isLabId(value: unknown): value is string {
 
 function publicLabMessages(messages: { id?: string; role: string; text: string }[]) {
   return messages.filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({ id: m.id, role: m.role, actor: "actor" in m ? m.actor : undefined, text: m.text }));
+    .map(m => ({ id: m.id, role: m.role, actor: "actor" in m ? m.actor : undefined,
+      syntheticAutomation: "transport" in m && m.transport === "lab_scripted_automation",
+      text: m.text }));
 }
 
 // Purpose-specific routes: never allow remote lab clients to choose a campaign,
@@ -63,6 +65,43 @@ router.post("/lab/start", guardMobileLab, async (req, res) => {
 
   const scenario = PETE_LAB_SCENARIOS[scenarioId];
   try {
+    const scripted = getScriptedLabLines(scenarioId);
+    if (scripted) {
+      const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+      // Simulate an existing history WITHOUT dispatching the messages, calling
+      // an LLM, or talking to a social provider. These are fictional events.
+      for (const line of scripted) {
+        if (line.kind === "lead") appendUserMessage(state, line.text);
+        else if (line.kind === "human") appendHumanMessage(state, line.text);
+        else {
+          appendAssistantMessage(state, line.text);
+          // The mobile UI must not mislabel a simulated ManyChat message as
+          // a genuine Pete response or offer thumbs-up review for it.
+          const saved = state.messages.at(-1);
+          if (saved) {
+            saved.transport = "lab_scripted_automation";
+            saved.outboundStatus = "dry_run";
+            saved.dryRun = true;
+            saved.sent = false;
+          }
+        }
+      }
+      // This is an EXPLICIT synthetic handoff for test purposes only.
+      // The old jochen_greeting scenario still represents real human ownership.
+      if ("transferToPete" in scenario && scenario.transferToPete === true) {
+        releaseToAi(state);
+      }
+      state.source = "source" in scenario ? "lab_" + scenario.source : "lab_scripted";
+      persistConversationState(state);
+      return res.json({
+        ok: true, scenarioId, reply: null,
+        replySource: "scripted_context",
+        replySuppressedReason: "awaiting_synthetic_lead_reply",
+        publicReplyPreview: "publicReplyPreview" in scenario
+          ? scenario.publicReplyPreview : null,
+        state: { messages: publicLabMessages(state.messages) },
+      });
+    }
     if ("humanText" in scenario) {
       const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
       appendHumanMessage(state, scenario.humanText);
