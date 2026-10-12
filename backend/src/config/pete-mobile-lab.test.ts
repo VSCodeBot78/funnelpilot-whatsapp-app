@@ -137,6 +137,52 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
         "no AI response following Jochen human message");
     });
 
+    await t.test("realistic scripted entries are seeded silently and wait for a parent reply", async () => {
+      const prepared = [
+        ["follower_handoff", "lab_handoff_follower_synthetic_123456", 1, false],
+        ["manychat_check_handoff", "lab_handoff_check_synthetic_123456789", 3, false],
+        ["manychat_keto_handoff", "lab_handoff_keto_synthetic_1234567890", 3, false],
+        ["manychat_bullshit_handoff", "lab_handoff_bullshit_synthetic_1234567", 2, false],
+        ["reel_comment_bullshit_handoff", "lab_handoff_reelbull_synthetic_12345", 2, true],
+        ["reel_comment_check_handoff", "lab_handoff_reelcheck_synthetic_1234", 2, true],
+        ["story_reply_keto_handoff", "lab_handoff_storyketo_synthetic_1234", 2, false],
+      ] as const;
+      for (const [scenarioId, leadId, messageCount, hasPublicReply] of prepared) {
+        const response = await fetch(url + "/start", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, scenarioId, messageText: "MALICIOUS OVERRIDE" }),
+        });
+        assert.equal(response.status, 200, scenarioId);
+        const seeded = await response.json();
+        assert.equal(seeded.ok, true);
+        assert.equal(seeded.reply, null, scenarioId);
+        assert.equal(seeded.replySource, "scripted_context");
+        assert.equal(seeded.replySuppressedReason, "awaiting_synthetic_lead_reply");
+        assert.equal(seeded.state.messages.length, messageCount, scenarioId);
+        assert.equal(Boolean(seeded.publicReplyPreview), hasPublicReply, scenarioId);
+        const fakeAutomation = seeded.state.messages.filter(
+          (m: any) => m.syntheticAutomation === true);
+        assert.equal(fakeAutomation.length, scenarioId === "follower_handoff" ? 0 :
+          scenarioId === "manychat_check_handoff" || scenarioId === "manychat_keto_handoff" ? 2 : 1);
+        for (const message of fakeAutomation) {
+          assert.equal(message.role, "assistant");
+          assert.equal(message.actor === "human", false);
+        }
+        assert.ok(seeded.state.messages.every((m: any) =>
+          !m.text.includes("MALICIOUS OVERRIDE")));
+        const reopened = await (await fetch(url + "/state/" + leadId)).json();
+        assert.deepEqual(reopened.state.messages, seeded.state.messages);
+        const b = await (await fetch(url + "/budget")).json();
+        assert.equal(b.requestsStarted, 0, "scenario start must not consume tokens");
+      }
+      const afterWelcome = await send("lab_handoff_follower_synthetic_123456",
+        "Danke dir. Ich will mehr Energie, der Alltag ist gerade stressig.");
+      assert.equal(afterWelcome.status, 200);
+      const continued = await afterWelcome.json();
+      assert.notEqual(continued.replySuppressedReason, "human_owned",
+        "explicit synthetic transfer allows Pete's next reply");
+    });
+
     await t.test("Reel/emoji and Reel question are visibly recorded but never cause an AI pitch", async () => {
       for(const scenarioId of ["reel_only","reel_fun","reel_question"]) {
         const leadId="lab_mediatest"+scenarioId+"123456789012";
