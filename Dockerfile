@@ -5,10 +5,14 @@ WORKDIR /app
 COPY backend/package*.json ./backend/
 RUN npm ci --prefix backend
 COPY backend/ ./backend/
+# Gate the private lab build on synthetic-only safety and Phase 1 regressions.
+# Tests use mocked providers. They cannot send Meta/WhatsApp messages.
+RUN cd backend && npx tsx --test src/config/pete-mobile-lab.test.ts src/config/pete-phase54-context-regressions.test.ts src/config/pete-llm-phase46.test.ts
 RUN npm run build --prefix backend
 COPY dashboard/package*.json ./dashboard/
 RUN npm ci --prefix dashboard
 COPY dashboard/ ./dashboard/
+RUN cd dashboard && node --test src/mobile/peteLabBudget.test.js src/mobile/peteLabReview.test.js src/mobile/peteLabSpeech.test.js
 RUN npm run build:lab --prefix dashboard
 
 FROM node:22-bookworm-slim
