@@ -105,24 +105,33 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.match(out.text || "", /Produktseite/);
     assert.equal(calls, 0);
   });
-  await t.test("repeat two-channel complaint cannot produce a control guarantee", async () => {
+  await t.test("actual duplicate Instagram and WhatsApp replies trigger immediate human handoff", async () => {
     clearConversationStore(); enableMock();
     let calls = 0;
-    globalThis.fetch = async () => { calls++; throw Error("must not call"); };
+    globalThis.fetch = async () => { calls++; throw Error("must not fetch"); };
     const first = await send("phase54-two-channels",
-      "Ich hab euch auf Instagram und auf WhatsApp geschrieben und bekomme auf beiden Kanälen Antworten.");
-    assert.equal(first.state.owner, "ai");
-    assert.match(first.text || "", /nicht prüfen oder garantieren/);
+      "Ich hab euch auf Instagram und WhatsApp geschrieben und bekomme auf beiden Kanälen Antworten.");
+    assert.equal(first.state.owner, "human");
+    assert.equal(first.state.aiPaused, true);
+    assert.equal(first.state.flags.peteRuntimeHandoffActive, true);
+    assert.equal(first.state.answers.peteReplySource, "verified_transaction");
+    assert.match(first.text || "", /Jochen/);
+    assert.match(first.text || "", /anderen Kanal/);
+    assert.doesNotMatch(first.text || "", /auch auf WhatsApp pausiert|alles gestoppt/);
     const second = await send("phase54-two-channels",
       "Ich will nicht von zwei Bots gleichzeitig angequatscht werden.");
-    assert.equal(second.state.owner, "ai");
-    assert.match(second.text || "", /nicht zuverlässig feststellen/);
-    const third = await send("phase54-two-channels",
-      "Wenn Jochen persönlich schreibt, muss die KI aufhören. Geht das wirklich?");
-    assert.equal(third.state.owner, "human");
-    assert.match(third.text || "", /pausiert bleiben/);
-    assert.match(third.text || "", /nicht verifizieren oder garantieren/);
+    assert.equal(second.text, null);
+    assert.equal(second.replySuppressedReason, "human_owned");
     assert.equal(calls, 0);
+  });
+  await t.test("two-bot complaint alone escalates but neutral cross-channel question does not", () => {
+    const state = { messages: [] } as any;
+    const complaint = getPeteVerifiedTransactionAnswer(
+      "Ich werde von zwei Bots gleichzeitig angeschrieben. Das nervt.", state);
+    assert.equal(complaint?.handoff, true);
+    const neutral = getPeteVerifiedTransactionAnswer(
+      "Kann ich auf Instagram und WhatsApp Fragen stellen?", state);
+    assert.notEqual(neutral?.handoff, true);
   });
   await t.test("generated promises about dual-channel automation are rejected", () => {
     for (const reply of [
@@ -265,6 +274,21 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.equal(out.state.answers.peteReplySource, "llm");
     assert.equal(calls, 1);
     assert.doesNotMatch(out.text ?? "", /https?:\/\//);
+  });
+
+  await t.test("verified trust texts are compact and contain natural spelling", () => {
+    const state = { messages: [] } as any;
+    const checkout = getPeteVerifiedTransactionAnswer(
+      "Ich hatte im Checkout eine schlechte Erfahrung.", state);
+    assert.ok(checkout);
+    assert.match(checkout.text, /Kaufübersicht/);
+    assert.doesNotMatch(checkout.text, /ungeprueft|fuer|Zusatzkosten-Regeln|garantiert keine/i);
+    const hidden = getPeteVerifiedTransactionAnswer(
+      "Ich habe Angst vor versteckten Kosten.", state);
+    assert.ok(hidden);
+    assert.match(hidden.text, /Kaufübersicht/);
+    assert.doesNotMatch(hidden.text, /Zusatzkosten-Regeln|ungeprueft/);
+    assert.equal(hidden.handoff, undefined);
   });
 
 });
