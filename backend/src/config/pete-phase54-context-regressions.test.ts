@@ -211,7 +211,13 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
       const marker = "\nBeantworte die letzte Lead-Nachricht.";
       const context = JSON.parse(raw.slice(raw.indexOf("\n") + 1, raw.lastIndexOf(marker)));
       prompts.push(context);
-      return fake("Du trainierst schon regelmäßig. Bei Schichtarbeit kann die Ernährung im Alltag schwieriger sein. Wann ist das Essen für dich am schwersten zu organisieren?");
+      const replies = [
+        "Fitter werden und abnehmen sind verständliche Ziele. Wir müssen nicht alles gleichzeitig verändern.",
+        "Beides lässt sich gemeinsam angehen, ohne einen strengen Plan aus dem Alltag zu machen.",
+        "Mit Schichtarbeit kann ein festes Zeitschema schwierig sein. Ein flexibler Ansatz passt hier eher.",
+        "Du trainierst schon regelmäßig. Bei Schichtarbeit kann die Ernährung im Alltag schwieriger sein. Wann ist das Essen für dich am schwersten zu organisieren?",
+      ];
+      return fake(replies[prompts.length - 1]);
     };
     const leadId = "phase1-shift-example";
     for (const messageText of [
