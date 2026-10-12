@@ -202,4 +202,63 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.ok(context.conversation.length >= 1);
   });
 
+  await t.test("realistic shift-work conversation keeps the nutrition blocker in every model request", async () => {
+    clearConversationStore(); enableMock();
+    const prompts: any[] = [];
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String((options as RequestInit).body));
+      const raw = String(body.input[0].content);
+      const marker = "\\nBeantworte die letzte Lead-Nachricht.";
+      const context = JSON.parse(raw.slice(raw.indexOf("\\n") + 1, raw.lastIndexOf(marker)));
+      prompts.push(context);
+      return fake("Du trainierst schon regelmäßig. Bei Schichtarbeit kann die Ernährung im Alltag schwieriger sein. Wann ist das Essen für dich am schwersten zu organisieren?");
+    };
+    const leadId = "phase1-shift-example";
+    for (const messageText of [
+      "Ich will fitter werden und abnehmen.",
+      "Sowohl als auch.",
+      "Wenig Zeit wegen Schichtarbeit.",
+      "Sport schaffe ich 4-5 mal die Woche, aber die Ernährung ist eher mein Problem.",
+    ]) {
+      const reply = await send(leadId, messageText);
+      assert.equal(reply.state.owner, "ai");
+      assert.equal(reply.state.answers.peteReplySource, "llm");
+    }
+    assert.equal(prompts.length, 4);
+    const last = prompts.at(-1);
+    assert.ok(last.conversation.some((x: any) => x.text.includes("Schichtarbeit")));
+    assert.ok(last.conversation.some((x: any) => x.text.includes("4-5 mal")));
+    assert.ok(last.conversation.some((x: any) => x.text.includes("Ernährung")));
+    assert.doesNotMatch(JSON.stringify(last), /https?:\\/\\/api\\.openai\\.com/);
+  });
+
+  await t.test("Bundle CTA after verified BULLSHIT entry sends just the product link", async () => {
+    clearConversationStore(); enableMock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("provider not required for verified CTA"); };
+    const leadId = "phase1-bundle-cta";
+    const entry = await send(leadId, "BULLSHIT");
+    assert.ok(entry.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+    const clicked = await send(leadId, "Zeig mir das Bundle");
+    assert.equal(clicked.state.answers.peteReplySource, "verified_transaction");
+    assert.ok(clicked.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+    assert.ok((clicked.text ?? "").length < 230);
+    assert.doesNotMatch(clicked.text ?? "", /wenig zeit|bauchfett|mehr energie|muskelaufbau/i);
+    assert.equal(calls, 0);
+  });
+
+  await t.test("unrelated Bundle word does not authorize an invented product link", async () => {
+    clearConversationStore(); enableMock();
+    const fakeLead = "phase1-bundle-unrelated";
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return fake("Meinst du den No Bullshit Elternfitness Selbststarter oder ein anderes Bundle?");
+    };
+    const out = await send(fakeLead, "Zeig mir das Bundle");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(calls, 1);
+    assert.doesNotMatch(out.text ?? "", /https?:\\/\\//);
+  });
+
 });
