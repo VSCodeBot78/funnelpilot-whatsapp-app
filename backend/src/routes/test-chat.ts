@@ -92,6 +92,9 @@ router.post("/lab/start", guardMobileLab, async (req, res) => {
         releaseToAi(state);
       }
       state.source = "source" in scenario ? "lab_" + scenario.source : "lab_scripted";
+      state.answers.labScenarioId = scenarioId;
+      if ("publicReplyPreview" in scenario)
+        state.answers.labPublicReplyPreview = scenario.publicReplyPreview;
       persistConversationState(state);
       return res.json({
         ok: true, scenarioId, reply: null,
@@ -174,7 +177,10 @@ router.get("/lab/state/:leadId", guardMobileLab, (req, res) => {
   const state = getConversationState(leadId, DEFAULT_CAMPAIGN_ID);
   if (!state) return res.status(404).json({ ok: false, error: "test_session_missing" });
   return res.json({
-    ok: true, state: { messages: publicLabMessages(state.messages) },
+    ok: true,
+    publicReplyPreview: typeof state.answers.labPublicReplyPreview === "string"
+      ? state.answers.labPublicReplyPreview : null,
+    state: { messages: publicLabMessages(state.messages) },
   });
 });
 
