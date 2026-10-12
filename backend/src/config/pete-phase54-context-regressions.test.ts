@@ -19,7 +19,8 @@ const { clearConversationStore } = await import("../data/store.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { isGeneralNonMedicalKnowledgeRequest, getPeteVerifiedTransactionAnswer,
   isUnsafeLlmClaim } = await import("../core/pete-conversation-quality.js");
-const { validatePeteLlmReply } = await import("../core/pete-llm-conversation.js");
+const { validatePeteLlmReply, buildPeteContext } = await import("../core/pete-llm-conversation.js");
+const { OFFER_TRUTH } = await import("./offer-truth.js");
 
 function enableMock() {
   process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
@@ -139,4 +140,66 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
       "Ich habe einen Calendly-Termin gebucht, aber keine Bestätigung bekommen.", state);
     assert.equal(out?.handoff, true);
   });
+  await t.test("exact CHECK KETO and BULLSHIT use verified URLs without paid LLM calls", async () => {
+    clearConversationStore(); enableMock();
+    let providerCalls = 0;
+    globalThis.fetch = async () => {
+      providerCalls++;
+      throw Error("provider must not receive an exact resource keyword");
+    };
+    for (const [keyword, url] of [
+      ["CHECK", OFFER_TRUTH.resources.elterncheck.url],
+      ["KETO", OFFER_TRUTH.resources.ketoGuide.url],
+      ["BULLSHIT", OFFER_TRUTH.selfstarter.productUrl],
+    ]) {
+      const reply = await send("phase1-keyword-" + keyword.toLowerCase(), keyword);
+      assert.equal(reply.state.answers.peteReplySource, "verified_transaction", keyword);
+      assert.equal(reply.state.owner, "ai", keyword);
+      assert.ok(reply.text?.includes(url), keyword);
+      assert.doesNotMatch(reply.text ?? "", /strategiegespräch|499|jetzt buchen/i);
+    }
+    assert.equal(providerCalls, 0);
+  });
+
+  await t.test("older lead facts stay quoted when the latest 36 messages omit them", () => {
+    const older = [
+      { role: "user", text: "Ich arbeite im Schichtdienst. Schreib mir nicht an test@example.com." },
+      { role: "assistant", text: "Wie läuft dein Sport?" },
+      { role: "user", text: "Sport bekomme ich 4-5 mal die Woche gut unter." },
+      { role: "assistant", text: "Was klappt nicht?" },
+      { role: "user", text: "Es hängt bei mir eher an der Ernährung." },
+    ];
+    const newer = Array.from({ length: 50 }, (_, index) => ({
+      role: index % 2 ? "assistant" : "user",
+      text: index % 2 ? "Danke für die Einordnung." : "Verstehe, okay.",
+    }));
+    const context = buildPeteContext({
+      campaignId: DEFAULT_CAMPAIGN_ID, answers: {}, messages: [...older, ...newer],
+    } as any);
+    assert.equal(context.conversation.length, 36);
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "work_and_schedule" && item.excerpt.includes("Schichtdienst")));
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "movement" && item.excerpt.includes("4-5 mal")));
+    assert.ok(context.earlierLeadEvidence.some(item =>
+      item.topic === "nutrition" && item.excerpt.includes("Ernährung")));
+    const json = JSON.stringify(context);
+    assert.ok(json.length <= 12000);
+    assert.doesNotMatch(json, /test@example\.com/);
+    assert.match(json, /\[E-Mail entfernt\]/);
+    assert.doesNotMatch(context.conversation[0]?.text ?? "", /Schichtdienst/);
+  });
+
+  await t.test("context size still caps at 12000 characters including older evidence", () => {
+    const messages = Array.from({ length: 70 }, (_, index) => ({
+      role: index % 2 ? "assistant" : "user",
+      text: ("Fragen und Antworten zu Alltag, Training und Ernährung. ").repeat(29),
+    }));
+    const context = buildPeteContext({
+      campaignId: DEFAULT_CAMPAIGN_ID, answers: {}, messages,
+    } as any);
+    assert.ok(JSON.stringify(context).length <= 12000);
+    assert.ok(context.conversation.length >= 1);
+  });
+
 });
