@@ -1,0 +1,115 @@
+name: Pete Phase 1 - Explicit 5 USD Approved Probe
+
+# Paid API test on a dedicated scratch branch only. No PR or default branch trigger.
+on:
+  push:
+    branches:
+      - phase3-five-dollar-probe-20261012
+
+permissions:
+  contents: write
+
+# Reuse the existing shared budget-ledger lock from all Phase 3 workflows.
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  two-fictional-parent-chats:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/phase3-five-dollar-probe-20261012' &&
+      startsWith(github.event.head_commit.message, 'PETE_5USD_APPROVED_PROBE_20261012')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NODE_ENV: test
+      OPENAI_MODEL: gpt-5.4
+      PETE_LLM_CONVERSATION_ENABLED: "true"
+      PETE_LLM_API_CALLS_APPROVED: "true"
+      PETE_PHASE3_FLAGSHIP_ENVELOPE: "true"
+      PETE_PHASE3_APPROVED_RUN: FLAGSHIP_TEN_SYNTHETIC_CHATS
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      ENABLE_GENERIC_WEBHOOKS: "false"
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false"
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: "false"
+      INSTAGRAM_ALLOW_ALL_SENDERS: "false"
+    steps:
+      - name: Checkout tested, non-production probe branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Checkout shared, persistent Phase 3 budget ledger
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install and build synthetic backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+      - name: Verify API key and historical ledger without exposing key
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo "::error::Provider credential missing. No API test."
+            exit 1
+          fi
+          if [ ! -f budget-ledger/phase3-budget-ledger.json ]; then
+            echo "::error::No persisted budget ledger. No API test."
+            exit 1
+          fi
+          git -C budget-ledger config user.name "Funnel Pilot phase3 budget bot"
+          git -C budget-ledger config user.email "actions@users.noreply.github.com"
+      - name: Reserve at most 1.50 USD then test two fictional conversations
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.phase3-data/batch-0"
+          mkdir -p "$DATA_DIR"
+          # The existing ledger has USD 8 lifetime limit, and ~USD 4.32
+          # already counted. A new USD 1.50 reservation respects BOTH the
+          # user's extra USD 5 authorization and the prior global lifetime cap.
+          node scripts/pete-phase3-ledger.mjs reserve 0
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Reserve single approved Pete USD 1.50 probe $GITHUB_RUN_ID"
+          # HARD GATE: no external API calls before this exact push succeeds.
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          set +e
+          (cd backend && npx tsx src/config/pete-phase3-flagship-runner.ts 0)
+          result=$?
+          set -e
+          # A failed or missing usage ledger is conservatively charged at
+          # the entire preauthorization; never clear or reset the ledger.
+          node scripts/pete-phase3-ledger.mjs settle 0
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Settle approved Pete USD 1.50 probe $GITHUB_RUN_ID"
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          if [ "$result" -ne 0 ]; then
+            echo "::error::Probe aborted safely; no further batches permitted."
+            exit "$result"
+          fi
+      - name: Preserve fictional dialogue for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-phase1-usd5-approved-two-fictional-chats
+          path: phase3-flagship-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
