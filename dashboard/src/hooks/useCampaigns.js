@@ -8,6 +8,7 @@ import {
   getDefaultEntryConfig,
   getNormalizedEntryConfig,
 } from "../utils/dashboardHelpers";
+import { getDefaultAutomationDraft, getNormalizedAutomationDraft } from "../campaigns/campaignAutomation";
 import {
   loadCampaignSchedulingConfigFromApi,
   saveCampaignSchedulingConfigToApi,
@@ -27,6 +28,7 @@ export function createInitialCampaigns(settings) {
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      automationDraft: getDefaultAutomationDraft(),
       entryConfig: getDefaultEntryConfig(
         "Hi Jochen, ich habe deine Anzeige gesehen und interessiere mich fÃ¼r die ELTERN VITAL METHODE. Kannst du mir mehr Infos schicken?",
       ),
@@ -82,6 +84,7 @@ Letzte Erinnerung von mir.`,
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      automationDraft: getDefaultAutomationDraft(),
       entryConfig: getDefaultEntryConfig("DUMMY TEST"),
       slot1: "Mittwoch 12:00",
       slot2: "Donnerstag 18:30",
@@ -133,6 +136,7 @@ const emptyCampaignForm = {
   askNameFirst: true,
   useGlobalBookingDefaults: false,
   offerContext: getDefaultOfferContext(),
+  automationDraft: getDefaultAutomationDraft(),
   entryConfig: getDefaultEntryConfig(),
   slot1: "",
   slot2: "",
@@ -226,6 +230,7 @@ export function useCampaigns({
             ...campaign,
             offerContext: getNormalizedOfferContext(campaign),
             entryConfig: getNormalizedEntryConfig(campaign),
+            automationDraft: getNormalizedAutomationDraft(campaign),
           }));
 
           setCampaigns(normalizedCampaigns);
@@ -270,6 +275,7 @@ export function useCampaigns({
       slot2: "",
       booking: getDefaultBookingConfig(settings),
       offerContext: getDefaultOfferContext(),
+      automationDraft: getDefaultAutomationDraft(),
       entryConfig: getDefaultEntryConfig("NEU"),
       useGlobalBookingDefaults: false,
       welcome: "Willkommenstext",
@@ -316,6 +322,7 @@ export function useCampaigns({
         name: cleanName || "Neue Kampagne",
         trigger: cleanTrigger || "NEU",
         offerContext: getNormalizedOfferContext(campaignForm),
+        automationDraft: getNormalizedAutomationDraft(campaignForm),
         entryConfig: getNormalizedEntryConfig({
           ...campaignForm,
           trigger: cleanTrigger || "NEU",
