@@ -61,6 +61,119 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
     }
   });
 
+  await t.test("explicit private-lab GPT-5.4 approval reconciles $4.583900 and caps NEW charges at $2", async () => {
+    resetLedger();
+    process.env.PETE_MOBILE_LAB_ENABLED = "true";
+    process.env.PETE_MOBILE_LAB_ISOLATED_DATA = "true";
+    process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "4323801";
+    process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
+    process.env.PETE_LLM_API_CALLS_APPROVED = "true";
+    process.env.PETE_MOBILE_LAB_GPT54_CONSENT = "true";
+    process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "2000000";
+    process.env.OPENAI_MODEL = "gpt-5.4";
+    process.env.OPENAI_API_KEY = "fake-lab-key-no-network";
+    writeSettings({ aiEnabled: false });
+    try {
+      const { isPeteLlmReadyForProvider } = await import("../core/pete-llm-conversation.js");
+      assert.equal(isPeteLlmReadyForProvider(), true,
+        "isolated consent works despite default aiEnabled false");
+      const initial = budget.getPeteBudgetStatus();
+      assert.equal(initial.model, "gpt-5.4");
+      assert.equal(initial.hardCapUsd, 8);
+      assert.equal(initial.priorConfirmedUsd, 4.5839);
+      assert.equal(initial.committedUsd, 4.5839);
+      assert.equal(initial.globalRemainingUsd, 3.4161);
+      assert.equal(initial.labAuthorizedUsd, 2);
+      assert.equal(initial.labRemainingUsd, 2);
+      let calls = 0;
+      globalThis.fetch = async () => {
+        calls++;
+        return new Response(JSON.stringify({
+          output: [{ content: [{ type: "output_text", text: JSON.stringify({
+            reply: "Bei deinen wechselnden Schichten macht ein fester Wochenplan wenig Sinn.",
+            needsHuman: false,
+          }) }] }],
+          usage: { input_tokens: 1000, output_tokens: 150 },
+        }), { status: 200 });
+      };
+      const answer = await getPeteLlmConversationReply({ campaignId: "dummy", answers: {},
+        messages: [{ role: "user", text: "Ich arbeite in Schichten." }] } as any);
+      assert.equal(answer.kind, "llm");
+      assert.equal(calls, 1);
+      const after = budget.getPeteBudgetStatus();
+      assert.equal(after.labCommittedUsd, 0.00475);
+      assert.equal(after.labRemainingUsd, 1.99525);
+      assert.equal(after.committedUsd, 4.58865);
+      assert.equal(after.reservedUsd, 0);
+      assert.equal(after.requestsMetered, 1);
+
+      // A previous lab ledger may exist: only deleting it in a fixture can
+      // exercise the exact preauthorization threshold. Runtime never resets.
+      resetLedger();
+      for (let i = 0; i < 67; i++) {
+        const id = budget.reservePeteBudget({
+          model: "gpt-5.4", requestBody: "Z".repeat(1000), maxOutputTokens: 800,
+        });
+        assert.ok(id);
+      }
+      const nearCap = budget.getPeteBudgetStatus();
+      assert.equal(nearCap.labCommittedUsd, 1.9765);
+      assert.equal(nearCap.labRemainingUsd, 0.0235);
+      assert.equal(nearCap.requestsStarted, 67);
+      assert.throws(() => budget.reservePeteBudget({
+        model: "gpt-5.4", requestBody: "Z".repeat(1000), maxOutputTokens: 800,
+      }), (err: any) => err?.reason === "exhausted");
+      assert.equal(budget.getPeteBudgetStatus().requestsStarted, 67,
+        "a blocked call cannot spend tokens");
+    } finally {
+      process.env.PETE_MOBILE_LAB_ENABLED = "false";
+      delete process.env.PETE_MOBILE_LAB_ISOLATED_DATA;
+      delete process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CONSENT;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD;
+      delete process.env.OPENAI_MODEL;
+      delete process.env.OPENAI_API_KEY;
+      process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+      process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+      resetLedger();
+    }
+  });
+
+  await t.test("partial or absent lab approval blocks billing even if key and flags exist", () => {
+    resetLedger();
+    process.env.PETE_MOBILE_LAB_ENABLED = "true";
+    process.env.PETE_MOBILE_LAB_ISOLATED_DATA = "true";
+    process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "4323801";
+    process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
+    process.env.PETE_LLM_API_CALLS_APPROVED = "true";
+    process.env.OPENAI_MODEL = "gpt-5.4";
+    process.env.OPENAI_API_KEY = "fake-no-network";
+    try {
+      assert.equal(budget.getPeteBudgetStatusSafe().ok, false);
+      assert.throws(() => budget.reservePeteBudget({
+        model: "gpt-5.4", requestBody: "hello", maxOutputTokens: 800,
+      }), (err: any) => err?.reason === "unavailable");
+      process.env.PETE_MOBILE_LAB_GPT54_CONSENT = "true";
+      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "2500000";
+      assert.equal(budget.getPeteBudgetStatusSafe().ok, false,
+        "cap cannot exceed approved 2 USD");
+      assert.throws(() => budget.reservePeteBudget({
+        model: "gpt-5.4", requestBody: "hello", maxOutputTokens: 800,
+      }), (err: any) => err?.reason === "unavailable");
+    } finally {
+      process.env.PETE_MOBILE_LAB_ENABLED = "false";
+      delete process.env.PETE_MOBILE_LAB_ISOLATED_DATA;
+      delete process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CONSENT;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD;
+      delete process.env.OPENAI_MODEL;
+      delete process.env.OPENAI_API_KEY;
+      process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+      process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+      resetLedger();
+    }
+  });
+
   await t.test("new counter is empty and explicitly priced for mini only", () => {
     resetLedger();
     const s = budget.getPeteBudgetStatus();
