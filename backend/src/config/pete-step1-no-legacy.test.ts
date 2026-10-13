@@ -16,7 +16,7 @@ process.env.PETE_LLM_API_CALLS_APPROVED = "false";
 delete process.env.OPENAI_API_KEY;
 
 
-const { buildPeteContext, buildPeteRuntimeInstructions } = await import("../core/pete-llm-conversation.js");
+const { buildPeteContext, buildPeteEffectiveInstructions } = await import("../core/pete-llm-conversation.js");
 const { readSettings, writeSettings, getConfiguredDmConversationMode } = await import("../services/settings-store.js");
 
 test("Step 1: inbound routing and GPT context do not require legacy A/B/C funnel", async t => {
@@ -65,14 +65,14 @@ test("Step 1: inbound routing and GPT context do not require legacy A/B/C funnel
       customerTopObjections: "Schon alles probiert",
       masterPrompt: "WICHTIG: wir verwenden einen entspannten, menschlichen Ton ohne Druck.",
     });
-    const instruction = buildPeteRuntimeInstructions();
+    const instruction = buildPeteEffectiveInstructions();
     assert.match(instruction, /Berufstätige Eltern mit wenig Zeit/);
     assert.match(instruction, /Schon alles probiert/);
     assert.match(instruction, /entspannten, menschlichen Ton/);
-    assert.match(instruction, /VERBINDLICHE PETE-ROLLE UND SICHERHEITSREGELN/);
+    assert.match(instruction, /DASHBOARD-KONTEXT/);
     assert.match(instruction, /KEIN DM-COACHING/);
     assert.match(instruction, /CLOSER-LOGIK/);
-    assert.ok(instruction.indexOf("VERBINDLICHE PETE-ROLLE") < instruction.indexOf("KEIN DM-COACHING"));
+    assert.ok(instruction.indexOf("KEIN DM-COACHING") < instruction.indexOf("DASHBOARD-KONTEXT"));
     assert.doesNotMatch(instruction, /Frage 1\s*\nFrage 2|Skala 1-10/);
   });
 });
