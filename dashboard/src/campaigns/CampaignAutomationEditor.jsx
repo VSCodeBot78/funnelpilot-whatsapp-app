@@ -57,8 +57,8 @@ export default function CampaignAutomationEditor({ colors, automation, offerCont
           {value.commentScope === "specific" ? (
             <>
               <div style={{ ...labelStyle, marginTop: 10 }}>Meta-Media-IDs (kommagetrennt)</div>
-              <input style={inputCss} value={value.specificMediaIds.join(", ")}
-                onChange={e => update({ specificMediaIds: e.target.value.split(",").map(v => v.trim()) })} />
+              <input style={inputCss} defaultValue={value.specificMediaIds.join(", ")}
+                onBlur={e => update({ specificMediaIds: e.target.value.split(",").map(v => v.trim()) })} />
             </>
           ) : null}
         </div>
@@ -75,8 +75,8 @@ export default function CampaignAutomationEditor({ colors, automation, offerCont
         {value.keywordMode === "specific" ? (
           <div style={{ marginTop: 9 }}>
             <input style={inputCss} placeholder="CHECK, KETO, BULLSHIT"
-              value={value.keywords.join(", ")}
-              onChange={e => update({ keywords: e.target.value.split(",").map(v => v.trim()) })} />
+              defaultValue={value.keywords.join(", ")}
+              onBlur={e => update({ keywords: e.target.value.split(",").map(v => v.trim()) })} />
             <div style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
               Mehrere Keywords mit Komma trennen. Maximal 15.
             </div>
