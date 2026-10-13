@@ -14,6 +14,7 @@ import {
   takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { getConfiguredPeteConversationMode } from "../core/pete-conversation-mode.js";
 import { getConversationState } from "../data/store.js";
 import { reconcileAiOutboundReceipt } from "../services/conversation-outbound.service.js";
 import { sendMetaWhatsappTextMessage } from "../services/meta-whatsapp-api.service.js";
@@ -732,6 +733,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               leadId: leadSync.lead.id,
               campaignId: leadSync.campaignId,
               messageText: textBody,
+              conversationMode: getConfiguredPeteConversationMode(),
             });
 
             engineProcessed = true;
