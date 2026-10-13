@@ -50,7 +50,8 @@ export function getNormalizedCampaignAutomation(raw) {
     keywords: values(input.keywords, 15, 48).map(x => x.toLocaleUpperCase("de-DE")),
     publicCommentReplyEnabled: input.publicCommentReplyEnabled !== false,
     publicCommentReplies: input.publicCommentReplies === undefined ? fallback.publicCommentReplies
-      : values(input.publicCommentReplies, 6, 180),
+      : Array.isArray(input.publicCommentReplies) ? input.publicCommentReplies.slice(0, 6)
+        .map(x => typeof x === "string" ? x.slice(0, 180) : "") : [],
     openingDmText: text(input.openingDmText, 1000) || fallback.openingDmText,
     confirmationButtonText: text(input.confirmationButtonText, 40) || fallback.confirmationButtonText,
     resourceLinkSlot: ["", "infoLink1", "infoLink2", "infoLink3", "infoLink4"].includes(input.resourceLinkSlot)
