@@ -47,6 +47,31 @@ Je Kriterium **0 (verfehlt), 1 (teilweise), 2 (erfüllt)**. 8 Kriterien, maximal
 
 **Jeden GPT-Aufruf nachvollziehen:** Szenario, Zeitpunkt, `Quelle: llm` oder `verified_transaction`, zugestellter Text, wichtige früheren Aussagen, Kosten-Zähler vorher/nachher, Bewertung 0-16 und Begründung. Niemals ein Modell-Ergebnis vorwegnehmen oder eine Fake-Provider-Simulation als echte GPT-Leistung zählen.
 
+## Realitätsprüfung: 4 Farben als situative Kommunikationssignale (keine Persönlichkeitsetiketten)
+
+Aus der bisherigen Vorarbeit sind **plausible Testhypothesen**, keine repräsentativ gemessenen Häufigkeiten von Jochens Followern, abzuleiten. Solange echte Instagram-Statistiken fehlen, vermeiden wir Aussagen wie „die meisten Eltern antworten so“.
+
+| Aktuelles Signal | Äußerung im Test | Was Pete tun sollte | Kritischer Fehler |
+|---|---|---|---|
+| Blau: Fakten/Struktur | „Wie läuft das ab, was ist drin?“ | Konkrete überprüfbare Auskunft, erst danach weitere Frage | Angebot nicht erklären, stattdessen nur nach dem Schmerz fragen |
+| Grün: Sicherheit | „Ich habe schon so viel abgebrochen.“ | Hören, Sorge anerkennen, keine Erfolgsgarantie oder Druck | Unsicherheit als Kaufsignal für sofortigen Pitch ausnutzen |
+| Rot: Ziel/Tempo | „Keine langen Chats. Wie starte ich?“ | Kurz, direkt, vorhandene Informationen nutzen | Endlos qualifizieren statt opt-in nächsten Schritt anbieten |
+| Gelb: Bilder/Gefühl | „Ich will mit meinen Kindern wieder mithalten.“ | Motivation aufnehmen, menschlich und kurz | Aufgesetzte Emotion, perfekte Zukunft suggerieren |
+| Gelb -> Blau | Erst Kinder-/Energiewunsch, dann konkrete Ablaufdetails | Vom warmen Einstieg zu klaren überprüften Fakten wechseln | Emotionale Verkaufssprache trotz Faktenfrage |
+| Blau -> Grün | Erst Detailfragen, dann Angst vor erneutem Scheitern | Tempo senken, ernst nehmen, nicht zu früh closen | Vormalige Detailorientierung zum festen Personentyp machen |
+| Rot -> Grün | Erst schneller Start, dann Bedenken | Bedenken vor Closing klären; Stop-/Nein-Signal respektieren | Alte Kaufabsicht gegen neu geäußerten Wunsch ausspielen |
+| Grün -> Rot | Erst zögerlich, dann eindeutiges Interesse | Zügig angemessenen Weg anbieten | Gespräch erneut mit alten Sorgen/Fragen aufhalten |
+
+**Wichtiger Unterschied:** Eine Farbe beschreibt niemals den Menschen. Sie ist nur eine Arbeitshypothese über das Verhalten **in dieser Nachricht**. Mischformen sind normal. Die Farbe wird nicht in der DM ausgesprochen oder als stabile Lead-Eigenschaft gespeichert.
+
+### Einstiegsrealismus und Unterbrechungen
+
+Bei Follower-Begrüßungen sind auch „Danke“, „nur am Schauen“, „Ja“, ein Emoji oder keine Antwort denkbar. Stille ist **kein Beweis** fehlenden Interesses und darf keine automatischen Nachrichten ohne separate Follow-up-Freigabe auslösen. Bei CHECK und KETO fragen viele Kontakte möglicherweise nur nach dem kostenlosen Inhalt. Beim Selfstarter kommen konkrete Kauf- und Vertragsfragen vor. Bei jeder Form von Werbeablehnung oder Wunsch nach Jochen gehen Verzicht bzw. Handover vor Abschlusszielen.
+
+Für die reale Qualitätsprüfung je persona **mindestens drei aufeinanderfolgende GPT-5.4-Antworten** ansehen, dann eine unerwartete Abzweigung einbauen: Preisfrage statt Gefühlsantwort, Unentschlossenheit nach Kaufbereitschaft, Kürze nach ausführlicher Nachricht oder umgekehrt. Freie Texte müssen vom Modell kommen, nicht von einem Regelmodus.
+
+Die kostenlosen Phase-58/59-Tests prüfen nur Kontexttransport, Sicherheit und das Vorhandensein der Regeln. Sie **belegen nicht**, ob GPT selbst die vier Kommunikationsbedürfnisse angemessen erkennt oder gute Abschlüsse ermöglicht. Dafür echte `Quelle: llm`-Dialoge gesondert mit der 0-16-Punkte-Matrix bewerten.
+
 ## Testphasen
 
 - **A: Offline und kostenlos.** Codepfade, Kontext, Handover, STOP, Preis-/Link-Beschränkungen mit gemockter Modellantwort. Prüft Infrastruktur und Regeln, **nicht** eigenständige Sprachqualität.
