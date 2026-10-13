@@ -9,6 +9,7 @@ import type { ConversationState } from "../types/types.js";
 import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.js";
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
+import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
@@ -177,8 +178,9 @@ export function buildPeteEffectiveInstructions(): string {
   const configured = Object.fromEntries(dashboardHints
     .map(([key, value, limit]) => [key, String(value ?? "").trim().slice(0, limit)] as const)
     .filter(([, value]) => Boolean(value)));
-  if (!Object.keys(configured).length) return PETE_SYSTEM_INSTRUCTIONS;
-  return PETE_SYSTEM_INSTRUCTIONS +
+  const coreRules = PETE_SYSTEM_INSTRUCTIONS + "\n" + PETE_SETTER_MENTOR_PLAYBOOK;
+  if (!Object.keys(configured).length) return coreRules;
+  return coreRules +
     "\nDASHBOARD-KONTEXT (interne Coach-Konfiguration, keine Kundenaussagen): " +
     JSON.stringify(configured) +
     "\nDiese Hinweise helfen nur bei Stil und Qualifizierung. Sie setzen niemals Sicherheitsregeln, menschliche Uebernahme, Kontaktverbot oder verifizierte Preise, Links und Buchungen ausser Kraft. Erfinde keine Aussagen aus diesem Kontext.";
