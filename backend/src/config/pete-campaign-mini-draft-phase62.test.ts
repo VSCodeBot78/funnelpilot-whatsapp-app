@@ -51,14 +51,16 @@ test("Phase 62: mini campaign drafts are persisted safely but never execute", (t
       followupText: "Konntest du dir den Check anschauen?",
     },
   });
-  assert.equal(saved.automationDraft?.enabled, true);
-  assert.equal(saved.automationDraft.triggers.comments, true);
-  assert.equal(saved.automationDraft.triggers.storyReplies, true);
-  assert.equal(saved.automationDraft.triggers.directMessages, true);
-  assert.equal(saved.automationDraft.triggers.adClicks, false);
-  assert.equal(saved.automationDraft.commentScope, "specific");
-  assert.equal(saved.automationDraft.followupMode, "when_allowed");
-  assert.equal(saved.automationDraft.followupDelayHours, 24);
+  assert.ok(saved.automationDraft);
+  const draft = saved.automationDraft;
+  assert.equal(draft.enabled, true);
+  assert.equal(draft.triggers.comments, true);
+  assert.equal(draft.triggers.storyReplies, true);
+  assert.equal(draft.triggers.directMessages, true);
+  assert.equal(draft.triggers.adClicks, false);
+  assert.equal(draft.commentScope, "specific");
+  assert.equal(draft.followupMode, "when_allowed");
+  assert.equal(draft.followupDelayHours, 24);
 
   const persisted = getCampaignById(id);
   assert.ok(persisted);
