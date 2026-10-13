@@ -467,6 +467,7 @@ export default function CampaignEditor({
                 defaultOpen={false}
               >
                 <CampaignAutomationEditor
+                  key={campaignForm.id}
                   colors={colors}
                   automation={automation}
                   offerContext={offerContext}
