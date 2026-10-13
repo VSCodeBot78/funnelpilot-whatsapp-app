@@ -94,8 +94,9 @@ export function buildPeteContext(state: ConversationState) {
 
   const assemble = () => ({
     campaignId: state.campaignId,
-    currentPhase: String(state.answers.naturalPhase ?? "opening").slice(0, 50),
-    currentTrack: String(state.answers.naturalTrack ?? "").slice(0, 50),
+    // Internal legacy and deterministic natural stages are never instructions
+    // for Pete's GPT setter. Pass the real conversation and channel instead.
+    leadSource: redactForProvider(String(state.source ?? "").slice(0, 60)),
     earlierLeadEvidence,
     conversation,
   });
