@@ -16,11 +16,30 @@ test("Pete laboratory renders only valid backend ledger, not assumed API credit"
   assert.equal(budget.left, 3.68);
   assert.equal(budget.low, false);
   assert.equal(budget.inputTokens, 1400);
+  assert.equal(budget.gptReady, false, "old reports must not pretend to be GPT-5.4");
+  assert.equal(budget.testCap, null);
   assert.equal(readPeteBudget({ ok: false, reason: "ledger_unavailable" }), null);
   assert.equal(readPeteBudget({ ...sample, confirmedUsd: 0 }), null);
   assert.equal(readPeteBudget({ ...sample, remainingUsd: -2 }), null);
   assert.equal(readPeteBudget({ ...sample, hardCapUsd: NaN }), null);
 });
+test("real GPT-5.4 mode requires server-confirmed 2 USD limit", () => {
+  const active = readPeteBudget({
+    ...sample, model: "gpt-5.4", llmReady: true, llmMode: "gpt-5.4",
+    testCapUsd: 2, testSpentUsd: 0.1, testRemainingUsd: 1.9,
+    remainingUsd: 1.9,
+  });
+  assert.equal(active.gptReady, true);
+  assert.equal(active.mode, "gpt-5.4");
+  assert.equal(active.testCap, 2);
+  assert.equal(active.testSpent, 0.1);
+  assert.equal(active.testLeft, 1.9);
+  assert.equal(readPeteBudget({ ...sample, llmMode: "gpt-5.4",
+    llmReady: true, model: "gpt-4.1-mini" }).gptReady, false);
+  assert.equal(readPeteBudget({ ...sample, llmMode: "gpt-5.4",
+    llmReady: false, model: "gpt-5.4", testCapUsd: 2, testRemainingUsd: 2 }).gptReady, false);
+});
+
 test("clearly shows tiny call charges and fail-closed threshold", () => {
   assert.equal(formatUsd(0.00028), "$0.0003");
   assert.equal(formatUsd(undefined), "nicht verfügbar");
