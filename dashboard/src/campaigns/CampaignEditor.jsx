@@ -6,6 +6,8 @@ import {
 } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
 import CollapsibleSection from "../components/layout/common/CollapsibleSection";
+import CampaignAutomationEditor from "./CampaignAutomationEditor";
+import { getNormalizedCampaignAutomation } from "./campaignAutomationDraft";
 import {
   getEffectiveCampaignBookingConfig,
   getNormalizedBookingConfig,
@@ -29,6 +31,7 @@ export default function CampaignEditor({
   const effectiveBooking = getEffectiveCampaignBookingConfig(campaignForm, settings);
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
+  const automation = getNormalizedCampaignAutomation(campaignForm.automationConfig);
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
   const isLegacyMode = settings?.dmConversationMode === "legacy";
   const campaignBookingInputStyle = {
@@ -455,6 +458,22 @@ export default function CampaignEditor({
                 />
               </div>
             </CollapsibleSection>
+
+            {!isLegacyMode ? (
+              <CollapsibleSection
+                colors={colors}
+                title="Mini-Automation (Entwurf)"
+                description="Mehrfach-Auslöser, Kommentar-Keywords, DM, Link und zulässiges Nachfassen."
+                defaultOpen={false}
+              >
+                <CampaignAutomationEditor
+                  colors={colors}
+                  automation={automation}
+                  offerContext={offerContext}
+                  onChange={next => updateField("automationConfig", next)}
+                />
+              </CollapsibleSection>
+            ) : null}
 
             <CollapsibleSection
               colors={colors}
