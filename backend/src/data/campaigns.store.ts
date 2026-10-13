@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { normalizeCampaignAutomation, type CampaignAutomationConfig } from "../config/campaign-automation.js";
 
 export type CampaignRecord = {
   id: string;
   offerContext?: CampaignOfferContext;
   entryConfig?: CampaignEntryConfig;
+  automationConfig?: CampaignAutomationConfig;
   [key: string]: unknown;
 };
 
@@ -364,6 +366,7 @@ function normalizeCampaignRecord(campaign: CampaignRecord): CampaignRecord {
     ...campaign,
     offerContext: normalizeOfferContext(campaign.offerContext),
     entryConfig: normalizeEntryConfig(campaign),
+    automationConfig: normalizeCampaignAutomation(campaign.automationConfig),
   };
 }
 
