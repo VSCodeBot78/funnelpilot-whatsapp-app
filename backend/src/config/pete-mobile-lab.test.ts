@@ -183,6 +183,40 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
         "explicit synthetic transfer allows Pete's next reply");
     });
 
+    await t.test("Reel/emoji and Reel question are visibly recorded but never cause an AI pitch", async () => {
+      for(const scenarioId of ["reel_only","reel_fun","reel_question"]) {
+        const leadId="lab_mediatest"+scenarioId+"123456789012";
+        const response=await fetch(url + "/start",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({leadId,scenarioId}),
+        });
+        assert.equal(response.status,200);
+        const data=await response.json();
+        assert.equal(data.replySuppressedReason,"shared_media_needs_human_review");
+        assert.equal(data.replySource,"media_guard");
+        assert.equal(data.state.messages.length,1,"no Pete reply for uninspected Reel");
+        assert.match(data.state.messages[0].text,/nicht sichtbar/);
+      }
+      const bad=await fetch(url + "/start",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({leadId:"instagram:real",scenarioId:"reel_fun"}),
+      });
+      assert.equal(bad.status,400);
+    });
+
+    await t.test("Reel plus standalone KETO is deliberate keyword; no model API called", async () => {
+      const leadId="lab_mediaKETOexplicit12345678901234";
+      const result=await fetch(url + "/start",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({leadId,scenarioId:"reel_keyword"}),
+      });
+      assert.equal(result.status,200);
+      const data=await result.json();
+      assert.equal(data.replySuppressedReason,null);
+      assert.match(String(data.reply),/keto-guide/i);
+      const b=await (await fetch(url + "/budget")).json();
+      assert.equal(b.requestsStarted,0);
+    });
     await t.test("explicit private-lab approval returns a genuine mocked GPT-5.4 reply after synthetic handoff", async () => {
       const realFetch = globalThis.fetch;
       process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
@@ -244,39 +278,5 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       }
     });
 
-    await t.test("Reel/emoji and Reel question are visibly recorded but never cause an AI pitch", async () => {
-      for(const scenarioId of ["reel_only","reel_fun","reel_question"]) {
-        const leadId="lab_mediatest"+scenarioId+"123456789012";
-        const response=await fetch(url + "/start",{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({leadId,scenarioId}),
-        });
-        assert.equal(response.status,200);
-        const data=await response.json();
-        assert.equal(data.replySuppressedReason,"shared_media_needs_human_review");
-        assert.equal(data.replySource,"media_guard");
-        assert.equal(data.state.messages.length,1,"no Pete reply for uninspected Reel");
-        assert.match(data.state.messages[0].text,/nicht sichtbar/);
-      }
-      const bad=await fetch(url + "/start",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({leadId:"instagram:real",scenarioId:"reel_fun"}),
-      });
-      assert.equal(bad.status,400);
-    });
-
-    await t.test("Reel plus standalone KETO is deliberate keyword; no model API called", async () => {
-      const leadId="lab_mediaKETOexplicit12345678901234";
-      const result=await fetch(url + "/start",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({leadId,scenarioId:"reel_keyword"}),
-      });
-      assert.equal(result.status,200);
-      const data=await result.json();
-      assert.equal(data.replySuppressedReason,null);
-      assert.match(String(data.reply),/keto-guide/i);
-      const b=await (await fetch(url + "/budget")).json();
-      assert.equal(b.requestsStarted,0);
-    });
   });
 });
