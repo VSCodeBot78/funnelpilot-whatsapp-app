@@ -32,8 +32,10 @@ test("Step 4A: mini-automation is a saved draft, never a message send", async t 
       id: "qa-phase4a-check",
       name: "Reel CHECK",
       automationConfig: {
+        ...DEFAULT_CAMPAIGN_AUTOMATION,
         enabled: true,
-        triggers: { post_reel_comment: true, instagram_message: true, story_reply: false },
+        triggers: { ...DEFAULT_CAMPAIGN_AUTOMATION.triggers,
+          post_reel_comment: true, instagram_message: true, story_reply: false },
         commentScope: "next",
         keywordMode: "specific",
         keywords: ["check", " Bullshit ", "KETO"],
