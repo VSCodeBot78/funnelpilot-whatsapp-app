@@ -32,6 +32,10 @@ import {
 } from "../services/conversation-outbound.service.js";
 import { verifyMetaWebhookSignature } from "../services/meta-webhook-signature.service.js";
 import { consumeKnownAiInstagramEcho } from "../services/instagram-outbound-echo.service.js";
+import {
+  parseInstagramCommentEvents,
+  selectInstagramCommentCampaign,
+} from "../services/pete-campaign-comment-preview.service.js";
 
 const router = Router();
 const PROVIDER = "meta_instagram" as const;
@@ -200,6 +204,50 @@ router.post("/", async (req: RawBodyRequest, res) => {
     return res
       .status(signatureCheck.statusCode)
       .json({ ok: false, error: signatureCheck.error });
+  }
+
+  // Signed comment webhooks are analyzed separately from DM conversations.
+  // This release PREPARES previews only. No Instagram comment/DM send call.
+  const commentEvents = parseInstagramCommentEvents(req.body);
+  let commentPreviews = 0;
+  let commentDuplicates = 0;
+  let commentNoMatch = 0;
+  let commentAmbiguous = 0;
+  if (env.INSTAGRAM_ENGINE_ENABLED) {
+    for (const comment of commentEvents) {
+      if (env.INSTAGRAM_ACCOUNT_ID && comment.instagramAccountId !== env.INSTAGRAM_ACCOUNT_ID) {
+        commentNoMatch++;
+        continue;
+      }
+      const eventId = "comment:" + comment.commentId;
+      if (getMessageEventByMessageId(PROVIDER, eventId)) {
+        commentDuplicates++;
+        continue;
+      }
+      const decision = selectInstagramCommentCampaign(comment);
+      if (!decision.ok) {
+        if (decision.reason === "ambiguous_campaigns") commentAmbiguous++;
+        else commentNoMatch++;
+        continue;
+      }
+      saveMessageEventLogEntry(buildLogEntry({
+        messageId: eventId,
+        from: comment.commenterId,
+        receivedAt: instagramTimestampToIso(comment.createdAtMs),
+        type: "campaign_comment_preview",
+        status: "processed",
+        raw: {
+          campaignId: decision.plan.campaignId,
+          keyword: decision.plan.keyword,
+          mediaId: comment.mediaId,
+          publicReplyPrepared: Boolean(decision.plan.publicReply),
+          privateOpeningPrepared: Boolean(decision.plan.openingDm),
+          previewOnly: true,
+          messageSent: false,
+        },
+      }));
+      commentPreviews++;
+    }
   }
 
   const events = parseInstagramMessageEvents(req.body);
@@ -763,6 +811,12 @@ router.post("/", async (req: RawBodyRequest, res) => {
 
     return res.json({
       ok: true,
+      commentsReceived: commentEvents.length,
+      commentPreviews,
+      commentDuplicates,
+      commentNoMatch,
+      commentAmbiguous,
+      commentActionsDryRun: true,
       processed,
       duplicates,
       ignoredEchoes,
