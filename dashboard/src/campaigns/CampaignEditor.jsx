@@ -30,6 +30,7 @@ export default function CampaignEditor({
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
+  const isLegacyMode = settings?.dmConversationMode === "legacy";
   const campaignBookingInputStyle = {
     ...inputStyle(colors),
     opacity: useGlobalBookingDefaults ? 0.58 : 1,
@@ -119,7 +120,7 @@ export default function CampaignEditor({
           flexWrap: "wrap",
         }}
       >
-        <div style={{ fontWeight: 700, fontSize: 14 }}>Kampagnen & Texte</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>Kampagnen & Einstiege</div>
         <button
           type="button"
           onClick={onCreateNewCampaign}
@@ -165,6 +166,19 @@ export default function CampaignEditor({
           <div style={{ color: colors.sub, fontSize: 12, marginBottom: 10 }}>
             Aktive Bearbeitung: {campaignForm.name}
           </div>
+          {!isLegacyMode ? (
+            <div style={{ border: `1px solid ${colors.border}`,
+              background: colors.panelSoft, padding: "11px 12px", marginBottom: 12,
+              fontSize: 12, lineHeight: 1.6 }}>
+              <strong>Pete führt das Gespräch selbstständig.</strong>
+              <div style={{ color: colors.sub, marginTop: 3 }}>
+                Kampagnen liefern den Einstieg, den Auslöser, Informationen, geprüfte Links
+                und Buchungskontext. Feste Fragen oder eine Namensabfrage werden dem
+                KI-Setter nicht vorgegeben. Kommentar-Keywords, mehrere Auslöser und
+                Buttons kommen im separaten Mini-Automations-Builder hinzu.
+              </div>
+            </div>
+          ) : null}
 
           <div
             style={{
@@ -202,6 +216,8 @@ export default function CampaignEditor({
               />
             </div>
 
+            {isLegacyMode ? (
+              <>
             <div
               style={{
                 display: "grid",
@@ -243,12 +259,14 @@ export default function CampaignEditor({
                 Vorname zuerst abfragen
               </label>
             </div>
+              </>
+            ) : null}
             </CollapsibleSection>
 
             <CollapsibleSection
               colors={colors}
-              title="Conversation Entry / WhatsApp Start"
-              description="Meta-Kontext, Einstiegstext und Fallback-Matching für neue WhatsApp-Leads."
+              title="Kampagnen-Einstieg und Kanalzuordnung"
+              description="Herkunft, Keyword und Meta-Kontext als Einstieg für Pete. Keine feste Fragenfolge."
               defaultOpen
             >
               <div
@@ -869,6 +887,9 @@ export default function CampaignEditor({
               </div>
             </CollapsibleSection>
 
+
+            {isLegacyMode ? (
+              <>
             <CollapsibleSection
               colors={colors}
               title="Nachrichten / Fragen"
@@ -923,6 +944,21 @@ export default function CampaignEditor({
               </div>
             ))}
             </CollapsibleSection>
+              </>
+            ) : (
+              <div style={{ padding: 12, border: `1px solid ${colors.border}`,
+                background: colors.panelSoft, fontSize: 12, lineHeight: 1.6 }}>
+                <strong>Keine A/B/C-Fragekette im KI-Modus</strong>
+                <div style={{ color: colors.sub, marginTop: 4 }}>
+                  Pete entscheidet aus dem Gespräch heraus, wann er eine Frage stellt,
+                  einen Einwand klärt, einen Termin anbietet oder an Jochen übergibt.
+                  Die historischen Frage- und Follow-up-Texte bleiben nur im bewusst
+                  gewählten Altmodus sichtbar. Die neuen optionalen Nachfassregeln
+                  werden direkt bei den künftigen Kampagnen-Auslösern eingestellt.
+                </div>
+              </div>
+            )}
+
           </div>
 
           <div
