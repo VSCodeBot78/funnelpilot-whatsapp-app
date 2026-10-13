@@ -6,6 +6,7 @@ import {
 } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
 import CollapsibleSection from "../components/layout/common/CollapsibleSection";
+import CampaignAutomationEditor from "./CampaignAutomationEditor";
 import {
   getEffectiveCampaignBookingConfig,
   getNormalizedBookingConfig,
@@ -175,7 +176,7 @@ export default function CampaignEditor({
                 Kampagnen liefern den Einstieg, den Auslöser, Informationen, geprüfte Links
                 und Buchungskontext. Feste Fragen oder eine Namensabfrage werden dem
                 KI-Setter nicht vorgegeben. Kommentar-Keywords, mehrere Auslöser und
-                Buttons kommen im separaten Mini-Automations-Builder hinzu.
+                Buttons findest du direkt im Abschnitt Mini-Automationen.
               </div>
             </div>
           ) : null}
@@ -205,6 +206,7 @@ export default function CampaignEditor({
               />
             </div>
 
+            {isLegacyMode ? (
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Auslöser / Trigger
@@ -215,6 +217,7 @@ export default function CampaignEditor({
                 onChange={(e) => updateField("trigger", e.target.value)}
               />
             </div>
+            ) : null}
 
             {isLegacyMode ? (
               <>
@@ -263,11 +266,24 @@ export default function CampaignEditor({
             ) : null}
             </CollapsibleSection>
 
+            {!isLegacyMode ? (
+              <CollapsibleSection colors={colors}
+                title="Mini-Automationen für Pete"
+                description="Mehrere Auslöser, Keywords, Kommentarantworten, Eröffnungs-DM und optionales Nachfassen. Keine feste Fragefolge."
+                defaultOpen>
+                <CampaignAutomationEditor
+                  colors={colors}
+                  campaignForm={campaignForm}
+                  onCampaignFormChange={onCampaignFormChange}
+                />
+              </CollapsibleSection>
+            ) : null}
+
             <CollapsibleSection
               colors={colors}
-              title="Kampagnen-Einstieg und Kanalzuordnung"
-              description="Herkunft, Keyword und Meta-Kontext als Einstieg für Pete. Keine feste Fragenfolge."
-              defaultOpen
+              title={isLegacyMode ? "Kampagnen-Einstieg und Kanalzuordnung" : "Technische Meta-Zuordnung (Bestand)"}
+              description="Bestehende technische Felder und Attribution. Kein Gesprächsskript für Pete."
+              defaultOpen={isLegacyMode}
             >
               <div
                 style={{
