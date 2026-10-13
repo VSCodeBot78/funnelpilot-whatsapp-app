@@ -21,6 +21,35 @@ test("Pete laboratory renders only valid backend ledger, not assumed API credit"
   assert.equal(readPeteBudget({ ...sample, remainingUsd: -2 }), null);
   assert.equal(readPeteBudget({ ...sample, hardCapUsd: NaN }), null);
 });
+test("private $2 GPT-5.4 session is distinct from cumulative $8 project meter", () => {
+  const active = readPeteBudget({
+    ...sample,
+    hardCapUsd: 8, committedUsd: 4.5839, confirmedUsd: 4.5839, reservedUsd: 0,
+    remainingUsd: 2, labAuthorizedUsd: 2, labCommittedUsd: 0, labRemainingUsd: 2,
+    llmReady: true, mode: "gpt-5.4",
+  });
+  assert.ok(active);
+  assert.equal(active.mode, "gpt-5.4");
+  assert.equal(active.cap, 8);
+  assert.equal(active.labCap, 2);
+  assert.equal(active.labLeft, 2);
+  assert.equal(active.labSpent, 0);
+  const used = readPeteBudget({
+    ...sample, committedUsd: 4.8839, confirmedUsd: 4.8839, reservedUsd: 0,
+    remainingUsd: 1.7, labAuthorizedUsd: 2, labCommittedUsd: 0.3, labRemainingUsd: 1.7,
+    llmReady: true, mode: "gpt-5.4",
+  });
+  assert.equal(used.labSpent, 0.3);
+  assert.equal(used.labLeft, 1.7);
+  assert.equal(readPeteBudget({ ...sample, mode: "deterministic",
+    llmReady: false }).mode, "deterministic");
+  assert.equal(readPeteBudget({ ...sample, llmReady: false,
+    mode: "gpt-5.4" }).mode, "deterministic");
+  assert.equal(readPeteBudget({ ...sample, labAuthorizedUsd: 2.5,
+    labCommittedUsd: 0, labRemainingUsd: 2.5 }), null,
+    "UI must reject an unauthorized larger cap");
+});
+
 test("clearly shows tiny call charges and fail-closed threshold", () => {
   assert.equal(formatUsd(0.00028), "$0.0003");
   assert.equal(formatUsd(undefined), "nicht verfügbar");

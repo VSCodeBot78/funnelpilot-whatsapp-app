@@ -7,6 +7,7 @@ import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCre
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
+import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 
 const router = Router();
 
@@ -44,7 +45,12 @@ function publicLabMessages(messages: { id?: string; role: string; text: string }
 router.get("/lab/budget", guardMobileLab, (_req, res) => {
   const status = getPeteBudgetStatusSafe();
   if (!status.ok) return res.status(503).json(status);
-  return res.json(status);
+  // Report the actual backend mode. No secrets, model-generated messages,
+  // profile data, or live channel switches are sent to the phone.
+  let llmReady = false;
+  try { llmReady = isPeteLlmReadyForProvider(); }
+  catch { llmReady = false; }
+  return res.json({ ...status, llmReady, mode: llmReady ? "gpt-5.4" : "deterministic" });
 });
 
 // Scenario scripts are entirely backend-owned: clients cannot inject a fake

@@ -13,6 +13,18 @@ import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 const USD_MICROS_CAP = 8_000_000; // Conservative internal limit for 10 EUR authorization.
+/**
+ * Separate 13 Oct mobile-lab authorization: at most $2 of NEW lab calls.
+ * The older GitHub project ledger is $4.583900; the lab's immutable prior
+ * snapshot is $4.323801. The $0.260099 delta counts against the lifetime
+ * $8 project cap, but is NOT charged against the newly approved $2.
+ * Keep the original prior snapshot unchanged: its existing persisted ledger
+ * validates it on every read and must never be silently reset/migrated.
+ */
+const LAB_NEW_SPEND_CAP_MICROS = 2_000_000;
+const LAB_KNOWN_OUTSIDE_SPEND_MICROS = 260_099;
+const LAB_ORIGINAL_PRIOR_MICROS = "4323801";
+
 const MODEL = "gpt-4.1-mini"; // backward compatible default
 // Official OpenAI pay-as-you-go prices in USD per million tokens, checked 2026-10-11.
 const MODEL_PRICES = {
@@ -60,6 +72,33 @@ function priorSpentMicros(): number {
   if (!Number.isSafeInteger(parsed) || parsed > USD_MICROS_CAP)
     throw new PeteBudgetStop("unavailable");
   return parsed;
+}
+
+export function isPeteLabGpt54Approved(): boolean {
+  if (process.env.PETE_MOBILE_LAB_ENABLED !== "true") return false;
+  if (process.env.PETE_MOBILE_LAB_GPT54_CONSENT !== "true") return false;
+  return process.env.PETE_MOBILE_LAB_ISOLATED_DATA === "true" &&
+    process.env.PETE_LLM_CONVERSATION_ENABLED === "true" &&
+    process.env.PETE_LLM_API_CALLS_APPROVED === "true" &&
+    process.env.OPENAI_MODEL === "gpt-5.4" &&
+    process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD === String(LAB_NEW_SPEND_CAP_MICROS) &&
+    process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD === LAB_ORIGINAL_PRIOR_MICROS;
+}
+
+/** Fail closed if ANY lab LLM switch is present without the whole agreement. */
+function labApproval(): { active: boolean; historicalAdjustment: number; newCap: number } {
+  const isLab = process.env.PETE_MOBILE_LAB_ENABLED === "true";
+  if (!isLab) return { active: false, historicalAdjustment: 0, newCap: USD_MICROS_CAP };
+  const wantsLlm = process.env.PETE_LLM_CONVERSATION_ENABLED === "true" ||
+    process.env.PETE_LLM_API_CALLS_APPROVED === "true" ||
+    process.env.PETE_MOBILE_LAB_GPT54_CONSENT === "true";
+  if (!wantsLlm) return { active: false, historicalAdjustment: 0, newCap: USD_MICROS_CAP };
+  if (!isPeteLabGpt54Approved()) throw new PeteBudgetStop("unavailable");
+  return {
+    active: true,
+    historicalAdjustment: LAB_KNOWN_OUTSIDE_SPEND_MICROS,
+    newCap: LAB_NEW_SPEND_CAP_MICROS,
+  };
 }
 
 function emptyLedger(): Ledger {
@@ -119,17 +158,28 @@ function locked<T>(fn: () => T): T {
   }
 }
 export function getPeteBudgetStatus() {
+  const approval = labApproval();
   const data = load();
+  const prior = priorSpentMicros() + approval.historicalAdjustment;
+  const globalRemaining = Math.max(0, USD_MICROS_CAP - prior - data.committedMicroUsd);
+  const labRemaining = Math.max(0, approval.newCap - data.committedMicroUsd);
+  const remaining = approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining;
   return {
-    model: MODEL, hardCapUsd: USD_MICROS_CAP / 1_000_000,
-    priorConfirmedUsd: priorSpentMicros() / 1_000_000,
-    committedUsd: (priorSpentMicros() + data.committedMicroUsd) / 1_000_000,
-    confirmedUsd: (priorSpentMicros() + data.confirmedMicroUsd) / 1_000_000,
+    model: approval.active ? "gpt-5.4" : MODEL,
+    hardCapUsd: USD_MICROS_CAP / 1_000_000,
+    priorConfirmedUsd: prior / 1_000_000,
+    committedUsd: (prior + data.committedMicroUsd) / 1_000_000,
+    confirmedUsd: (prior + data.confirmedMicroUsd) / 1_000_000,
     reservedUsd: data.reservedMicroUsd / 1_000_000,
-    remainingUsd: Math.max(0, USD_MICROS_CAP - priorSpentMicros() - data.committedMicroUsd) / 1_000_000,
+    remainingUsd: remaining / 1_000_000,
+    // The lab shows its OWN $2 permission separately from lifetime spend.
+    labAuthorizedUsd: approval.active ? approval.newCap / 1_000_000 : null,
+    labCommittedUsd: approval.active ? data.committedMicroUsd / 1_000_000 : null,
+    labRemainingUsd: approval.active ? remaining / 1_000_000 : null,
+    globalRemainingUsd: globalRemaining / 1_000_000,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
-    blocked: priorSpentMicros() + data.committedMicroUsd >= USD_MICROS_CAP,
+    blocked: remaining <= 0,
   };
 }
 export function getPeteBudgetStatusSafe() {
@@ -163,8 +213,14 @@ export function reservePeteBudget(params: {
   if (!Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || reservedMicros > USD_MICROS_CAP)
     throw new PeteBudgetStop("exhausted");
   return locked(() => {
+    const approval = labApproval();
     const data = load();
-    if (priorSpentMicros() + data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
+    if (approval.active && params.model !== "gpt-5.4")
+      throw new PeteBudgetStop("model_not_priced");
+    if (priorSpentMicros() + approval.historicalAdjustment +
+        data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
+      throw new PeteBudgetStop("exhausted");
+    if (approval.active && data.committedMicroUsd + reservedMicros > approval.newCap)
       throw new PeteBudgetStop("exhausted");
     const id = crypto.randomUUID();
     data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(), model: params.model as PricedModel };

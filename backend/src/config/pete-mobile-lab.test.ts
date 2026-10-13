@@ -217,5 +217,66 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       const b=await (await fetch(url + "/budget")).json();
       assert.equal(b.requestsStarted,0);
     });
+    await t.test("explicit private-lab approval returns a genuine mocked GPT-5.4 reply after synthetic handoff", async () => {
+      const realFetch = globalThis.fetch;
+      process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
+      process.env.PETE_LLM_API_CALLS_APPROVED = "true";
+      process.env.PETE_MOBILE_LAB_GPT54_CONSENT = "true";
+      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "2000000";
+      process.env.OPENAI_MODEL = "gpt-5.4";
+      process.env.OPENAI_API_KEY = "offline-test-key";
+      let calls = 0;
+      globalThis.fetch = async (input, init) => {
+        if (String(input) === "https://api.openai.com/v1/responses") {
+          calls++;
+          const req = JSON.parse(String(init?.body ?? "{}"));
+          assert.equal(req.model, "gpt-5.4");
+          assert.equal(req.store, false);
+          assert.match(String(req.input?.[0]?.content), /Schichtarbeit/);
+          return new Response(JSON.stringify({
+            output: [{ content: [{ type: "output_text", text: JSON.stringify({
+              reply: "Bei Schichtarbeit sind feste Zeiten schwierig. Was ist für dich gerade die größere Baustelle, Essen oder Schlaf?",
+              needsHuman: false,
+            }) }] }],
+            usage: { input_tokens: 900, output_tokens: 100 },
+          }), { status: 200 });
+        }
+        return realFetch(input, init);
+      };
+      try {
+        const before = await (await fetch(url + "/budget")).json();
+        assert.equal(before.llmReady, true);
+        assert.equal(before.mode, "gpt-5.4");
+        assert.equal(before.labAuthorizedUsd, 2);
+        assert.equal(before.labRemainingUsd, 2);
+        const leadId = "lab_gpt54parent123456789012345678";
+        const start = await (await fetch(url + "/start", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, scenarioId: "follower_handoff" }),
+        })).json();
+        assert.equal(start.replySource, "scripted_context");
+        assert.equal(calls, 0, "synthetic setup must not spend");
+        const sent = await (await send(leadId,
+          "Sowohl als auch. Wegen Schichtarbeit habe ich kaum Zeit.")).json();
+        assert.equal(sent.ok, true);
+        assert.equal(sent.replySource, "llm");
+        assert.match(String(sent.reply), /Schichtarbeit/);
+        assert.equal(calls, 1);
+        const after = await (await fetch(url + "/budget")).json();
+        assert.equal(after.requestsStarted, 1);
+        assert.equal(after.requestsMetered, 1);
+        assert.ok(after.labRemainingUsd < 2);
+        assert.ok(after.labRemainingUsd > 1.99);
+      } finally {
+        globalThis.fetch = realFetch;
+        process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+        process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+        delete process.env.PETE_MOBILE_LAB_GPT54_CONSENT;
+        delete process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD;
+        delete process.env.OPENAI_MODEL;
+        delete process.env.OPENAI_API_KEY;
+      }
+    });
+
   });
 });

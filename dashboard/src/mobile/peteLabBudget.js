@@ -6,8 +6,19 @@ export function readPeteBudget(raw) {
       !Number.isFinite(raw.remainingUsd) || raw.committedUsd < 0 ||
       raw.confirmedUsd < 0 || raw.reservedUsd < 0 || raw.remainingUsd < 0 ||
       Math.abs(raw.committedUsd - raw.confirmedUsd - raw.reservedUsd) > 0.000002) return null;
+  const hasLabAuthorization = raw.labAuthorizedUsd !== null && raw.labAuthorizedUsd !== undefined;
+  if (hasLabAuthorization && (
+      raw.labAuthorizedUsd !== 2 ||
+      !Number.isFinite(raw.labCommittedUsd) || raw.labCommittedUsd < 0 ||
+      !Number.isFinite(raw.labRemainingUsd) || raw.labRemainingUsd < 0 ||
+      raw.labCommittedUsd + raw.labRemainingUsd > raw.labAuthorizedUsd + 0.000002
+    )) return null;
   return {
     cap: raw.hardCapUsd,
+    mode: raw.llmReady === true && raw.mode === "gpt-5.4" ? "gpt-5.4" : "deterministic",
+    labCap: hasLabAuthorization ? raw.labAuthorizedUsd : null,
+    labSpent: hasLabAuthorization ? raw.labCommittedUsd : null,
+    labLeft: hasLabAuthorization ? raw.labRemainingUsd : null,
     spent: raw.committedUsd,
     confirmed: raw.confirmedUsd,
     reserved: raw.reservedUsd,

@@ -65,6 +65,26 @@ const backendEnv={
 if(process.env.PETE_LLM_API_CALLS_APPROVED!=="true")
   backendEnv.PETE_LLM_API_CALLS_APPROVED="false";
 
+// No implicit API use: all four explicit deployment gates plus the existing
+// isolated lab, synthetic-only gateway and historical spend snapshot must
+// match BEFORE the backend gets permission to run GPT-5.4.
+const wantsPaidPete = process.env.PETE_LLM_CONVERSATION_ENABLED==="true" ||
+  process.env.PETE_LLM_API_CALLS_APPROVED==="true" ||
+  process.env.PETE_MOBILE_LAB_GPT54_CONSENT==="true";
+if (wantsPaidPete) {
+  if (process.env.PETE_LLM_CONVERSATION_ENABLED!=="true" ||
+      process.env.PETE_LLM_API_CALLS_APPROVED!=="true" ||
+      process.env.PETE_MOBILE_LAB_GPT54_CONSENT!=="true" ||
+      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD!=="2000000" ||
+      process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD!=="4323801" ||
+      process.env.OPENAI_MODEL!=="gpt-5.4" ||
+      !process.env.OPENAI_API_KEY?.trim())
+    throw Error("private_lab_llm_approval_incomplete");
+  console.log("[lab] GPT-5.4 private synthetic-only mode approved; new-spend cap $2.00");
+} else {
+  console.log("[lab] deterministic mode; paid model calls disabled");
+}
+
 const backend=spawn(process.execPath, ["backend/dist/index.js"],{
   cwd:root,env:backendEnv,stdio:["ignore","inherit","inherit"],
 });
