@@ -195,7 +195,7 @@ export default function MobilePeteLab() {
       // Budget is checked first. A missing meter must never be interpreted as $0.
       const budgetData = await loadBudget();
       if (!active) return;
-      setStatus(budgetData ? "Testbereit" : "Kostenkontrolle nicht erreichbar");
+      setStatus(budgetData ? budgetData.gptReady ? "GPT-5.4 Testbereit" : "GPT-5.4 nicht aktiv" : "Kostenkontrolle nicht erreichbar");
       try {
         const res = await fetch(buildApiUrl("/test-chat/lab/state/" +
           encodeURIComponent(id)), { credentials: "same-origin", cache: "no-store" });
@@ -220,12 +220,12 @@ export default function MobilePeteLab() {
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || busy || listening || sendLock.current || !budget || budget.blocked) return;
+    if (!text || busy || listening || sendLock.current || !budget || budget.blocked || !budget.gptReady) return;
     sendLock.current = true;
     setBusy(true);
     setStatus("Pete antwortet...");
     const before = await loadBudget();
-    if (!before || before.blocked) {
+    if (!before || before.blocked || !before.gptReady) {
       sendLock.current = false;
       setBusy(false);
       setStatus("Kostenkontrolle gesperrt oder nicht erreichbar");
@@ -258,7 +258,7 @@ export default function MobilePeteLab() {
   };
 
   const startScenario = async () => {
-    if (busy || sendLock.current || listening || !budget || budget.blocked) return;
+    if (busy || sendLock.current || listening || !budget || budget.blocked || !budget.gptReady) return;
     sendLock.current = true;
     cancelSpeech();
     setBusy(true);
@@ -386,11 +386,13 @@ export default function MobilePeteLab() {
       </header>
       <section className="pete-lab-budget" aria-label="Interne API-Kostenkontrolle">
         <div className="pete-lab-budget-title">
-          <strong>API-Testkosten</strong>
+          <strong>GPT-5.4 KI-Testkosten</strong>
           <button type="button" onClick={refresh} disabled={busy}>Aktualisieren</button>
         </div>
         {budget ? (
           <>
+            <p className="pete-lab-entry-result" role="status"><strong>{budget.gptReady ? "GPT-5.4 aktiv: echte KI-Antworten möglich" : "GPT-5.4 NICHT AKTIV: Testnachrichten gesperrt"}</strong></p>
+            {budget.testCap !== null && <p>Für diesen echten KI-Test freigegeben: <strong>{formatUsd(budget.testCap, 2)} maximal</strong>. Davon verbraucht: {formatUsd(budget.testSpent)}. Noch frei: <strong>{formatUsd(budget.testLeft)}</strong>.</p>}
             <div className="pete-lab-finances">
               <div><span>Verbraucht</span><strong>{moneyText(budget.spent)}</strong></div>
               <div><span>Noch frei</span><strong>{moneyText(budget.left)}</strong></div>
@@ -414,6 +416,7 @@ export default function MobilePeteLab() {
             {!budget.blocked && budget.low && <p className="pete-lab-warning" role="alert">Weniger als 20 % der internen Grenze verfügbar.</p>}
           </>
         ) : <p className="pete-lab-warning" role="alert">Zähler nicht erreichbar. Senden aus Sicherheitsgründen gesperrt.</p>}
+        <p>Hinweis: Geprüfte Links, Preise und Sicherheitshinweise können absichtlich ohne generierte Antwort kommen. Echte Modellantworten tragen die Quelle „GPT-5.4“.</p>
         <p className="pete-lab-disclaimer">Nur dieser Backend-Pete-Zähler. <strong>Kein OpenAI-Kontoguthaben</strong>, keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
       </section>
       <section className="pete-lab-entry" aria-label="Gesprächseinstieg simulieren">
@@ -425,7 +428,7 @@ export default function MobilePeteLab() {
             <option key={value} value={value}>{label}</option>)}
         </select>
         <button type="button" onClick={startScenario}
-          disabled={busy || listening || !budget || budget.blocked}>
+          disabled={busy || listening || !budget || budget.blocked || !budget.gptReady}>
           Einstieg als neuen Test starten
         </button>
         <p>Der Einstieg wird im Test-Backend gespeichert. Keine Nachricht geht an Instagram.</p>
@@ -489,11 +492,11 @@ export default function MobilePeteLab() {
         </button>
         {speechStatus && <p className="pete-lab-speech-status" role="status">{speechStatus}</p>}
         {!canDictate && <p className="pete-lab-speech-hint">Für das Mikrofon bitte die App direkt in Google Chrome öffnen. Der ChatGPT-interne Browser unterstützt diese Funktion möglicherweise nicht.</p>}
-        <button type="submit" disabled={busy || listening || !draft.trim() || !budget || budget.blocked}>
+        <button type="submit" disabled={busy || listening || !draft.trim() || !budget || budget.blocked || !budget.gptReady}>
           {busy ? "Warten..." : "An Pete senden"}
         </button>
       </form>
-      <p className="pete-lab-status" role="status">{status}{replySource ? " · Quelle: " + replySource : ""}</p>
+      <p className="pete-lab-status" role="status">{status}{replySource ? " · Quelle: " + (replySource === "llm" ? "GPT-5.4" : replySource) : ""}</p>
       <footer>Testmodus. Fiktive Chatverläufe liegen im Test-Backend; deine Bewertungen bleiben nur auf diesem Handy gespeichert. Browser-Spracherkennung kann einen externen Sprachdienst nutzen. Keine OpenAI-Audio-API und kein automatisches KI-Training.</footer>
     </main>
   );
