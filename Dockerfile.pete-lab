@@ -4,7 +4,7 @@ WORKDIR /app
 COPY backend/package*.json ./backend/
 RUN npm ci --prefix backend
 COPY backend/ ./backend/
-RUN cd backend && npx tsx --test src/config/pete-mobile-lab.test.ts src/config/pete-api-budget-phase47.test.ts src/config/pete-phase54-context-regressions.test.ts src/config/pete-llm-phase46.test.ts src/config/natural-pete-conversation-review.test.ts
+RUN cd backend && npx tsx --test src/config/pete-mobile-lab.test.ts src/config/pete-api-budget-phase47.test.ts src/config/pete-phase54-context-regressions.test.ts src/config/pete-setter-stress-phase58.test.ts src/config/pete-setter-stress-matrix.test.ts src/config/pete-four-colors-phase59.test.ts src/config/pete-llm-phase46.test.ts src/config/natural-pete-conversation-review.test.ts
 RUN npm run build --prefix backend
 COPY dashboard/package*.json ./dashboard/
 RUN npm ci --prefix dashboard
