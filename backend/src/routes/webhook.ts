@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { env } from "../config/env.js";
 import { getCampaignById } from "../config/campaigns.js";
+import { getConfiguredDmConversationMode } from "../services/settings-store.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import {
   appendAssistantMessage,
@@ -106,6 +107,7 @@ router.post("/", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: getConfiguredDmConversationMode(),
     });
 
     const response: IncomingMessageResponse = {
@@ -145,6 +147,7 @@ router.post("/message", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: getConfiguredDmConversationMode(),
     });
 
     const response: IncomingMessageResponse = {
@@ -183,6 +186,7 @@ router.post("/messages/incoming", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: getConfiguredDmConversationMode(),
     });
 
     const response: IncomingMessageResponse = {
