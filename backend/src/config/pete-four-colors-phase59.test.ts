@@ -22,6 +22,7 @@ const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
 const { clearConversationStore } = await import("../data/store.js");
 const { writeSettings } = await import("../services/settings-store.js");
+const { evaluatePeteRuntimeSafety } = await import("../core/pete-runtime-safety.js");
 writeSettings({ aiEnabled: true });
 
 type Scenario = { name: string; messages: readonly [string, string, string] };
@@ -98,6 +99,28 @@ test("Phase 59: four situational color styles, pivots and short parent replies",
     delete process.env.OPENAI_API_KEY;
     clearConversationStore();
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  await t.test("ordinary fitness fears are NOT a crisis; genuine distress still escalates", () => {
+    for (const message of [
+      "Ehrlich gesagt habe ich Angst, mich wieder zu übernehmen.",
+      "Ich habe Angst, wieder an einem Fitnessprogramm zu scheitern.",
+      "Mir macht es Angst, wieder alles nach zwei Wochen aufzugeben.",
+    ]) {
+      assert.notEqual(evaluatePeteRuntimeSafety(message).category,
+        "emotional_crisis", message);
+    }
+    for (const message of [
+      "Ich kann nicht mehr, mir ist alles zu viel.",
+      "Ich habe eine Panikattacke.",
+      "Ich habe Angst, mir etwas anzutun.",
+      "Ich bin total am Ende.",
+    ]) {
+      const safety = evaluatePeteRuntimeSafety(message);
+      assert.equal(safety.category, "emotional_crisis", message);
+      assert.equal(safety.shouldHandoffToJochen, true, message);
+      assert.equal(safety.shouldStopAutomation, true, message);
+    }
   });
 
   for (const person of personas) {
