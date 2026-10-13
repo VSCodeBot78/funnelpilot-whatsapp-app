@@ -15,9 +15,9 @@ process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
 process.env.PETE_LLM_API_CALLS_APPROVED = "false";
 delete process.env.OPENAI_API_KEY;
 
-const { getConfiguredPeteConversationMode } = await import("../core/pete-conversation-mode.js");
+
 const { buildPeteContext, buildPeteRuntimeInstructions } = await import("../core/pete-llm-conversation.js");
-const { readSettings, writeSettings } = await import("../services/settings-store.js");
+const { readSettings, writeSettings, getConfiguredDmConversationMode } = await import("../services/settings-store.js");
 
 test("Step 1: inbound routing and GPT context do not require legacy A/B/C funnel", async t => {
   const initial = readSettings();
@@ -31,11 +31,11 @@ test("Step 1: inbound routing and GPT context do not require legacy A/B/C funnel
 
   await t.test("all channels can share natural mode; legacy is explicit and reversible", () => {
     writeSettings({ dmConversationMode: "natural" });
-    assert.equal(getConfiguredPeteConversationMode(), "natural");
+    assert.equal(getConfiguredDmConversationMode(), "natural");
     writeSettings({ dmConversationMode: "legacy" });
-    assert.equal(getConfiguredPeteConversationMode(), "legacy");
+    assert.equal(getConfiguredDmConversationMode(), "legacy");
     writeSettings({ dmConversationMode: "natural" });
-    assert.equal(getConfiguredPeteConversationMode(), "natural");
+    assert.equal(getConfiguredDmConversationMode(), "natural");
   });
 
   await t.test("GPT receives actual conversation, not old question-step directives", () => {
