@@ -6,8 +6,87 @@ export type CampaignRecord = {
   id: string;
   offerContext?: CampaignOfferContext;
   entryConfig?: CampaignEntryConfig;
+  automationDraft?: CampaignAutomationDraft;
   [key: string]: unknown;
 };
+
+/**
+ * Stored UI draft only. No worker, webhook or sender may execute this object
+ * until a later explicitly approved Meta integration is implemented.
+ */
+export type CampaignAutomationDraft = {
+  enabled: boolean;
+  triggers: Record<"comments" | "storyReplies" | "directMessages" | "adClicks" | "referrals", boolean>;
+  commentScope: "all" | "specific" | "next";
+  specificPostIds: string;
+  keywords: string;
+  publicReplyEnabled: boolean;
+  publicReplies: string[];
+  openingMessageEnabled: boolean;
+  openingMessage: string;
+  confirmationLabel: string;
+  resourceKey: "check" | "keto" | "selfstarter" | "none";
+  linkMessage: string;
+  followupMode: "off" | "when_allowed";
+  followupDelayHours: number;
+  followupText: string;
+};
+
+const DEFAULT_AUTOMATION_DRAFT: CampaignAutomationDraft = {
+  enabled: false,
+  triggers: { comments: false, storyReplies: false, directMessages: false, adClicks: false, referrals: false },
+  commentScope: "all",
+  specificPostIds: "",
+  keywords: "CHECK",
+  publicReplyEnabled: true,
+  publicReplies: ["Schau mal in deine DMs.", "Ich habe dir eine Nachricht vorbereitet.", "Die Infos findest du im Postfach."],
+  openingMessageEnabled: true,
+  openingMessage: "Du möchtest den kostenlosen Elterncheck? Soll ich dir den Link schicken?",
+  confirmationLabel: "Schick mir den Check",
+  resourceKey: "check",
+  linkMessage: "Hier findest du den kostenlosen No Bullshit Elternfitness Check.",
+  followupMode: "off",
+  followupDelayHours: 24,
+  followupText: "Hey, konntest du dir den Check schon anschauen?",
+};
+
+export function normalizeCampaignAutomationDraft(input: unknown): CampaignAutomationDraft {
+  const raw = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown> : {};
+  const flags = raw.triggers && typeof raw.triggers === "object" && !Array.isArray(raw.triggers)
+    ? raw.triggers as Record<string, unknown> : {};
+  const val = <T extends string>(key: string, values: readonly T[], fallback: T): T =>
+    values.includes(raw[key] as T) ? raw[key] as T : fallback;
+  const text = (key: keyof CampaignAutomationDraft, max: number): string =>
+    typeof raw[key] === "string"
+      ? (raw[key] as string).slice(0, max)
+      : String(DEFAULT_AUTOMATION_DRAFT[key]);
+  return {
+    enabled: raw.enabled === true,
+    triggers: {
+      comments: flags.comments === true, storyReplies: flags.storyReplies === true,
+      directMessages: flags.directMessages === true, adClicks: flags.adClicks === true,
+      referrals: flags.referrals === true,
+    },
+    commentScope: val("commentScope", ["all", "specific", "next"] as const, "all"),
+    specificPostIds: text("specificPostIds", 600),
+    keywords: text("keywords", 300),
+    publicReplyEnabled: raw.publicReplyEnabled !== false,
+    publicReplies: Array.isArray(raw.publicReplies)
+      ? raw.publicReplies.filter((s): s is string => typeof s === "string").slice(0, 6)
+        .map(s => s.slice(0, 220))
+      : [...DEFAULT_AUTOMATION_DRAFT.publicReplies],
+    openingMessageEnabled: raw.openingMessageEnabled !== false,
+    openingMessage: text("openingMessage", 800),
+    confirmationLabel: text("confirmationLabel", 45),
+    resourceKey: val("resourceKey", ["check", "keto", "selfstarter", "none"] as const, "check"),
+    linkMessage: text("linkMessage", 800),
+    followupMode: val("followupMode", ["off", "when_allowed"] as const, "off"),
+    followupDelayHours: Number.isFinite(Number(raw.followupDelayHours))
+      ? Math.min(24, Math.max(1, Math.round(Number(raw.followupDelayHours)))) : 24,
+    followupText: text("followupText", 500),
+  };
+}
 
 export type CampaignOfferContext = {
   priceInquiryText: string;
@@ -364,6 +443,7 @@ function normalizeCampaignRecord(campaign: CampaignRecord): CampaignRecord {
     ...campaign,
     offerContext: normalizeOfferContext(campaign.offerContext),
     entryConfig: normalizeEntryConfig(campaign),
+    automationDraft: normalizeCampaignAutomationDraft(campaign.automationDraft),
   };
 }
 
