@@ -7,6 +7,7 @@ import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCre
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
+import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 
 const router = Router();
 
@@ -44,7 +45,16 @@ function publicLabMessages(messages: { id?: string; role: string; text: string }
 router.get("/lab/budget", guardMobileLab, (_req, res) => {
   const status = getPeteBudgetStatusSafe();
   if (!status.ok) return res.status(503).json(status);
-  return res.json(status);
+  // Do not mislabel deterministic safety/link replies as generated answers.
+  // API secret contents and configuration flags are never returned.
+  const llmReady = !status.blocked &&
+    status.model === "gpt-5.4" && status.testCapUsd === 2 &&
+    isPeteLlmReadyForProvider();
+  return res.json({
+    ...status,
+    llmReady,
+    llmMode: llmReady ? "gpt-5.4" : "regelmodus",
+  });
 });
 
 // Scenario scripts are entirely backend-owned: clients cannot inject a fake
