@@ -95,8 +95,8 @@ export function buildPeteContext(state: ConversationState) {
 
   const assemble = () => ({
     campaignId: state.campaignId,
-    currentPhase: String(state.answers.naturalPhase ?? "opening").slice(0, 50),
-    currentTrack: String(state.answers.naturalTrack ?? "").slice(0, 50),
+    // Do not leak obsolete question-flow stages into Pete's GPT judgment.
+    leadSource: redactForProvider(String(state.source ?? "").slice(0, 60)),
     earlierLeadEvidence,
     conversation,
   });
