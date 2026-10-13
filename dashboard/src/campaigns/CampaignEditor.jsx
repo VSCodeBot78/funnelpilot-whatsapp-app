@@ -6,6 +6,7 @@ import {
 } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
 import CollapsibleSection from "../components/layout/common/CollapsibleSection";
+import CampaignAutomationEditor from "./CampaignAutomationEditor";
 import {
   getEffectiveCampaignBookingConfig,
   getNormalizedBookingConfig,
@@ -191,6 +192,7 @@ export default function CampaignEditor({
               />
             </div>
 
+            {settings.dmConversationMode === "legacy" ? <>
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Auslöser / Trigger
@@ -243,13 +245,31 @@ export default function CampaignEditor({
                 Vorname zuerst abfragen
               </label>
             </div>
+            </> : (
+              <div style={{ fontSize: 12, color: colors.sub }}>
+                Pete übernimmt die Qualifizierung selbst. Auslöser, Keywords und
+                Startnachrichten findest du direkt unter den Mini-Automationen.
+              </div>
+            )}
             </CollapsibleSection>
+
+            {settings.dmConversationMode !== "legacy" ? (
+              <CollapsibleSection colors={colors}
+                title="Mini-Automationen für Pete"
+                description="Mehrere Einstiege, Kommentarantworten, DM-Button, geprüfte Ressourcen und optionales Follow-up. Kein A/B/C/D-Funnel."
+                defaultOpen>
+                <CampaignAutomationEditor colors={colors} campaignForm={campaignForm}
+                  onCampaignFormChange={onCampaignFormChange} />
+              </CollapsibleSection>
+            ) : null}
 
             <CollapsibleSection
               colors={colors}
-              title="Conversation Entry / WhatsApp Start"
-              description="Meta-Kontext, Einstiegstext und Fallback-Matching für neue WhatsApp-Leads."
-              defaultOpen
+              title={settings.dmConversationMode === "legacy"
+                ? "Conversation Entry / WhatsApp Start"
+                : "Technische Meta-Einstiegsdaten (Bestand)"}
+              description="Meta-Kontext und bestehende technische Attribution. Im KI-Modus keine feste Fragefolge."
+              defaultOpen={settings.dmConversationMode === "legacy"}
             >
               <div
                 style={{
@@ -869,6 +889,7 @@ export default function CampaignEditor({
               </div>
             </CollapsibleSection>
 
+            {settings.dmConversationMode === "legacy" ? <>
             <CollapsibleSection
               colors={colors}
               title="Nachrichten / Fragen"
@@ -923,6 +944,7 @@ export default function CampaignEditor({
               </div>
             ))}
             </CollapsibleSection>
+            </> : null}
           </div>
 
           <div
