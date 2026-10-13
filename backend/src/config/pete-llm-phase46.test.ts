@@ -119,6 +119,38 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(calls, 0);
   });
 
+  await t.test("setter/closer instructions prefer qualification and consent over unsolicited free coaching", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let instructions = "";
+    let apiCalls = 0;
+    globalThis.fetch = async (_url, init) => {
+      apiCalls++;
+      const request = JSON.parse(String(init?.body ?? "{}"));
+      instructions = String(request.instructions ?? "");
+      assert.equal(request.store, false);
+      return mockResponse(
+        "Training und Vorbereiten laufen bei dir, aber die wechselnden Pausen machen es schwierig. Wäre Unterstützung für dich grundsätzlich interessant?"
+      );
+    };
+    const out = await send("phase46-setter-not-coach",
+      "Ich trainiere viermal die Woche. Vorbereiten klappt auch, aber im Schichtdienst weiß ich nie, wann ich Pause machen kann.");
+    assert.equal(apiCalls, 1, "only one mocked model request");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(out.state.owner, "ai");
+    assert.match(out.text ?? "", /Unterstützung/);
+    assert.doesNotMatch(out.text ?? "", /Snack|Mahlzeiten|Trainingsplan/i);
+    assert.match(instructions, /DM-Setter/);
+    assert.match(instructions, /kein kostenloser Fitness/);
+    assert.match(instructions, /unvorhersehbare Pausen/);
+    assert.match(instructions, /Meal Prep, Notfall-Snacks/);
+    assert.match(instructions, /Strategiegespräch mit Jochen/);
+    assert.match(instructions, /ausdrücklichem Termin- oder Buchungswunsch/);
+    assert.match(instructions, /geprüfte Anwendungslogik übernimmt Preis/);
+    assert.match(instructions, /KEIN VERKAUFSDRUCK/);
+    assert.match(instructions, /höchstens eine Frage|EINE sinnvolle noch offene Sache/);
+  });
+
   await t.test("transcript sent to a provider is bounded and redacts common identifiers", () => {
     const messages = Array.from({ length: 40 }, (_, i) => ({
       id: String(i), role: i % 2 ? "assistant" : "user",
