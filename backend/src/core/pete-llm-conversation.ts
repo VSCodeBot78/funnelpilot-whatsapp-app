@@ -8,7 +8,7 @@ import { containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { readSettings } from "../services/settings-store.js";
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
-import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
+import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isApprovedPrivateLabGpt54 } from "../services/pete-api-budget.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
@@ -28,9 +28,14 @@ export function arePeteLlmApiCallsApproved(): boolean {
 }
 
 export function isPeteLlmReadyForProvider(): boolean {
-  return isPeteLlmConversationSelected() && arePeteLlmApiCallsApproved() &&
-    Boolean(process.env.OPENAI_API_KEY?.trim()) &&
-    readSettings().aiEnabled === true;
+  if (!isPeteLlmConversationSelected() || !arePeteLlmApiCallsApproved() ||
+      !process.env.OPENAI_API_KEY?.trim()) return false;
+  // The isolated synthetic lab is separately authorized by explicit env
+  // flags and a durable 2 USD budget. Do not modify the coach's saved
+  // aiEnabled preference or enable this bypass outside the private lab.
+  if (process.env.PETE_MOBILE_LAB_ENABLED === "true")
+    return isApprovedPrivateLabGpt54();
+  return readSettings().aiEnabled === true;
 }
 
 /** Explicit, unambiguous "human here in the chat" must take actual ownership.
@@ -279,14 +284,13 @@ function readResponseText(payload: unknown): string | null {
 }
 
 export async function getPeteLlmConversationReply(state: ConversationState): Promise<PeteLlmResult> {
-  if (!isPeteLlmConversationSelected() || !arePeteLlmApiCallsApproved()) {
+  // Both provider configuration AND explicit spend authorization are
+  // required. Merely pasting an API key into Railway can never spend money.
+  if (!isPeteLlmReadyForProvider()) {
     return { kind: "handoff", reason: "not_authorized" };
   }
-  // Never activate paid calls solely because a secret was found in an old .env.
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey || readSettings().aiEnabled !== true) {
-    return { kind: "handoff", reason: "not_authorized" };
-  }
+  if (!apiKey) return { kind: "handoff", reason: "not_authorized" };
 
   const model = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
   const maxOutputTokens = model === "gpt-5.4" ? 800 : 400;
