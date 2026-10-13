@@ -8,6 +8,7 @@ import {
   getDefaultEntryConfig,
   getNormalizedEntryConfig,
 } from "../utils/dashboardHelpers";
+import { getDefaultCampaignAutomation, getNormalizedCampaignAutomation } from "../campaigns/campaignAutomationDraft";
 import {
   loadCampaignSchedulingConfigFromApi,
   saveCampaignSchedulingConfigToApi,
@@ -27,6 +28,7 @@ export function createInitialCampaigns(settings) {
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      automationConfig: getDefaultCampaignAutomation(),
       entryConfig: getDefaultEntryConfig(
         "Hi Jochen, ich habe deine Anzeige gesehen und interessiere mich fÃ¼r die ELTERN VITAL METHODE. Kannst du mir mehr Infos schicken?",
       ),
@@ -82,6 +84,7 @@ Letzte Erinnerung von mir.`,
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      automationConfig: getDefaultCampaignAutomation(),
       entryConfig: getDefaultEntryConfig("DUMMY TEST"),
       slot1: "Mittwoch 12:00",
       slot2: "Donnerstag 18:30",
@@ -133,6 +136,7 @@ const emptyCampaignForm = {
   askNameFirst: true,
   useGlobalBookingDefaults: false,
   offerContext: getDefaultOfferContext(),
+  automationConfig: getDefaultCampaignAutomation(),
   entryConfig: getDefaultEntryConfig(),
   slot1: "",
   slot2: "",
@@ -172,6 +176,7 @@ export function useCampaigns({
         ...campaign,
         useGlobalBookingDefaults: campaign.useGlobalBookingDefaults === true,
         offerContext: getNormalizedOfferContext(campaign),
+        automationConfig: getNormalizedCampaignAutomation(campaign.automationConfig),
         entryConfig: getNormalizedEntryConfig(campaign),
         booking: getNormalizedBookingConfig(campaign, settings),
       };
@@ -225,6 +230,7 @@ export function useCampaigns({
           const normalizedCampaigns = loadedCampaigns.map((campaign) => ({
             ...campaign,
             offerContext: getNormalizedOfferContext(campaign),
+            automationConfig: getNormalizedCampaignAutomation(campaign.automationConfig),
             entryConfig: getNormalizedEntryConfig(campaign),
           }));
 
@@ -270,6 +276,7 @@ export function useCampaigns({
       slot2: "",
       booking: getDefaultBookingConfig(settings),
       offerContext: getDefaultOfferContext(),
+      automationConfig: getDefaultCampaignAutomation(),
       entryConfig: getDefaultEntryConfig("NEU"),
       useGlobalBookingDefaults: false,
       welcome: "Willkommenstext",
@@ -316,6 +323,7 @@ export function useCampaigns({
         name: cleanName || "Neue Kampagne",
         trigger: cleanTrigger || "NEU",
         offerContext: getNormalizedOfferContext(campaignForm),
+        automationConfig: getNormalizedCampaignAutomation(campaignForm.automationConfig),
         entryConfig: getNormalizedEntryConfig({
           ...campaignForm,
           trigger: cleanTrigger || "NEU",
