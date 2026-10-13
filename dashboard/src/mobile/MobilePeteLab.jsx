@@ -195,7 +195,7 @@ export default function MobilePeteLab() {
       // Budget is checked first. A missing meter must never be interpreted as $0.
       const budgetData = await loadBudget();
       if (!active) return;
-      setStatus(budgetData ? "Testbereit" : "Kostenkontrolle nicht erreichbar");
+      setStatus(budgetData ? (budgetData.mode === "gpt-5.4" ? "GPT-5.4 zum Test bereit" : "Regelmodus, GPT nicht aktiviert") : "Kostenkontrolle nicht erreichbar");
       try {
         const res = await fetch(buildApiUrl("/test-chat/lab/state/" +
           encodeURIComponent(id)), { credentials: "same-origin", cache: "no-store" });
@@ -385,6 +385,21 @@ export default function MobilePeteLab() {
         </div>
       </header>
       <section className="pete-lab-budget" aria-label="Interne API-Kostenkontrolle">
+        <p className="pete-lab-mode" role="status">
+          <strong>{budget?.mode === "gpt-5.4"
+            ? "GPT-5.4 KI aktiviert: echte Modellantworten möglich"
+            : "Regelmodus: keine GPT-Antworten"}</strong>
+          {budget?.mode === "gpt-5.4"
+            ? " · Nur fiktive Testchats. Links, Identität und Sicherheit bleiben regelbasiert."
+            : " · Du bewertest gerade nicht die Gesprächs-KI."}
+        </p>
+        {budget?.labCap !== null && budget?.labCap !== undefined &&
+          <p className="pete-lab-disclaimer">
+            <strong>Nur für neue GPT-5.4-Testgespräche freigegeben:</strong>{" "}
+            {formatUsd(budget.labCap, 2)}. Davon bisher {formatUsd(budget.labSpent, 4)}
+            {" "}verbraucht, {formatUsd(budget.labLeft, 4)} verfügbar.
+            Ein festes Limit stoppt weitere kostenpflichtige Antworten.
+          </p>}
         <div className="pete-lab-budget-title">
           <strong>API-Testkosten</strong>
           <button type="button" onClick={refresh} disabled={busy}>Aktualisieren</button>
@@ -392,15 +407,15 @@ export default function MobilePeteLab() {
         {budget ? (
           <>
             <div className="pete-lab-finances">
-              <div><span>Verbraucht</span><strong>{moneyText(budget.spent)}</strong></div>
-              <div><span>Noch frei</span><strong>{moneyText(budget.left)}</strong></div>
-              <div><span>Interne Grenze</span><strong>{formatUsd(budget.cap, 2)}</strong></div>
+              <div><span>Projekt gesamt</span><strong>{moneyText(budget.spent)}</strong></div>
+              <div><span>Freies Testbudget</span><strong>{moneyText(budget.left)}</strong></div>
+              <div><span>Projektobergrenze</span><strong>{formatUsd(budget.cap, 2)}</strong></div>
             </div>
             <div className="pete-lab-meter" role="progressbar"
               aria-label="Anteil genutzter interner API-Grenze" aria-valuemin="0"
               aria-valuemax="100"
-              aria-valuenow={Math.min(100, Math.round(100 * budget.spent / budget.cap))}>
-              <div style={{ width: Math.min(100, 100 * budget.spent / budget.cap) + "%" }} />
+              aria-valuenow={Math.min(100, Math.round(100 * (budget.labCap ? budget.labSpent / budget.labCap : budget.spent / budget.cap)))}>
+              <div style={{ width: Math.min(100, 100 * (budget.labCap ? budget.labSpent / budget.labCap : budget.spent / budget.cap)) + "%" }} />
             </div>
             <div className="pete-lab-subcost">
               <span>Seit App-Öffnung: {sessionSpend === null ? "–" : moneyText(sessionSpend)}</span>
