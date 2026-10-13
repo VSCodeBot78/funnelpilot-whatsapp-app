@@ -201,6 +201,26 @@ test("Pete 20-case stress matrix: offline safety and multi-turn coverage", async
     assert.equal(model.count(), 0);
   });
 
+  await t.test("human takeover inflections are recognized without labeling coaching interest as takeover", async () => {
+    const { isExplicitPeteHumanTakeoverRequest } = await import("../core/pete-llm-conversation.js");
+    for (const utterance of [
+      "Ich möchte, dass Jochen hier im Chat übernimmt.",
+      "Jochen übernimmt bitte persönlich.",
+      "Kann Jochen hier übernehmen?",
+      "Jochen soll hier im Chat übernehmen.",
+      "Bitte kein Bot mehr, ich will mit Jochen schreiben.",
+    ]) {
+      assert.equal(isExplicitPeteHumanTakeoverRequest(utterance), true, utterance);
+    }
+    for (const utterance of [
+      "Ich könnte mir ein Coaching mit Jochen vorstellen.",
+      "Ich wünsche mir mehr Unterstützung im Alltag.",
+      "Was würde eine persönliche Begleitung bringen?",
+    ]) {
+      assert.equal(isExplicitPeteHumanTakeoverRequest(utterance), false, utterance);
+    }
+  });
+
   await t.test("X02: actual duplicate Instagram and WhatsApp bots must stop local AI", async () => {
     clearConversationStore(); on();
     const model = fakeModel([]);
