@@ -8,7 +8,7 @@ import { containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { readSettings } from "../services/settings-store.js";
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
-import { PeteBudgetStop, reservePeteBudget, settlePeteBudget } from "../services/pete-api-budget.service.js";
+import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
@@ -27,10 +27,19 @@ export function arePeteLlmApiCallsApproved(): boolean {
   return process.env.PETE_LLM_API_CALLS_APPROVED?.trim().toLowerCase() === "true";
 }
 
+/** The explicit 2 USD approval applies ONLY to the isolated GPT-5.4 lab.
+ * Production still requires the owner's persisted `aiEnabled` setting.
+ * A lab key or feature flag alone never gives permission to spend.
+ */
+function hasPeteLlmConsent(): boolean {
+  if (process.env.PETE_MOBILE_LAB_ENABLED === "true") return isPeteLabGpt54Approved();
+  return readSettings().aiEnabled === true;
+}
+
 export function isPeteLlmReadyForProvider(): boolean {
   return isPeteLlmConversationSelected() && arePeteLlmApiCallsApproved() &&
     Boolean(process.env.OPENAI_API_KEY?.trim()) &&
-    readSettings().aiEnabled === true;
+    hasPeteLlmConsent();
 }
 
 /** Explicit, unambiguous "human here in the chat" must take actual ownership.
@@ -284,7 +293,7 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
   }
   // Never activate paid calls solely because a secret was found in an old .env.
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey || readSettings().aiEnabled !== true) {
+  if (!apiKey || !hasPeteLlmConsent()) {
     return { kind: "handoff", reason: "not_authorized" };
   }
 
