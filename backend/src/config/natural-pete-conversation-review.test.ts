@@ -111,3 +111,52 @@ test("15 complete deterministic chat previews for founder/manual DM voice review
     assert.equal(conversation.length, scenario.lead.length);
   }
 });
+
+
+test("Pete Test 4: deterministic answers use actual parent context instead of repeating a generic question", async () => {
+  process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+  process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+  delete process.env.OPENAI_API_KEY;
+  const { appendHumanMessage, getOrCreateConversationState, persistConversationState, releaseToAi } =
+    await import("../core/state-manager.js");
+  const send = async (leadId: string, messageText: string) =>
+    processIncomingMessage({ leadId, campaignId: DEFAULT_CAMPAIGN_ID,
+      conversationMode: "natural", messageText });
+  try {
+    clearConversationStore();
+    const intro = await send("test4-direct-follower",
+      "Hey Jochen, bin neu auf deiner Seite. Was machst du so?");
+    assert.equal(intro.state.answers.peteReplySource, "deterministic");
+    assert.match(intro.text ?? "", /Pete.*KI-Assistent.*Jochen/s);
+    assert.match(intro.text ?? "", /Fitness|fitter/i);
+    assert.doesNotMatch(intro.text ?? "", /was möchtest du gerade|größte Knackpunkt/i);
+
+    const money = await send("test4-money-offtopic", "Ich will mehr Geld auf dem Konto");
+    assert.match(money.text ?? "", /Finanzfragen|anderes Thema/);
+    assert.doesNotMatch(money.text ?? "", /Knackpunkt|Sportprogramm|Beratung.*Invest/);
+
+    // Same state transition as the real synthetic follower_handoff lab.
+    const id = "test4-manual-follower-handoff";
+    const state = getOrCreateConversationState(id, DEFAULT_CAMPAIGN_ID);
+    appendHumanMessage(state,
+      "Hi, herzlich willkommen! Was beschäftigt dich am meisten: mehr Energie, abnehmen oder fitter werden?");
+    releaseToAi(state);
+    persistConversationState(state);
+    const shift = await send(id, "Sowohl als auch. Wegen Schichtarbeit habe ich kaum Zeit.");
+    assert.equal(shift.state.owner, "ai");
+    assert.match(shift.text ?? "", /Schichtarbeit/);
+    assert.doesNotMatch(shift.text ?? "", /größte Knackpunkt/);
+    const complaint = await send(id, "Die Schichtarbeit sagte ich ja bereits");
+    assert.match(complaint.text ?? "", /schon genannt|schon erwähnt|schon gesagt/);
+    assert.match(complaint.text ?? "", /Rückfrage war unnötig/);
+    assert.doesNotMatch(complaint.text ?? "", /größte Knackpunkt|Was ist für dich/);
+    assert.notEqual(shift.text, complaint.text);
+
+    const unknown = await send("test4-unknown-hello", "Etwas anderes.");
+    assert.doesNotMatch(unknown.text ?? "", /größte Knackpunkt/);
+    const next = await send("test4-unknown-hello", "Das habe ich doch gesagt.");
+    assert.doesNotMatch(next.text ?? "", /größte Knackpunkt/);
+  } finally {
+    clearConversationStore();
+  }
+});
