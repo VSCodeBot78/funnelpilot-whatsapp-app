@@ -17,6 +17,14 @@ export function readPeteBudget(raw) {
     inputTokens: Number.isSafeInteger(raw.inputTokens) ? raw.inputTokens : null,
     outputTokens: Number.isSafeInteger(raw.outputTokens) ? raw.outputTokens : null,
     blocked: raw.blocked === true || raw.remainingUsd <= 0,
+    gptReady: raw.llmReady === true && raw.llmMode === "gpt-5.4" &&
+      raw.model === "gpt-5.4" && raw.testCapUsd === 2 &&
+      Number.isFinite(raw.testRemainingUsd) &&
+      raw.testRemainingUsd > 0,
+    mode: raw.llmMode === "gpt-5.4" ? "gpt-5.4" : "regelmodus",
+    testCap: Number.isFinite(raw.testCapUsd) ? raw.testCapUsd : null,
+    testSpent: Number.isFinite(raw.testSpentUsd) ? raw.testSpentUsd : null,
+    testLeft: Number.isFinite(raw.testRemainingUsd) ? raw.testRemainingUsd : null,
     low: raw.remainingUsd <= Math.max(0.01, raw.hardCapUsd * 0.2),
   };
 }
