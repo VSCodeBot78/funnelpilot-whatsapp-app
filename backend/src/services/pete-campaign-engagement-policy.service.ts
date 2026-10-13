@@ -93,8 +93,13 @@ export function evaluateCampaignResourceConfirmation(input: {
   if (!timestampValid(input.userMessageAtMs) ||
       input.userMessageAtMs < input.journey.firstPrivateReplySentAtMs!)
     return { allowed: false, reason: "invalid_timestamp" };
-  const text = input.userMessage.trim().toLocaleLowerCase("de-DE");
-  const confirms = /^(?:ja(?:[.! ]+bitte)?|ok(?:ay)?|gerne|bitte|klar|ja,?\s*schick(?:en)?(?:\s*mir)?(?:\s*(?:den|die|das|link|guide|check))?|schick(?:e)?(?:\s*mir)?(?:\s*(?:den|die|das|link|guide|check))?|sende?\s*(?:mir\s*)?(?:den|die|das|link|guide|check)|ich\s*(?:möchte|will)\s*(?:den|die|das)\s*(?:link|guide|check))(?:[.!?]*)$/iu.test(text);
+  const text = input.userMessage.toLocaleLowerCase("de-DE")
+    .replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  const simpleConfirm = /^(?:ja(?: bitte)?|ok|okay|gerne|bitte|klar)$/u.test(text);
+  const askingForResource =
+    /^(?:ja )?(?:schick(?:e)?|send(?:e)?) ?(?:mir )?(?:(?:den|die|das) )?(?:link|guide|check)?$/u.test(text) ||
+    /^ich (?:möchte|will) (?:(?:den|die|das) )?(?:link|guide|check)$/u.test(text);
+  const confirms = simpleConfirm || askingForResource;
   if (!confirms) return { allowed: false, reason: "no_user_dm" };
   return { allowed: true, reason: "allowed" };
 }
