@@ -170,6 +170,23 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.equal(providerCalls, 0);
   });
 
+  await t.test("setter role is present in the mocked model instructions", async () => {
+    clearConversationStore();
+    enableMock();
+    let called = 0;
+    globalThis.fetch = async (_url, init) => {
+      called++;
+      const body = JSON.parse(String((init as RequestInit).body));
+      assert.match(body.instructions, /KI-DM-Setter/);
+      assert.match(body.instructions, /KEIN DM-COACHING/);
+      assert.match(body.instructions, /SETTER-LOGIK/);
+      return fake("Du hast also wechselnde Pausenzeiten. Was hast du bisher versucht?");
+    };
+    const r = await send("pete-setter-policy-mock", "Bei Schichtarbeit sind meine Pausen unregelmäßig.");
+    assert.equal(r.state.answers.peteReplySource, "llm");
+    assert.equal(called, 1);
+  });
+
   await t.test("older lead facts stay quoted when the latest 36 messages omit them", () => {
     const older = [
       { role: "user", text: "Ich arbeite im Schichtdienst. Schreib mir nicht an test@example.com." },
