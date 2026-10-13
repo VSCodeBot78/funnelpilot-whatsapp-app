@@ -152,7 +152,15 @@ const EMOTIONAL_CRISIS_KEYWORDS = [
   "komplett am ende",
   "total am ende",
   "panik",
-  "angst",
+  // Fear of failing another fitness attempt is not a crisis by itself.
+  // Intercept explicitly acute fear instead of treating every "Angst" as danger.
+  "angstanfall",
+  "angstattacke",
+  "todesangst",
+  "panische angst",
+  "angst mir etwas anzutun",
+  "angst, mir etwas anzutun",
+  "angst vor mir selbst",
   "depressiv",
   "depression",
   "hoffnungslos",
