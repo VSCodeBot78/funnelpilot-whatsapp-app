@@ -177,6 +177,7 @@ export function useCampaigns({
         useGlobalBookingDefaults: campaign.useGlobalBookingDefaults === true,
         offerContext: getNormalizedOfferContext(campaign),
         entryConfig: getNormalizedEntryConfig(campaign),
+        automationDraft: getNormalizedAutomationDraft(campaign),
         booking: getNormalizedBookingConfig(campaign, settings),
       };
 
