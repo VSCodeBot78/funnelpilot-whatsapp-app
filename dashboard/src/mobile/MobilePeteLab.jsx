@@ -266,7 +266,7 @@ export default function MobilePeteLab() {
     const freshId = newSyntheticId();
     try {
       const before = await loadBudget();
-      if (!before || before.blocked) {
+      if (!before || before.blocked || !before.gptReady) {
         setStatus("Kostenkontrolle gesperrt. Szenario nicht gestartet.");
         return;
       }
