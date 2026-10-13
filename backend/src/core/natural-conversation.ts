@@ -93,6 +93,60 @@ export function getNaturalConversationReply(params: {
       phase: "info", infoOnly: true,
     };
   }
+  // A new follower's direct "what do you do?" needs an answer, not a
+  // qualification question. Keep Pete's identity distinct from Jochen.
+  if (matches(input,
+      /\b(?:was machst du so|was macht ihr so|was machst du eigentlich|was bietet ihr an|was genau machst du)\b/) ||
+      (matches(input, /\b(?:neu|neu hier|neu auf deiner seite)\b/) &&
+       matches(input, /\b(?:was machst|worum geht|was bietet)\b/))) {
+    return {
+      text: "Hey! Ich bin Pete, Jochens KI-Assistent. Jochen hilft berufstätigen Eltern, im Alltag fitter zu werden, mehr Energie zu bekommen und an Ernährung und Bewegung dranzubleiben. Ohne komplizierte Diäten oder starre Pläne.",
+      phase: "info", infoOnly: true,
+    };
+  }
+
+  // Income aspirations are not automatically a fitness lead or a request
+  // for financial advice. Do not funnel them into the old problem quiz.
+  if (matches(input, /\b(?:mehr geld auf (?:dem|meinem) konto|mehr geld verdienen|mehr einkommen|einkommen steigern|reich werden)\b/) &&
+      !matches(input, /\b(?:selbststarter|coaching|begleitung|kosten|preis|bezahlen)\b/)) {
+    return {
+      text: "Mehr Geld auf dem Konto ist natürlich ein anderes Thema. Ich unterstütze Jochen hier bei Fitness, Ernährung und mehr Energie für Eltern, nicht bei Finanzfragen.",
+      phase: "info", infoOnly: true,
+    };
+  }
+
+  // Repair the actual disclosed obstacle before asking anything else.
+  // Detect an explicit repeat complaint even when the user says "Schichtarbeit
+  // sagte ich ja bereits", which was not recognized by the earlier fallback.
+  const priorShiftContext = state.messages.slice(0, -1).some(message =>
+    message.role === "user" && matches(message.text,
+      /\b(?:schichtarbeit|schichtdienst|schichten|nachtschicht|fruhschicht|spatschicht)\b/));
+  const repeatsShiftComplaint =
+    matches(input, /\b(?:schichtarbeit|schichtdienst|schichten|nachtschicht|fruhschicht|spatschicht)\b/) &&
+    matches(input, /\b(?:bereits|schon|doch|gesagt|erwahnt|wieder|nochmal|erneut)\b/);
+  const lastAssistant = [...state.messages].reverse().find(message =>
+    message.role === "assistant")?.text ?? "";
+  const genericQuestionRepeated = matches(input,
+    /\b(?:habe ich doch gesagt|hab ich doch gesagt|habe ich (?:schon|bereits) gesagt|du fragst (?:schon )?wieder)\b/) &&
+    lastAssistant.includes("größte Knackpunkt im Alltag");
+  if (repeatsShiftComplaint || (priorShiftContext && genericQuestionRepeated)) {
+    return {
+      text: "Stimmt, die Schichtarbeit hast du schon genannt. Meine Rückfrage war unnötig. Bei wechselnden Zeiten ist ein starrer Wochenplan oft wenig hilfreich. Wir sollten schauen, was in deinen Schichten realistisch klappt.",
+      phase: "info", infoOnly: true,
+    };
+  }
+
+  // An explicitly disclosed lack of time due to shifts IS the context.
+  // Don't ask for the 'biggest problem' again or assume that sport is missing.
+  if (matches(input, /\b(?:schichtarbeit|schichtdienst|schichten|nachtschicht|fruhschicht|spatschicht)\b/) &&
+      matches(input, /\b(?:wenig zeit|kaum zeit|keine zeit|schaffe|schaffs|stress|unregelmassig|unplanbar)\b/) &&
+      !matches(input, /\b(?:was kostet|wie teuer|preis|termin|buchen|selbststarter|checkout)\b/)) {
+    return {
+      text: "Mit Schichtarbeit und wenig Zeit sind feste Routinen schwierig. Da würde ich nicht direkt noch mehr Training draufpacken. Was ist für dich momentan schwieriger: Essen, Schlaf oder Bewegung unterzubringen?",
+      phase: "blocker",
+    };
+  }
+
   if (matches(input,
       /\b(das hast du mich|hast du mich (doch )?(schon|gerade)|schon gefragt|gleiche frage|immer wieder das gleiche|fragst du nochmal)\b/)) {
     return {
@@ -638,5 +692,8 @@ export function getNaturalConversationReply(params: {
     return { text: "Verstanden. Wenn du dazu noch eine konkrete Frage hast, meld dich einfach.",
       phase: "info", infoOnly: true };
   }
-  return { text: "Was ist bei dir gerade der größte Knackpunkt im Alltag?", phase: "opening" };
+  // No generic restart question: unrecognized messages should not loop
+  // after a lead has already given contextual information.
+  return { text: "Ich kann dir hier vor allem zu Fitness, Ernährung und Energie im Elternalltag weiterhelfen. Wenn du dazu eine konkrete Frage hast, sag gern Bescheid.",
+    phase: "info", infoOnly: true };
 }
