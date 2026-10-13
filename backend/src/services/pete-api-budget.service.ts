@@ -13,6 +13,39 @@ import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 const USD_MICROS_CAP = 8_000_000; // Conservative internal limit for 10 EUR authorization.
+// Oct 13 approval: an ADDITIONAL, separate 2 USD cap for this private mobile
+// laboratory only. Earlier Phase 3 GitHub charges are preserved in the
+// cumulative project floor; NEVER reset a ledger or increase the old 8 USD cap.
+// The 4.583900 USD floor was reconciled with GitHub's shared budget ledger
+// BEFORE this additional user authorization (4.323801 + 0.260099 USD).
+const PRIVATE_LAB_TEST_CAP_MICROS = 2_000_000;
+const PROJECT_CONFIRMED_PRIOR_FLOOR_MICROS = 4_583_900;
+const privateLabRequested = () =>
+  process.env.PETE_MOBILE_LAB_ENABLED === "true" &&
+  process.env.PETE_LAB_GPT54_USD2_APPROVED === "true";
+
+export function isApprovedPrivateLabGpt54(): boolean {
+  return privateLabRequested() &&
+    process.env.PETE_MOBILE_LAB_ISOLATED_DATA === "true" &&
+    process.env.PETE_LLM_CONVERSATION_ENABLED === "true" &&
+    process.env.PETE_LLM_API_CALLS_APPROVED === "true" &&
+    process.env.OPENAI_MODEL === "gpt-5.4" &&
+    process.env.INSTAGRAM_ENGINE_ENABLED === "false" &&
+    process.env.INSTAGRAM_SEND_ENABLED === "false" &&
+    process.env.WHATSAPP_SEND_ENABLED === "false" &&
+    process.env.INSTAGRAM_ALLOW_ALL_SENDERS === "false" &&
+    process.env.WHATSAPP_ALLOW_ALL_RECIPIENTS === "false";
+}
+
+// The lab's ORIGINAL prior spend must remain unchanged to match its existing
+// on-disk ledger. This adds ONLY previously uncounted GitHub charges to the
+// cap, without modifying/replacing its persistent ledger.
+function additionalVerifiedProjectSpendMicros(): number {
+  return isApprovedPrivateLabGpt54()
+    ? Math.max(0, PROJECT_CONFIRMED_PRIOR_FLOOR_MICROS - priorSpentMicros())
+    : 0;
+}
+
 const MODEL = "gpt-4.1-mini"; // backward compatible default
 // Official OpenAI pay-as-you-go prices in USD per million tokens, checked 2026-10-11.
 const MODEL_PRICES = {
@@ -120,16 +153,27 @@ function locked<T>(fn: () => T): T {
 }
 export function getPeteBudgetStatus() {
   const data = load();
+  if (privateLabRequested() && !isApprovedPrivateLabGpt54())
+    throw new PeteBudgetStop("unavailable");
+  const privateLab = isApprovedPrivateLabGpt54();
+  const verifiedPrior = priorSpentMicros() + additionalVerifiedProjectSpendMicros();
+  const globalRemaining = Math.max(0, USD_MICROS_CAP - verifiedPrior - data.committedMicroUsd);
+  const testRemaining = Math.max(0, PRIVATE_LAB_TEST_CAP_MICROS - data.committedMicroUsd);
+  const remaining = privateLab ? Math.min(globalRemaining, testRemaining) : globalRemaining;
   return {
-    model: MODEL, hardCapUsd: USD_MICROS_CAP / 1_000_000,
-    priorConfirmedUsd: priorSpentMicros() / 1_000_000,
-    committedUsd: (priorSpentMicros() + data.committedMicroUsd) / 1_000_000,
-    confirmedUsd: (priorSpentMicros() + data.confirmedMicroUsd) / 1_000_000,
+    model: privateLab ? "gpt-5.4" : MODEL,
+    hardCapUsd: USD_MICROS_CAP / 1_000_000,
+    priorConfirmedUsd: verifiedPrior / 1_000_000,
+    committedUsd: (verifiedPrior + data.committedMicroUsd) / 1_000_000,
+    confirmedUsd: (verifiedPrior + data.confirmedMicroUsd) / 1_000_000,
     reservedUsd: data.reservedMicroUsd / 1_000_000,
-    remainingUsd: Math.max(0, USD_MICROS_CAP - priorSpentMicros() - data.committedMicroUsd) / 1_000_000,
+    remainingUsd: remaining / 1_000_000,
+    testCapUsd: privateLab ? PRIVATE_LAB_TEST_CAP_MICROS / 1_000_000 : null,
+    testSpentUsd: privateLab ? data.committedMicroUsd / 1_000_000 : null,
+    testRemainingUsd: privateLab ? testRemaining / 1_000_000 : null,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
-    blocked: priorSpentMicros() + data.committedMicroUsd >= USD_MICROS_CAP,
+    blocked: remaining <= 0,
   };
 }
 export function getPeteBudgetStatusSafe() {
@@ -162,9 +206,18 @@ export function reservePeteBudget(params: {
     params.maxOutputTokens * pricing.output);
   if (!Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || reservedMicros > USD_MICROS_CAP)
     throw new PeteBudgetStop("exhausted");
+  // A lab opt-in is only valid for the approved GPT-5.4 model and isolated
+  // environment. A typo or disabled social guard fails CLOSED before billing.
+  if (privateLabRequested() &&
+      (!isApprovedPrivateLabGpt54() || params.model !== "gpt-5.4"))
+    throw new PeteBudgetStop("unavailable");
   return locked(() => {
     const data = load();
-    if (priorSpentMicros() + data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
+    const projectPrior = priorSpentMicros() + additionalVerifiedProjectSpendMicros();
+    if (projectPrior + data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
+      throw new PeteBudgetStop("exhausted");
+    if (isApprovedPrivateLabGpt54() &&
+        data.committedMicroUsd + reservedMicros > PRIVATE_LAB_TEST_CAP_MICROS)
       throw new PeteBudgetStop("exhausted");
     const id = crypto.randomUUID();
     data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(), model: params.model as PricedModel };
