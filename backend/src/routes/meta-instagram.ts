@@ -36,6 +36,7 @@ import {
   parseInstagramCommentEvents,
   selectInstagramCommentCampaign,
 } from "../services/pete-campaign-comment-preview.service.js";
+import { instagramCommentJourneys } from "../data/instagram-comment-journey.store.js";
 
 const router = Router();
 const PROVIDER = "meta_instagram" as const;
@@ -213,6 +214,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
   let commentDuplicates = 0;
   let commentNoMatch = 0;
   let commentAmbiguous = 0;
+  let commentConflicts = 0;
   if (env.INSTAGRAM_ENGINE_ENABLED) {
     for (const comment of commentEvents) {
       if (env.INSTAGRAM_ACCOUNT_ID && comment.instagramAccountId !== env.INSTAGRAM_ACCOUNT_ID) {
@@ -220,7 +222,10 @@ router.post("/", async (req: RawBodyRequest, res) => {
         continue;
       }
       const eventId = "comment:" + comment.commentId;
-      if (getMessageEventByMessageId(PROVIDER, eventId)) {
+      // The bounded message-events log is NOT a long-term duplicate fence.
+      // This durable ledger also survives restart and event-log truncation.
+      if (getMessageEventByMessageId(PROVIDER, eventId) ||
+          instagramCommentJourneys.get(comment.instagramAccountId, comment.commentId)) {
         commentDuplicates++;
         continue;
       }
@@ -229,6 +234,35 @@ router.post("/", async (req: RawBodyRequest, res) => {
         if (decision.reason === "ambiguous_campaigns") commentAmbiguous++;
         else commentNoMatch++;
         continue;
+      }
+      // Without a signed webhook timestamp the future 7-day Meta reply
+      // window cannot be established. Do not invent one.
+      if (!comment.createdAtMs) {
+        commentNoMatch++;
+        continue;
+      }
+      try {
+        const registration = instagramCommentJourneys.register({
+          instagramAccountId: comment.instagramAccountId,
+          commentId: comment.commentId,
+          commenterId: comment.commenterId,
+          mediaId: comment.mediaId,
+          campaignId: decision.plan.campaignId,
+          keyword: decision.plan.keyword,
+          commentCreatedAtMs: comment.createdAtMs,
+          publicReplyPrepared: Boolean(decision.plan.publicReply),
+          privateReplyPrepared: Boolean(decision.plan.openingDm),
+        }, Date.now());
+        if (registration.result !== "created") {
+          if (registration.result === "duplicate") commentDuplicates++;
+          else commentConflicts++;
+          continue;
+        }
+      } catch {
+        // A failed ledger write must stop processing. There is no send here.
+        return res.status(503).json({
+          ok: false, error: "instagram_comment_journey_persistence_failed", sent: false,
+        });
       }
       saveMessageEventLogEntry(buildLogEntry({
         messageId: eventId,
@@ -816,6 +850,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
       commentDuplicates,
       commentNoMatch,
       commentAmbiguous,
+      commentConflicts,
       commentActionsDryRun: true,
       processed,
       duplicates,
