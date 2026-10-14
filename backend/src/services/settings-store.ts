@@ -219,6 +219,15 @@ export function readSettings(): SettingsConfig {
   }
 }
 
+/**
+ * All live DM transports must select the same conversation system.
+ * Natural Pete is default. The old A/B/C/D engine stays available only
+ * for an explicit, temporary migration setting.
+ */
+export function getConfiguredDmConversationMode(): "natural" | "legacy" {
+  return readSettings().dmConversationMode === "legacy" ? "legacy" : "natural";
+}
+
 export function writeSettings(
   nextSettings: Partial<SettingsConfig>,
 ): SettingsConfig {
