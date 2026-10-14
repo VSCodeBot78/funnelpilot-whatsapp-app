@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { writeFileSync, existsSync } from "node:fs";
 
 const RUN_TAG = "20261014-v1";
-const MAX_LLM_CALLS = 6;
+const MAX_LLM_CALLS = 7;
 
 const CASES = [
   { name: "Elternteil mit Zeitdruck", scenarioId: "follower",
