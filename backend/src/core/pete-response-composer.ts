@@ -170,10 +170,16 @@ function buildFrustrationReply(): string {
   );
 }
 
-function buildMedicalCriticalReply(): string {
+function buildMedicalCriticalReply(userText = ""): string {
+  const input = normalizeText(userText);
+  const breathing = /\batemnot\b|\b(?:keine\s+luft|kaum\s+luft|nicht\s+atmen)\b/.test(input);
+  const chest = /\b(?:brustschmerz\w*|brust\s+schmerz\w*|druck\s+(?:auf\s+der|in\s+der)\s+brust)\b/.test(input);
+  if (breathing && chest) {
+    return "Starke Brustschmerzen mit Atemnot können ein Notfall sein. Bitte ruf jetzt 112 oder lass sofort den Notruf wählen. Nicht trainieren oder selbst zum Arzt fahren.";
+  }
   return (
-    "Da m\u00f6chte ich nichts Falsches sagen.\n" +
-    "Bei Medikamenten, Diagnosen oder akuten Beschwerden sollte das sauber \u00e4rztlich abgekl\u00e4rt werden.\n" +
+    "Da möchte ich nichts Falsches sagen.\n" +
+    "Bei Medikamenten, Diagnosen oder akuten Beschwerden sollte das ärztlich abgeklärt werden.\n" +
     "Ich gebe das an Jochen weiter, damit du keine unklare Empfehlung bekommst."
   );
 }
@@ -319,7 +325,7 @@ export function composePeteResponse(
     case "hard_stop":
       return { text: HARD_STOP_REPLY, nextStep: "done" };
     case "medical_critical":
-      return { text: buildMedicalCriticalReply() };
+      return { text: buildMedicalCriticalReply(context.userText) };
     case "medical_soft":
       return { text: buildMedicalSoftReply() };
     case "legal_privacy":
