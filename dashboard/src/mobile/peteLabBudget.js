@@ -34,7 +34,9 @@ export function readPeteBudget(raw) {
 
 export function formatUsd(value, digits = 4) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? "$" + value.toFixed(digits)
+    ? new Intl.NumberFormat("de-DE", {
+        minimumFractionDigits: digits, maximumFractionDigits: digits,
+      }).format(value) + " $"
     : "nicht verfügbar";
 }
 

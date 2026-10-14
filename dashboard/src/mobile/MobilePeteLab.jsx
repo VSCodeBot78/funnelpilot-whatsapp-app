@@ -407,9 +407,9 @@ export default function MobilePeteLab() {
         {budget ? (
           <>
             <div className="pete-lab-finances">
-              <div><span>Projekt gesamt</span><strong>{moneyText(budget.spent)}</strong></div>
-              <div><span>Freies Testbudget</span><strong>{moneyText(budget.left)}</strong></div>
-              <div><span>Projektobergrenze</span><strong>{formatUsd(budget.cap, 2)}</strong></div>
+              <div><span>Pete-intern erfasst</span><strong>{moneyText(budget.spent)}</strong></div>
+              <div><span>Rest für Pete-Tests</span><strong>{moneyText(budget.left)}</strong></div>
+              <div><span>Interne Obergrenze</span><strong>{formatUsd(budget.cap, 2)}</strong></div>
             </div>
             <div className="pete-lab-meter" role="progressbar"
               aria-label="Anteil genutzter interner API-Grenze" aria-valuemin="0"
@@ -429,7 +429,7 @@ export default function MobilePeteLab() {
             {!budget.blocked && budget.low && <p className="pete-lab-warning" role="alert">Weniger als 20 % der internen Grenze verfügbar.</p>}
           </>
         ) : <p className="pete-lab-warning" role="alert">Zähler nicht erreichbar. Senden aus Sicherheitsgründen gesperrt.</p>}
-        <p className="pete-lab-disclaimer">Nur dieser Backend-Pete-Zähler. <strong>Kein OpenAI-Kontoguthaben</strong>, keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
+        <p className="pete-lab-disclaimer"><strong>Wichtig: Diese Dollarwerte sind keine OpenAI-Guthabenanzeige.</strong> Dein echtes, möglicherweise in Euro angezeigtes Prepaid-Guthaben findest du nur in <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener noreferrer">OpenAI Platform · Abrechnung</a>. Pete ruft diesen Kontostand nicht live ab. Keine automatische Aufladung. Bei parallelen Tests ist die Änderung nicht exakt einem Chat zuzuordnen.</p>
       </section>
       <section className="pete-lab-entry" aria-label="Gesprächseinstieg simulieren">
         <label htmlFor="pete-lab-entry">Gesprächseinstieg testen</label>
