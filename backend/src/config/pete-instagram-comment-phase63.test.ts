@@ -28,6 +28,7 @@ const {
   maySendOrganicInstagramFollowUp,
 } = await import("../services/pete-campaign-comment-preview.service.js");
 const { getMessageEventByMessageId } = await import("../data/message-events.store.js");
+const { instagramCommentJourneys } = await import("../data/instagram-comment-journey.store.js");
 const { default: app } = await import("../app.js");
 
 const payload = (commentId: string, text: string, mediaId = "test-media") => ({
@@ -152,6 +153,10 @@ test("Phase 63: Instagram comment mini automation, safely preview-only", async t
       const recorded = getMessageEventByMessageId("meta_instagram", "comment:route-comment-a");
       assert.ok(recorded);
       assert.equal(recorded.raw?.messageSent, false);
+      const persistent = instagramCommentJourneys.get("test-ig-account", "route-comment-a");
+      assert.equal(persistent?.campaignId, "phase63-route-check");
+      assert.equal(persistent?.delivery.private_reply.status, "prepared");
+      assert.equal(persistent?.delivery.resource_link.status, "not_prepared");
       const two = await post();
       assert.equal(two.status, 200);
       const duplicate = await two.json();
