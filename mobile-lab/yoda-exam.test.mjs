@@ -36,6 +36,11 @@ test("A-minus exam: guide handover and explicit human request must route correct
     .includes("EXPLICIT_HUMAN_HANDOFF_MISSING"));
 });
 
+test("A-minus exam: unsupported cross-channel follow-up claim fails",()=>{
+  assert.ok(flags("KETO ohne Pitch", "Alles klar, ganz ohne weiteres Nachfassen.", "llm").includes("UNVERIFIED_FOLLOWUP_PROMISE"));
+  assert.ok(!flags("KETO ohne Pitch", "Lies in Ruhe den Guide.", "verified_transaction").includes("UNVERIFIED_FOLLOWUP_PROMISE"));
+});
+
 test("A-minus exam: price objection, Keto no pitch, STOP and human lock",()=>{
   assert.deepEqual(flags("499 Euro zu teuer","Verstehe, kein Druck."),[]);
   assert.ok(flags("499 Euro zu teuer","Ich frage Jochen.","llm_handoff")
