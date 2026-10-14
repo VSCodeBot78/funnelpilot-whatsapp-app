@@ -49,6 +49,13 @@ test("A-minus exam: price objection, Keto no pitch, STOP and human lock",()=>{
     .includes("HUMAN_BROKEN"));
 });
 
+test("A-minus exam: coaching pitch to overwhelmed parent is a style warning",()=>{
+  assert.ok(flags("Erschöpfte Mutter", "Dafür wäre Unterstützung gut.","llm")
+    .includes("EARLY_COACH_NUDGE"));
+  assert.ok(!flags("Erschöpfte Mutter", "Das klingt nach einem ziemlich vollen Alltag.","llm")
+    .includes("EARLY_COACH_NUDGE"));
+});
+
 test("A-minus exam: brevity and third-person advertising are only style warnings",()=>{
   const w=flags("Neuer Follower","Jochen unterstützt dich. "+("A".repeat(370)),"llm");
   assert.ok(w.includes("THIRD_PERSON_PITCH"));
