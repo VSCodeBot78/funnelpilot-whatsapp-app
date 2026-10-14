@@ -28,6 +28,12 @@ export function getPeteVerifiedTransactionAnswer(
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.
   const keyword = input.trim();
+  // Already received the guide, and explicitly no coaching interest:
+  // answer without an LLM and without promising any cross-channel follow-up state.
+  if (/\b(?:danke|hab|habe|bekommen|bereits|schon)\b.{0,60}\bketo[\s-]*guide\b/.test(input) &&
+      /\b(?:kein|keine|keinen|nicht|ohne)\b.{0,40}\b(?:coaching|begleitung|verkauf)\b/.test(input)) {
+    return { text: "Gerne, lies den Guide in Ruhe. Wenn später eine konkrete Frage auftaucht, kannst du dich melden.", nextPhase: "info" };
+  }
   if (keyword === "check") {
     return { text: "Hier ist der kostenlose Elternfitness-Check: " +
       OFFER_TRUTH.resources.elterncheck.url, nextPhase: "info" };
@@ -350,6 +356,7 @@ export function isUnsafeLlmClaim(reply: string): boolean {
   const input = norm(reply);
   // User's desire for a human is not proof that Pete is that human.
   if (/\b(?:ich antworte personlich|ich bleibe personlich|ich bleibe hier[^.?!]{0,90}antworte personlich|du schreibst (?:direkt )?mit jochen|ich bin jochen|(?:das kenne ich (?:gut|selbst)|ich kenne das (?:gut|aus eigener erfahrung))|ich habe selbst (?:kinder|erlebt))\b/.test(input)) return true;
+  if (/\b(?:ganz\s+)?ohne\s+(?:weiteres|erneutes)\s+nachfassen\b/.test(input)) return true;
   // Never claim that an unverified commerce or cross-channel infrastructure
   // guarantee is already in force.
   if (/\b(?:keine versteckten kosten|keine extras|alles verbindlich|ohne zusatzgebuhren|garantiert keine doppelantworten|ohne automatische antworten|ohne automatische nachsendungen|keine doppelantworten|ich schreibe dir nur hier weiter|wir halten es ab jetzt hier|die ki stoppt automatisch|keine weiteren automatischen nachrichten|alles basiert auf echten informationen|zahlung (?:ist|wurde) verifiziert)\b/.test(input)) return true;
