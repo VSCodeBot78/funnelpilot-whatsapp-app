@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { existsSync, writeFileSync } from "node:fs";
 
-const TAG = "20261014-a-minus-v2";
+const TAG = "20261014-a-minus-v3";
 const MAX_MODEL_CALLS = 32;
 const MAX_POST_REQUESTS = 52;
 const CASES = [
@@ -93,6 +93,8 @@ export function detectYodaExamFlags(step, result) {
   if (step === "turn1" && result.caseName === "KETO ohne Pitch" &&
       /https?:\/\/|jetzt kaufen|strategiegespr[aä]ch buchen/i.test(text))
     flags.push("UNWANTED_KETO_PITCH");
+  if (result.caseName === "Erschöpfte Mutter" && /\\b(?:Unterstützung|Begleitung|Coaching)\\b/i.test(text))
+    flags.push("EARLY_COACH_NUDGE");
   if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
   if (step === "HUMAN-followup" && text.length) flags.push("HUMAN_BROKEN");
   return flags;
