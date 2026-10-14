@@ -33,6 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: node --test ../mobile-lab/yoda-exam.test.mjs
 
   dashboard:
     runs-on: ubuntu-latest
