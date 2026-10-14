@@ -3,6 +3,7 @@ import { existsSync, realpathSync, readdirSync, readFileSync, writeFileSync, lst
 import { resolve, join, isAbsolute } from "node:path";
 import { createMobileLabGateway } from "./gateway.mjs";
 import { runPeteYodaSmoke } from "./yoda-smoke.mjs";
+import { runPeteYodaExam } from "./yoda-exam.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 if (process.env.NODE_ENV !== "production") throw Error("lab_requires_production_mode");
@@ -119,6 +120,12 @@ gateway.listen(gatewayPort,"0.0.0.0",()=>{
     void runPeteYodaSmoke({ dataDir, port:backendPort,
       adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET })
       .catch(error => console.error("[yoda-smoke] STOP "+
+        (error instanceof Error ? error.message : String(error))));
+  }
+  if (process.env.PETE_LAB_YODA_EXAM_ONCE === "20261014-a-minus-v1") {
+    void runPeteYodaExam({dataDir, port:backendPort,
+      adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET})
+      .catch(error => console.error("[yoda-exam] STOP "+
         (error instanceof Error ? error.message : String(error))));
   }
 });
