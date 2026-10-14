@@ -51,7 +51,9 @@ test("private $2 GPT-5.4 session is distinct from cumulative $8 project meter", 
 });
 
 test("clearly shows tiny call charges and fail-closed threshold", () => {
-  assert.equal(formatUsd(0.00028), "$0.0003");
+  assert.equal(formatUsd(0.00028), "0,0003 $");
+  assert.equal(formatUsd(4602.4, 2), "4.602,40 $");
+  assert.equal(formatUsd(1.9815, 4), "1,9815 $");
   assert.equal(formatUsd(undefined), "nicht verfügbar");
   assert.ok(Math.abs(budgetCounterChange(readPeteBudget(sample),
     readPeteBudget({ ...sample, committedUsd: 4.32028, confirmedUsd: 4.30028,
