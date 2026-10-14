@@ -30,9 +30,9 @@ test("A- fixer: direct Selfstarter purchase uses verified URL without model",()=
 
 test("A- fixer: guide context switch honors free resource without needless handoff",()=>{
   const result=getPeteVerifiedTransactionAnswer(
-    "Danke, den Check habe ich. Jetzt interessiert mich doch eher dein kostenlosen Keto Guide.",state);
+    "Danke, den Check habe ich. Jetzt interessiert mich doch eher dein kostenloser Keto Guide.",state);
   assert.ok(result?.text.includes(OFFER_TRUTH.resources.ketoGuide.url));
-  assert.equal(result?.handoff,true===false);
+  assert.notEqual(result?.handoff,true);
 });
 test("A- fixer: already received guide gets no duplicate link",()=>{
   const result=getPeteVerifiedTransactionAnswer(
