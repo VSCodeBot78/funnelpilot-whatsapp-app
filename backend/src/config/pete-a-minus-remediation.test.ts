@@ -56,6 +56,8 @@ test("A- fixer: financial decline does not request a human or sell aggressively"
   const result=getPeteVerifiedTransactionAnswer(
     "499 Euro sind mir zu viel, wir haben Kinder und viele Ausgaben.",state);
   assert.ok(result?.text.includes("keinen Druck"));
+  assert.ok(result?.text.includes("Selbststarter-Option"));
+  assert.ok(!result?.text.includes("https://"));
   assert.notEqual(result?.handoff,true);
 });
 
