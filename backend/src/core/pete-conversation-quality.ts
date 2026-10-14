@@ -40,6 +40,30 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // A concrete purchase request must lead to the VERIFIED product URL now.
+  // Never let the model invent a future checkout event or a fake payment.
+  if (/\bselbststarter\b/.test(input) &&
+      /\b(?:kaufen|bestellen|bestell\w*|wo kann ich|wie kann ich|zum checkout|zur kasse)\b/.test(input) &&
+      !/\b(?:schon|bereits)\s+(?:gekauft|bestellt|bezahlt)\b/.test(input)) {
+    return {text:"Hier findest du den No Bullshit Elternfitness Selbststarter: " +
+      OFFER_TRUTH.selfstarter.productUrl + ". Die verbindliche Gesamtsumme und Bedingungen siehst du vor dem Kauf im Checkout.",
+      nextPhase:"selfstarter_offered"};
+  }
+  // Topic switch or explicit interest in a free resource. Do not repeat an
+  // already-delivered guide merely because someone says thanks or no coaching.
+  if (/\bketo[\s-]*guide\b/.test(input) &&
+      /\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b/.test(input) &&
+      !/\b(?:kein|nicht|ohne)\b.{0,24}\bketo[\s-]*guide\b/.test(input) &&
+      !/\b(?:habe|hab|schon|bekommen|gelesen)\b.{0,15}\bketo[\s-]*guide\b/.test(input)) {
+    return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
+      OFFER_TRUTH.resources.ketoGuide.url, nextPhase:"info"};
+  }
+  // A price boundary is not an emergency or a reason for compulsory handover.
+  if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
+      /\b(?:zu teuer|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
+      !/\b(?:ratenzahlung|raten|vertrag|rechnung|zahlung|gebucht|gekauft)\b/.test(input)) {
+    return {text:"Verstehe, wenn das gerade zu teuer ist, machen wir daraus keinen Druck. Du musst hier nichts entscheiden. Falls du später eine konkrete Frage hast, kannst du dich melden."};
+  }
   // A CTA-click in an already documented Selfstarter conversation is a
   // request for the link, not permission to replay the entire advertising pitch.
   // The old ManyChat word "Bundle" must never invent an unknown other offer.
