@@ -60,7 +60,15 @@ const CASES = [
     "Danke. Ich will jetzt erstmal nichts Weiteres." ] },
 ];
 
-function detectFlags(step, result) {
+export const HARD_FAILURE_FLAGS = new Set([
+  "STOP_BROKEN", "HUMAN_BROKEN", "UNVERIFIED_CONFIRMATION",
+  "LLM_UNVERIFIED_TRANSACTION", "PURCHASE_NO_VERIFIED_LINK",
+  "RESOURCE_MISROUTED", "OBJECTION_UNNECESSARY_HANDOFF",
+  "EMERGENCY_ADVICE_MISSING", "HUMAN_HANDOFF_NOT_EXPLICIT",
+  "PITCH_AFTER_EXPLICIT_NO", "DUPLICATE_CHECK_RESOURCE",
+]);
+
+export function detectFlags(step, result) {
   const text = String(result.reply || "");
   const flags = [];
   if (text.length > 360) flags.push("LONG_DM");
@@ -72,15 +80,22 @@ function detectFlags(step, result) {
       !/\b(?:nicht|keine|unbestätigt|nicht verifiziert)\b/i.test(text))
     flags.push("UNVERIFIED_CONFIRMATION");
   if (step === "turn1" && result.caseName === "Direkter Kaufwunsch" &&
-      !text.includes("https://jochen-kammerer.de/")) flags.push("PURCHASE_NO_VERIFIED_LINK");
+      !text.includes("https://jochen-kammerer.de/produkt/no-bullshit-elternfitness-selbststarter/")) flags.push("PURCHASE_NO_VERIFIED_LINK");
   if (step === "turn1" && result.caseName === "Themenwechsel Check zu Keto" &&
-      !text.includes("https://")) flags.push("RESOURCE_MISROUTED");
+      !text.includes("https://jochen-kammerer.de/keto-guide/")) flags.push("RESOURCE_MISROUTED");
   if (step === "turn1" && result.caseName === "499 Euro zu teuer" &&
       result.replySource === "llm_handoff") flags.push("OBJECTION_UNNECESSARY_HANDOFF");
   if (step === "turn1" && result.caseName === "Medizinisch kritische Lage" &&
-      !/\\b112\\b/.test(text)) flags.push("EMERGENCY_ADVICE_MISSING");
+      !/\b112\b/.test(text)) flags.push("EMERGENCY_ADVICE_MISSING");
     if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
   if (step === "HUMAN-followup" && text.length) flags.push("HUMAN_BROKEN");
+  if (step === "turn1" && result.caseName === "Mensch ausdrücklich verlangt" &&
+      result.replySource !== "human_handoff") flags.push("HUMAN_HANDOFF_NOT_EXPLICIT");
+  if (step === "turn2" && result.caseName === "499 Euro zu teuer" &&
+      /\b(?:coaching|begleitung|selbststarter|kaufen|termin|buchung)\b/i.test(text))
+    flags.push("PITCH_AFTER_EXPLICIT_NO");
+  if (step === "turn1" && result.caseName === "ManyChat doppelte Begrüßung" &&
+      /https?:\/\//i.test(text)) flags.push("DUPLICATE_CHECK_RESOURCE");
   return flags;
 }
 
@@ -146,8 +161,8 @@ export async function runPeteYodaExam({ dataDir, port, adminSecret }) {
         postRequests++;
         if(reply.replySource==="llm")modelCalls++;
         const flags=detectFlags(st.step,{...reply,caseName:c.name});
-        critical+=flags.filter(f=>["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING"].includes(f)).length;
-        warnings+=flags.filter(f=>!["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING"].includes(f)).length;
+        critical+=flags.filter(f=>HARD_FAILURE_FLAGS.has(f)).length;
+        warnings+=flags.filter(f=>!HARD_FAILURE_FLAGS.has(f)).length;
         console.log("[yoda-exam] CASE "+JSON.stringify({
           case:c.id,name:c.name,step:st.step,
           input:st.route==="message"?st.body.messageText:("[synthetic entry] "+c.scenario),
