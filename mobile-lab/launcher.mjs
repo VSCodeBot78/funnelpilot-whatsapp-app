@@ -122,7 +122,7 @@ gateway.listen(gatewayPort,"0.0.0.0",()=>{
       .catch(error => console.error("[yoda-smoke] STOP "+
         (error instanceof Error ? error.message : String(error))));
   }
-  if (process.env.PETE_LAB_YODA_EXAM_ONCE === "20261014-a-minus-v3") {
+  if (process.env.PETE_LAB_YODA_EXAM_ONCE === "20261014-a-minus-v4") {
     void runPeteYodaExam({dataDir, port:backendPort,
       adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET})
       .catch(error => console.error("[yoda-exam] STOP "+
