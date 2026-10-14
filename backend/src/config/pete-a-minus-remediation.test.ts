@@ -28,6 +28,18 @@ test("A- fixer: direct Selfstarter purchase uses verified URL without model",()=
   assert.ok(!result?.text.includes("Bestelllogik"));
 });
 
+test("A- safety: declining a purchase is not a checkout request",()=>{
+  for (const text of [
+    "Ich möchte den Selbststarter nicht kaufen.",
+    "Ich will den Selbststarter jetzt nicht bestellen.",
+    "Kein Interesse, ich will den Selbststarter nicht kaufen.",
+  ]) {
+    const result=getPeteVerifiedTransactionAnswer(text,state);
+    assert.notEqual(result?.nextPhase,"selfstarter_offered",
+      "No verified product CTA for explicit refusal");
+  }
+});
+
 test("A- fixer: guide context switch honors free resource without needless handoff",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "Danke, den Check habe ich. Jetzt interessiert mich doch eher dein kostenloser Keto Guide.",state);

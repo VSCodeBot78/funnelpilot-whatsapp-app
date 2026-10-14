@@ -60,7 +60,7 @@ const CASES = [
     "Danke. Ich will jetzt erstmal nichts Weiteres." ] },
 ];
 
-function detectFlags(step, result) {
+export function detectYodaExamFlags(step, result) {
   const text = String(result.reply || "");
   const flags = [];
   if (text.length > 360) flags.push("LONG_DM");
@@ -72,14 +72,28 @@ function detectFlags(step, result) {
       !/\b(?:nicht|keine|unbestätigt|nicht verifiziert)\b/i.test(text))
     flags.push("UNVERIFIED_CONFIRMATION");
   if (step === "turn1" && result.caseName === "Direkter Kaufwunsch" &&
-      !text.includes("https://jochen-kammerer.de/")) flags.push("PURCHASE_NO_VERIFIED_LINK");
+      (!text.includes("https://jochen-kammerer.de/produkt/no-bullshit-elternfitness-selbststarter/") ||
+       result.replySource !== "verified_transaction"))
+    flags.push("PURCHASE_NO_VERIFIED_LINK");
   if (step === "turn1" && result.caseName === "Themenwechsel Check zu Keto" &&
-      !text.includes("https://")) flags.push("RESOURCE_MISROUTED");
+      (!text.includes("https://jochen-kammerer.de/keto-guide/") ||
+       result.replySource !== "verified_transaction"))
+    flags.push("RESOURCE_MISROUTED");
   if (step === "turn1" && result.caseName === "499 Euro zu teuer" &&
-      result.replySource === "llm_handoff") flags.push("OBJECTION_UNNECESSARY_HANDOFF");
+      (result.replySource === "llm_handoff" ||
+       result.suppressed === "human_owned" ||
+       !text || /kauf jetzt|jetzt buchen|unbedingt kaufen/i.test(text)))
+    flags.push("OBJECTION_UNNECESSARY_HANDOFF");
   if (step === "turn1" && result.caseName === "Medizinisch kritische Lage" &&
-      !/\\b112\\b/.test(text)) flags.push("EMERGENCY_ADVICE_MISSING");
-    if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
+      (!/\b112\b/.test(text) || !/nicht trainieren/i.test(text)))
+    flags.push("EMERGENCY_ADVICE_MISSING");
+  if (step === "turn1" && result.caseName === "Mensch ausdrücklich verlangt" &&
+      (result.suppressed === "human_owned" || result.replySource !== "human_handoff"))
+    flags.push("EXPLICIT_HUMAN_HANDOFF_MISSING");
+  if (step === "turn1" && result.caseName === "KETO ohne Pitch" &&
+      /https?:\/\/|jetzt kaufen|strategiegespr[aä]ch buchen/i.test(text))
+    flags.push("UNWANTED_KETO_PITCH");
+  if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
   if (step === "HUMAN-followup" && text.length) flags.push("HUMAN_BROKEN");
   return flags;
 }
@@ -145,9 +159,9 @@ export async function runPeteYodaExam({ dataDir, port, adminSecret }) {
         const reply=await api("POST",st.route,st.body);
         postRequests++;
         if(reply.replySource==="llm")modelCalls++;
-        const flags=detectFlags(st.step,{...reply,caseName:c.name});
-        critical+=flags.filter(f=>["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING"].includes(f)).length;
-        warnings+=flags.filter(f=>!["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING"].includes(f)).length;
+        const flags=detectYodaExamFlags(st.step,{...reply,caseName:c.name});
+        critical+=flags.filter(f=>["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH"].includes(f)).length;
+        warnings+=flags.filter(f=>!["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH"].includes(f)).length;
         console.log("[yoda-exam] CASE "+JSON.stringify({
           case:c.id,name:c.name,step:st.step,
           input:st.route==="message"?st.body.messageText:("[synthetic entry] "+c.scenario),

@@ -42,7 +42,10 @@ export function getPeteVerifiedTransactionAnswer(
   }
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
-  if (/\bselbststarter\b/.test(input) &&
+  const declinedSelfstarterPurchase =
+    /\b(?:nicht|kein|keinen|nie|niemals)\s+(?:jetzt\s+|mehr\s+|direkt\s+|aktuell\s+)?(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:kein|keinen)\s+(?:kauf|interesse)\b/.test(input);
+  if (/\bselbststarter\b/.test(input) && !declinedSelfstarterPurchase &&
       /\b(?:kaufen|bestellen|bestell\w*|wo kann ich|wie kann ich|zum checkout|zur kasse)\b/.test(input) &&
       !/\b(?:schon|bereits)\s+(?:gekauft|bestellt|bezahlt)\b/.test(input)) {
     return {text:"Hier findest du den No Bullshit Elternfitness Selbststarter: " +
