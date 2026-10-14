@@ -65,7 +65,7 @@ export function getPeteVerifiedTransactionAnswer(
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
       /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
       !/\b(?:ratenzahlung|raten|vertrag|rechnung|zahlung|gebucht|gekauft)\b/.test(input)) {
-    return {text:"Verstehe, wenn das gerade zu teuer ist, machen wir daraus keinen Druck. Du musst hier nichts entscheiden. Falls du später eine konkrete Frage hast, kannst du dich melden."};
+    return {text:"Klar, das ist mit Kindern und vielen Ausgaben keine Kleinigkeit. Ich mache da keinen Druck. Falls du lieber eigenständig starten möchtest, kann ich dir die Selbststarter-Option erklären."};
   }
   // A CTA-click in an already documented Selfstarter conversation is a
   // request for the link, not permission to replay the entire advertising pitch.
