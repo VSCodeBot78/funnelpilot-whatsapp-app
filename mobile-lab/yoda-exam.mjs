@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { existsSync, writeFileSync } from "node:fs";
 
-const TAG = "20261014-a-minus-v3";
+const TAG = "20261014-a-minus-v4";
 const MAX_MODEL_CALLS = 32;
 const MAX_POST_REQUESTS = 52;
 const CASES = [
@@ -95,6 +95,7 @@ export function detectYodaExamFlags(step, result) {
     flags.push("UNWANTED_KETO_PITCH");
   if (result.caseName === "Erschöpfte Mutter" && /\b(?:Unterstützung|Begleitung|Coaching)\b/i.test(text))
     flags.push("EARLY_COACH_NUDGE");
+  if (result.caseName === "KETO ohne Pitch" && /\b(?:ohne\s+weiteres\s+nachfassen|keine\s+weiteren\s+nachrichten)\b/i.test(text)) flags.push("UNVERIFIED_FOLLOWUP_PROMISE");
   if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
   if (step === "HUMAN-followup" && text.length) flags.push("HUMAN_BROKEN");
   return flags;
@@ -162,8 +163,8 @@ export async function runPeteYodaExam({ dataDir, port, adminSecret }) {
         postRequests++;
         if(reply.replySource==="llm")modelCalls++;
         const flags=detectYodaExamFlags(st.step,{...reply,caseName:c.name});
-        critical+=flags.filter(f=>["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH"].includes(f)).length;
-        warnings+=flags.filter(f=>!["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH"].includes(f)).length;
+        critical+=flags.filter(f=>["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH","UNVERIFIED_FOLLOWUP_PROMISE"].includes(f)).length;
+        warnings+=flags.filter(f=>!["STOP_BROKEN","HUMAN_BROKEN","UNVERIFIED_CONFIRMATION","LLM_UNVERIFIED_TRANSACTION","PURCHASE_NO_VERIFIED_LINK","RESOURCE_MISROUTED","OBJECTION_UNNECESSARY_HANDOFF","EMERGENCY_ADVICE_MISSING","EXPLICIT_HUMAN_HANDOFF_MISSING","UNWANTED_KETO_PITCH","UNVERIFIED_FOLLOWUP_PROMISE"].includes(f)).length;
         console.log("[yoda-exam] CASE "+JSON.stringify({
           case:c.id,name:c.name,step:st.step,
           input:st.route==="message"?st.body.messageText:("[synthetic entry] "+c.scenario),
