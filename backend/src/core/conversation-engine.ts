@@ -1351,7 +1351,7 @@ export async function processIncomingMessage(
         peteRuntimeHandoffActive: true,
       });
       takeOverByHuman(state);
-      const reply = "Verstanden. Ich gebe den Chat an Jochen weiter. Er übernimmt hier persönlich.";
+      const reply = "Verstanden. Pete pausiert hier. Jochen kann den Chat persönlich übernehmen.";
       appendAssistantMessage(state, reply);
       persistConversationState(state);
       return { text: reply, nextStep: state.currentStep,

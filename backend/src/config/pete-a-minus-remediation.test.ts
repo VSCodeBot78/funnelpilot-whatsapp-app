@@ -46,10 +46,19 @@ test("A- fixer: guide context switch honors free resource without needless hando
   assert.ok(result?.text.includes(OFFER_TRUTH.resources.ketoGuide.url));
   assert.notEqual(result?.handoff,true);
 });
-test("A- fixer: already received guide gets no duplicate link",()=>{
+test("A- fixer: received Keto Guide plus no coaching gets truthful non-commercial answer",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "Danke für den Keto Guide. Ich möchte zurzeit wirklich kein Coaching, nur lesen.",state);
-  assert.equal(result,null);
+  assert.ok(result?.text.includes("lies den Guide in Ruhe"));
+  assert.ok(!result?.text.includes("https://"));
+  assert.ok(!result?.text.includes("Nachfassen"));
+  assert.notEqual(result?.handoff,true);
+});
+
+test("A- safety: unsupported no-follow-up promise is rejected by LLM policy",async()=>{
+  const { isUnsafeLlmClaim } = await import("../core/pete-conversation-quality.js");
+  assert.equal(isUnsafeLlmClaim("Lies in Ruhe rein, ganz ohne weiteres Nachfassen."),true);
+  assert.equal(isUnsafeLlmClaim("Lies in Ruhe rein. Wenn du Fragen hast, melde dich."),false);
 });
 
 test("A- fixer: financial decline does not request a human or sell aggressively",()=>{
@@ -64,6 +73,20 @@ test("A- fixer: financial decline does not request a human or sell aggressively"
 test("A- fixer: direct human request includes 'Jochen persönlich schreiben'",()=>{
   assert.equal(isExplicitPeteHumanTakeoverRequest(
     "Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."),true);
+});
+
+test("A- fixer: human handover pauses Pete without promising a human already replied",async()=>{
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  const { DEFAULT_CAMPAIGN_ID } = await import("../config/campaigns.js");
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  try {
+    const response=await processIncomingMessage({leadId:"pete-a-minus-human-v4",campaignId:DEFAULT_CAMPAIGN_ID,
+      conversationMode:"natural",messageText:"Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."});
+    assert.equal(response.state.owner,"human");
+    assert.equal(response.state.aiPaused,true);
+    assert.match(response.text??"",/Pete pausiert/);
+    assert.doesNotMatch(response.text??"",/Er übernimmt hier persönlich/);
+  } finally { process.env.PETE_LLM_CONVERSATION_ENABLED="false"; }
 });
 
 test("A- safety: chest pain with breathlessness triggers immediate emergency call",()=>{
