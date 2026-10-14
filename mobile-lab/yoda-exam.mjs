@@ -93,7 +93,7 @@ export function detectYodaExamFlags(step, result) {
   if (step === "turn1" && result.caseName === "KETO ohne Pitch" &&
       /https?:\/\/|jetzt kaufen|strategiegespr[aä]ch buchen/i.test(text))
     flags.push("UNWANTED_KETO_PITCH");
-  if (result.caseName === "Erschöpfte Mutter" && /\\b(?:Unterstützung|Begleitung|Coaching)\\b/i.test(text))
+  if (result.caseName === "Erschöpfte Mutter" && /\b(?:Unterstützung|Begleitung|Coaching)\b/i.test(text))
     flags.push("EARLY_COACH_NUDGE");
   if (step === "STOP-followup" && text.length) flags.push("STOP_BROKEN");
   if (step === "HUMAN-followup" && text.length) flags.push("HUMAN_BROKEN");
