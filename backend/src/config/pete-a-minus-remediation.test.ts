@@ -75,6 +75,20 @@ test("A- fixer: direct human request includes 'Jochen persönlich schreiben'",()
     "Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."),true);
 });
 
+test("A- fixer: human handover pauses Pete without promising a human already replied",async()=>{
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  const { DEFAULT_CAMPAIGN_ID } = await import("../config/campaigns.js");
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  try {
+    const response=await processIncomingMessage({leadId:"pete-a-minus-human-v4",campaignId:DEFAULT_CAMPAIGN_ID,
+      conversationMode:"natural",messageText:"Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."});
+    assert.equal(response.state.owner,"human");
+    assert.equal(response.state.aiPaused,true);
+    assert.match(response.text??"",/Pete pausiert/);
+    assert.doesNotMatch(response.text??"",/Er übernimmt hier persönlich/);
+  } finally { process.env.PETE_LLM_CONVERSATION_ENABLED="false"; }
+});
+
 test("A- safety: chest pain with breathlessness triggers immediate emergency call",()=>{
   const result=composePeteResponse({decisionType:"medical_critical"} as any,{
     campaign:getCampaignById(DEFAULT_CAMPAIGN_ID),
