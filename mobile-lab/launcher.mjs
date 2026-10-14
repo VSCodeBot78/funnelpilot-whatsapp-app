@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, realpathSync, readdirSync, readFileSync, writeFileSync, lstatSync } from "node:fs";
 import { resolve, join, isAbsolute } from "node:path";
 import { createMobileLabGateway } from "./gateway.mjs";
+import { runPeteYodaSmoke } from "./yoda-smoke.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 if (process.env.NODE_ENV !== "production") throw Error("lab_requires_production_mode");
@@ -114,4 +115,10 @@ backend.on("exit",(code,signal)=>{
 });
 gateway.listen(gatewayPort,"0.0.0.0",()=>{
   console.log("[lab] private test gateway ready on platform port "+gatewayPort);
+  if (process.env.PETE_LAB_YODA_SMOKE_ONCE === "20261014-v1") {
+    void runPeteYodaSmoke({ dataDir, port:backendPort,
+      adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET })
+      .catch(error => console.error("[yoda-smoke] STOP "+
+        (error instanceof Error ? error.message : String(error))));
+  }
 });
