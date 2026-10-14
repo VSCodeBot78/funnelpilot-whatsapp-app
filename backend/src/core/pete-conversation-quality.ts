@@ -52,7 +52,7 @@ export function getPeteVerifiedTransactionAnswer(
   // Topic switch or explicit interest in a free resource. Do not repeat an
   // already-delivered guide merely because someone says thanks or no coaching.
   if (/\bketo[\s-]*guide\b/.test(input) &&
-      /\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b/.test(input) &&
+      /\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b.{0,100}\bketo[\s-]*guide\b/.test(input) &&
       !/\b(?:kein|nicht|ohne)\b.{0,24}\bketo[\s-]*guide\b/.test(input) &&
       !/\b(?:habe|hab|schon|bekommen|gelesen)\b.{0,15}\bketo[\s-]*guide\b/.test(input)) {
     return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
@@ -60,7 +60,7 @@ export function getPeteVerifiedTransactionAnswer(
   }
   // A price boundary is not an emergency or a reason for compulsory handover.
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
-      /\b(?:zu teuer|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
+      /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
       !/\b(?:ratenzahlung|raten|vertrag|rechnung|zahlung|gebucht|gekauft)\b/.test(input)) {
     return {text:"Verstehe, wenn das gerade zu teuer ist, machen wir daraus keinen Druck. Du musst hier nichts entscheiden. Falls du später eine konkrete Frage hast, kannst du dich melden."};
   }
