@@ -101,10 +101,21 @@ export function getPeteVerifiedTransactionAnswer(
     return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
       OFFER_TRUTH.resources.ketoGuide.url, nextPhase:"info"};
   }
+  // A budget objection is NOT consent to pitch a cheaper option.
+  // Explicitly declining alternative purchases takes priority over offers.
+  // Keep this deterministic because a generic prompt cannot reliably undo
+  // a scripted low-price upsell in the verified-transaction path.
+  const rejectsAllPaidAlternatives =
+    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(input) ||
+    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(input);
   // A price boundary is not an emergency or a reason for compulsory handover.
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
       /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
       !/\b(?:ratenzahlung|raten|vertrag|rechnung|zahlung|gebucht|gekauft)\b/.test(input)) {
+    if (rejectsAllPaidAlternatives) {
+      return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
+    }
     return {text:"Klar, das ist mit Kindern und vielen Ausgaben keine Kleinigkeit. Ich mache da keinen Druck. Falls du lieber eigenständig starten möchtest, kann ich dir die Selbststarter-Option erklären."};
   }
   // A CTA-click in an already documented Selfstarter conversation is a
