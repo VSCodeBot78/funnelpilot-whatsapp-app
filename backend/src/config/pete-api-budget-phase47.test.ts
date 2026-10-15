@@ -139,6 +139,45 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
     }
   });
 
+  await t.test("extended lab approval retains the existing persistent spend ledger", () => {
+    resetLedger();
+    process.env.PETE_MOBILE_LAB_ENABLED = "true";
+    process.env.PETE_MOBILE_LAB_ISOLATED_DATA = "true";
+    process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD = "4323801";
+    process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
+    process.env.PETE_LLM_API_CALLS_APPROVED = "true";
+    process.env.PETE_MOBILE_LAB_GPT54_CONSENT = "true";
+    process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "4000000";
+    process.env.OPENAI_MODEL = "gpt-5.4";
+    try {
+      fs.writeFileSync(path.join(temp, "pete-api-budget.json"), JSON.stringify({
+        version: 1, priorSpentMicroUsd: 4323801, capMicroUsd: 8000000,
+        committedMicroUsd: 1658682, confirmedMicroUsd: 1658682,
+        reservedMicroUsd: 0, requestsStarted: 150, requestsMetered: 150,
+        billedInputTokens: 0, billedOutputTokens: 0, pending: {},
+      }));
+      const after = budget.getPeteBudgetStatus();
+      assert.equal(after.hardCapUsd, 8);
+      assert.equal(after.labAuthorizedUsd, 4);
+      assert.equal(after.labCommittedUsd, 1.658682);
+      assert.equal(after.committedUsd, 6.242582);
+      assert.equal(after.labRemainingUsd, 1.757418);
+      assert.equal(after.globalRemainingUsd, 1.757418);
+      assert.equal(after.requestsStarted, 150);
+      assert.equal(after.requestsMetered, 150);
+    } finally {
+      process.env.PETE_MOBILE_LAB_ENABLED = "false";
+      delete process.env.PETE_MOBILE_LAB_ISOLATED_DATA;
+      delete process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CONSENT;
+      delete process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD;
+      delete process.env.OPENAI_MODEL;
+      process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
+      process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+      resetLedger();
+    }
+  });
+
   await t.test("partial or absent lab approval blocks billing even if key and flags exist", () => {
     resetLedger();
     process.env.PETE_MOBILE_LAB_ENABLED = "true";
