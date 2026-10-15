@@ -115,6 +115,56 @@ test("A- fixer: human handover pauses Pete without promising a human already rep
   } finally { process.env.PETE_LLM_CONVERSATION_ENABLED="false"; }
 });
 
+test("Yoda blind: direct Jochen request with extra word 'direkt' takes actual human ownership",async()=>{
+  assert.equal(isExplicitPeteHumanTakeoverRequest(
+    "Bitte schreib mir nicht länger als Bot. Ich möchte mit Jochen direkt reden."),true);
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  try {
+    const out=await processIncomingMessage({
+      leadId:"pete-blind-direct-human-v1",campaignId:DEFAULT_CAMPAIGN_ID,
+      conversationMode:"natural",
+      messageText:"Bitte schreib mir nicht länger als Bot. Ich möchte mit Jochen direkt reden.",
+    });
+    assert.equal(out.state.owner,"human");
+    assert.equal(out.state.aiPaused,true);
+    assert.equal(out.state.answers.peteReplySource,"human_handoff");
+    assert.match(out.text??"",/Pete pausiert/);
+  } finally {process.env.PETE_LLM_CONVERSATION_ENABLED="false";}
+});
+
+test("Yoda blind: paired chest pressure and low air always returns immediate 112 without GPT",async()=>{
+  const {isAcuteChestBreathingEmergency} = await import("../core/pete-conversation-quality.js");
+  const {processIncomingMessage} = await import("../core/conversation-engine.js");
+  const input="Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?";
+  assert.equal(isAcuteChestBreathingEmergency(input),true);
+  assert.equal(isAcuteChestBreathingEmergency("Ich habe seit gestern nur Muskelkater im Rücken."),false);
+  const out=await processIncomingMessage({
+    leadId:"pete-blind-acute-chest-v1",campaignId:DEFAULT_CAMPAIGN_ID,
+    conversationMode:"natural",messageText:input,
+  });
+  assert.match(out.text??"",/\\b112\\b/);
+  assert.match(out.text??"",/Nicht trainieren/);
+  assert.equal(out.state.answers.peteReplySource,"guarded_safety");
+  assert.equal(out.state.owner,"human");
+});
+
+test("Yoda blind: shame after pregnancies is not an acute-medical trigger",async()=>{
+  const {isGeneralNonMedicalKnowledgeRequest}=await import("../core/pete-conversation-quality.js");
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+    "Seit den Schwangerschaften schäme ich mich für meinen Bauch. Bitte mehr Respekt."),true);
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+    "Seit den Schwangerschaften schäme ich mich, und jetzt habe ich starke Atemnot."),false);
+});
+
+test("Yoda blind: user asking Selfstarter contents receives verified scope/link",()=>{
+  const result=getPeteVerifiedTransactionAnswer(
+    "Was ist beim Selbststarter eigentlich drin? Ist das Einzelcoaching oder etwas zum Selbermachen?",state);
+  assert.ok(result?.text.includes("eigenständige Umsetzung"));
+  assert.ok(result?.text.includes("nicht für persönliches Einzelcoaching"));
+  assert.ok(result?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
+});
+
 test("A- safety: chest pain with breathlessness triggers immediate emergency call",()=>{
   const result=composePeteResponse({decisionType:"medical_critical"} as any,{
     campaign:getCampaignById(DEFAULT_CAMPAIGN_ID),
