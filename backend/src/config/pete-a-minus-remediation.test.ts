@@ -140,7 +140,7 @@ test("Blind critical: strong chest pressure with low air triggers deterministic 
   const output=await processIncomingMessage({leadId:"pete-blind-chest-pressure",campaignId:DEFAULT_CAMPAIGN_ID,
     conversationMode:"natural",messageText:"Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?"});
   assert.equal(output.state.answers.peteReplySource,"guarded_safety");
-  assert.match(output.text??"",/\\b112\\b/);
+  assert.match(output.text??"",/\b112\b/);
   assert.match(output.text??"",/Nicht trainieren/);
   assert.match(output.text??"",/Nicht trainieren oder selbst zum Arzt fahren/);
 });
