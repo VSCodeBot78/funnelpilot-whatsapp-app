@@ -1055,6 +1055,21 @@ export function evaluatePeteRuntimeSafety(
     });
   }
 
+  // Explicitly current chest pressure together with difficulty breathing can
+  // be an acute emergency even without the exact words "Brustschmerzen" or "Atemnot".
+  // Evaluate BEFORE general medical keywords, generic emotion handling and LLM.
+  const chestPressure = /\b(?:druck\s+(?:auf|in)\s+der\s+brust|brustdruck|brustenge|enge\s+(?:auf|in)\s+der\s+brust)\b/.test(normalized);
+  const breathingTrouble = /\b(?:kaum\s+luft|keine\s+luft|luftnot|atemnot|schlecht\s+luft|schwer\s+atmen|nicht\s+atmen)\b/.test(normalized);
+  const explicitlyPast = /\b(?:damals|vor\s+(?:monaten|jahren)|fruher\s+hatte|letztes\s+jahr)\b/.test(normalized);
+  const negatedSymptoms = /\b(?:kein|keine|ohne)\s+(?:brustdruck|brustenge|druck\s+auf\s+der\s+brust|atemnot|luftnot)\b/.test(normalized);
+  if(chestPressure && breathingTrouble && !explicitlyPast && !negatedSymptoms) {
+    return result({
+      category:"medical_critical",leadTemperature:"handoff",
+      replyText:MEDICAL_CRITICAL_REPLY,shouldHandoffToJochen:true,
+      shouldStopAutomation:true,reason:"acute_chest_pressure_with_breathing_distress",
+    });
+  }
+
   const emotionalMatch = includesAnyKeyword(
     normalized,
     EMOTIONAL_CRISIS_KEYWORDS,
