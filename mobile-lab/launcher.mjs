@@ -4,6 +4,7 @@ import { resolve, join, isAbsolute } from "node:path";
 import { createMobileLabGateway } from "./gateway.mjs";
 import { runPeteYodaSmoke } from "./yoda-smoke.mjs";
 import { runPeteYodaExam } from "./yoda-exam.mjs";
+import { runPeteYodaBlindExam, BLIND_TAG } from "./yoda-blind-exam.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 if (process.env.NODE_ENV !== "production") throw Error("lab_requires_production_mode");
@@ -128,4 +129,11 @@ gateway.listen(gatewayPort,"0.0.0.0",()=>{
       .catch(error => console.error("[yoda-exam] STOP "+
         (error instanceof Error ? error.message : String(error))));
   }
+  if (process.env.PETE_LAB_YODA_BLIND_ONCE === BLIND_TAG) {
+    void runPeteYodaBlindExam({ dataDir, port:backendPort,
+      adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET })
+      .catch(error => console.error("[yoda-blind] STOP "+
+        (error instanceof Error ? error.message : String(error))));
+  }
+
 });
