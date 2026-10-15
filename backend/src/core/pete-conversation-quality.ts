@@ -62,9 +62,9 @@ export function getPeteVerifiedTransactionAnswer(
   // about the concrete time commitment or DIY scope. We have no approved
   // minute-per-day promises or detailed module inventory in offer-truth.
   const selfstarterMentioned = /\bselbststarter\b/.test(input);
-  const fiveWeekMentioned = /\b(?:5[\\s-]*wochen|funf[\\s-]*wochen|startphase)\b/.test(input);
+  const fiveWeekMentioned = /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input);
   const asksTimeCommitment =
-    /\b(?:wie\\s+viel\\s+zeit|wieviel\\s+zeit|zeitaufwand|wie\\s+lange\\s+dauert|wie\\s+viele\\s+(?:minuten|stunden))\b/.test(input);
+    /\b(?:wie\s+viel\s+zeit|wieviel\s+zeit|zeitaufwand|wie\s+lange\s+dauert|wie\s+viele\s+(?:minuten|stunden))\b/.test(input);
   if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned) {
     return {
       text: "Den Selbststarter nutzt du eigenständig, ohne persönliches Einzelcoaching. Einen verbindlichen Zeitaufwand kann ich dir dafür nicht nennen, weil dazu keine geprüfte Angabe vorliegt. Die Produktinhalte findest du hier: " +
@@ -79,8 +79,8 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
   const asksSelfstarterContents =
-    /\b(?:was|welche)\b.{0,65}\b(?:drin|enthalten|beinhaltet|inhalt\\w*|umfang|bekomme)\b/.test(input) ||
-    /\b(?:einzelcoaching|selbermachen|selbst\\s+machen|eigenstandig)\b/.test(input);
+    /\b(?:was|welche)\b.{0,65}\b(?:drin|enthalten|beinhaltet|inhalt\w*|umfang|bekomme)\b/.test(input) ||
+    /\b(?:einzelcoaching|selbermachen|selbst\s+machen|eigenstandig)\b/.test(input);
   if (selfstarterMentioned && asksSelfstarterContents) {
     return {
       text: "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText +
@@ -93,7 +93,8 @@ export function getPeteVerifiedTransactionAnswer(
   // Topic switch or explicit interest in a free resource. Do not repeat an
   // already-delivered guide merely because someone says thanks or no coaching.
   if (/\bketo[\s-]*guide\b/.test(input) &&
-      /\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b.{0,100}\bketo[\s-]*guide\b/.test(input) &&
+      (/\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b.{0,100}\bketo[\s-]*guide\b/.test(input) ||
+       /\b(?:schick\w*|sende\w*|zeig\w*|kannst du mir|bitte|sondern)\b.{0,100}\bketo[\s-]*guide\b/.test(input)) &&
       !/\b(?:kein|nicht|ohne)\b.{0,24}\bketo[\s-]*guide\b/.test(input) &&
       !/\b(?:habe|hab|schon|bekommen|gelesen)\b.{0,15}\bketo[\s-]*guide\b/.test(input)) {
     return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
