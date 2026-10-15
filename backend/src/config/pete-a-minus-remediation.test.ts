@@ -21,6 +21,47 @@ const { OFFER_TRUTH } = await import("../config/offer-truth.js");
 
 const state={messages:[]} as any;
 
+test("Sales v8: scope question receives verified price, DIY answer and product source",()=>{
+  const answer=getPeteVerifiedTransactionAnswer(
+    "Was ist beim Selbststarter eigentlich drin? Ist das persönliches Einzelcoaching oder etwas zum Selbermachen?",state);
+  assert.ok(answer?.text.includes(OFFER_TRUTH.selfstarter.priceText));
+  assert.match(answer?.text??"",/kein persönliches Einzelcoaching/);
+  assert.ok(answer?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.notEqual(answer?.handoff,true);
+  assert.equal(answer?.nextPhase,"info");
+});
+
+test("Sales v8: scoped time questions answer honestly without invented minutes",()=>{
+  const starter=getPeteVerifiedTransactionAnswer(
+    "Wie viel Zeit brauche ich für den Selbststarter?",state);
+  assert.ok(starter?.text.includes("keine geprüfte Angabe"));
+  assert.ok(starter?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
+  const coaching=getPeteVerifiedTransactionAnswer(
+    "Wie viel Zeit brauche ich für die 5-Wochen-Startphase?",state);
+  assert.match(coaching?.text??"",/fünf Wochen/);
+  assert.match(coaching?.text??"",/nicht verbindlich/);
+  assert.notEqual(coaching?.handoff,true);
+});
+
+test("Sales v8: refuser is not redirected to a paid offer",()=>{
+  const answer=getPeteVerifiedTransactionAnswer(
+    "Ich will den Selbststarter nicht kaufen, bitte den Keto Guide.",state);
+  assert.notEqual(answer?.nextPhase,"selfstarter_offered");
+  assert.ok(!answer?.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.ok(answer?.text?.includes(OFFER_TRUTH.resources.ketoGuide.url));
+  const direct=getPeteVerifiedTransactionAnswer(
+    "Ich will den Selbststarter NICHT bestellen. Aber kannst du mir den kostenlosen Keto Guide schicken?",state);
+  assert.ok(direct?.text.includes(OFFER_TRUTH.resources.ketoGuide.url));
+});
+
+test("Sales v8: Pete instruction answers first-step requests before probing",async()=>{
+  const {buildPeteEffectiveInstructions}=await import("../core/pete-llm-conversation.js");
+  const rules=buildPeteEffectiveInstructions();
+  assert.ok(rules.includes("ERSTER SCHRITT AUF KONKRETE NACHFRAGE"));
+  assert.ok(rules.includes("ZEITAUFWAND ANTWORTEN"));
+  assert.ok(rules.includes("Keine Gegenfrage statt Antwort"));
+});
+
 test("A- fixer: direct Selfstarter purchase uses verified URL without model",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "Ich möchte den No Bullshit Selbststarter kaufen. Wo kann ich bestellen?",state);
