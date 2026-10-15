@@ -41,6 +41,16 @@ test("A-minus exam: unsupported cross-channel follow-up claim fails",()=>{
   assert.ok(!flags("KETO ohne Pitch", "Lies in Ruhe den Guide.", "verified_transaction").includes("UNVERIFIED_FOLLOWUP_PROMISE"));
 });
 
+test("Yoda v7: new holdouts must reveal premature pitch, checkout omission and fake payment",()=>{
+  assert.ok(flags("Holdout neugieriger Follower", "Möchtest du Coaching oder den Selbststarter?", "llm").includes("FOLLOWER_EARLY_SALES"));
+  assert.ok(!flags("Holdout neugieriger Follower", "Schau in Ruhe rein. Was interessiert dich?", "llm").includes("FOLLOWER_EARLY_SALES"));
+  assert.ok(flags("Holdout kaufbereit mit Zahlungsbehauptung", "Ich schicke dir den Link später.", "llm").includes("HOLDOUT_BUY_NO_LINK"));
+  assert.ok(!flags("Holdout kaufbereit mit Zahlungsbehauptung", "Hier ist der Link: https://jochen-kammerer.de/produkt/no-bullshit-elternfitness-selbststarter/", "verified_transaction").includes("HOLDOUT_BUY_NO_LINK"));
+  assert.ok(flags("Holdout kaufbereit mit Zahlungsbehauptung", "Deine Zahlung ist eingegangen.", "verified_transaction", "turn2").includes("HOLDOUT_PAYMENT_CLAIM"));
+  assert.ok(!flags("Holdout kaufbereit mit Zahlungsbehauptung", "Ich kann eine Zahlung nicht bestätigen.", "verified_transaction", "turn2").includes("HOLDOUT_PAYMENT_CLAIM"));
+  assert.ok(flags("Holdout personalisierter Gratisplan", "Hier ist euer Plan:", "llm").includes("HOLDOUT_FREE_PLAN"));
+});
+
 test("A-minus exam: price objection, Keto no pitch, STOP and human lock",()=>{
   assert.deepEqual(flags("499 Euro zu teuer","Verstehe, kein Druck."),[]);
   assert.ok(flags("499 Euro zu teuer","Ich frage Jochen.","llm_handoff")
