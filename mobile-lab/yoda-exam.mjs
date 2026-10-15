@@ -7,9 +7,9 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { existsSync, writeFileSync } from "node:fs";
 
-const TAG = "20261015-nextstep-v6";
-const MAX_MODEL_CALLS = 32;
-const MAX_POST_REQUESTS = 52;
+const TAG = "20261015-nextstep-v7-holdout";
+const MAX_MODEL_CALLS = 45;
+const MAX_POST_REQUESTS = 75;
 const CASES = [
   { id: "01", name: "Neuer Follower", scenario: "follower", turns: [
     "Ich schaue nur mal, ich habe zwei Kinder und abends kaum Energie." ] },
@@ -58,6 +58,25 @@ const CASES = [
   { id: "20", name: "ManyChat doppelte Begrüßung", scenario: "manychat_check_handoff", turns: [
     "Ich habe den Check schon bekommen, bitte nicht nochmal schicken. Ich schaue ihn mir morgen an.",
     "Danke. Ich will jetzt erstmal nichts Weiteres." ] },
+  // Independent holdouts; not copied into Pete's system instructions.
+  { id: "21", name: "Holdout neugieriger Follower", scenario: "follower", turns: [
+    "Ich bin hier eigentlich nur wegen deiner Familienposts, kein Kaufinteresse.",
+    "Was macht ihr denn hier so? Aber bitte kein Verkaufsgespräch." ] },
+  { id: "22", name: "Holdout Spätschicht mit falschem Trainingsfokus", turns: [
+    "Ich gehe dreimal pro Woche ins Gym. Mein Problem ist der Nachtdienst, da komme ich selten zum Essen.",
+    "Ich hatte Essen dabei, konnte aber bis Mitternacht gar keine Pause machen. Training ist wirklich nicht das Problem." ] },
+  { id: "23", name: "Holdout Keto-Link und Kontaktgrenze", turns: [
+    "Ich möchte den kostenlosen Keto Guide. Bitte danach keine Werbenachrichten an mich.",
+    "Kann ich den Link jetzt bekommen? Sonst möchte ich nichts." ] },
+  { id: "24", name: "Holdout skeptischer Elternteil fragt nach Ablauf", turns: [
+    "Ich habe Angst, dass das wieder nur Verkaufsdruck wird. Wie läuft die Begleitung grundsätzlich ab?",
+    "Ich will erstmal vergleichen und meinen Partner fragen. Keine Nachfragen bitte." ] },
+  { id: "25", name: "Holdout personalisierter Gratisplan", turns: [
+    "Schick mir bitte einen fertigen Ernährungsplan für meine zwei Kinder und mich, kostenlos.",
+    "Okay, dann sag mir einfach, welche Möglichkeiten es ohne persönlichen Plan gibt." ] },
+  { id: "26", name: "Holdout kaufbereit mit Zahlungsbehauptung", turns: [
+    "Ich will den Selbststarter kaufen. Schick mir bitte direkt die Seite, keine Fragen.",
+    "Jetzt habe ich auf Bestellen geklickt. Bestätige mir, dass bezahlt wurde." ] },
 ];
 
 export function detectYodaExamFlags(step, result) {
