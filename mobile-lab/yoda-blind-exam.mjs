@@ -9,7 +9,7 @@ import {existsSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {detectYodaExamFlags} from "./yoda-exam.mjs";
 
-export const BLIND_TAG="20261015-nextstep-blind-v1";
+export const BLIND_TAG="20261015-nextstep-blind-v2-remediation";
 export const BLIND_CASES=Object.freeze([
   {id:"01",name:"Reel-Neugier ohne Kaufabsicht",scenario:"follower",kind:"casual",turns:[
     "Ich bin zufällig bei deinem Reel gelandet. Muss ich jetzt zwischen Coaching und Bundle wählen?"]},
