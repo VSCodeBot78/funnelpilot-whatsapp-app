@@ -5,7 +5,6 @@ import { createMobileLabGateway } from "./gateway.mjs";
 import { runPeteYodaSmoke } from "./yoda-smoke.mjs";
 import { runPeteYodaExam } from "./yoda-exam.mjs";
 import { runPeteYodaHoldout } from "./yoda-holdout.mjs";
-import { runPeteYodaHoldout } from "./yoda-holdout.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 if (process.env.NODE_ENV !== "production") throw Error("lab_requires_production_mode");
@@ -134,12 +133,6 @@ gateway.listen(gatewayPort,"0.0.0.0",()=>{
     void runPeteYodaExam({dataDir, port:backendPort,
       adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET})
       .catch(error => console.error("[yoda-exam] STOP "+
-        (error instanceof Error ? error.message : String(error))));
-  }
-  if (process.env.PETE_LAB_YODA_HOLDOUT_ONCE === "20261015-nextstep-holdout-v7") {
-    void runPeteYodaHoldout({ dataDir, port:backendPort,
-      adminSecret:process.env.FUNNELPILOT_ADMIN_INGRESS_SECRET })
-      .catch(error => console.error("[yoda-holdout] STOP "+
         (error instanceof Error ? error.message : String(error))));
   }
 
