@@ -95,7 +95,8 @@ export function getPeteVerifiedTransactionAnswer(
   if (/\bketo[\s-]*guide\b/.test(input) &&
       (/\b(?:interessier\w*|mochte|will|hatte gern|suche|brauche|wo finde|wo bekomme)\b.{0,100}\bketo[\s-]*guide\b/.test(input) ||
        /\b(?:schick\w*|sende\w*|zeig\w*|kannst du mir|bitte|sondern)\b.{0,100}\bketo[\s-]*guide\b/.test(input)) &&
-      !/\b(?:kein|nicht|ohne)\b.{0,24}\bketo[\s-]*guide\b/.test(input) &&
+      !/\b(?:kein(?:en|e)?|ohne)\s+(?:(?:den|einen|kostenlosen?|gratis)\s+){0,3}keto[\s-]*guide\b/.test(input) &&
+      !/\bketo[\s-]*guide\b.{0,22}\b(?:nicht|kein|keinen)\b/.test(input) &&
       !/\b(?:habe|hab|schon|bekommen|gelesen)\b.{0,15}\bketo[\s-]*guide\b/.test(input)) {
     return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
       OFFER_TRUTH.resources.ketoGuide.url, nextPhase:"info"};
