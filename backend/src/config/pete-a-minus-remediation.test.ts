@@ -143,7 +143,7 @@ test("Yoda blind: paired chest pressure and low air always returns immediate 112
     leadId:"pete-blind-acute-chest-v1",campaignId:DEFAULT_CAMPAIGN_ID,
     conversationMode:"natural",messageText:input,
   });
-  assert.match(out.text??"",/\\b112\\b/);
+  assert.match(out.text??"",/\b112\b/);
   assert.match(out.text??"",/Nicht trainieren/);
   assert.equal(out.state.answers.peteReplySource,"guarded_safety");
   assert.equal(out.state.owner,"human");
