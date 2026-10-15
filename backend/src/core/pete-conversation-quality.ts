@@ -60,7 +60,9 @@ export function getPeteVerifiedTransactionAnswer(
   // not an LLM-generated promise of 1:1 coaching or unverified inclusions.
   if (/\bselbststarter\b/.test(input) &&
       /\b(?:was ist|was genau|was bekomme|was enthalt|was beinhaltet|was ist drin|was steckt drin|einzelcoaching|selbermachen|selbst machen)\b/.test(input)) {
-    return { text:"Der Selbststarter ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Die genaue Inhaltsübersicht findest du hier: " +
+    const asksPrice = /\b(?:preis|preise|kostet|kosten|was kostet|wie teuer|wieviel|wie viel)\b/.test(input);
+    return { text:(asksPrice ? "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText + ". " : "") +
+      "Der Selbststarter ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Die genaue Inhaltsübersicht findest du auf der Produktseite: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase:"info" };
   }
   // A concrete purchase request must lead to the VERIFIED product URL now.
