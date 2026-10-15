@@ -58,6 +58,38 @@ export function getPeteVerifiedTransactionAnswer(
       OFFER_TRUTH.selfstarter.productUrl + ". Die verbindliche Gesamtsumme und Bedingungen siehst du vor dem Kauf im Checkout.",
       nextPhase:"selfstarter_offered"};
   }
+  // Verified offer facts win over a generic LLM answer when a parent asks
+  // about the concrete time commitment or DIY scope. We have no approved
+  // minute-per-day promises or detailed module inventory in offer-truth.
+  const selfstarterMentioned = /\bselbststarter\b/.test(input);
+  const fiveWeekMentioned = /\b(?:5[\\s-]*wochen|funf[\\s-]*wochen|startphase)\b/.test(input);
+  const asksTimeCommitment =
+    /\b(?:wie\\s+viel\\s+zeit|wieviel\\s+zeit|zeitaufwand|wie\\s+lange\\s+dauert|wie\\s+viele\\s+(?:minuten|stunden))\b/.test(input);
+  if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned) {
+    return {
+      text: "Den Selbststarter nutzt du eigenständig, ohne persönliches Einzelcoaching. Einen verbindlichen Zeitaufwand kann ich dir dafür nicht nennen, weil dazu keine geprüfte Angabe vorliegt. Die Produktinhalte findest du hier: " +
+        OFFER_TRUTH.selfstarter.productUrl,
+      nextPhase: "info",
+    };
+  }
+  if (asksTimeCommitment && fiveWeekMentioned && !selfstarterMentioned) {
+    return {
+      text: "Die persönliche Startphase dauert fünf Wochen. Wie viele Minuten oder Stunden pro Woche du dafür einplanen musst, ist hier nicht verbindlich hinterlegt. Den genauen Aufwand kann Jochen mit dir klären.",
+      nextPhase: "info",
+    };
+  }
+  const asksSelfstarterContents =
+    /\b(?:was|welche)\b.{0,65}\b(?:drin|enthalten|beinhaltet|inhalt\\w*|umfang|bekomme)\b/.test(input) ||
+    /\b(?:einzelcoaching|selbermachen|selbst\\s+machen|eigenstandig)\b/.test(input);
+  if (selfstarterMentioned && asksSelfstarterContents) {
+    return {
+      text: "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText +
+        ", ist zum eigenständigen Umsetzen gedacht und kein persönliches Einzelcoaching. Die genaue Inhaltsliste steht auf der Produktseite: " +
+        OFFER_TRUTH.selfstarter.productUrl,
+      nextPhase: "info",
+    };
+  }
+
   // Topic switch or explicit interest in a free resource. Do not repeat an
   // already-delivered guide merely because someone says thanks or no coaching.
   if (/\bketo[\s-]*guide\b/.test(input) &&
