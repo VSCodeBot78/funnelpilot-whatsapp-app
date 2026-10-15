@@ -305,6 +305,32 @@ export function getPeteVerifiedTransactionAnswer(
  * diagnostic request or a historical pregnancy as critical. Narrow relief
  * requires an unambiguously general question and no other red flags.
  */
+/**
+ * A potentially acute cardiopulmonary emergency must be a deterministic 112
+ * response even if the legacy keyword classifier misses "Druck auf der Brust".
+ * Never ask an LLM whether a caller should train with current chest symptoms.
+ */
+export function isPeteChestBreathingEmergency(text: string): boolean {
+  const input = norm(text);
+  const breath = /\b(?:atemnot|luftnot|kaum\s+luft|keine\s+luft|nicht\s+atmen|bekomme\s+(?:kaum|keine)\s+luft)\b/.test(input);
+  const chest = /\b(?:brustschmerz\w*|brustenge|enge\s+(?:auf|in)\s+der\s+brust|druck\s+(?:auf|in)\s+der\s+brust|schmerzen?\s+(?:auf|in)\s+der\s+brust)\b/.test(input);
+  return breath && chest;
+}
+
+/**
+ * Past pregnancies plus shame about one's body are not, by themselves,
+ * pregnancy complications or an acute medical emergency. Any red flag still
+ * keeps the existing medical guard active.
+ */
+export function isPeteNonMedicalPostPregnancyBodyImage(text: string): boolean {
+  const input = norm(text);
+  const history = /\b(?:seit|nach)\s+(?:(?:den|der|meiner|meinen)\s+)?schwangerschaft\w*\b/.test(input) ||
+    /\b(?:seit|nach)\s+(?:der|den)\s+geburt\w*\b/.test(input);
+  const bodyImage = /\b(?:scham\w*|unsicher|unwohl|korperbild|selbstbild|bauch|figur)\b/.test(input);
+  const redFlag = /\b(?:schwanger|atemnot|luftnot|kaum\s+luft|brustschmerz\w*|brustenge|herzschmerz\w*|blutung\w*|schmerz\w*|suizid\w*|selbstverletz\w*|medikament\w*|krankheit\w*|therapie|diagnose|akut\w*|fieber)\b/.test(input);
+  return history && bodyImage && !redFlag;
+}
+
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))

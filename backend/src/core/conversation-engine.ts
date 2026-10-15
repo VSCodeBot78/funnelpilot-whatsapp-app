@@ -4,6 +4,8 @@ import {
   isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
+  isPeteChestBreathingEmergency,
+  isPeteNonMedicalPostPregnancyBodyImage,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
@@ -1284,18 +1286,26 @@ export async function processIncomingMessage(
 
   if (input.conversationMode === "natural") {
     const bookingUrl = getRuntimeBookingUrl({ state });
-    const decision = decidePeteNextAction(input.messageText, {
+    let decision = decidePeteNextAction(input.messageText, {
       campaign,
       currentStep: state.currentStep,
       lastAssistantText: getLastAssistantText(state),
       bookingUrl,
     });
 
+    // Explicit chest pressure/pain with breathing difficulty must never reach
+    // the model due to missing synonyms in the legacy decision classifier.
+    if (isPeteChestBreathingEmergency(input.messageText) &&
+        decision.decisionType !== "medical_critical") {
+      decision = { ...decision, decisionType: "medical_critical" } as typeof decision;
+    }
+
     // Preserve precedence of STOP, medical crises, legal/privacy and hard
     // safety handoffs even if the user asks a sales-related question.
     const safeGeneralKnowledge =
       isPeteLlmConversationSelected() &&
-      isGeneralNonMedicalKnowledgeRequest(input.messageText);
+      (isGeneralNonMedicalKnowledgeRequest(input.messageText) ||
+       isPeteNonMedicalPostPregnancyBodyImage(input.messageText));
     if ([
       "hard_stop", "medical_critical", "medical_soft",
       "emotional_crisis", "legal_privacy",

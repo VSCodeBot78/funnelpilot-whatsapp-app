@@ -172,8 +172,8 @@ function buildFrustrationReply(): string {
 
 function buildMedicalCriticalReply(userText = ""): string {
   const input = normalizeText(userText);
-  const breathing = /\batemnot\b|\b(?:keine\s+luft|kaum\s+luft|nicht\s+atmen)\b/.test(input);
-  const chest = /\b(?:brustschmerz\w*|brust\s+schmerz\w*|druck\s+(?:auf\s+der|in\s+der)\s+brust)\b/.test(input);
+  const breathing = /\b(?:atemnot|luftnot|keine\s+luft|kaum\s+luft|nicht\s+atmen)\b/.test(input);
+  const chest = /\b(?:brustschmerz\w*|brust\s+schmerz\w*|brustenge|enge\s+(?:auf|in)\s+der\s+brust|druck\s+(?:auf\s+der|in\s+der)\s+brust)\b/.test(input);
   if (breathing && chest) {
     return "Starke Brustschmerzen mit Atemnot können ein Notfall sein. Bitte ruf jetzt 112 oder lass sofort den Notruf wählen. Nicht trainieren oder selbst zum Arzt fahren.";
   }
