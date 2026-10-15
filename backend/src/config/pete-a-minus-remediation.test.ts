@@ -142,7 +142,7 @@ test("Blind critical: strong chest pressure with low air triggers deterministic 
   assert.equal(output.state.answers.peteReplySource,"guarded_safety");
   assert.match(output.text??"",/\\b112\\b/);
   assert.match(output.text??"",/Nicht trainieren/);
-  assert.doesNotMatch(output.text??"",/selbst zum Arzt fahren[.]?/);
+  assert.match(output.text??"",/Nicht trainieren oder selbst zum Arzt fahren/);
 });
 
 test("Blind quality: historic pregnancies plus body shame are not acute medical symptoms",async()=>{
