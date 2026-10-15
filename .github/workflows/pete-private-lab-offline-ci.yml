@@ -49,3 +49,5 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node --test ../mobile-lab/yoda-exam.test.mjs
+      - run: node --check ../mobile-lab/yoda-blind-exam.mjs
+      - run: node --test ../mobile-lab/yoda-blind-exam.test.mjs
