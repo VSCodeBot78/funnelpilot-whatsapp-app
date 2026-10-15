@@ -4,6 +4,7 @@ import {
   isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
+  isAcuteChestBreathingEmergency,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
@@ -1284,12 +1285,19 @@ export async function processIncomingMessage(
 
   if (input.conversationMode === "natural") {
     const bookingUrl = getRuntimeBookingUrl({ state });
-    const decision = decidePeteNextAction(input.messageText, {
+    const initialDecision = decidePeteNextAction(input.messageText, {
       campaign,
       currentStep: state.currentStep,
       lastAssistantText: getLastAssistantText(state),
       bookingUrl,
     });
+    // A paired acute chest symptom + breathing difficulty needs 112 even when
+    // the older keyword decision classifier misses unusual phrasing.
+    // No LLM request or sales reply may bypass this narrow safety override.
+    const decision = initialDecision.decisionType !== "hard_stop" &&
+        isAcuteChestBreathingEmergency(input.messageText)
+      ? { ...initialDecision, decisionType: "medical_critical" as const }
+      : initialDecision;
 
     // Preserve precedence of STOP, medical crises, legal/privacy and hard
     // safety handoffs even if the user asks a sales-related question.
