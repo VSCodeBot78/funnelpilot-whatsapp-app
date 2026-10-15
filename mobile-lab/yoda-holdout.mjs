@@ -226,7 +226,7 @@ export function detectYodaExamFlags(step, result) {
 }
 
 export async function runPeteYodaHoldout({ dataDir, port, adminSecret }) {
-  if (process.env.PETE_LAB_YODA_EXAM_ONCE !== TAG) return;
+  if (process.env.PETE_LAB_YODA_HOLDOUT_ONCE !== TAG) return;
   if (process.env.PETE_LLM_CONVERSATION_ENABLED !== "true" ||
       process.env.PETE_LLM_API_CALLS_APPROVED !== "true" ||
       process.env.PETE_MOBILE_LAB_GPT54_CONSENT !== "true" ||
