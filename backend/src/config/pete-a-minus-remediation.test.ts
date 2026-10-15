@@ -115,6 +115,51 @@ test("A- fixer: human handover pauses Pete without promising a human already rep
   } finally { process.env.PETE_LLM_CONVERSATION_ENABLED="false"; }
 });
 
+test("Blind critical: direct human request with 'mit Jochen direkt reden' uses the human takeover gate",async()=>{
+  const text="Bitte schreib mir nicht länger als Bot. Ich möchte mit Jochen direkt reden.";
+  assert.equal(isExplicitPeteHumanTakeoverRequest(text),true);
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  try {
+    const output=await processIncomingMessage({leadId:"pete-blind-human-direct",campaignId:DEFAULT_CAMPAIGN_ID,
+      conversationMode:"natural",messageText:text});
+    assert.equal(output.state.answers.peteReplySource,"human_handoff");
+    assert.equal(output.state.owner,"human");
+    assert.equal(output.state.aiPaused,true);
+  }finally{process.env.PETE_LLM_CONVERSATION_ENABLED="false";}
+});
+
+test("Blind critical: strong chest pressure with low air triggers deterministic 112, not LLM",async()=>{
+  const { isPeteChestBreathingEmergency }=await import("../core/pete-conversation-quality.js");
+  const { processIncomingMessage }=await import("../core/conversation-engine.js");
+  for(const text of [
+    "Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?",
+    "Ich habe Brustenge und Atemnot, ist Sport okay?",
+  ]) assert.equal(isPeteChestBreathingEmergency(text),true);
+  assert.equal(isPeteChestBreathingEmergency("Ich habe ein bisschen Bauchfett und bin nach dem Training müde."),false);
+  const output=await processIncomingMessage({leadId:"pete-blind-chest-pressure",campaignId:DEFAULT_CAMPAIGN_ID,
+    conversationMode:"natural",messageText:"Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?"});
+  assert.equal(output.state.answers.peteReplySource,"guarded_safety");
+  assert.match(output.text??"",/\\b112\\b/);
+  assert.match(output.text??"",/Nicht trainieren/);
+  assert.doesNotMatch(output.text??"",/selbst zum Arzt fahren[.]?/);
+});
+
+test("Blind quality: historic pregnancies plus body shame are not acute medical symptoms",async()=>{
+  const { isPeteNonMedicalPostPregnancyBodyImage }=await import("../core/pete-conversation-quality.js");
+  const { processIncomingMessage }=await import("../core/conversation-engine.js");
+  const sample="Seit den Schwangerschaften schäme ich mich für meinen Bauch. Bitte sag mir nicht, dass ich disziplinierter sein muss.";
+  assert.equal(isPeteNonMedicalPostPregnancyBodyImage(sample),true);
+  assert.equal(isPeteNonMedicalPostPregnancyBodyImage("Seit der Schwangerschaft habe ich Brustschmerzen und Atemnot."),false);
+  process.env.PETE_LLM_CONVERSATION_ENABLED="true";
+  try {
+    const output=await processIncomingMessage({leadId:"pete-blind-body-image",campaignId:DEFAULT_CAMPAIGN_ID,
+      conversationMode:"natural",messageText:sample});
+    assert.notEqual(output.state.answers.peteReplySource,"guarded_safety");
+    assert.doesNotMatch(output.text??"",/Bei Medikamenten, Diagnosen oder akuten Beschwerden/);
+  }finally{process.env.PETE_LLM_CONVERSATION_ENABLED="false";}
+});
+
 test("A- safety: chest pain with breathlessness triggers immediate emergency call",()=>{
   const result=composePeteResponse({decisionType:"medical_critical"} as any,{
     campaign:getCampaignById(DEFAULT_CAMPAIGN_ID),
