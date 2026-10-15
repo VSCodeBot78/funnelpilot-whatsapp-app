@@ -48,6 +48,10 @@ test("Sales v8: refuser is not redirected to a paid offer",()=>{
     "Ich will den Selbststarter nicht kaufen, bitte den Keto Guide.",state);
   assert.notEqual(answer?.nextPhase,"selfstarter_offered");
   assert.ok(!answer?.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.ok(answer?.text?.includes(OFFER_TRUTH.resources.ketoGuide.url));
+  const direct=getPeteVerifiedTransactionAnswer(
+    "Ich will den Selbststarter NICHT bestellen. Aber kannst du mir den kostenlosen Keto Guide schicken?",state);
+  assert.ok(direct?.text.includes(OFFER_TRUTH.resources.ketoGuide.url));
 });
 
 test("Sales v8: Pete instruction answers first-step requests before probing",async()=>{
