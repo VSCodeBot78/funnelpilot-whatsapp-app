@@ -266,7 +266,7 @@ export function getPeteVerifiedTransactionAnswer(
     if (specificCoaching) {
       return { text: "Die persönliche 5-Wochen-Startphase kostet " +
         OFFER_TRUTH.coachingEntry.priceText +
-        ". Sie verbindet Bewegung, Ernährung, Schlaf und Alltag. Über individuelle Zusatzleistungen oder Raten kann ich hier nichts verbindlich zusagen." };
+        ". Sie verbindet Bewegung, Ernährung, Schlaf und Alltag. Ratenzahlung und genaue Vertragsbedingungen sind hier nicht verbindlich bestätigt. Wenn du diese Angaben vor deiner Entscheidung brauchst, kannst du sie persönlich mit Jochen klären." };
     }
     if (/\b(?:monatsrate|ratenzahlung)\b/.test(input)) {
       return { text: "Ob Ratenzahlung möglich ist, ist hier nicht verbindlich bestätigt. Das muss Jochen persönlich klären." };
