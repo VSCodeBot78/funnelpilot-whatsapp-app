@@ -20,6 +20,16 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD")
 
 const has = (s: string, regex: RegExp) => regex.test(norm(s));
 
+/** Immediate danger must be recognized independent of LLM/sales intent
+ * and independently of the older keyword-based decision classifier. */
+export function isAcuteChestBreathingEmergency(text: string): boolean {
+  const input = norm(text);
+  const chest = /\b(?:brustschmerz\w*|brustenge|brustdruck|druck\s+(?:auf\s+der|in\s+der)\s+brust|enge\s+(?:auf\s+der|in\s+der)\s+brust)\b/.test(input);
+  const breathing = /\b(?:atemnot|luftnot|keine\s+luft|kaum\s+luft|schlecht\s+luft|schwer\s+atmen|nicht\s+(?:richtig\s+)?atmen)\b/.test(input);
+  return chest && breathing;
+}
+
+
 export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
@@ -45,6 +55,13 @@ export function getPeteVerifiedTransactionAnswer(
   if (keyword === "bullshit" || keyword === "no bullshit") {
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
+  }
+  // A buyer asking what the Selfstarter contains needs verified scope,
+  // not an LLM-generated promise of 1:1 coaching or unverified inclusions.
+  if (/\bselbststarter\b/.test(input) &&
+      /\b(?:was ist|was genau|was bekomme|was enthalt|was beinhaltet|was ist drin|was steckt drin|einzelcoaching|selbermachen|selbst machen)\b/.test(input)) {
+    return { text:"Der Selbststarter ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Die genaue Inhaltsübersicht findest du hier: " +
+      OFFER_TRUTH.selfstarter.productUrl, nextPhase:"info" };
   }
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
@@ -309,6 +326,12 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
+  // Body-image shame AFTER pregnancies is not an acute medical diagnosis.
+  // Do not suppress red flags if the same message reports actual symptoms.
+  if (/\b(?:seit\s+den\s+schwangerschaften|nach\s+(?:den|meinen?|der)\s+schwangerschaft(?:en)?|seit\s+der\s+geburt|nach\s+der\s+geburt)\b/.test(input) &&
+      /\b(?:scham\w*|scham(?:e|st)\b|bauch|figur|korperbild|korpergefuhl|unwohl|selbstbild)\b/.test(input) &&
+      !/\b(?:brust\w*|atemnot|luftnot|schwindel|ohnmacht|blut\w*|schmerz\w*|suizid|selbstverletz\w*|nicht\s+mehr\s+leben|sterben|akut\w*|medikament\w*|fieber)\b/.test(input))
+    return true;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
   // zwei Jahre her" is not current pregnancy. Red-flag symptoms remain gated.
   if (/\b(?:letzte|fruhere|vorige)\s+schwangerschaft\s+ist\s+(?:(?:uber|mehr als|rund|fast|schon)\s+)*(?:\d+|ein|eine|zwei|drei|vier|funf|sechs)\s+jahre?\s+her\b/.test(input) &&
