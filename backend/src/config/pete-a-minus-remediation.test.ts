@@ -80,6 +80,22 @@ test("A- fixer: financial decline does not request a human or sell aggressively"
   assert.notEqual(result?.handoff,true);
 });
 
+test("A- consent: user asks not to be chased, follow-up flag persists before reply",async()=>{
+  const { isSalesFollowUpOptOut } = await import("../core/pete-conversation-quality.js");
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  for (const text of [
+    "Ich melde mich dann selbst, bitte nicht hinterherlaufen.",
+    "Bitte nicht nachhaken, ich schreibe, wenn ich soweit bin.",
+    "Ich melde mich selbst.",
+  ]) assert.equal(isSalesFollowUpOptOut(text),true,text);
+  assert.equal(isSalesFollowUpOptOut("Ich habe im Alltag viel zu tun."),false);
+  const response=await processIncomingMessage({
+    leadId:"pete-a-minus-no-followup-v6", campaignId:DEFAULT_CAMPAIGN_ID,
+    conversationMode:"natural", messageText:"Ich melde mich dann selbst, bitte nicht hinterherlaufen.",
+  });
+  assert.equal(response.state.flags.salesFollowUpsOptedOut,true);
+});
+
 test("A- fixer: direct human request includes 'Jochen persönlich schreiben'",()=>{
   assert.equal(isExplicitPeteHumanTakeoverRequest(
     "Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."),true);
