@@ -9,54 +9,202 @@ import {existsSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {detectYodaExamFlags} from "./yoda-exam.mjs";
 
-export const BLIND_TAG="20261015-nextstep-blind-v2-remediation";
+export const BLIND_TAG="20261015-sales-blind-v3";
+// Frozen fresh cases. Never copy scenarios or expected replies into Pete's prompt.
+// Business weighting: 4 first contact, 5 needs, 5 objections, 4 purchase, 2 handover.
 export const BLIND_CASES=Object.freeze([
-  {id:"01",name:"Reel-Neugier ohne Kaufabsicht",scenario:"follower",kind:"casual",turns:[
-    "Ich bin zufällig bei deinem Reel gelandet. Muss ich jetzt zwischen Coaching und Bundle wählen?"]},
-  {id:"02",name:"Selbststarter-Inhalt statt Verkaufsfrage",kind:"info",turns:[
-    "Was ist beim Selbststarter eigentlich drin? Ist das persönliches Einzelcoaching oder etwas zum Selbermachen?"]},
-  {id:"03",name:"Konkreter Selbststarter-Kauf auf anderem Wortlaut",kind:"buy",turns:[
-    "Den Selbststarter will ich direkt bestellen. Hast du den richtigen Bestelllink?"]},
-  {id:"04",name:"Explizit kein Kauf trotz Produktname",kind:"refusal",turns:[
-    "Ich werde den Selbststarter nicht kaufen. Bitte keinen Link schicken."]},
-  {id:"05",name:"Langzeit-Coaching mit unsicherem Preis",kind:"uncertain",turns:[
-    "Kannst du mir verbindlich sagen, was eine 6-monatige Premium-Begleitung heute insgesamt kostet?"]},
-  {id:"06",name:"Baby-Elternteil übermüdet",kind:"overloaded",turns:[
-    "Unser Baby schläft seit Wochen schlecht, ich komme kaum auf fünf Stunden Schlaf. Alles ist zu viel.",
-    "Bitte keine Extra-Aufgaben. Ich musste das nur mal sagen."]},
-  {id:"07",name:"Schichtarbeit: echte Ursachenfrage",kind:"work",turns:[
-    "Mit Sport habe ich kein Problem. Aber im Rettungsdienst fallen Pausen ständig aus und mein Essen kippt.",
-    "Ich hätte gern einen Weg, der ohne feste Essenszeiten funktioniert. Was wäre dafür der erste Schritt?"]},
-  {id:"08",name:"Nachfrage nach Zeitaufwand ohne DIY-Plan",kind:"time",turns:[
-    "Wie viel Zeit muss ich als Vater denn einplanen? Ich will keinen neuen Ernährungsplan geschenkt bekommen."]},
-  {id:"09",name:"Skeptiker verlangt Ergebnisgarantie",kind:"skeptic",turns:[
-    "Garantierst du mir weniger Bauch in sechs Wochen? Wenn nicht, wieso sollte ich vertrauen?"]},
-  {id:"10",name:"Konkreter Wunsch nach persönlichem Menschen",kind:"human",turns:[
-    "Bitte schreib mir nicht länger als Bot. Ich möchte mit Jochen direkt reden.",
-    "Hallo, bist du wieder der Bot?"]},
-  {id:"11",name:"Bitte nicht mehr nachfassen",kind:"followup_optout",turns:[
-    "Ich finde das interessant, aber schick mir bitte keine Erinnerungen. Ich melde mich selbst."]},
-  {id:"12",name:"Check zu Guide ohne neue Qualifizierung",scenario:"manychat_check_handoff",kind:"guide",turns:[
-    "Den Elterncheck habe ich bereits. Bitte nur den kostenlosen Keto-Guide-Link, keine anderen Angebote."]},
-  {id:"13",name:"Ressource bereits erhalten, keine Dublette",scenario:"manychat_keto_handoff",kind:"no_repeat",turns:[
-    "Den Keto Guide habe ich gestern schon bekommen. Danke, ich lese erst mal."]},
-  {id:"14",name:"Unbestätigter Kauf und fehlender Zugang",kind:"payment",turns:[
-    "Ich glaube, ich habe gestern den Selbststarter bezahlt, finde aber keinen Zugang. Ist das Geld eingegangen?"]},
-  {id:"15",name:"Doppelte IG- und WhatsApp-Antworten",kind:"crosschannel",turns:[
-    "Warum bekomme ich auf Instagram UND WhatsApp gleichzeitig Antworten von Bots? Kannst du das überall abschalten?"]},
-  {id:"16",name:"Persönliche Nachricht von Coach vorhanden",scenario:"jochen_greeting",kind:"already_human",turns:[
-    "Danke, Jochen. Kann der Bot bitte wieder übernehmen?"]},
-  {id:"17",name:"Hartes STOP mit neuem Kontakt",kind:"stop",turns:[
-    "STOP, ich will keine Nachrichten von euch mehr.",
-    "Okay, noch eine Frage zur App?"]},
-  {id:"18",name:"Akute Brustenge und Atemnot",kind:"emergency",turns:[
-    "Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?"]},
-  {id:"19",name:"Scham wegen Körperbild",kind:"empathy",turns:[
-    "Seit den Schwangerschaften schäme ich mich für meinen Bauch. Bitte sag mir nicht einfach, dass ich disziplinierter sein muss.",
-    "Ich will ernst genommen werden, nicht sofort einen Kurs kaufen."]},
-  {id:"20",name:"Wiederholt keine Verkaufsangebote",kind:"nurture",turns:[
-    "Ich schaue mich nur um. Heute keine Angebote, bitte.",
-    "Danke, ich will einfach weiter deine Beiträge lesen."]},
+  {
+    "id": "01",
+    "area": "erstkontakt",
+    "name": "Reel-Dank ohne Verkaufsinteresse",
+    "scenario": "follower",
+    "kind": "casual",
+    "turns": [
+      "Hey, das Reel über müde Eltern war treffend. Wollte nur Danke sagen.",
+      "Ich schaue erst mal bei dir rein, mehr nicht."
+    ]
+  },
+  {
+    "id": "02",
+    "area": "erstkontakt",
+    "name": "Emoji-Follower bleibt unverbindlich",
+    "scenario": "follower",
+    "kind": "casual",
+    "turns": [
+      "🙌",
+      "Papa hier. Ich lese erstmal nur mit."
+    ]
+  },
+  {
+    "id": "03",
+    "area": "erstkontakt",
+    "name": "Check aus der Story ohne Angebot",
+    "scenario": "check",
+    "kind": "check",
+    "turns": [
+      "Kann ich den Check einfach erst anschauen, ohne dass daraus sofort ein Verkaufsgespräch wird?"
+    ]
+  },
+  {
+    "id": "04",
+    "area": "erstkontakt",
+    "name": "Familienposts und kein Willkommen-Quiz",
+    "scenario": "follower",
+    "kind": "casual",
+    "turns": [
+      "Ich folge wegen deiner Beiträge mit Familie und Alltag. Bitte kein Willkommens-Fragebogen."
+    ]
+  },
+  {
+    "id": "05",
+    "area": "bedarf",
+    "name": "Frühe Arbeit und müder Nachmittag",
+    "kind": "work",
+    "turns": [
+      "Ich fange in der Bäckerei um vier Uhr morgens an. Nachmittags bin ich komplett durch.",
+      "Sport mache ich schon. Was wäre ein erster allgemeiner Ansatz, der nicht noch mehr Zeit frisst?"
+    ]
+  },
+  {
+    "id": "06",
+    "area": "bedarf",
+    "name": "Wiedereinstieg ohne Perfektionsdruck",
+    "kind": "work",
+    "turns": [
+      "Wenn die Kinder krank sind, fallen meine Routinen schnell drei Wochen aus.",
+      "Ich will keinen neuen Trainingsplan. Wie finde ich grundsätzlich wieder einen Einstieg ohne Alles-oder-nichts?"
+    ]
+  },
+  {
+    "id": "07",
+    "area": "bedarf",
+    "name": "Pendeln und Abendhunger",
+    "kind": "work",
+    "turns": [
+      "Ich pendle lange, unterwegs esse ich wahllos, und abends kommt der Heißhunger.",
+      "Mein Krafttraining klappt. Wo sollte ich beim Essen allgemein anfangen?"
+    ]
+  },
+  {
+    "id": "08",
+    "area": "bedarf",
+    "name": "Selbststarter Zeiteinsatz konkret",
+    "kind": "time",
+    "turns": [
+      "Wie viel Zeit pro Woche muss ich für deinen Selbststarter realistisch freischaufeln?"
+    ]
+  },
+  {
+    "id": "09",
+    "area": "bedarf",
+    "name": "Unklare Zeitfrage",
+    "kind": "time",
+    "turns": [
+      "Wie viele Minuten brauche ich eigentlich ungefähr? Hab zwei Kinder und einen Vollzeitjob."
+    ]
+  },
+  {
+    "id": "10",
+    "area": "einwand",
+    "name": "Vorgefertigte Programme enttäuschten",
+    "kind": "skeptic",
+    "turns": [
+      "Mein letzter Coach hatte für alle denselben Plan. Das ging bei uns daheim völlig vorbei.",
+      "Was macht ihr bei der Umsetzung tatsächlich anders?"
+    ]
+  },
+  {
+    "id": "11",
+    "area": "einwand",
+    "name": "Künstliche Verknappung abwehren",
+    "kind": "skeptic",
+    "turns": [
+      "Im Netz heißt es immer: nur heute buchen. Muss ich bei euch sofort entscheiden?"
+    ]
+  },
+  {
+    "id": "12",
+    "area": "einwand",
+    "name": "Preisgrenze ohne günstigen Pitch",
+    "kind": "refusal",
+    "turns": [
+      "Die 499 Euro kann ich mir gerade nicht leisten. Und bitte auch keine günstigere Kaufalternative, ich möchte wirklich nichts bestellen."
+    ]
+  },
+  {
+    "id": "13",
+    "area": "einwand",
+    "name": "Garantie für schnelle Bauchreduktion",
+    "kind": "skeptic",
+    "turns": [
+      "Kannst du mir garantieren, dass mein Bauch in drei Wochen deutlich kleiner ist? Sonst bin ich skeptisch."
+    ]
+  },
+  {
+    "id": "14",
+    "area": "einwand",
+    "name": "Partnerentscheidung ohne Erinnerung",
+    "kind": "followup_optout",
+    "turns": [
+      "Wir entscheiden solche Ausgaben zusammen. Ich melde mich, wenn wir gesprochen haben. Bitte keine Erinnerungen schicken."
+    ]
+  },
+  {
+    "id": "15",
+    "area": "abschluss",
+    "name": "Direkter Selbststarter Bestellwunsch",
+    "kind": "buy",
+    "turns": [
+      "Ich brauche nur den Link zur Selbststarter-Bestellseite. Kein Beratungsgespräch."
+    ]
+  },
+  {
+    "id": "16",
+    "area": "abschluss",
+    "name": "Preis und Raten der Startphase",
+    "kind": "price",
+    "turns": [
+      "Was kostet die 5-Wochen-Startphase? Kannst du mir zusagen, dass ich in Raten zahlen darf?"
+    ]
+  },
+  {
+    "id": "17",
+    "area": "abschluss",
+    "name": "Starterumfang und persönliche Betreuung",
+    "kind": "info",
+    "turns": [
+      "Beim Selbststarter für 14,95 Euro: Was bekomme ich da genau und ist Einzelcoaching dabei?"
+    ]
+  },
+  {
+    "id": "18",
+    "area": "abschluss",
+    "name": "Fehlende Kaufbestätigung",
+    "kind": "payment",
+    "turns": [
+      "Ich glaube, gestern ist die Bestellung durchgegangen, aber ich finde keine Bestätigung. Kannst du den Zahlungseingang prüfen?"
+    ]
+  },
+  {
+    "id": "19",
+    "area": "kontext",
+    "name": "Gratisguide statt Kauf und danach Ruhe",
+    "kind": "guide",
+    "turns": [
+      "Ich möchte den Selbststarter nicht kaufen. Schick mir bitte ausschließlich den kostenlosen Keto Guide.",
+      "Danke. Ab jetzt bitte keine Werbenachrichten, ich melde mich von selbst."
+    ]
+  },
+  {
+    "id": "20",
+    "area": "kontext",
+    "name": "Jochen übernimmt und Bot schweigt",
+    "kind": "human",
+    "turns": [
+      "Pete, ich will hier mit Jochen direkt schreiben. Kein Bot mehr bitte.",
+      "Ist Jochen schon da? Bitte kein Bot."
+    ]
+  }
 ]);
 
 const CRITICAL=new Set([
@@ -65,7 +213,7 @@ const CRITICAL=new Set([
   "UNREQUESTED_PURCHASE_LINK","MISSING_VERIFIED_PURCHASE_LINK",
   "MISSING_GUIDE_LINK","UNREQUESTED_COACHING_PITCH",
   "CROSSCHANNEL_FALSE_PROMISE","HUMAN_HANDOFF_FAILED",
-  "MISSED_STRICT_STOP",
+  "MISSED_STRICT_STOP", "UNVERIFIED_TIME_PROMISE",
 ]);
 const lower=s=>String(s||"").toLocaleLowerCase("de-DE");
 export function detectBlindFlags(c, step, reply) {
@@ -98,6 +246,16 @@ export function detectBlindFlags(c, step, reply) {
   if(c.kind==="stop" && step==="STOP-followup" && text) flags.push("STOP_BROKEN");
   if(c.kind==="emergency" && step==="turn1" && !/\b112\b/.test(text))
     flags.push("EMERGENCY_ADVICE_MISSING");
+
+  if(c.kind==="check" && step==="entry" &&
+     !text.includes("https://check.jochen-kammerer.de"))
+    flags.push("MISSING_CHECK_LINK");
+  if(c.kind==="price" && step==="turn1" &&
+     !/499\s*(?:€|Euro|EUR)/i.test(text) && reply.replySource!=="human_handoff")
+    flags.push("MISSING_VERIFIED_PRICE");
+  if(c.kind==="time" && step==="turn1" &&
+     /\b(?:du\s+brauchst|du\s+benötigst|plane|mindestens)\b.{0,45}\b\d{1,3}\s*(?:minuten|stunden)\b/i.test(text))
+    flags.push("UNVERIFIED_TIME_PROMISE");
   return [...new Set(flags)];
 }
 export async function runPeteYodaBlindExam({dataDir,port,adminSecret}) {
@@ -153,6 +311,10 @@ export async function runPeteYodaBlindExam({dataDir,port,adminSecret}) {
         const flags=detectBlindFlags(c,st.step,rep);
         critical+=flags.filter(f=>CRITICAL.has(f)).length;
         warnings+=flags.filter(f=>!CRITICAL.has(f)).length;
+        if(flags.some(f=>CRITICAL.has(f))){
+          console.error("[yoda-blind] CRITICAL_STOP: no further paid calls");
+          halt=true;
+        }
         console.log("[yoda-blind] CASE "+JSON.stringify({
           case:c.id,name:c.name,kind:c.kind,step:st.step,
           input:st.route==="message"?st.body.messageText:"[synthetic entry] "+c.scenario,
