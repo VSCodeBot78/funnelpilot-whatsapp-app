@@ -21,6 +21,45 @@ const { OFFER_TRUTH } = await import("../config/offer-truth.js");
 
 const state={messages:[]} as any;
 
+test("Blind safety: current chest pressure plus breathing distress always asks for 112",async()=>{
+  const { evaluatePeteRuntimeSafety } = await import("../core/pete-runtime-safety.js");
+  for(const input of [
+    "Ich habe gerade starken Druck auf der Brust und bekomme kaum Luft. Soll ich trotzdem trainieren?",
+    "Ich habe Brustenge und Atemnot. Sollte ich Sport machen?",
+  ]) {
+    const decision=evaluatePeteRuntimeSafety(input);
+    assert.equal(decision.category,"medical_critical");
+    const reply=composePeteResponse({decisionType:"medical_critical"} as any,{
+      campaign:getCampaignById(DEFAULT_CAMPAIGN_ID),userText:input});
+    assert.match(reply?.text??"",/\b112\b/);
+    assert.match(reply?.text??"",/Nicht trainieren/);
+    assert.doesNotMatch(reply?.text??"",/selbst zum Arzt fahren ohne/);
+  }
+  assert.notEqual(evaluatePeteRuntimeSafety(
+    "Ich habe keine Atemnot, keinen Druck auf der Brust.").category,"medical_critical");
+});
+
+test("Blind empathy: historical pregnancies plus body shame are not automatically medical escalation",async()=>{
+  const {isGeneralNonMedicalKnowledgeRequest}=await import("../core/pete-conversation-quality.js");
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+    "Seit den Schwangerschaften schäme ich mich für meinen Bauch. Bitte keine Disziplinpredigt."),true);
+  assert.equal(isGeneralNonMedicalKnowledgeRequest(
+    "Seit den Schwangerschaften habe ich Brustschmerzen und Atemnot."),false);
+});
+
+test("Blind next step: Selfstarter content is verified and clear about no 1:1 coaching",()=>{
+  const reply=getPeteVerifiedTransactionAnswer(
+    "Was ist beim Selbststarter eigentlich drin? Ist das persönliches Einzelcoaching oder etwas zum Selbermachen?",state);
+  assert.ok(reply?.text.includes("nicht für persönliches Einzelcoaching"));
+  assert.ok(reply?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.notEqual(reply?.handoff,true);
+});
+
+test("Blind human: direct conversation request with Jochen transfers without waiting for model",()=>{
+  assert.equal(isExplicitPeteHumanTakeoverRequest(
+    "Bitte schreib mir nicht länger als Bot. Ich möchte mit Jochen direkt reden."),true);
+});
+
 test("A- fixer: direct Selfstarter purchase uses verified URL without model",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "Ich möchte den No Bullshit Selbststarter kaufen. Wo kann ich bestellen?",state);
