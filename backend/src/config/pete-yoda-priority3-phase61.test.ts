@@ -71,6 +71,8 @@ test("Pete priority 3: Yoda setter, honest objections and no-pressure exit", asy
     assert.match(String(payload.instructions), /GESPRÄCHSSTIMME/);
     assert.match(String(payload.instructions), /TIMING UND BEDARF/);
     assert.match(String(payload.instructions), /NÄCHSTER SCHRITT/);
+    assert.match(String(payload.instructions), /ERSTKONTAKT MIT FOLLOWER/);
+    assert.match(String(payload.instructions), /FORTSCHRITT NACH KLÄRUNG/);
     assert.match(String(payload.instructions), /PRÄZISE EINWÄNDE/);
     assert.match(String(payload.instructions), /unplanbarer Schichtpausen/);
     assert.match(String(payload.instructions), /Nicht jede Antwort mit 'Verstehe' beginnen/);
