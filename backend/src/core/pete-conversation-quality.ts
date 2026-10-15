@@ -51,7 +51,7 @@ export function getPeteVerifiedTransactionAnswer(
   if(/\bselbststarter\b/.test(input) &&
      /\b(?:was\s+ist\b.{0,35}\bdrin|was\s+beinhaltet|inhalt\w*|enthalten|einzelcoaching|selbermachen)\b/.test(input) &&
      !/\b(?:nicht|kein|keinen)\s+(?:jetzt\s+)?(?:kaufen|bestellen)\b/.test(input)) {
-    return {text:"Der Selbststarter ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Was konkret enthalten ist, steht auf der Produktseite: " +
+    return {text:"Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText + " und ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Was konkret enthalten ist, steht auf der Produktseite: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase:"info"};
   }
   // A concrete purchase request must lead to the VERIFIED product URL now.
