@@ -157,6 +157,14 @@ test("Yoda blind: shame after pregnancies is not an acute-medical trigger",async
     "Seit den Schwangerschaften schäme ich mich, und jetzt habe ich starke Atemnot."),false);
 });
 
+test("Yoda blind: selfstarter scope plus explicit price retains verified 14.95 EUR",()=>{
+  const reply=getPeteVerifiedTransactionAnswer(
+    "Was ist denn beim Selbststarter enthalten und was kostet er?",state);
+  assert.ok(reply?.text.includes(OFFER_TRUTH.selfstarter.priceText));
+  assert.ok(reply?.text.includes("Produktseite"));
+  assert.ok(!reply?.text.includes("499"));
+});
+
 test("Yoda blind: user asking Selfstarter contents receives verified scope/link",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "Was ist beim Selbststarter eigentlich drin? Ist das Einzelcoaching oder etwas zum Selbermachen?",state);
