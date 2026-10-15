@@ -46,6 +46,14 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // Direct factual question about Selfstarter scope: useful information now,
+  // without forcing a sales choice, invented contents or individual coaching.
+  if(/\bselbststarter\b/.test(input) &&
+     /\b(?:was\s+ist\b.{0,35}\bdrin|was\s+beinhaltet|inhalt\w*|enthalten|einzelcoaching|selbermachen)\b/.test(input) &&
+     !/\b(?:nicht|kein|keinen)\s+(?:jetzt\s+)?(?:kaufen|bestellen)\b/.test(input)) {
+    return {text:"Der Selbststarter ist für die eigenständige Umsetzung gedacht, nicht für persönliches Einzelcoaching. Was konkret enthalten ist, steht auf der Produktseite: " +
+      OFFER_TRUTH.selfstarter.productUrl, nextPhase:"info"};
+  }
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
@@ -307,6 +315,16 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
+  // An unequivocally historical body-image statement ("seit den
+  // Schwangerschaften schäme ich mich für meinen Bauch") is not itself a
+  // current medical emergency. Keep actual danger/medical topics guarded.
+  const formerPregnancyBodyImage =
+    /\b(?:seit|nach)\s+(?:den\s+)?schwangerschaften\b/.test(input) &&
+    /\b(?:scham\w*|schame\w*|bauch|korperbild|unwohl)\b/.test(input);
+  const actualHealthRedFlag =
+    /\b(?:brust\w*schmerz\w*|brustdruck|atemnot|luftnot|kaum luft|keine luft|schwindel|ohnmacht|insulin|medikament\w*|schwanger\b|stillzeit|blutungen|akut\w*|selbstverletz|suizid|arzt|arztlich|behandlung|therapie|krankheit|diagnose)\b/.test(input);
+  if(formerPregnancyBodyImage && !actualHealthRedFlag) return true;
+
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
