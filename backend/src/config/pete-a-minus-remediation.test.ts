@@ -61,6 +61,16 @@ test("A- safety: unsupported no-follow-up promise is rejected by LLM policy",asy
   assert.equal(isUnsafeLlmClaim("Lies in Ruhe rein. Wenn du Fragen hast, melde dich."),false);
 });
 
+test("A- Next Step: verified five-week price points to personal clarification of terms",()=>{
+  const result=getPeteVerifiedTransactionAnswer(
+    "Was kostet die 5-Wochen-Begleitung? Kann ich in Raten zahlen, und was sind die Bedingungen?",state);
+  assert.ok(result?.text.includes(OFFER_TRUTH.coachingEntry.priceText));
+  assert.ok(result?.text.includes("Vertragsbedingungen"));
+  assert.ok(result?.text.includes("Jochen"));
+  assert.ok(!result?.text.includes("Ratenzahlung ist möglich"));
+  assert.notEqual(result?.handoff,true, "No automatic takeover before user explicitly wants it");
+});
+
 test("A- fixer: financial decline does not request a human or sell aggressively",()=>{
   const result=getPeteVerifiedTransactionAnswer(
     "499 Euro sind mir zu viel, wir haben Kinder und viele Ausgaben.",state);

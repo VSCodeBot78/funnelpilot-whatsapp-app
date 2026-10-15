@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { existsSync, writeFileSync } from "node:fs";
 
-const TAG = "20261014-a-minus-v4";
+const TAG = "20261015-nextstep-v5";
 const MAX_MODEL_CALLS = 32;
 const MAX_POST_REQUESTS = 52;
 const CASES = [
