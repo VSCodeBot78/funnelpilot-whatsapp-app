@@ -23,7 +23,16 @@ const has = (s: string, regex: RegExp) => regex.test(norm(s));
 // Shared opt-out recognition: the same explicit paid-offer refusal must
 // suppress an immediate upsell AND persistently block scheduled sales follow-ups.
 // Input is already normalized by the calling function.
+// Lack of a previously received offer is not an opt-out if the parent
+// explicitly asks us to provide one. Distinguish this from "keine weiteren
+// Angebote" and never treat a positive offer request as a no-follow-up flag.
+function isExplicitOfferRequest(input: string): boolean {
+  return /\b(?:noch\s+)?kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/.test(input) &&
+    /\b(?:kannst du|konnt ihr|habt ihr|schick\w*|sende\w*|zeig\w*|bitte\s+ein(?:es|s)?|habt ihr eins)\b/.test(input);
+}
+
 function isExplicitPaidOfferRefusal(input: string): boolean {
+  if (isExplicitOfferRequest(input)) return false;
   return (
     /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(input) ||
     /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(input) ||
@@ -414,6 +423,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 /** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
 export function isSalesFollowUpOptOut(text: string): boolean {
   const input = norm(text);
+  if (isExplicitOfferRequest(input)) return false;
   return isExplicitPaidOfferRefusal(input) || [
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
