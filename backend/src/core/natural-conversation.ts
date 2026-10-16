@@ -175,7 +175,7 @@ export function getNaturalConversationReply(params: {
   if (phase === "human_choice" && !newExplicitTopic) {
     if (matches(input, /\b(hier|chat|dm|nachricht|personlich ubernehmen|im gespräch hier)\b/)) {
       return {
-        text: "Klar 👍 Ich gebe das an Jochen weiter. Er meldet sich hier persönlich bei dir.",
+        text: "Verstanden. Ich gebe den Chat an Jochen weiter und pausiere Pete hier.",
         phase: "human_handover", handoff: true,
       };
     }
@@ -217,6 +217,24 @@ export function getNaturalConversationReply(params: {
     return { text: "Jochen verbindet kurze, alltagstaugliche Bewegung mit familienkompatibler Ernährung und schaut auch auf Schlaf und Stress. Das ist keine Erfolgsgarantie, und du musst hier nichts überstürzen.",
       phase: "info", infoOnly: true };
   }
+  // Direct factual questions take priority over any previous qualification
+  // phase. Only explain verified pillars, duration and price; do not invent
+  // a session schedule, specific modules or personalized deliverables.
+  const asksCoachingScope =
+    matches(input, /\b(?:5[\s-]*wochen(?:[\s-]*(?:coaching|begleitung))?|funf[\s-]*wochen|startphase|coaching|begleitung)\b/) &&
+    matches(input, /\b(?:was (?:beinhaltet|umfasst|ist (?:da |darin )?(?:drin|enthalten))|welche (?:inhalte|bausteine)|wie (?:lauft|funktioniert)|wie sieht (?:der )?ablauf aus)\b/);
+  if (asksCoachingScope) {
+    const asksPrice = matches(input, /\b(?:kostet|kosten|preis|wie teuer)\b/);
+    return {
+      text: "Die 5-Wochen-Startphase verbindet Fitness, familienkompatible Ernährung sowie Schlaf und Stress. " +
+        "Was im Einzelnen enthalten ist und wie die persönliche Umsetzung abläuft, klärt Jochen verbindlich. " +
+        "Mehr zur Methode: " + OFFER_TRUTH.coachingEntry.infoUrl +
+        (asksPrice ? "\nDer Preis der 5-Wochen-Startphase liegt bei " +
+          OFFER_TRUTH.coachingEntry.priceText + "." : ""),
+      phase: "info", track: "coaching", infoOnly: true,
+    };
+  }
+
   if (matches(input, /\b(wie kann ich wissen|was ist anders|warum sollte ich vertrauen|woran erkenne ich)\b/)) {
     return {
       text: "Das musst du nicht blind glauben. Jochen kann dir konkret erklären, wie er arbeitet und was die Begleitung beinhaltet. Du kannst dann in Ruhe entscheiden.\nWas wäre dir dabei am wichtigsten?",
