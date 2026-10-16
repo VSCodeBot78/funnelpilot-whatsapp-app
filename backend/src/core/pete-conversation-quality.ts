@@ -428,7 +428,18 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 /** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
 export function isSalesFollowUpOptOut(text: string): boolean {
   const input = norm(text);
-  if (isExplicitOfferRequest(input)) return false;
+  if (isExplicitOfferRequest(input)) {
+    // An offer may be requested once while future sales follow-ups are
+    // explicitly forbidden. Do not let the positive request erase that choice.
+    // Exclude the generic "keine Angebote bekommen" phrase from opt-out.
+    return [
+      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachrichten?|nachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachrichten?)\b/,
+      /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
+      /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
+      /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
+    ].some(pattern => pattern.test(input));
+  }
   return isExplicitPaidOfferRefusal(input) || [
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
