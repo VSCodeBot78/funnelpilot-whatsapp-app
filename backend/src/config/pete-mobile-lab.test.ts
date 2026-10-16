@@ -222,7 +222,7 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
       process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
       process.env.PETE_LLM_API_CALLS_APPROVED = "true";
       process.env.PETE_MOBILE_LAB_GPT54_CONSENT = "true";
-      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "2000000";
+      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD = "4000000";
       process.env.OPENAI_MODEL = "gpt-5.4";
       process.env.OPENAI_API_KEY = "offline-test-key";
       let calls = 0;
@@ -247,8 +247,8 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
         const before = await (await fetch(url + "/budget")).json();
         assert.equal(before.llmReady, true);
         assert.equal(before.mode, "gpt-5.4");
-        assert.equal(before.labAuthorizedUsd, 2);
-        assert.equal(before.labRemainingUsd, 2);
+        assert.equal(before.labAuthorizedUsd, 4);
+        assert.equal(before.labRemainingUsd, 3.4161);
         const leadId = "lab_gpt54parent123456789012345678";
         const start = await (await fetch(url + "/start", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -265,8 +265,8 @@ test("Pete mobile lab is gated, synthetic-only, and never sends real messages", 
         const after = await (await fetch(url + "/budget")).json();
         assert.equal(after.requestsStarted, 1);
         assert.equal(after.requestsMetered, 1);
-        assert.ok(after.labRemainingUsd < 2);
-        assert.ok(after.labRemainingUsd > 1.99);
+        assert.ok(after.labRemainingUsd < 3.4161);
+        assert.ok(after.labRemainingUsd > 3.40);
       } finally {
         globalThis.fetch = realFetch;
         process.env.PETE_LLM_CONVERSATION_ENABLED = "false";
