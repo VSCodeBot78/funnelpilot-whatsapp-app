@@ -106,6 +106,7 @@ router.post("/", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: "natural",
     });
 
     const response: IncomingMessageResponse = {
@@ -145,6 +146,7 @@ router.post("/message", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: "natural",
     });
 
     const response: IncomingMessageResponse = {
@@ -183,6 +185,7 @@ router.post("/messages/incoming", genericWebhookGuard, async (req, res) => {
       leadId: mapped.leadId,
       campaignId: mapped.campaignId,
       messageText: mapped.messageText,
+      conversationMode: "natural",
     });
 
     const response: IncomingMessageResponse = {
