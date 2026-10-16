@@ -207,6 +207,7 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
     const outbound = await sendConversationTextOutbound({
       state,
       messageText,
+      idempotencyKey: `ghosting:${evaluation.cycle}:${evaluation.stage}`,
     });
 
     if (!outbound.ok || !outbound.sent) {
