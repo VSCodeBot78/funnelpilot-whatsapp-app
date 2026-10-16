@@ -31,7 +31,7 @@ function isExplicitOfferRequest(input: string): boolean {
   // is not consent to be sold to either. Require a concrete offer request.
   return /\b(?:noch\s+)?kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/.test(input) &&
     (/\b(?:kannst du mir|konnt ihr mir|habt ihr)\s+(?:noch\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input) ||
-     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:mir\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
+     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:ihr\s+)?(?:mir\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
 }
 
 function isExplicitPaidOfferRefusal(input: string): boolean {
