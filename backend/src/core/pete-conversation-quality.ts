@@ -20,6 +20,18 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD")
 
 const has = (s: string, regex: RegExp) => regex.test(norm(s));
 
+// Shared opt-out recognition: the same explicit paid-offer refusal must
+// suppress an immediate upsell AND persistently block scheduled sales follow-ups.
+// Input is already normalized by the calling function.
+function isExplicitPaidOfferRefusal(input: string): boolean {
+  return
+    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(input) ||
+    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(input) ||
+    /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(input);
+}
+
+
 export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
@@ -105,11 +117,7 @@ export function getPeteVerifiedTransactionAnswer(
   // Explicitly declining alternative purchases takes priority over offers.
   // Keep this deterministic because a generic prompt cannot reliably undo
   // a scripted low-price upsell in the verified-transaction path.
-  const rejectsAllPaidAlternatives =
-    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(input) ||
-    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(input) ||
-    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(input) ||
-    /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(input);
+  const rejectsAllPaidAlternatives = isExplicitPaidOfferRefusal(input);
   if (rejectsAllPaidAlternatives) {
     return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
   }
@@ -405,7 +413,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 /** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
 export function isSalesFollowUpOptOut(text: string): boolean {
   const input = norm(text);
-  return [
+  return isExplicitPaidOfferRefusal(input) || [
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
     /\b(?:bitte\s+)?nicht\s+(?:(?:mehr|weiter|erneut|nochmal)\s+)?(?:hinterherlaufen|hinterherschreiben|nachhaken)\b/,
