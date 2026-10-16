@@ -680,7 +680,7 @@ export function getNaturalConversationReply(params: {
   if (matches(input, /\b(papa|mama|vater|mutter|kinder|kindern|schichtdienst|schichtarbeit)\b/) &&
       matches(input, /\b(platt|mude|erschopft|leer|keine energie|kaputt|fertig)\b/)) {
     return {
-      text: "Kinder, Job und abends komplett leer – dann fehlt dir wahrscheinlich nicht einfach nur Wissen 😅\n" +
+      text: "Kinder, Job und abends komplett leer. Da geht es nicht einfach um mehr Wissen.\n" +
         "Was zieht dir aktuell am meisten Energie: Job, Schlaf oder der ganze Alltag?",
       phase: "energy_source",
     };
