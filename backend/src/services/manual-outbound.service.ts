@@ -161,13 +161,36 @@ export async function sendManualConversationOutbound(input: {
 }
 
 
+// Only one automatic follow-up per conversation may be in flight at a time
+// in this backend process. Ghosting and provider booking share this barrier.
+// This is deliberately NOT a claim of multi-instance exactly-once delivery:
+// production rollout still requires durable cross-instance idempotency.
+const automatedFollowUpsInFlight = new Set<string>();
+
 // Automated follow-ups are Pete-originated, not dashboard/human messages.
-// Register Meta Instagram outbound echoes as AI so they cannot accidentally
-// appear as a new human takeover message while the webhook is in flight.
-// Actual dashboard messages continue through the human-defaulted function.
-export function sendConversationTextOutbound(input: {
+// Register Meta Instagram outbound echoes as AI without changing manual sends.
+export async function sendConversationTextOutbound(input: {
   state: ConversationState;
   messageText: string;
 }): Promise<ManualOutboundResult> {
-  return sendManualConversationOutbound(input, "ai");
+  const key = JSON.stringify([input.state.campaignId, input.state.leadId]);
+  if (automatedFollowUpsInFlight.has(key)) {
+    const target = resolveManualOutboundTransport(input.state);
+    return {
+      transport: target.transport,
+      recipient: target.recipient,
+      ok: true,
+      sent: false,
+      dryRun: true,
+      sendSkipped: true,
+      reason: "followup_already_in_flight",
+    };
+  }
+
+  automatedFollowUpsInFlight.add(key);
+  try {
+    return await sendManualConversationOutbound(input, "ai");
+  } finally {
+    automatedFollowUpsInFlight.delete(key);
+  }
 }
