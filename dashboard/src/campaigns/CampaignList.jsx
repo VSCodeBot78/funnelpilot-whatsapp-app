@@ -40,7 +40,7 @@ export default function CampaignList({
                 config.sources.includes(id)).map(([, label]) => label);
               const count = config.keywords.length;
               return sourceNames.length || count
-                ? [
+                ? "Entwurf · " + [
                     sourceNames.slice(0, 2).join(", "),
                     count ? `${count} Keyword${count === 1 ? "" : "s"}` : "",
                   ].filter(Boolean).join(" · ")
