@@ -27,8 +27,11 @@ const has = (s: string, regex: RegExp) => regex.test(norm(s));
 // explicitly asks us to provide one. Distinguish this from "keine weiteren
 // Angebote" and never treat a positive offer request as a no-follow-up flag.
 function isExplicitOfferRequest(input: string): boolean {
+  // "I haven't received an offer" is not a decline, but "can you tell me why"
+  // is not consent to be sold to either. Require a concrete offer request.
   return /\b(?:noch\s+)?kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/.test(input) &&
-    /\b(?:kannst du|konnt ihr|habt ihr|schick\w*|sende\w*|zeig\w*|bitte\s+ein(?:es|s)?|habt ihr eins)\b/.test(input);
+    (/\b(?:kannst du mir|konnt ihr mir|habt ihr)\s+(?:noch\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input) ||
+     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:mir\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
 }
 
 function isExplicitPaidOfferRefusal(input: string): boolean {
