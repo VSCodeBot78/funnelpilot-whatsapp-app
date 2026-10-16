@@ -2,6 +2,10 @@ import type { ConversationState } from "../types/types.js";
 import { sendMetaInstagramTextMessage } from "./meta-instagram-api.service.js";
 import { sendMetaWhatsappTextMessage } from "./meta-whatsapp-api.service.js";
 import { normalizeWhatsappPhone } from "./whatsapp-lead-sync.service.js";
+import {
+  beginAutomatedFollowUpClaim,
+  finalizeAutomatedFollowUpClaim,
+} from "./automated-followup-claims.service.js";
 
 export type ManualOutboundTransport =
   | "meta_instagram"
@@ -161,20 +165,21 @@ export async function sendManualConversationOutbound(input: {
 }
 
 
-// Only one automatic follow-up per conversation may be in flight at a time
-// in this backend process. Ghosting and provider booking share this barrier.
-// This is deliberately NOT a claim of multi-instance exactly-once delivery:
-// production rollout still requires durable cross-instance idempotency.
-const automatedFollowUpsInFlight = new Set<string>();
-
-// Automated follow-ups are Pete-originated, not dashboard/human messages.
-// Register Meta Instagram outbound echoes as AI without changing manual sends.
+// Both Ghosting and provider-booking sends share durable per-conversation
+// serialization and a unique, persistent claim for every follow-up stage.
+// Only a *verified* no-send outcome may clear its claim. Unknown outcomes and
+// crashed processes require reconciliation: never auto-retry a possible send.
 export async function sendConversationTextOutbound(input: {
   state: ConversationState;
   messageText: string;
+  idempotencyKey: string;
 }): Promise<ManualOutboundResult> {
-  const key = JSON.stringify([input.state.campaignId, input.state.leadId]);
-  if (automatedFollowUpsInFlight.has(key)) {
+  const reservation = beginAutomatedFollowUpClaim({
+    leadId: input.state.leadId,
+    campaignId: input.state.campaignId,
+    stage: input.idempotencyKey,
+  });
+  if (!reservation.allowed) {
     const target = resolveManualOutboundTransport(input.state);
     return {
       transport: target.transport,
@@ -183,14 +188,24 @@ export async function sendConversationTextOutbound(input: {
       sent: false,
       dryRun: true,
       sendSkipped: true,
-      reason: "followup_already_in_flight",
+      reason: reservation.reason,
     };
   }
-
-  automatedFollowUpsInFlight.add(key);
+  let outbound: ManualOutboundResult;
   try {
-    return await sendManualConversationOutbound(input, "ai");
-  } finally {
-    automatedFollowUpsInFlight.delete(key);
+    // AI origin registers Instagram Meta echo IDs. Actual dashboard messages
+    // continue using sendManualConversationOutbound(...), defaulting to human.
+    outbound = await sendManualConversationOutbound(input, "ai");
+  } catch (error) {
+    finalizeAutomatedFollowUpClaim(reservation.claim, "uncertain");
+    throw error;
   }
+  if (outbound.ok && outbound.sent) {
+    finalizeAutomatedFollowUpClaim(reservation.claim, "sent");
+  } else if (outbound.dryRun && outbound.sendSkipped) {
+    finalizeAutomatedFollowUpClaim(reservation.claim, "not_sent");
+  } else {
+    finalizeAutomatedFollowUpClaim(reservation.claim, "uncertain");
+  }
+  return outbound;
 }
