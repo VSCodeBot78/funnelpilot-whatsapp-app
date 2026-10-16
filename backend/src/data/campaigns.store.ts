@@ -2,10 +2,46 @@ import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
 
+// Stored for Pete's new campaign editor. This is not a send authorization:
+ // the Phase 4 runtime activation gate is deliberately separate.
+export type PeteCampaignConfig = {
+  sources: string[];
+  keywords: string[];
+  openingText: string;
+  followUpEnabled: boolean;
+};
+
+const PETE_CAMPAIGN_SOURCES = [
+  "instagram_dm", "instagram_reel_comment", "instagram_story_reply",
+  "instagram_new_follower", "whatsapp_dm", "whatsapp_ctwa",
+] as const;
+
+export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
+  sources: [], keywords: [], openingText: "", followUpEnabled: false,
+};
+
+export function normalizePeteCampaignConfig(input: unknown): PeteCampaignConfig {
+  const value = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Partial<PeteCampaignConfig> : {};
+  const sources = Array.isArray(value.sources) ?
+    [...new Set(value.sources.filter((id): id is string =>
+      typeof id === "string" && PETE_CAMPAIGN_SOURCES.some(allowed => allowed === id)))] : [];
+  const keywords = Array.isArray(value.keywords) ?
+    [...new Set(value.keywords.filter((word): word is string =>
+      typeof word === "string").map(word => word.trim().toUpperCase())
+      .filter(word => /^[A-ZÄÖÜ0-9_-]{1,32}$/.test(word)))].slice(0, 20) : [];
+  return {
+    sources, keywords,
+    openingText: typeof value.openingText === "string" ? value.openingText.slice(0, 1000) : "",
+    followUpEnabled: value.followUpEnabled === true,
+  };
+}
+
 export type CampaignRecord = {
   id: string;
   offerContext?: CampaignOfferContext;
   entryConfig?: CampaignEntryConfig;
+  peteCampaign?: PeteCampaignConfig;
   [key: string]: unknown;
 };
 
@@ -363,6 +399,7 @@ function normalizeCampaignRecord(campaign: CampaignRecord): CampaignRecord {
   return {
     ...campaign,
     offerContext: normalizeOfferContext(campaign.offerContext),
+    peteCampaign: normalizePeteCampaignConfig(campaign.peteCampaign),
     entryConfig: normalizeEntryConfig(campaign),
   };
 }
