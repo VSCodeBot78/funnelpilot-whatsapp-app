@@ -38,7 +38,7 @@ function isExplicitOfferRequest(input: string): boolean {
 // future sales messages. Keep explicit refusals in the same message intact.
 function withoutMissingOfferStatements(input: string): string {
   return input.replace(
-    /\b(?:ich\s+)?(?:habe|hab|hatte)\s+(?:(?:bisher|bislang|noch|gar|uberhaupt)\s+){0,4}kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/g,
+    /\b(?:(?:ich\s+)?(?:habe|hab|hatte)|wir\s+(?:haben|hatten))\s+(?:(?:bisher|bislang|noch|gar|uberhaupt)\s+){0,4}kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/g,
     " ",
   );
 }
