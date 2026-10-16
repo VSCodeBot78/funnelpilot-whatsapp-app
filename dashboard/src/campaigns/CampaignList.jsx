@@ -1,4 +1,5 @@
 import React from "react";
+import { getNormalizedPeteCampaignConfig, PETE_CAMPAIGN_SOURCES } from "../utils/dashboardHelpers";
 
 export default function CampaignList({
   colors,
@@ -33,7 +34,18 @@ export default function CampaignList({
               lineHeight: 1.4,
             }}
           >
-            {camp.trigger}
+            {(() => {
+              const config = getNormalizedPeteCampaignConfig(camp);
+              const sourceNames = PETE_CAMPAIGN_SOURCES.filter(([id]) =>
+                config.sources.includes(id)).map(([, label]) => label);
+              const count = config.keywords.length;
+              return sourceNames.length || count
+                ? [
+                    sourceNames.slice(0, 2).join(", "),
+                    count ? `${count} Keyword${count === 1 ? "" : "s"}` : "",
+                  ].filter(Boolean).join(" · ")
+                : "Entwurf · Einstiege noch nicht konfiguriert";
+            })()}
           </div>
         </button>
       ))}
