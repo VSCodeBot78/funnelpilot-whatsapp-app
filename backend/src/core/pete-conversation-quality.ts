@@ -68,12 +68,15 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // Mixed messages can contain both old buying words and a newer refusal.
+  // Detect the current refusal BEFORE any checkout or paid-product CTA.
+  const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
     /\b(?:nicht|kein|keinen|nie|niemals)\s+(?:jetzt\s+|mehr\s+|direkt\s+|aktuell\s+)?(?:kaufen|bestellen)\b/.test(input) ||
     /\b(?:kein|keinen)\s+(?:kauf|interesse)\b/.test(input);
-  if (/\bselbststarter\b/.test(input) && !declinedSelfstarterPurchase &&
+  if (/\bselbststarter\b/.test(input) && !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers &&
       /\b(?:kaufen|bestellen|bestell\w*|wo kann ich|wie kann ich|zum checkout|zur kasse)\b/.test(input) &&
       !/\b(?:schon|bereits)\s+(?:gekauft|bestellt|bezahlt)\b/.test(input)) {
     return {text:"Hier findest du den No Bullshit Elternfitness Selbststarter: " +
@@ -87,7 +90,7 @@ export function getPeteVerifiedTransactionAnswer(
   const fiveWeekMentioned = /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input);
   const asksTimeCommitment =
     /\b(?:wie\s+viel\s+zeit|wieviel\s+zeit|zeitaufwand|wie\s+lange\s+dauert|wie\s+viele\s+(?:minuten|stunden))\b/.test(input);
-  if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned) {
+  if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned && !explicitlyDeclinesPaidOffers) {
     return {
       text: "Den Selbststarter nutzt du eigenständig, ohne persönliches Einzelcoaching. Einen verbindlichen Zeitaufwand kann ich dir dafür nicht nennen, weil dazu keine geprüfte Angabe vorliegt. Die Produktinhalte findest du hier: " +
         OFFER_TRUTH.selfstarter.productUrl,
@@ -103,7 +106,7 @@ export function getPeteVerifiedTransactionAnswer(
   const asksSelfstarterContents =
     /\b(?:was|welche)\b.{0,65}\b(?:drin|enthalten|beinhaltet|inhalt\w*|umfang|bekomme)\b/.test(input) ||
     /\b(?:einzelcoaching|selbermachen|selbst\s+machen|eigenstandig)\b/.test(input);
-  if (selfstarterMentioned && asksSelfstarterContents) {
+  if (selfstarterMentioned && asksSelfstarterContents && !explicitlyDeclinesPaidOffers) {
     return {
       text: "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText +
         ", ist zum eigenständigen Umsetzen gedacht und kein persönliches Einzelcoaching. Die genaue Inhaltsliste steht auf der Produktseite: " +
@@ -127,8 +130,7 @@ export function getPeteVerifiedTransactionAnswer(
   // Explicitly declining alternative purchases takes priority over offers.
   // Keep this deterministic because a generic prompt cannot reliably undo
   // a scripted low-price upsell in the verified-transaction path.
-  const rejectsAllPaidAlternatives = isExplicitPaidOfferRefusal(input);
-  if (rejectsAllPaidAlternatives) {
+  if (explicitlyDeclinesPaidOffers) {
     return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
   }
   // A price boundary is not an emergency or a reason for compulsory handover.
@@ -149,7 +151,7 @@ export function getPeteVerifiedTransactionAnswer(
         (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
           /no bullshit elternfitness selbststarter/i.test(message.text)));
   });
-  if (wantsBundleLink && previousSelfstarter) {
+  if (wantsBundleLink && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
