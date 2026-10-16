@@ -2,6 +2,7 @@ import type { ConversationState } from "../types/types.js";
 import { sendMetaInstagramTextMessage } from "./meta-instagram-api.service.js";
 import { sendMetaWhatsappTextMessage } from "./meta-whatsapp-api.service.js";
 import { normalizeWhatsappPhone } from "./whatsapp-lead-sync.service.js";
+import { claimAutomatedFollowUpAttempt } from "./automated-followup-attempt.service.js";
 
 export type ManualOutboundTransport =
   | "meta_instagram"
@@ -172,24 +173,39 @@ const automatedFollowUpsInFlight = new Set<string>();
 export async function sendConversationTextOutbound(input: {
   state: ConversationState;
   messageText: string;
+  attemptKey: string;
 }): Promise<ManualOutboundResult> {
+  const target = resolveManualOutboundTransport(input.state);
+  const skipped = (reason: string): ManualOutboundResult => ({
+    transport: target.transport,
+    recipient: target.recipient,
+    ok: true,
+    sent: false,
+    dryRun: true,
+    sendSkipped: true,
+    reason,
+  });
   const key = JSON.stringify([input.state.campaignId, input.state.leadId]);
   if (automatedFollowUpsInFlight.has(key)) {
-    const target = resolveManualOutboundTransport(input.state);
-    return {
-      transport: target.transport,
-      recipient: target.recipient,
-      ok: true,
-      sent: false,
-      dryRun: true,
-      sendSkipped: true,
-      reason: "followup_already_in_flight",
-    };
+    return skipped("followup_already_in_flight");
   }
 
   automatedFollowUpsInFlight.add(key);
   try {
-    return await sendManualConversationOutbound(input, "ai");
+    // Persist a unique claim before any provider I/O. On a crash or unknown
+    // Meta outcome, do not automatically resend this stage on restart.
+    const claim = claimAutomatedFollowUpAttempt({
+      leadId: input.state.leadId,
+      campaignId: input.state.campaignId,
+      attemptKey: input.attemptKey,
+    });
+    if (!claim.claimed) return skipped(claim.reason);
+    const result = await sendManualConversationOutbound(input, "ai");
+    if (result.sendSkipped && result.dryRun && !result.sent) {
+      // Neither transport contacted Meta; a future real attempt is allowed.
+      claim.releaseIfNoProviderAttempt();
+    }
+    return result;
   } finally {
     automatedFollowUpsInFlight.delete(key);
   }
