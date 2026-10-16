@@ -78,12 +78,12 @@ if (wantsPaidPete) {
   if (process.env.PETE_LLM_CONVERSATION_ENABLED!=="true" ||
       process.env.PETE_LLM_API_CALLS_APPROVED!=="true" ||
       process.env.PETE_MOBILE_LAB_GPT54_CONSENT!=="true" ||
-      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD!=="2000000" ||
+      process.env.PETE_MOBILE_LAB_GPT54_CAP_MICRO_USD!=="4000000" ||
       process.env.PETE_PROJECT_PRIOR_SPEND_MICRO_USD!=="4323801" ||
       process.env.OPENAI_MODEL!=="gpt-5.4" ||
       !process.env.OPENAI_API_KEY?.trim())
     throw Error("private_lab_llm_approval_incomplete");
-  console.log("[lab] GPT-5.4 private synthetic-only mode approved; new-spend cap $2.00");
+  console.log("[lab] GPT-5.4 private synthetic-only mode approved; cumulative lab-spend cap $4.00 (project hard cap $8.00)");
 } else {
   console.log("[lab] deterministic mode; paid model calls disabled");
 }
