@@ -30,8 +30,8 @@ function isExplicitOfferRequest(input: string): boolean {
   // "I haven't received an offer" is not a decline, but "can you tell me why"
   // is not consent to be sold to either. Require a concrete offer request.
   return /\b(?:noch\s+)?kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/.test(input) &&
-    (/\b(?:kannst du mir|konnt ihr mir|habt ihr)\s+(?:noch\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input) ||
-     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:ihr\s+)?(?:mir\s+)?(?:ein(?:e|en|es)?\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
+    (/\b(?:kannst du mir|konnt ihr mir|habt ihr)\s+(?:bitte\s+)?(?:noch\s+)?(?:(?:ein(?:e|en|es)?|das|den)\s+)?(?:angebote?|eins|eines|einen)\b/.test(input) ||
+     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:ihr\s+)?(?:mir\s+)?(?:bitte\s+)?(?:(?:ein(?:e|en|es)?|das|den)\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
 }
 
 function isExplicitPaidOfferRefusal(input: string): boolean {
