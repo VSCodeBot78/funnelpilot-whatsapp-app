@@ -14,14 +14,14 @@ import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 const USD_MICROS_CAP = 8_000_000; // Conservative internal limit for 10 EUR authorization.
 /**
- * Separate 13 Oct mobile-lab authorization: at most $2 of NEW lab calls.
+ * Separate private-lab authorizations: $2 initially plus $2 approved on 16 Oct 2026; at most $4 of cumulative lab calls.
  * The older GitHub project ledger is $4.583900; the lab's immutable prior
  * snapshot is $4.323801. The $0.260099 delta counts against the lifetime
- * $8 project cap, but is NOT charged against the newly approved $2.
+ * $8 project cap, but is NOT charged against the cumulative $4 lab authorization.
  * Keep the original prior snapshot unchanged: its existing persisted ledger
  * validates it on every read and must never be silently reset/migrated.
  */
-const LAB_NEW_SPEND_CAP_MICROS = 2_000_000;
+const LAB_NEW_SPEND_CAP_MICROS = 4_000_000;
 const LAB_KNOWN_OUTSIDE_SPEND_MICROS = 260_099;
 const LAB_ORIGINAL_PRIOR_MICROS = "4323801";
 
@@ -172,7 +172,7 @@ export function getPeteBudgetStatus() {
     confirmedUsd: (prior + data.confirmedMicroUsd) / 1_000_000,
     reservedUsd: data.reservedMicroUsd / 1_000_000,
     remainingUsd: remaining / 1_000_000,
-    // The lab shows its OWN $2 permission separately from lifetime spend.
+    // The lab shows its OWN cumulative $4 permission separately from lifetime spend; the $8 lifetime cap remains stricter.
     labAuthorizedUsd: approval.active ? approval.newCap / 1_000_000 : null,
     labCommittedUsd: approval.active ? data.committedMicroUsd / 1_000_000 : null,
     labRemainingUsd: approval.active ? remaining / 1_000_000 : null,
