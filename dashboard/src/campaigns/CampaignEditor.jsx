@@ -189,15 +189,7 @@ export default function CampaignEditor({
         </div>
       ) : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr)",
-          gap: 0,
-        }}
-      >
-        <div />
-
+      <div>
         <div style={{ padding: 14 }}>
           <div style={{ color: colors.sub, fontSize: 12, marginBottom: 10 }}>
             Aktive Bearbeitung: {campaignForm.name}
