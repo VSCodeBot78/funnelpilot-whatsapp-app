@@ -173,6 +173,44 @@ export function getNormalizedOfferContext(campaign = {}) {
   };
 }
 
+// Phase 3 is configuration-only. Runtime execution and channel subscription
+// remain locked until the separate Phase 4 automation gate is approved.
+export const PETE_CAMPAIGN_SOURCES = [
+  ["instagram_dm", "Instagram-DM"],
+  ["instagram_reel_comment", "Reel-Kommentar"],
+  ["instagram_story_reply", "Story-Antwort"],
+  ["instagram_new_follower", "Neuer Follower (manuell)"],
+  ["whatsapp_dm", "WhatsApp-Nachricht"],
+  ["whatsapp_ctwa", "WhatsApp über Meta-Anzeige"],
+];
+
+export const DEFAULT_PETE_CAMPAIGN_CONFIG = {
+  sources: [],
+  keywords: [],
+  openingText: "",
+  followUpEnabled: false,
+};
+
+export function getNormalizedPeteCampaignConfig(campaign = {}) {
+  const raw = campaign?.peteCampaign || {};
+  const allowed = PETE_CAMPAIGN_SOURCES.map(([id]) => id);
+  const sources = Array.isArray(raw.sources)
+    ? [...new Set(raw.sources.filter((id) => typeof id === "string" && allowed.includes(id)))]
+    : [];
+  const keywords = Array.isArray(raw.keywords)
+    ? [...new Set(raw.keywords
+        .filter((word) => typeof word === "string")
+        .map((word) => word.trim().toUpperCase())
+        .filter((word) => /^[A-ZÄÖÜ0-9_-]{1,32}$/.test(word)))].slice(0, 20)
+    : [];
+  return {
+    sources,
+    keywords,
+    openingText: typeof raw.openingText === "string" ? raw.openingText.slice(0, 1000) : "",
+    followUpEnabled: raw.followUpEnabled === true,
+  };
+}
+
 export const DEFAULT_UNKNOWN_ENTRY_FALLBACK_TEXT =
   "Danke dir. Damit ich dich sauber einordne: Geht es bei dir gerade eher um Energie, Bauch, Schlaf/Stress oder Struktur?";
 
