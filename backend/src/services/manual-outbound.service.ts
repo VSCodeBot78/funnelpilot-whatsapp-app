@@ -79,7 +79,7 @@ export function resolveManualOutboundTransport(
 export async function sendManualConversationOutbound(input: {
   state: ConversationState;
   messageText: string;
-}): Promise<ManualOutboundResult> {
+}, origin: "human" | "ai" = "human"): Promise<ManualOutboundResult> {
   const messageText = normalizeString(input.messageText);
   const target = resolveManualOutboundTransport(input.state);
 
@@ -113,7 +113,7 @@ export async function sendManualConversationOutbound(input: {
     const result = await sendMetaInstagramTextMessage({
       to: target.recipient,
       body: messageText,
-      origin: "human",
+      origin,
     });
 
     return {
@@ -161,5 +161,13 @@ export async function sendManualConversationOutbound(input: {
 }
 
 
-// Generic alias for automated follow-ups that use the same channel routing.
-export const sendConversationTextOutbound = sendManualConversationOutbound;
+// Automated follow-ups are Pete-originated, not dashboard/human messages.
+// Register Meta Instagram outbound echoes as AI so they cannot accidentally
+// appear as a new human takeover message while the webhook is in flight.
+// Actual dashboard messages continue through the human-defaulted function.
+export function sendConversationTextOutbound(input: {
+  state: ConversationState;
+  messageText: string;
+}): Promise<ManualOutboundResult> {
+  return sendManualConversationOutbound(input, "ai");
+}
