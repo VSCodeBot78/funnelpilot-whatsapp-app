@@ -34,13 +34,23 @@ function isExplicitOfferRequest(input: string): boolean {
      /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:ihr\s+)?(?:mir\s+)?(?:bitte\s+)?(?:(?:ein(?:e|en|es)?|das|den)\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
 }
 
+// Reporting that no offer was received is a factual observation, not a ban on
+// future sales messages. Keep explicit refusals in the same message intact.
+function withoutMissingOfferStatements(input: string): string {
+  return input.replace(
+    /\b(?:ich\s+)?(?:habe|hab|hatte)\s+(?:(?:bisher|bislang|noch|gar|uberhaupt)\s+){0,4}kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/g,
+    " ",
+  );
+}
+
 function isExplicitPaidOfferRefusal(input: string): boolean {
   if (isExplicitOfferRequest(input)) return false;
+  const refusalText = withoutMissingOfferStatements(input);
   return (
-    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(input) ||
-    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(input) ||
-    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(input) ||
-    /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(input)
+    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(refusalText) ||
+    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(refusalText) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(refusalText) ||
+    /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(refusalText)
   );
 }
 
@@ -428,6 +438,7 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 /** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
 export function isSalesFollowUpOptOut(text: string): boolean {
   const input = norm(text);
+  const refusalText = withoutMissingOfferStatements(input);
   if (isExplicitOfferRequest(input)) {
     // An offer may be requested once while future sales follow-ups are
     // explicitly forbidden. Do not let the positive request erase that choice.
@@ -438,7 +449,7 @@ export function isSalesFollowUpOptOut(text: string): boolean {
       /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
       /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
       /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
-    ].some(pattern => pattern.test(input));
+    ].some(pattern => pattern.test(refusalText));
   }
   return isExplicitPaidOfferRefusal(input) || [
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
@@ -447,7 +458,7 @@ export function isSalesFollowUpOptOut(text: string): boolean {
     /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
     /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
-  ].some(pattern => pattern.test(input));
+  ].some(pattern => pattern.test(refusalText));
 }
 
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
