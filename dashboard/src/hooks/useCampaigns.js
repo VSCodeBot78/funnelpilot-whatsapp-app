@@ -231,6 +231,7 @@ export function useCampaigns({
             ...campaign,
             offerContext: getNormalizedOfferContext(campaign),
             entryConfig: getNormalizedEntryConfig(campaign),
+            peteCampaign: getNormalizedPeteCampaignConfig(campaign),
           }));
 
           setCampaigns(normalizedCampaigns);
@@ -277,7 +278,6 @@ export function useCampaigns({
       offerContext: getDefaultOfferContext(),
       peteCampaign: getNormalizedPeteCampaignConfig(),
       entryConfig: getDefaultEntryConfig("NEU"),
-      peteCampaign: getNormalizedPeteCampaignConfig(),
       useGlobalBookingDefaults: false,
       // No scripted A/B/C question defaults in newly created campaigns.
       welcome: "",
