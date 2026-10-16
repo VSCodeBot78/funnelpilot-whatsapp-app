@@ -32,6 +32,19 @@ test("Phase 2: blue facts and human handoff remain truthful in natural Pete", as
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
+  await t.test("Pete instruction set keeps four communication needs distinct", async () => {
+    const { buildPeteEffectiveInstructions } = await import("../core/pete-llm-conversation.js");
+    const instructions = buildPeteEffectiveInstructions();
+    for (const label of [
+      "BLAU (Struktur/Fakten)",
+      "GRÜN (Sicherheit/Vertrauen)",
+      "ROT (Ziel/Tempo)",
+      "GELB (Bild/Gefühl)",
+    ]) assert.ok(instructions.includes(label), label);
+    assert.match(instructions, /KEIN DM-COACHING/);
+    assert.match(instructions, /Keine ungefragte Angebots- oder Terminwahl/);
+  });
+
   await t.test("coaching scope receives a direct bounded factual answer", async () => {
     const result = await send("phase2-blue-scope", "Was beinhaltet das 5-Wochen-Coaching?");
     assert.match(result.text || "", /5-Wochen-Startphase/);
