@@ -2,6 +2,7 @@ import type { ConversationState } from "../types/types.js";
 import { sendMetaInstagramTextMessage } from "./meta-instagram-api.service.js";
 import { sendMetaWhatsappTextMessage } from "./meta-whatsapp-api.service.js";
 import { normalizeWhatsappPhone } from "./whatsapp-lead-sync.service.js";
+import { claimAutomatedFollowUpAttempt } from "./automated-followup-attempt.service.js";
 
 export type ManualOutboundTransport =
   | "meta_instagram"
@@ -161,13 +162,51 @@ export async function sendManualConversationOutbound(input: {
 }
 
 
+// Only one automatic follow-up per conversation may be in flight at a time
+// in this backend process. Ghosting and provider booking share this barrier.
+// This is deliberately NOT a claim of multi-instance exactly-once delivery:
+// production rollout still requires durable cross-instance idempotency.
+const automatedFollowUpsInFlight = new Set<string>();
+
 // Automated follow-ups are Pete-originated, not dashboard/human messages.
-// Register Meta Instagram outbound echoes as AI so they cannot accidentally
-// appear as a new human takeover message while the webhook is in flight.
-// Actual dashboard messages continue through the human-defaulted function.
-export function sendConversationTextOutbound(input: {
+// Register Meta Instagram outbound echoes as AI without changing manual sends.
+export async function sendConversationTextOutbound(input: {
   state: ConversationState;
   messageText: string;
+  attemptKey: string;
 }): Promise<ManualOutboundResult> {
-  return sendManualConversationOutbound(input, "ai");
+  const target = resolveManualOutboundTransport(input.state);
+  const skipped = (reason: string): ManualOutboundResult => ({
+    transport: target.transport,
+    recipient: target.recipient,
+    ok: true,
+    sent: false,
+    dryRun: true,
+    sendSkipped: true,
+    reason,
+  });
+  const key = JSON.stringify([input.state.campaignId, input.state.leadId]);
+  if (automatedFollowUpsInFlight.has(key)) {
+    return skipped("followup_already_in_flight");
+  }
+
+  automatedFollowUpsInFlight.add(key);
+  try {
+    // Persist a unique claim before any provider I/O. On a crash or unknown
+    // Meta outcome, do not automatically resend this stage on restart.
+    const claim = claimAutomatedFollowUpAttempt({
+      leadId: input.state.leadId,
+      campaignId: input.state.campaignId,
+      attemptKey: input.attemptKey,
+    });
+    if (!claim.claimed) return skipped(claim.reason);
+    const result = await sendManualConversationOutbound(input, "ai");
+    if (result.sendSkipped && result.dryRun && !result.sent) {
+      // Neither transport contacted Meta; a future real attempt is allowed.
+      claim.releaseIfNoProviderAttempt();
+    }
+    return result;
+  } finally {
+    automatedFollowUpsInFlight.delete(key);
+  }
 }

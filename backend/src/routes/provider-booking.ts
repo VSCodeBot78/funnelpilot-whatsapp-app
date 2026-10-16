@@ -178,9 +178,18 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       });
     }
 
+    // Capture the latest state before awaiting Meta. A human may take over
+    // or the lead may decline follow-ups before the HTTP request completes.
+    const beforeSend = {
+      updatedAt: state.updatedAt,
+      owner: state.owner,
+      aiPaused: state.aiPaused,
+      latestMessageId: state.messages.at(-1)?.id,
+    };
     const outbound = await sendConversationTextOutbound({
       state,
       messageText,
+      attemptKey: `provider_booking:${evaluation.stage}`,
     });
 
     if (!outbound.ok || !outbound.sent) {
@@ -200,23 +209,54 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       });
     }
 
-    appendAssistantMessage(state, messageText);
+    // Reconcile the successful send with the authoritative conversation, not
+    // the possibly obsolete snapshot created before network I/O.
+    const current = getConversationState(leadId, campaignId);
+    if (!current) {
+      return res.json({
+        ok: true, leadId, campaignId, sent: true, dryRun: false,
+        sendSkipped: false, receiptRecorded: false,
+        outboundTransport: outbound.transport,
+        metaMessageId: outbound.metaMessageId ?? undefined,
+      });
+    }
+    const changedDuringSend =
+      current.updatedAt !== beforeSend.updatedAt ||
+      current.owner !== beforeSend.owner ||
+      current.aiPaused !== beforeSend.aiPaused ||
+      current.messages.at(-1)?.id !== beforeSend.latestMessageId;
+    const earlierActor = current.lastActor;
+    const earlierUpdatedAt = current.updatedAt;
+    // A message may already have been sent despite a concurrent takeover.
+    appendAssistantMessage(current, messageText);
     updateLatestAssistantMessageSendResult({
-      messages: state.messages,
+      messages: current.messages,
       replyText: messageText,
       transport: outbound.transport,
       outboundStatus: "sent",
       sentAt: new Date().toISOString(),
       metaMessageId: outbound.metaMessageId ?? null,
     });
-
-    state.providerBooking = markProviderFollowUpAsSent(
-      state.providerBooking,
-      evaluation.stage,
-      now.toISOString(),
-    );
-
-    saveConversationState(state);
+    if (changedDuringSend) {
+      // Do not reactivate a booking flow that was manually stopped or canceled.
+      current.lastActor = earlierActor;
+      current.updatedAt = earlierUpdatedAt;
+      if (current.providerBooking &&
+          !current.providerBooking.sentHistory.some((entry) => entry.stage === evaluation.stage)) {
+        current.providerBooking = {
+          ...current.providerBooking,
+          sentHistory: [
+            ...current.providerBooking.sentHistory,
+            { stage: evaluation.stage, sentAt: now.toISOString() },
+          ],
+        };
+      }
+    } else if (current.providerBooking) {
+      current.providerBooking = markProviderFollowUpAsSent(
+        current.providerBooking, evaluation.stage, now.toISOString(),
+      );
+    }
+    saveConversationState(current);
 
     return res.json({
       ok: true,
@@ -230,7 +270,7 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       sentStage: evaluation.stage,
       sentAt: now.toISOString(),
       messageText,
-      providerBookingState: state.providerBooking,
+      providerBookingState: current.providerBooking,
       evaluation,
     });
   } catch (error) {

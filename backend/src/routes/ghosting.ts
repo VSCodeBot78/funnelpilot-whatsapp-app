@@ -197,9 +197,17 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       });
     }
 
+    // Another owner, opt-out or incoming message may arrive during Meta I/O.
+    const beforeSend = {
+      updatedAt: state.updatedAt,
+      owner: state.owner,
+      aiPaused: state.aiPaused,
+      latestMessageId: state.messages.at(-1)?.id,
+    };
     const outbound = await sendConversationTextOutbound({
       state,
       messageText,
+      attemptKey: `ghosting:${evaluation.cycle}:${evaluation.stage}`,
     });
 
     if (!outbound.ok || !outbound.sent) {
@@ -219,30 +227,57 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       });
     }
 
-    state.ghosting = applyGhostingEvaluationToState(
-      state.ghosting,
-      evaluation,
-    );
-    appendAssistantMessage(state, messageText);
+    // Never save the pre-await state over a newer human takeover or lead STOP.
+    const current = getConversationState(leadId, campaignId);
+    if (!current) {
+      return res.json({
+        ok: true, leadId, campaignId, sent: true, dryRun: false,
+        sendSkipped: false, receiptRecorded: false,
+        outboundTransport: outbound.transport,
+        metaMessageId: outbound.metaMessageId ?? undefined,
+      });
+    }
+    const changedDuringSend =
+      current.updatedAt !== beforeSend.updatedAt ||
+      current.owner !== beforeSend.owner ||
+      current.aiPaused !== beforeSend.aiPaused ||
+      current.messages.at(-1)?.id !== beforeSend.latestMessageId;
+    const earlierActor = current.lastActor;
+    const earlierUpdatedAt = current.updatedAt;
+    if (!changedDuringSend) {
+      current.ghosting = applyGhostingEvaluationToState(
+        current.ghosting, evaluation,
+      );
+    }
+    // The outbound call already succeeded; persist the receipt on CURRENT state.
+    appendAssistantMessage(current, messageText);
     updateLatestAssistantMessageSendResult({
-      messages: state.messages,
+      messages: current.messages,
       replyText: messageText,
       transport: outbound.transport,
       outboundStatus: "sent",
       sentAt: new Date().toISOString(),
       metaMessageId: outbound.metaMessageId ?? null,
     });
-
-    state.ghosting = markGhostingStageAsSent(
-      {
-        ...state.ghosting,
-        cycle: evaluation.cycle,
-      },
-      evaluation.stage,
-      now.toISOString(),
-    );
-
-    saveConversationState(state);
+    if (changedDuringSend) {
+      // Preserve later lead/human activity and any manual Ghosting pause.
+      current.lastActor = earlierActor;
+      current.updatedAt = earlierUpdatedAt;
+      const sentHistory = current.ghosting.sentHistory ?? [];
+      if (!sentHistory.some((entry) => entry.stage === evaluation.stage)) {
+        current.ghosting = {
+          ...current.ghosting,
+          sentHistory: [...sentHistory, { stage: evaluation.stage, sentAt: now.toISOString() }],
+        };
+      }
+    } else {
+      current.ghosting = markGhostingStageAsSent(
+        { ...current.ghosting, cycle: evaluation.cycle },
+        evaluation.stage,
+        now.toISOString(),
+      );
+    }
+    saveConversationState(current);
 
     return res.json({
       ok: true,
@@ -256,8 +291,8 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       sentStage: evaluation.stage,
       sentAt: now.toISOString(),
       messageText,
-      ghostingState: state.ghosting,
-      lastAssistantMessageAt: state.lastAssistantMessageAt ?? null,
+      ghostingState: current.ghosting,
+      lastAssistantMessageAt: current.lastAssistantMessageAt ?? null,
     });
   } catch (error) {
     const message =
