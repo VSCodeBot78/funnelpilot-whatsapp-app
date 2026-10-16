@@ -5,7 +5,6 @@ import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
 import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState, releaseToAi } from "../core/state-manager.js";
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
-import { readSettings } from "../services/settings-store.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 
@@ -212,7 +211,7 @@ router.post("/message", async (req, res) => {
       leadId,
       campaignId,
       messageText,
-      conversationMode: readSettings().dmConversationMode === "natural" ? "natural" : "legacy",
+      conversationMode: "natural",
     });
 
     return res.json({

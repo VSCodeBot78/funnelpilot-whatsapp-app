@@ -1480,6 +1480,21 @@ export async function processIncomingMessage(
       return { text: natural.text, nextStep: state.currentStep,
         detectedIntent: natural.booking ? "booking_intent" : "flow_answer", state };
     }
+
+    // A natural conversation must never fall through into the legacy A/B/C
+    // questionnaire, even if a future natural responder returns no answer.
+    // Hand over rather than resuming an unrelated scripted funnel step.
+    updateAnswer(state, "peteReplySource", "natural_handoff");
+    patchFlags(state, {
+      peteRuntimeHandoffRequested: true,
+      peteRuntimeHandoffActive: true,
+    });
+    takeOverByHuman(state);
+    const handoffText = "Da möchte ich nichts Falsches sagen. Ich gebe das lieber an Jochen weiter.";
+    appendAssistantMessage(state, handoffText);
+    persistConversationState(state);
+    return { text: handoffText, nextStep: state.currentStep,
+      detectedIntent: "unknown", state };
   }
 
   if (isSelfstarterInterest(input.messageText)) {

@@ -732,6 +732,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               leadId: leadSync.lead.id,
               campaignId: leadSync.campaignId,
               messageText: textBody,
+              conversationMode: "natural",
             });
 
             engineProcessed = true;
