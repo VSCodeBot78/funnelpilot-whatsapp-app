@@ -3,7 +3,7 @@ import path from "node:path";
 import { env } from "../config/env.js";
 
 // Stored for Pete's new campaign editor. This is not a send authorization:
- // the Phase 4 runtime activation gate is deliberately separate.
+// the Phase 4 runtime activation gate is deliberately separate.
 export type PeteCampaignConfig = {
   sources: string[];
   keywords: string[];
