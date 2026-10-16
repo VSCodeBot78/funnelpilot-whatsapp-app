@@ -7,6 +7,7 @@ import {
   getNormalizedOfferContext,
   getDefaultEntryConfig,
   getNormalizedEntryConfig,
+  getNormalizedPeteCampaignConfig,
 } from "../utils/dashboardHelpers";
 import {
   loadCampaignSchedulingConfigFromApi,
@@ -27,6 +28,7 @@ export function createInitialCampaigns(settings) {
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      peteCampaign: getNormalizedPeteCampaignConfig(),
       entryConfig: getDefaultEntryConfig(
         "Hi Jochen, ich habe deine Anzeige gesehen und interessiere mich fÃ¼r die ELTERN VITAL METHODE. Kannst du mir mehr Infos schicken?",
       ),
@@ -82,6 +84,7 @@ Letzte Erinnerung von mir.`,
       askNameFirst: true,
       useGlobalBookingDefaults: false,
       offerContext: getDefaultOfferContext(),
+      peteCampaign: getNormalizedPeteCampaignConfig(),
       entryConfig: getDefaultEntryConfig("DUMMY TEST"),
       slot1: "Mittwoch 12:00",
       slot2: "Donnerstag 18:30",
@@ -134,6 +137,7 @@ const emptyCampaignForm = {
   useGlobalBookingDefaults: false,
   offerContext: getDefaultOfferContext(),
   entryConfig: getDefaultEntryConfig(),
+  peteCampaign: getNormalizedPeteCampaignConfig(),
   slot1: "",
   slot2: "",
   booking: getDefaultBookingConfig({}),
@@ -173,6 +177,7 @@ export function useCampaigns({
         useGlobalBookingDefaults: campaign.useGlobalBookingDefaults === true,
         offerContext: getNormalizedOfferContext(campaign),
         entryConfig: getNormalizedEntryConfig(campaign),
+        peteCampaign: getNormalizedPeteCampaignConfig(campaign),
         booking: getNormalizedBookingConfig(campaign, settings),
       };
 
@@ -270,17 +275,15 @@ export function useCampaigns({
       slot2: "",
       booking: getDefaultBookingConfig(settings),
       offerContext: getDefaultOfferContext(),
+      peteCampaign: getNormalizedPeteCampaignConfig(),
       entryConfig: getDefaultEntryConfig("NEU"),
+      peteCampaign: getNormalizedPeteCampaignConfig(),
       useGlobalBookingDefaults: false,
-      welcome: "Willkommenstext",
-      q1: "Frage 1",
-      q2: "Frage 2",
-      q3: "Frage 3",
-      goal: "Zielfrage",
-      scale: "Skalafrage",
-      hot: "Heißer Lead Text",
-      followUp24h: "24h Follow-up",
-      followUp3d: "3 Tage Follow-up",
+      // No scripted A/B/C question defaults in newly created campaigns.
+      welcome: "",
+      q1: "", q2: "", q3: "", goal: "", scale: "", hot: "",
+      followUp24h: "",
+      followUp3d: "",
     };
 
     setCampaigns((prev) => [...prev, newCampaign]);
@@ -316,6 +319,7 @@ export function useCampaigns({
         name: cleanName || "Neue Kampagne",
         trigger: cleanTrigger || "NEU",
         offerContext: getNormalizedOfferContext(campaignForm),
+        peteCampaign: getNormalizedPeteCampaignConfig(campaignForm),
         entryConfig: getNormalizedEntryConfig({
           ...campaignForm,
           trigger: cleanTrigger || "NEU",
