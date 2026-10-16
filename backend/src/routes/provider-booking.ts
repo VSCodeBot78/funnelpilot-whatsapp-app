@@ -189,6 +189,7 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
     const outbound = await sendConversationTextOutbound({
       state,
       messageText,
+      attemptKey: `provider_booking:${evaluation.stage}`,
     });
 
     if (!outbound.ok || !outbound.sent) {
