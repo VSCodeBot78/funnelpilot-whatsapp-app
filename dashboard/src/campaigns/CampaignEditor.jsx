@@ -11,6 +11,8 @@ import {
   getNormalizedBookingConfig,
   getNormalizedOfferContext,
   getNormalizedEntryConfig,
+  getNormalizedPeteCampaignConfig,
+  PETE_CAMPAIGN_SOURCES,
 } from "../utils/dashboardHelpers";
 
 export default function CampaignEditor({
@@ -29,6 +31,7 @@ export default function CampaignEditor({
   const effectiveBooking = getEffectiveCampaignBookingConfig(campaignForm, settings);
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
+  const peteCampaign = getNormalizedPeteCampaignConfig(campaignForm);
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
   const campaignBookingInputStyle = {
     ...inputStyle(colors),
@@ -57,6 +60,40 @@ export default function CampaignEditor({
         [key]: value,
       },
     }));
+  }
+
+  function updatePeteCampaignField(key, value) {
+    onCampaignFormChange((prev) => ({
+      ...prev,
+      peteCampaign: {
+        ...getNormalizedPeteCampaignConfig(prev),
+        [key]: value,
+      },
+    }));
+  }
+
+  function updateKeywordsDraft(raw) {
+    onCampaignFormChange((prev) => {
+      const parsed = raw.split(/[,;\n]/).map((word) => word.trim().toUpperCase());
+      return {
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          keywords: getNormalizedPeteCampaignConfig({ peteCampaign: { keywords: parsed } }).keywords,
+          // UI-only draft preserves commas/newlines while typing. Save normalizes it.
+          _keywordDraft: raw,
+        },
+      };
+    });
+  }
+
+  function toggleEntrySource(sourceId) {
+    updatePeteCampaignField(
+      "sources",
+      peteCampaign.sources.includes(sourceId)
+        ? peteCampaign.sources.filter((id) => id !== sourceId)
+        : [...peteCampaign.sources, sourceId],
+    );
   }
 
   function updateEntryConfigField(key, value) {
@@ -178,79 +215,98 @@ export default function CampaignEditor({
           >
             <CollapsibleSection
               colors={colors}
-              title="Grunddaten"
-              description="Name, Trigger, Fallback-Slots und Einstiegsverhalten."
+              title="Kampagne"
+              description="Name und Grundkonfiguration. Pete übernimmt das Gespräch, nicht ein Fragenkatalog."
               defaultOpen
             >
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Name</div>
+              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Kampagnenname</div>
               <input
                 style={inputStyle(colors)}
                 value={campaignForm.name}
                 onChange={(e) => updateField("name", e.target.value)}
               />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
-                Auslöser / Trigger
-              </div>
-              <textarea
-                style={{ ...inputStyle(colors), minHeight: 80, resize: "vertical" }}
-                value={campaignForm.trigger}
-                onChange={(e) => updateField("trigger", e.target.value)}
-              />
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
-                  Fallback Slot 1
-                </div>
-                <input
-                  style={inputStyle(colors)}
-                  value={campaignForm.slot1}
-                  onChange={(e) => updateField("slot1", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
-                  Fallback Slot 2
-                </div>
-                <input
-                  style={inputStyle(colors)}
-                  value={campaignForm.slot2}
-                  onChange={(e) => updateField("slot2", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
-                <input
-                  type="checkbox"
-                  checked={campaignForm.askNameFirst}
-                  onChange={(e) => updateField("askNameFirst", e.target.checked)}
-                />
-                Vorname zuerst abfragen
-              </label>
-            </div>
             </CollapsibleSection>
 
             <CollapsibleSection
               colors={colors}
-              title="Conversation Entry / WhatsApp Start"
-              description="Meta-Kontext, Einstiegstext und Fallback-Matching für neue WhatsApp-Leads."
+              title="Pete-Einstiege"
+              description="Einstieg, Auslöser und Starttext ohne starre A/B/C-Fragen."
               defaultOpen
             >
+              <p style={{ color: colors.sub, fontSize: 12, lineHeight: 1.5 }}>
+                Konfiguration als Entwurf. Die Verbindung zu Instagram-/WhatsApp-Automationen
+                wird erst in Phase 4 freigegeben. Speichern sendet keine Nachricht.
+              </p>
+              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>
+                Auslöser auswählen (Mehrfachauswahl)
+              </div>
+              <div style={{
+                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                gap: 8, marginBottom: 16,
+              }}>
+                {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
+                  <label key={id} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    color: colors.text, fontSize: 12,
+                    border: `1px solid ${colors.border}`, padding: "8px 10px",
+                    cursor: "pointer",
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={peteCampaign.sources.includes(id)}
+                      onChange={() => toggleEntrySource(id)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                Keywords (z. B. CHECK, KETO, BULLSHIT)
+              </div>
+              <textarea
+                style={{ ...inputStyle(colors), minHeight: 65, resize: "vertical" }}
+                value={campaignForm.peteCampaign?._keywordDraft ?? peteCampaign.keywords.join(", ")}
+                onChange={(e) => updateKeywordsDraft(e.target.value)}
+                placeholder="CHECK, KETO, BULLSHIT"
+              />
+              <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
+                Durch Komma oder Zeilenumbruch trennen. Keine automatischen Antworten,
+                bevor die Phase-4-Routingprüfung bestanden ist.
+              </p>
+
+              <div style={{ fontWeight: 600, fontSize: 12, margin: "14px 0 6px" }}>
+                Starttext für den Kampagneneinstieg
+              </div>
+              <textarea
+                style={{ ...inputStyle(colors), minHeight: 95, resize: "vertical" }}
+                value={peteCampaign.openingText}
+                onChange={(e) => updatePeteCampaignField("openingText", e.target.value)}
+                placeholder="Kurze, menschliche Begrüßung, wenn der Einstieg es erlaubt."
+              />
+              <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
+                Danach führt Pete frei und kontextbezogen weiter.
+                Der Starttext ist kein starres Gesprächsskript.
+              </p>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              colors={colors}
+              title="Erweiterte WhatsApp-Zuordnung (Kompatibilität)"
+              description="Bestehende Meta-CTWA-Felder für den späteren Übergang. Keine Steuerung der Gesprächsfragen."
+              defaultOpen={false}
+            >
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                  Bisheriger Text-Trigger (nur Altbestand)
+                </div>
+                <textarea
+                  style={{ ...inputStyle(colors), minHeight: 65, resize: "vertical" }}
+                  value={campaignForm.trigger || ""}
+                  onChange={(e) => updateField("trigger", e.target.value)}
+                />
+              </div>
+
               <div
                 style={{
                   display: "grid",
@@ -871,57 +927,36 @@ export default function CampaignEditor({
 
             <CollapsibleSection
               colors={colors}
-              title="Nachrichten / Fragen"
-              description="Willkommenstext, Qualifizierungsfragen, Zielfrage und Hot-Lead-Text."
-              defaultOpen
-            >
-            {[
-              ["Willkommen", "welcome"],
-              ["Frage 1", "q1"],
-              ["Frage 2", "q2"],
-              ["Frage 3", "q3"],
-              ["Zielfrage", "goal"],
-              ["Skala", "scale"],
-              ["Heißer Lead", "hot"],
-            ].map(([label, key]) => (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>{label}</div>
-                <textarea
-                  style={{
-                    ...inputStyle(colors),
-                    minHeight: key === "welcome" || key === "hot" ? 110 : 80,
-                    resize: "vertical",
-                  }}
-                  value={campaignForm[key]}
-                  onChange={(e) => updateField(key, e.target.value)}
-                />
-              </div>
-            ))}
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              colors={colors}
-              title="Ghosting / Follow-ups"
-              description="Kampagnennahe Follow-up-Texte."
+              title="Optionales Nachfassen"
+              description="Nur Vorlagen konfigurieren. Die Ausführung bleibt bis Phase 4 gesperrt."
               defaultOpen={false}
             >
-            {[
-              ["24h Follow-up", "followUp24h"],
-              ["3 Tage Follow-up", "followUp3d"],
-            ].map(([label, key]) => (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>{label}</div>
-                <textarea
-                  style={{
-                    ...inputStyle(colors),
-                    minHeight: 80,
-                    resize: "vertical",
-                  }}
-                  value={campaignForm[key]}
-                  onChange={(e) => updateField(key, e.target.value)}
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={peteCampaign.followUpEnabled}
+                  onChange={(e) => updatePeteCampaignField("followUpEnabled", e.target.checked)}
                 />
-              </div>
-            ))}
+                Nachfass-Vorlagen für diese Kampagne vorbereiten
+              </label>
+              <p style={{ color: colors.sub, fontSize: 11, lineHeight: 1.5 }}>
+                Diese Option aktiviert noch keine automatische Nachricht.
+                Zustimmung, Stopp-Wunsch, Human Takeover und zulässige
+                Versandfenster werden vor Phase 4 gesondert geprüft.
+              </p>
+              {peteCampaign.followUpEnabled && [
+                ["Vorlage nach 24 Stunden", "followUp24h"],
+                ["Vorlage nach 3 Tagen", "followUp3d"],
+              ].map(([label, key]) => (
+                <div key={key} style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>{label}</div>
+                  <textarea
+                    style={{ ...inputStyle(colors), minHeight: 75, resize: "vertical" }}
+                    value={campaignForm[key] || ""}
+                    onChange={(e) => updateField(key, e.target.value)}
+                  />
+                </div>
+              ))}
             </CollapsibleSection>
           </div>
 
