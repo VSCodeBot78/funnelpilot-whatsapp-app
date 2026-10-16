@@ -1,6 +1,7 @@
 import React from "react";
 import CampaignList from "./CampaignList";
 import CampaignEditor from "./CampaignEditor";
+import "./campaignsView.css";
 
 export default function CampaignsView({
   colors,
@@ -24,13 +25,7 @@ export default function CampaignsView({
         border: `1px solid ${colors.border}`,
       }}
     >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr)",
-          gap: 0,
-        }}
-      >
+      <div className="fp-campaigns-layout">
         <CampaignList
           colors={colors}
           campaigns={campaigns}
