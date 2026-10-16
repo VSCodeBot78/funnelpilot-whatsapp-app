@@ -20,6 +20,41 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD")
 
 const has = (s: string, regex: RegExp) => regex.test(norm(s));
 
+// Shared opt-out recognition: the same explicit paid-offer refusal must
+// suppress an immediate upsell AND persistently block scheduled sales follow-ups.
+// Input is already normalized by the calling function.
+// Lack of a previously received offer is not an opt-out if the parent
+// explicitly asks us to provide one. Distinguish this from "keine weiteren
+// Angebote" and never treat a positive offer request as a no-follow-up flag.
+function isExplicitOfferRequest(input: string): boolean {
+  // "I haven't received an offer" is not a decline, but "can you tell me why"
+  // is not consent to be sold to either. Require a concrete offer request.
+  return /\b(?:noch\s+)?kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/.test(input) &&
+    (/\b(?:kannst du mir|konnt ihr mir|habt ihr)\s+(?:bitte\s+)?(?:noch\s+)?(?:(?:ein(?:e|en|es)?|das|den)\s+)?(?:angebote?|eins|eines|einen)\b/.test(input) ||
+     /\b(?:schick\w*|sende\w*|zeig\w*)\s+(?:ihr\s+)?(?:mir\s+)?(?:bitte\s+)?(?:(?:ein(?:e|en|es)?|das|den)\s+)?(?:angebote?|eins|eines|einen)\b/.test(input));
+}
+
+// Reporting that no offer was received is a factual observation, not a ban on
+// future sales messages. Keep explicit refusals in the same message intact.
+function withoutMissingOfferStatements(input: string): string {
+  return input.replace(
+    /\b(?:(?:ich\s+)?(?:habe|hab|hatte)|wir\s+(?:haben|hatten))\s+(?:(?:bisher|bislang|noch|gar|uberhaupt)\s+){0,4}kein(?:e|en)?\s+(?:angebote?|kaufangebote?)\s+(?:bekommen|erhalten|gefunden)\b/g,
+    " ",
+  );
+}
+
+function isExplicitPaidOfferRefusal(input: string): boolean {
+  if (isExplicitOfferRequest(input)) return false;
+  const refusalText = withoutMissingOfferStatements(input);
+  return (
+    /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(refusalText) ||
+    /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(refusalText) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(refusalText) ||
+    /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(refusalText)
+  );
+}
+
+
 export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
@@ -46,12 +81,15 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
+  // Mixed messages can contain both old buying words and a newer refusal.
+  // Detect the current refusal BEFORE any checkout or paid-product CTA.
+  const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
     /\b(?:nicht|kein|keinen|nie|niemals)\s+(?:jetzt\s+|mehr\s+|direkt\s+|aktuell\s+)?(?:kaufen|bestellen)\b/.test(input) ||
     /\b(?:kein|keinen)\s+(?:kauf|interesse)\b/.test(input);
-  if (/\bselbststarter\b/.test(input) && !declinedSelfstarterPurchase &&
+  if (/\bselbststarter\b/.test(input) && !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers &&
       /\b(?:kaufen|bestellen|bestell\w*|wo kann ich|wie kann ich|zum checkout|zur kasse)\b/.test(input) &&
       !/\b(?:schon|bereits)\s+(?:gekauft|bestellt|bezahlt)\b/.test(input)) {
     return {text:"Hier findest du den No Bullshit Elternfitness Selbststarter: " +
@@ -65,7 +103,7 @@ export function getPeteVerifiedTransactionAnswer(
   const fiveWeekMentioned = /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input);
   const asksTimeCommitment =
     /\b(?:wie\s+viel\s+zeit|wieviel\s+zeit|zeitaufwand|wie\s+lange\s+dauert|wie\s+viele\s+(?:minuten|stunden))\b/.test(input);
-  if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned) {
+  if (asksTimeCommitment && selfstarterMentioned && !fiveWeekMentioned && !explicitlyDeclinesPaidOffers) {
     return {
       text: "Den Selbststarter nutzt du eigenständig, ohne persönliches Einzelcoaching. Einen verbindlichen Zeitaufwand kann ich dir dafür nicht nennen, weil dazu keine geprüfte Angabe vorliegt. Die Produktinhalte findest du hier: " +
         OFFER_TRUTH.selfstarter.productUrl,
@@ -81,7 +119,7 @@ export function getPeteVerifiedTransactionAnswer(
   const asksSelfstarterContents =
     /\b(?:was|welche)\b.{0,65}\b(?:drin|enthalten|beinhaltet|inhalt\w*|umfang|bekomme)\b/.test(input) ||
     /\b(?:einzelcoaching|selbermachen|selbst\s+machen|eigenstandig)\b/.test(input);
-  if (selfstarterMentioned && asksSelfstarterContents) {
+  if (selfstarterMentioned && asksSelfstarterContents && !explicitlyDeclinesPaidOffers) {
     return {
       text: "Der Selbststarter kostet " + OFFER_TRUTH.selfstarter.priceText +
         ", ist zum eigenständigen Umsetzen gedacht und kein persönliches Einzelcoaching. Die genaue Inhaltsliste steht auf der Produktseite: " +
@@ -101,6 +139,13 @@ export function getPeteVerifiedTransactionAnswer(
     return {text:"Klar, hier ist der kostenlose Keto Guide als PDF und Hörversion: " +
       OFFER_TRUTH.resources.ketoGuide.url, nextPhase:"info"};
   }
+  // A budget objection is NOT consent to pitch a cheaper option.
+  // Explicitly declining alternative purchases takes priority over offers.
+  // Keep this deterministic because a generic prompt cannot reliably undo
+  // a scripted low-price upsell in the verified-transaction path.
+  if (explicitlyDeclinesPaidOffers) {
+    return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
+  }
   // A price boundary is not an emergency or a reason for compulsory handover.
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
       /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
@@ -119,7 +164,7 @@ export function getPeteVerifiedTransactionAnswer(
         (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
           /no bullshit elternfitness selbststarter/i.test(message.text)));
   });
-  if (wantsBundleLink && previousSelfstarter) {
+  if (wantsBundleLink && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
   }
@@ -393,14 +438,27 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
 /** Distinct from STOP: block unsolicited sales reminders, not direct replies. */
 export function isSalesFollowUpOptOut(text: string): boolean {
   const input = norm(text);
-  return [
+  const refusalText = withoutMissingOfferStatements(input);
+  if (isExplicitOfferRequest(input)) {
+    // An offer may be requested once while future sales follow-ups are
+    // explicitly forbidden. Do not let the positive request erase that choice.
+    // Exclude the generic "keine Angebote bekommen" phrase from opt-out.
+    return [
+      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachrichten?|nachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachrichten?)\b/,
+      /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
+      /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
+      /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
+    ].some(pattern => pattern.test(refusalText));
+  }
+  return isExplicitPaidOfferRefusal(input) || [
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
     /\b(?:bitte\s+)?nicht\s+(?:(?:mehr|weiter|erneut|nochmal)\s+)?(?:hinterherlaufen|hinterherschreiben|nachhaken)\b/,
     /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
     /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
-  ].some(pattern => pattern.test(input));
+  ].some(pattern => pattern.test(refusalText));
 }
 
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
