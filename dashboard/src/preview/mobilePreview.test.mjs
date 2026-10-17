@@ -120,3 +120,40 @@ test("preview web server protects assets and blocks every backend/API path", asy
   assert.equal((await fetch(base + "/", { headers: auth, method: "POST" })).status, 405);
   assert.equal((await fetch(base + "/healthz")).status, 200);
 });
+
+test("mobile test fixtures cover CHECK, KETO, BULLSHIT and follower/manual without sends", () => {
+  assert.equal(DEMO_CAMPAIGNS.length, 4);
+  const ids = DEMO_CAMPAIGNS.map((entry) => entry.id);
+  assert.deepEqual(ids, ["demo-check", "demo-keto", "demo-bullshit", "demo-follower"]);
+  const keyword = simulateEntry(DEMO_CAMPAIGNS, {
+    source: "instagram_reel_comment", messageText: "BULLSHIT",
+    mediaId: "17851537767246649",
+  });
+  assert.equal(keyword.status, "matched");
+  assert.equal(keyword.matchedCampaignId, "demo-bullshit");
+  assert.equal(keyword.draftContext?.followUpDraftConfigured, true);
+  assert.equal(keyword.draftContext?.sendAllowed, false);
+  assert.equal(simulateEntry(DEMO_CAMPAIGNS, {
+    source: "instagram_reel_comment", messageText: "BULLSHIT",
+    mediaId: "17851537767246650",
+  }).status, "no_match");
+  const manual = simulateEntry(DEMO_CAMPAIGNS, {
+    source: "instagram_new_follower", messageText: "",
+  });
+  assert.equal(manual.status, "manual_only");
+  assert.equal(manual.draftContext, null);
+  assert.equal(manual.sendAllowed, false);
+});
+
+test("mobile preview warns that the production hostname lacks Access and provides swipeable campaign tabs", () => {
+  const app = read("MobileDashboardPreview.jsx");
+  const css = read("mobilePreview.css");
+  const main = read("mobilePreviewMain.jsx");
+  assert.match(app, /noch ohne Access-Schutz/);
+  assert.match(app, /Öffentliche Demo, bitte keine echten Daten eingeben/);
+  assert.match(app, /className="fp-mobile-preview"/);
+  assert.match(main, /\.\/mobilePreview.css/);
+  assert.match(css, /overflow-x: auto/);
+  assert.match(css, /fp-campaigns-layout/);
+  assert.match(css, /max-width: 800px/);
+});
