@@ -1,4 +1,5 @@
 import type { CampaignEntrySource } from "./pete-campaign-entry-preview.service.js";
+import { evaluateInstagramSharedMedia } from "./instagram-shared-media-policy.js";
 
 // Analyze only admin-supplied webhook examples. This is not wired into the
 // provider receivers and cannot create a lead, schedule a job or send a DM.
@@ -58,6 +59,11 @@ export function classifyCampaignWebhookExample(
   if (!entry) return result("invalid_payload", "invalid_entry");
 
   if (channel === "instagram") {
+    // Unknown change types alongside a valid message must not be ignored.
+    if (list(entry.changes).some(change =>
+      !["messages", "comments"].includes(str(field(change, "field")).toLowerCase()))) {
+      return result("manual_review", "unsupported_instagram_change");
+    }
     const messages = [
       ...list(entry.messaging),
       ...list(entry.changes).flatMap(change =>
@@ -97,7 +103,9 @@ export function classifyCampaignWebhookExample(
     }
     const text = str(message?.text);
     const hasAttachments = list(message?.attachments).length > 0;
-    if (!text || (hasAttachments && !/^(CHECK|KETO|BULLSHIT)$/i.test(text))) {
+    // Reuse the existing Instagram media policy: a standalone explicit keyword
+    // can be recognized, but the uninspected attachment is never interpreted.
+    if (!text || evaluateInstagramSharedMedia(hasAttachments, text) === "human_review") {
       return result("manual_review", "media_requires_human_review");
     }
     const replyTo = object(message?.reply_to);
@@ -115,9 +123,10 @@ export function classifyCampaignWebhookExample(
       "instagram_dm", eventId, text);
   }
 
-  const changes = list(entry.changes).filter(change =>
-    str(field(change, "field")).toLowerCase() === "messages");
-  if (changes.length !== 1) return result("manual_review", "requires_single_messages_change");
+  const changes = list(entry.changes);
+  if (changes.length !== 1 || str(field(changes[0], "field")).toLowerCase() !== "messages") {
+    return result("manual_review", "requires_single_messages_change");
+  }
   const value = object(field(changes[0], "value"));
   const messages = list(value?.messages);
   if (messages.length !== 1) return result("manual_review", "requires_single_whatsapp_message");
