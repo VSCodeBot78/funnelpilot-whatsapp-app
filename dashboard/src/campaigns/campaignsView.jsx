@@ -36,6 +36,7 @@ export default function CampaignsView({
         <CampaignEditor
           colors={colors}
           settings={settings}
+          campaigns={campaigns}
           campaignForm={campaignForm}
           campaignMessage={campaignMessage}
           campaignSaving={campaignSaving}
