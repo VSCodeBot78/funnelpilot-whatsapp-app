@@ -113,6 +113,16 @@
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
 }
+.fp-flow-warnings {
+  border-left: 3px solid #ff914d;
+  padding: 8px 10px;
+  background: rgba(255, 145, 77, 0.07);
+}
+.fp-flow-warnings ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.fp-flow-warnings li + li { margin-top: 3px; }
 .fp-flow-footer {
   padding: 12px;
   border-radius: 8px;
