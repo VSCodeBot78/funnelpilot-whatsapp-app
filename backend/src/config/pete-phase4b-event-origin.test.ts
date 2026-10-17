@@ -79,6 +79,21 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
     assert.equal(preview.sendAllowed, false);
   });
 
+  await t.test("invalid Reel media ID never qualifies even for all-Reel draft", () => {
+    const preview = evaluateCampaignEntryPreview([{
+      id: "all", peteCampaign: {
+        sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+        reelTarget: "all", reelMediaIds: [],
+        openingText: "", followUpEnabled: false,
+      },
+    }], {
+      source: "instagram_reel_comment", messageText: "CHECK", mediaId: "unverified",
+    });
+    assert.equal(preview.status, "manual_review");
+    assert.equal(preview.matchedCampaignId, null);
+    assert.equal(preview.sendAllowed, false);
+  });
+
   await t.test("only a selected Reel media ID is eligible", () => {
     const unknown = classifyCampaignWebhookExample("instagram", reel("17851537767246650"));
     assert.equal(unknown.status, "recognized");
