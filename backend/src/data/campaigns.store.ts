@@ -42,7 +42,7 @@ export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampai
       ? [...new Set(value.reelMediaIds
           .filter((id): id is string => typeof id === "string")
           .map(id => id.trim())
-          .filter(id => /^\\d{8,32}$/.test(id)))].slice(0, 40)
+          .filter(id => /^\d{8,32}$/.test(id)))].slice(0, 40)
       : [],
   };
 }
