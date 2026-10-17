@@ -153,10 +153,87 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
       followUpDraftConfigured: true,
       reelTarget: "specific",
       reelMediaIds: ["17851537767246649"],
+      flowDraft: {
+        enabled: false,
+        autoReplyEnabled: false,
+        text: null,
+        linkEnabled: false,
+        linkLabel: "",
+        linkUrl: null,
+        peteHandoffEnabled: false,
+        sendAllowed: false,
+      },
     });
     // The context shows stored configuration; it cannot send messages.
     assert.equal(result.draftContext?.sendAllowed, false);
     assert.equal(result.followUpDraftConfigured, true);
+  });
+
+  await t.test("ManyChat-style desktop flow steps survive backend persistence but cannot send", () => {
+    const id = "desktop-flow-checked";
+    saveCampaign({
+      id, name: "Elterncheck Flow-Entwurf",
+      peteCampaign: {
+        sources: ["instagram_dm", "instagram_reel_comment"],
+        keywords: ["CHECK"], openingText: "Hier ist dein Elterncheck.",
+        followUpEnabled: false, reelTarget: "specific",
+        reelMediaIds: ["17851537767246649"],
+        flowDraftEnabled: true, autoReplyEnabled: true,
+        linkEnabled: true, linkLabel: "Elterncheck öffnen",
+        linkUrl: "https://check.jochen-kammerer.de",
+        peteHandoffEnabled: true,
+      },
+    });
+    const persisted = getAllCampaigns().find(c => c.id === id);
+    assert.ok(persisted);
+    const flow = persisted.peteCampaign as Record<string, unknown>;
+    assert.equal(flow.flowDraftEnabled, true);
+    assert.equal(flow.autoReplyEnabled, true);
+    assert.equal(flow.linkEnabled, true);
+    assert.equal(flow.linkUrl, "https://check.jochen-kammerer.de/");
+    assert.equal(flow.peteHandoffEnabled, true);
+    const preview = evaluateCampaignEntryPreview(getAllCampaigns(), {
+      source: "instagram_reel_comment", messageText: "CHECK",
+      mediaId: "17851537767246649",
+    });
+    assert.equal(preview.status, "matched");
+    assert.equal(preview.sendAllowed, false);
+    assert.equal(preview.draftContext?.flowDraft?.sendAllowed, false);
+    assert.deepEqual(preview.draftContext?.flowDraft, {
+      enabled: true,
+      autoReplyEnabled: true,
+      text: "Hier ist dein Elterncheck.",
+      linkEnabled: true,
+      linkLabel: "Elterncheck öffnen",
+      linkUrl: "https://check.jochen-kammerer.de/",
+      peteHandoffEnabled: true,
+      sendAllowed: false,
+    });
+  });
+
+  await t.test("unsafe links and nonboolean switches are not enabled by coercion", async () => {
+    const { normalizePeteCampaignConfig } = await import("../data/campaigns.store.js");
+    for (const unsafe of [
+      "javascript:alert(1)", "http://example.com", "//example.com",
+      "https://localhost/test", "https://u:p@example.com",
+      "https://127.0.0.1/", "not-a-link",
+    ]) {
+      const value = normalizePeteCampaignConfig({
+        sources: ["instagram_dm"], keywords: ["CHECK"],
+        flowDraftEnabled: "true", autoReplyEnabled: 1,
+        linkEnabled: "on", linkUrl: unsafe, peteHandoffEnabled: "true",
+      });
+      assert.equal(value.flowDraftEnabled, false);
+      assert.equal(value.autoReplyEnabled, false);
+      assert.equal(value.linkEnabled, false);
+      assert.equal(value.peteHandoffEnabled, false);
+      assert.equal(value.linkUrl, "");
+    }
+    const old = normalizePeteCampaignConfig({ sources: ["instagram_dm"], keywords: ["CHECK"] });
+    assert.equal(old.flowDraftEnabled, false);
+    assert.equal(old.autoReplyEnabled, false);
+    assert.equal(old.linkEnabled, false);
+    assert.equal(old.peteHandoffEnabled, false);
   });
 
   await t.test("unmatched, ambiguous and manual follower entries never expose a Pete context", () => {
