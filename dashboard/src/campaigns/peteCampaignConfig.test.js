@@ -60,3 +60,23 @@ test("Phase 4: dashboard exposes only preview endpoint, never a send command", (
   assert.match(api, /\/campaigns\/preview-entry/);
   assert.match(api, /data\.preview\.sendAllowed !== false/);
 });
+
+test("Phase 4B: Reel campaigns support all-vs-selected media IDs without enabling sends", () => {
+  const specific = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+    reelTarget: "specific",
+    reelMediaIds: ["17851537767246649", "17851537767246649", "not-valid"],
+  } });
+  assert.equal(specific.reelTarget, "specific");
+  assert.deepEqual(specific.reelMediaIds, ["17851537767246649"]);
+  const empty = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    reelTarget: "invalid", reelMediaIds: null,
+  } });
+  assert.equal(empty.reelTarget, "all");
+  assert.deepEqual(empty.reelMediaIds, []);
+
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("Welche Reels sollen berücksichtigt werden?"));
+  assert.ok(editor.includes("Nur ausgewählte Reels"));
+  assert.ok(editor.includes("Reel-Media-ID für die Vorschau"));
+});
