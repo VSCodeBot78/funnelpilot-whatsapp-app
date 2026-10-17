@@ -4,6 +4,7 @@ import WebhookEventPreview from "./WebhookEventPreview";
 import DraftToggle from "./DraftToggle.jsx";
 import CampaignFlowEditor from "./CampaignFlowEditor.jsx";
 import ReelSelectionEditor from "./ReelSelectionEditor.jsx";
+import { CAMPAIGN_STARTER_TEMPLATES } from "./campaignTemplates.js";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -47,6 +48,7 @@ export default function CampaignEditor({
   const campaignDraftRevision = JSON.stringify({
     name: campaignForm.name, peteCampaign,
   });
+  const [starterTemplateId, setStarterTemplateId] = useState("blank");
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
   const [previewMediaId, setPreviewMediaId] = useState("");
@@ -243,21 +245,41 @@ export default function CampaignEditor({
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 14 }}>Kampagnen & Texte</div>
-        <button
-          type="button"
-          onClick={onCreateNewCampaign}
-          style={{
-            border: `1px solid ${colors.borderStrong}`,
-            background: colors.surface,
-            color: colors.text,
-            padding: "8px 12px",
-            cursor: "pointer",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          Kampagne anlegen
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8,
+          alignItems: "flex-end", maxWidth: "100%" }}>
+          <label style={{ display: "grid", gap: 3, fontSize: 11,
+            color: colors.sub, minWidth: "min(100%, 220px)" }}>
+            Vorlage für neue Kampagne
+            <select value={starterTemplateId}
+              onChange={(e) => setStarterTemplateId(e.target.value)}
+              disabled={campaignSaving || campaignLoading}
+              aria-label="Vorlage für neue Kampagne"
+              style={{ ...inputStyle(colors), maxWidth: "100%" }}>
+              {CAMPAIGN_STARTER_TEMPLATES.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => onCreateNewCampaign(starterTemplateId)}
+            disabled={campaignSaving || campaignLoading}
+            style={{
+              border: `1px solid ${colors.borderStrong}`,
+              background: colors.surface,
+              color: colors.text,
+              padding: "8px 12px",
+              cursor: campaignSaving || campaignLoading ? "not-allowed" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              minHeight: 40,
+            }}
+          >
+            {campaignSaving ? "Bitte warten..." : "Kampagne anlegen"}
+          </button>
+        </div>
       </div>
 
       {campaignMessage ? (
@@ -280,6 +302,13 @@ export default function CampaignEditor({
           <div style={{ color: colors.sub, fontSize: 12, marginBottom: 10 }}>
             Aktive Bearbeitung: {campaignForm.name}
           </div>
+          <p style={{ fontSize: 12, color: colors.sub, lineHeight: 1.6,
+            margin: "0 0 12px" }}>
+            1. Vorlage auswählen und „Kampagne anlegen“ klicken. 2. Auslöser,
+            Text und optionalen Link einstellen. 3. „Kampagne speichern“.
+            4. Unter „Kampagnen-Einstieg testen“ mit Beispieldaten prüfen.
+            Jede Vorlage ist änderbar und startet ohne Live-Automation.
+          </p>
 
           <div
             style={{
