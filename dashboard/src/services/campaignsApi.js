@@ -151,3 +151,19 @@ export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageTex
   }
   return data.preview;
 }
+
+// The event classifier only checks anonymized payload examples. Never send.
+export async function previewCampaignWebhookInApi({ apiBaseUrl, channel, payload }) {
+  const response = await fetch(buildApiUrl("/campaigns/preview-event", apiBaseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channel, payload }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data?.ok || !data?.event ||
+      data.event.sendAllowed !== false ||
+      (data.preview && data.preview.sendAllowed !== false)) {
+    throw new Error(data?.error || "campaign_event_preview_failed");
+  }
+  return data;
+}
