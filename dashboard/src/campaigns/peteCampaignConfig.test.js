@@ -94,3 +94,13 @@ test("Phase 4B: webhook origin lab only uses a read-only preview API", () => {
   assert.match(api, /data\.event\.sendAllowed !== false/);
   assert.match(api, /data\.preview\.sendAllowed !== false/);
 });
+
+test("Phase 4B: campaign switching keeps stale scheduling data out of the active form", () => {
+  const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
+  // Switching selection must not re-fetch the entire campaign list.
+  assert.match(hook, /loadCampaigns\(\);\s*return \(\) => \{ cancelled = true; \};\s*\}, \[settings\.apiBaseUrl\]\)/);
+  // A late response for campaign A cannot write its booking data into B.
+  assert.match(hook, /cancelled \|\| campaignToLoad\.useGlobalBookingDefaults/);
+  assert.match(hook, /prev\?\.id === campaignToLoad\.id/);
+  assert.match(hook, /if \(!cancelled\) setCampaignLoading\(false\)/);
+});
