@@ -333,7 +333,7 @@ export function useCampaigns({
   }
 
   async function saveCampaign() {
-    if (!campaignForm?.id) return;
+    if (!campaignForm?.id) return false;
 
     let campaignSavedToBackend = false;
     try {
@@ -385,11 +385,13 @@ export function useCampaigns({
       });
 
       setCampaignMessage("Kampagne und Buchungslogik gespeichert.");
+      return true;
     } catch (error) {
       console.error("campaign save error:", error);
       setCampaignMessage(campaignSavedToBackend
         ? "Kampagne gespeichert, aber Buchungslogik nicht bestätigt. Bitte erneut speichern."
         : "Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular.");
+      return false;
     } finally {
       setCampaignSaving(false);
     }
