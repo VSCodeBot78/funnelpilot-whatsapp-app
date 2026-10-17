@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
 import {
   deleteCampaign,
   getAllCampaigns,
@@ -31,6 +32,26 @@ router.get("/", (_req, res) => {
   } catch (error) {
     console.error("campaigns route error:", error);
     return res.status(500).json({ ok: false, error: "campaigns_load_failed" });
+  }
+});
+
+// Owner-only control-plane preview, guarded by the existing app admin guard.
+// Never starts a lead conversation or invokes a provider; sendAllowed is
+// permanently false and no scheduling or campaign changes are made.
+router.post("/preview-entry", (req, res) => {
+  try {
+    const input = req.body && typeof req.body === "object" ? req.body : {};
+    const result = evaluateCampaignEntryPreview(getAllCampaigns(), {
+      source: input.source,
+      messageText: input.messageText,
+    });
+    if (result.status === "invalid_source" || result.status === "invalid_message") {
+      return res.status(400).json({ ok: false, preview: result });
+    }
+    return res.json({ ok: true, preview: result });
+  } catch (error) {
+    console.error("campaign entry preview error:", error);
+    return res.status(500).json({ ok: false, error: "campaign_preview_failed" });
   }
 });
 

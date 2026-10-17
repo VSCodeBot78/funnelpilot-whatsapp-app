@@ -50,3 +50,13 @@ test("Phase 3: editor is no longer a required ABC qualification form", () => {
   assert.ok(!editor.includes('title="Nachrichten / Fragen"'));
   assert.ok(!editor.includes('["Frage 1", "q1"]'));
 });
+
+test("Phase 4: dashboard exposes only preview endpoint, never a send command", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const api = fs.readFileSync(new URL("../services/campaignsApi.js", import.meta.url), "utf8");
+  assert.match(editor, /Kampagnen-Einstieg testen/);
+  assert.match(editor, /Einstieg nur simulieren/);
+  assert.match(editor, /previewCampaignEntryInApi/);
+  assert.match(api, /\/campaigns\/preview-entry/);
+  assert.match(api, /data\.preview\.sendAllowed !== false/);
+});

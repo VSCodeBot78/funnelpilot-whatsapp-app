@@ -137,3 +137,17 @@ export async function deleteCampaignInApi(campaignId, apiBaseUrl) {
 
   return true;
 }
+
+// Read-only campaign preview. Does not start a bot or send any message.
+export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageText }) {
+  const response = await fetch(buildApiUrl("/campaigns/preview-entry", apiBaseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source, messageText }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data?.ok || !data?.preview || data.preview.sendAllowed !== false) {
+    throw new Error(data?.error || "campaign_preview_failed");
+  }
+  return data.preview;
+}

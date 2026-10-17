@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getCampaignById as getStoredCampaignById, normalizePeteCampaignConfig } from "../data/campaigns.store.js";
 import { getConversationState, saveConversationState } from "../data/store.js";
 import { appendAssistantMessage } from "../core/state-manager.js";
 import { evaluateLatestAiOutboundPermission } from "../services/ai-outbound-guard.service.js";
@@ -153,6 +154,26 @@ router.post("/send-due/:campaignId/:leadId", async (req, res) => {
       return res.status(404).json({
         ok: false,
         error: "Kein Conversation State gefunden.",
+      });
+    }
+
+    // Phase 4: the new Pete campaign editor only prepares drafts. Its
+    // followUpEnabled field is NOT permission to use the legacy Ghosting
+    // sender. Preserve the old path for untouched legacy campaigns, but
+    // fail closed for every campaign explicitly configured with Pete sources.
+    const storedCampaign = getStoredCampaignById(campaignId) ??
+      (campaignId === "eltern-vital-fit" ? getStoredCampaignById("fit") : undefined);
+    const peteDraft = normalizePeteCampaignConfig(storedCampaign?.peteCampaign);
+    if (peteDraft.sources.length > 0) {
+      return res.json({
+        ok: true,
+        leadId,
+        campaignId,
+        sent: false,
+        dryRun: true,
+        sendSkipped: true,
+        sendSkipReason: "pete_campaign_preview_only",
+        ghostingState: state.ghosting,
       });
     }
 

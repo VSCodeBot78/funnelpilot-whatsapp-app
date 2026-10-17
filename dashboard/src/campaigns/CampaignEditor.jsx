@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { previewCampaignEntryInApi } from "../services/campaignsApi";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -32,6 +33,29 @@ export default function CampaignEditor({
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
   const peteCampaign = getNormalizedPeteCampaignConfig(campaignForm);
+  const [previewSource, setPreviewSource] = useState("instagram_dm");
+  const [previewMessage, setPreviewMessage] = useState("CHECK");
+  const [previewResponse, setPreviewResponse] = useState(null);
+  const [previewError, setPreviewError] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  async function checkCampaignEntry() {
+    setPreviewLoading(true);
+    setPreviewResponse(null);
+    setPreviewError("");
+    try {
+      const result = await previewCampaignEntryInApi({
+        apiBaseUrl: settings.apiBaseUrl,
+        source: previewSource,
+        messageText: previewMessage,
+      });
+      setPreviewResponse(result);
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : "Vorschau nicht erreichbar");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
   const campaignBookingInputStyle = {
     ...inputStyle(colors),
@@ -280,6 +304,84 @@ export default function CampaignEditor({
                 Danach führt Pete frei und kontextbezogen weiter.
                 Der Starttext ist kein starres Gesprächsskript.
               </p>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              colors={colors}
+              title="Kampagnen-Einstieg testen"
+              description="Nur lesen und vergleichen, keine Instagram-/WhatsApp-Nachrichten senden."
+              defaultOpen={false}
+            >
+              <p style={{ color: colors.sub, fontSize: 12, lineHeight: 1.5 }}>
+                Erst die Kampagne speichern, dann den Eingang simulieren.
+                Die Vorschau prüft alle gespeicherten Kampagnen und findet
+                Konflikte, bevor eine Automation aktiviert wird.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Einstieg</div>
+                  <select
+                    style={inputStyle(colors)}
+                    value={previewSource}
+                    onChange={(e) => { setPreviewSource(e.target.value); setPreviewResponse(null); }}
+                  >
+                    {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Nachricht / Keyword</div>
+                  <input
+                    style={inputStyle(colors)}
+                    value={previewMessage}
+                    onChange={(e) => { setPreviewMessage(e.target.value); setPreviewResponse(null); }}
+                    maxLength={2000}
+                    placeholder="CHECK"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={checkCampaignEntry}
+                disabled={previewLoading}
+                style={{ ...secondaryButtonStyle(colors), marginTop: 12 }}
+              >
+                {previewLoading ? "Prüfe..." : "Einstieg nur simulieren"}
+              </button>
+              {previewError && (
+                <p style={{ color: colors.text, fontSize: 12 }}>Prüfung fehlgeschlagen: {previewError}</p>
+              )}
+              {previewResponse && (
+                <div style={{
+                  marginTop: 12, padding: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.surface, color: colors.text, fontSize: 12,
+                }}>
+                  <strong>
+                    {({
+                      matched: "Eindeutiger Entwurfs-Treffer",
+                      no_match: "Keine passende Kampagne",
+                      ambiguous: "Mehrere Kampagnen: keine eindeutige Zuordnung",
+                      manual_only: "Follower-Begrüßung nur manuell",
+                    })[previewResponse.status] || "Kein Ergebnis"}
+                  </strong>
+                  {previewResponse.matchedCampaignId && (
+                    <div style={{ marginTop: 6 }}>Kampagne: {previewResponse.matchedCampaignId}</div>
+                  )}
+                  {previewResponse.candidateIds?.length > 1 && (
+                    <div style={{ marginTop: 6 }}>Konflikt: {previewResponse.candidateIds.join(", ")}</div>
+                  )}
+                  {previewResponse.openingTextPreview && (
+                    <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>
+                      Vorgesehener Starttext: {previewResponse.openingTextPreview}
+                    </div>
+                  )}
+                  <div style={{ color: colors.sub, marginTop: 8 }}>
+                    Prüfmodus. Versand ist immer gesperrt. Auch vorbereitete Follow-ups werden nicht ausgelöst.
+                  </div>
+                </div>
+              )}
             </CollapsibleSection>
 
             <CollapsibleSection
