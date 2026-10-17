@@ -8,7 +8,10 @@
     "build": "npm run test && vite build && npm run build:lab",
     "preview": "vite preview",
     "test": "node --test src/onboarding/onboardingReadiness.test.js src/navigation/dashboardNavigation.test.js src/diagnostics/systemDiagnostics.test.js src/onboarding/coachOnboardingPreview.test.js src/services/coachDraftSave.test.js src/inbox/mobileInboxFilters.test.js src/campaigns/peteCampaignConfig.test.js src/mobile/peteLabBudget.test.js src/mobile/peteLabReview.test.js src/mobile/peteLabSpeech.test.js ../mobile-lab/gateway.test.mjs && node --check ../mobile-lab/launcher.mjs",
-    "build:lab": "vite build --config vite.lab.config.js"
+    "build:lab": "vite build --config vite.lab.config.js",
+    "build:mobile-preview": "vite build --config vite.mobile-preview.config.js",
+    "start:mobile-preview": "node preview-server.mjs",
+    "test:mobile-preview": "node --test src/preview/*.test.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
