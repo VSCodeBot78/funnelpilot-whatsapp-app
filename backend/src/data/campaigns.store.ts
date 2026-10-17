@@ -11,6 +11,12 @@ export type PeteCampaignConfig = {
   followUpEnabled: boolean;
   reelTarget?: string;
   reelMediaIds?: string[];
+  flowDraftEnabled?: boolean;
+  autoReplyEnabled?: boolean;
+  linkEnabled?: boolean;
+  linkLabel?: string;
+  linkUrl?: string;
+  peteHandoffEnabled?: boolean;
 };
 
 const PETE_CAMPAIGN_SOURCES = [
@@ -21,7 +27,23 @@ const PETE_CAMPAIGN_SOURCES = [
 export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
   sources: [], keywords: [], openingText: "", followUpEnabled: false,
   reelTarget: "all", reelMediaIds: [],
+  flowDraftEnabled: false, autoReplyEnabled: false, linkEnabled: false,
+  linkLabel: "", linkUrl: "", peteHandoffEnabled: false,
 };
+
+// Link input is untrusted user configuration, not permission to visit/send it.
+function normalizePeteDraftLink(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (trimmed.length > 500 || !/^https:\/\//i.test(trimmed)) return "";
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" && !url.username && !url.password &&
+      url.hostname.length > 0 &&
+      !/^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?)$/i.test(url.hostname)
+      ? url.href : "";
+  } catch { return ""; }
+}
 
 export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampaignConfig> {
   const value = input && typeof input === "object" && !Array.isArray(input)
@@ -44,6 +66,12 @@ export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampai
           .map(id => id.trim())
           .filter(id => /^\d{8,32}$/.test(id)))].slice(0, 40)
       : [],
+    flowDraftEnabled: value.flowDraftEnabled === true,
+    autoReplyEnabled: value.autoReplyEnabled === true,
+    linkEnabled: value.linkEnabled === true,
+    linkLabel: typeof value.linkLabel === "string" ? value.linkLabel.trim().slice(0, 120) : "",
+    linkUrl: normalizePeteDraftLink(value.linkUrl),
+    peteHandoffEnabled: value.peteHandoffEnabled === true,
   };
 }
 
