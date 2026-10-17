@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { previewCampaignEntryInApi } from "../services/campaignsApi";
 import WebhookEventPreview from "./WebhookEventPreview";
 import {
@@ -40,8 +40,18 @@ export default function CampaignEditor({
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
+  const previewRequestId = useRef(0);
+
+  // Do not show a previous campaign's snapshot after the owner edits or switches.
+  useEffect(() => {
+    previewRequestId.current += 1;
+    setPreviewResponse(null);
+    setPreviewError("");
+    setPreviewLoading(false);
+  }, [campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign]);
 
   async function checkCampaignEntry() {
+    const requestId = ++previewRequestId.current;
     setPreviewLoading(true);
     setPreviewResponse(null);
     setPreviewError("");
@@ -52,11 +62,13 @@ export default function CampaignEditor({
         messageText: previewMessage,
         mediaId: previewMediaId,
       });
-      setPreviewResponse(result);
+      if (requestId === previewRequestId.current) setPreviewResponse(result);
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : "Vorschau nicht erreichbar");
+      if (requestId === previewRequestId.current) {
+        setPreviewError(error instanceof Error ? error.message : "Vorschau nicht erreichbar");
+      }
     } finally {
-      setPreviewLoading(false);
+      if (requestId === previewRequestId.current) setPreviewLoading(false);
     }
   }
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
@@ -471,7 +483,11 @@ export default function CampaignEditor({
               description="Anonymisiertes Webhook-Beispiel auswerten, ohne eine Nachricht zu senden."
               defaultOpen={false}
             >
-              <WebhookEventPreview colors={colors} apiBaseUrl={settings.apiBaseUrl} />
+              <WebhookEventPreview
+                key={campaignForm.id}
+                colors={colors}
+                apiBaseUrl={settings.apiBaseUrl}
+              />
             </CollapsibleSection>
 
             <CollapsibleSection
