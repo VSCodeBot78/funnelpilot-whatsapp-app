@@ -64,7 +64,7 @@ test("isolated preview imports the actual campaign editor without the full app o
   const app = read("MobileDashboardPreview.jsx");
   assert.match(app, /import CampaignsView from "\.\.\/campaigns\/campaignsView"/);
   assert.match(app, /previewEntry=\{previewEntry\} previewWebhook=\{previewWebhook\}/);
-  assert.doesNotMatch(app, /import\\s+[^;]*(?:AppDashboard|MobilePeteLab|useCampaigns)|fetch\\(|localStorage/);
+  assert.doesNotMatch(app, /import\s+[^;]*(?:AppDashboard|MobilePeteLab|useCampaigns)|fetch\(|localStorage/);
   assert.match(app, /synthetische Testdaten/);
   assert.match(app, /Nur Demo:/);
   const matcher = read("simulatedCampaigns.js");
