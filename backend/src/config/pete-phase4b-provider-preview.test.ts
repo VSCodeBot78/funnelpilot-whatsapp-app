@@ -118,6 +118,21 @@ test("Phase 4B: provider entry metadata is evidence, never send authority", asyn
     assert.equal(result.sendAllowed, false);
   });
 
+  await t.test("Instagram duplicate raw events do not bypass parser dedupe", () => {
+    const envelope = igEvent({});
+    envelope.entry[0].messaging.push({
+      sender: { id: "synthetic-sender" },
+      recipient: { id: "synthetic-account" },
+      message: { mid: "synthetic-mid", text: "CHECK" },
+    });
+    const result = previewProviderCampaignEntry(campaigns, {
+      provider: "instagram", payload: envelope,
+    });
+    assert.equal(result.reason, "ambiguous_event");
+    assert.equal(result.sendAllowed, false);
+    assert.equal(result.entryPreview, null);
+  });
+
   await t.test("WhatsApp ordinary text is not confused with a Meta ad", () => {
     const result = previewProviderCampaignEntry(campaigns, {
       provider: "whatsapp", payload: waEvent({}),
