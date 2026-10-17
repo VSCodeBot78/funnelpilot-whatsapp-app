@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
+import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import {
   getNormalizedPeteCampaignConfig,
   PETE_CAMPAIGN_SOURCES,
@@ -249,4 +250,43 @@ test("Desktop Flow 1: editor uses accessible toggles and never a live sender", (
   assert.match(toggle, /aria-label=\{label\}/);
   assert.match(css, /focus-visible/);
   assert.doesNotMatch(flow, /fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+});
+
+test("Desktop Flow 2: missing trigger/reel/auto-answer/link is reported, not silently enabled", () => {
+  const invalid = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true,
+    sources: ["instagram_reel_comment"],
+    keywords: [],
+    reelTarget: "specific", reelMediaIds: [],
+    autoReplyEnabled: true, openingText: "",
+    linkEnabled: true, linkUrl: "javascript:alert(1)",
+    peteHandoffEnabled: false,
+  } });
+  const warnings = getFlowDraftWarnings(invalid);
+  assert.equal(warnings.length, 4);
+  assert.ok(warnings.some((value) => value.includes("Keyword")));
+  assert.ok(warnings.some((value) => value.includes("Reel-Media-ID")));
+  assert.ok(warnings.some((value) => value.includes("Text")));
+  assert.ok(warnings.some((value) => value.includes("HTTPS-Link")));
+  const ready = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true, sources: ["instagram_dm"],
+    keywords: ["CHECK"], autoReplyEnabled: true,
+    openingText: "Hallo!",
+  } });
+  assert.deepEqual(getFlowDraftWarnings(ready), []);
+});
+
+test("Desktop Flow 2: follower-first DMs remain manual even if a draft toggle is enabled", () => {
+  const flow = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true, sources: ["instagram_new_follower"],
+    keywords: [], autoReplyEnabled: true,
+    openingText: "Hey, schön, dass du folgst.",
+  } });
+  const warnings = getFlowDraftWarnings(flow);
+  assert.ok(warnings.some((warning) => warning.includes("immer manuell")));
+  const list = fs.readFileSync(new URL("./CampaignList.jsx", import.meta.url), "utf8");
+  assert.ok(list.includes("Flow-Entwurf eingeschaltet (nicht live)"));
+  assert.ok(list.includes("Flow-Entwurf pausiert"));
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("Antworten pro Keyword"));
 });
