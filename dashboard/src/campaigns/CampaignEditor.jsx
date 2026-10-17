@@ -437,9 +437,25 @@ export default function CampaignEditor({
                   {previewResponse.candidateIds?.length > 1 && (
                     <div style={{ marginTop: 6 }}>Konflikt: {previewResponse.candidateIds.join(", ")}</div>
                   )}
-                  {previewResponse.openingTextPreview && (
-                    <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>
-                      Vorgesehener Starttext: {previewResponse.openingTextPreview}
+                  {previewResponse.draftContext && (
+                    <div style={{ marginTop: 10, lineHeight: 1.6 }}>
+                      <strong>Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)</strong>
+                      <div>Name: {previewResponse.draftContext.campaignName || previewResponse.draftContext.campaignId}</div>
+                      <div>Einstieg: {previewResponse.draftContext.source}</div>
+                      <div>Keyword: {previewResponse.draftContext.matchedKeyword || "kein Keyword erforderlich"}</div>
+                      <div>
+                        Starttext: {previewResponse.draftContext.openingText || "nicht hinterlegt"}
+                      </div>
+                      <div>
+                        Follow-up: {previewResponse.draftContext.followUpDraftConfigured
+                          ? "als Entwurf konfiguriert" : "nicht vorgesehen"}
+                      </div>
+                      {previewResponse.draftContext.reelTarget && (
+                        <div>
+                          Reel-Auswahl: {previewResponse.draftContext.reelTarget === "specific"
+                            ? "ausgewählte Reels" : "alle Reels"}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div style={{ color: colors.sub, marginTop: 8 }}>
