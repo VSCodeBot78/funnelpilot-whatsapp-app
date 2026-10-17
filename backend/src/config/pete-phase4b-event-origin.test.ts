@@ -163,6 +163,55 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
     }
   });
 
+  await t.test("unknown Instagram changes cannot be ignored beside a valid DM", () => {
+    const event = classifyCampaignWebhookExample("instagram", {
+      object: "instagram",
+      entry: [{
+        messaging: [{
+          sender: { id: "parent" },
+          message: { mid: "dm-with-unknown-change", text: "CHECK" },
+        }],
+        changes: [{ field: "mentions", value: { id: "unexpected" } }],
+      }],
+    });
+    assert.equal(event.status, "manual_review");
+    assert.equal(event.reason, "unsupported_instagram_change");
+    assert.equal(event.sendAllowed, false);
+  });
+
+  await t.test("media attachments require a standalone keyword, never media interpretation", () => {
+    const withMedia = (text: string) => ({
+      object: "instagram",
+      entry: [{ messaging: [{
+        sender: { id: "parent" },
+        message: { mid: "attached-media", text, attachments: [{ type: "share" }] },
+      }] }],
+    });
+    const keyword = classifyCampaignWebhookExample("instagram", withMedia("CHECK"));
+    assert.equal(keyword.status, "recognized");
+    assert.equal(keyword.source, "instagram_dm");
+    assert.equal(keyword.sendAllowed, false);
+    const question = classifyCampaignWebhookExample("instagram", withMedia("CHECK dieses Reel"));
+    assert.equal(question.status, "manual_review");
+    assert.equal(question.source, null);
+    assert.equal(question.sendAllowed, false);
+  });
+
+  await t.test("a WhatsApp webhook with extra change types fails closed", () => {
+    const event = classifyCampaignWebhookExample("whatsapp", {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [
+        { field: "messages", value: { messages: [{
+          id: "wamid.synthetic", from: "parent", type: "text",
+          text: { body: "CHECK" },
+        }] } },
+        { field: "statuses", value: { statuses: [{ id: "status-1" }] } },
+      ] }],
+    });
+    assert.equal(event.status, "manual_review");
+    assert.equal(event.sendAllowed, false);
+  });
+
   await t.test("plain Instagram text DM is recognized without guessing a Reel", () => {
     const event = classifyCampaignWebhookExample("instagram", {
       object: "instagram", entry: [{ messaging: [{
