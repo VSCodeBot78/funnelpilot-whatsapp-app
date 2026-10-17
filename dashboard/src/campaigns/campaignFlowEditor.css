@@ -136,3 +136,38 @@
   .fp-flow-header { grid-template-columns: 1fr; }
   .fp-flow-header,.fp-flow-step { padding: 12px; }
 }
+
+/* Selected Reel cards belong to the desktop flow design, not live Meta media. */
+.fp-reel-selected-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.fp-reel-selected-item {
+  padding: 11px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.fp-reel-selected-item > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.fp-reel-selected-item strong {
+  font-size: 12px;
+}
+.fp-reel-selected-item button {
+  flex-shrink: 0;
+  min-height: 36px;
+}
+.fp-reel-selector {
+  border-radius: 10px;
+}
+@media (max-width: 500px) {
+  .fp-reel-selected-item { flex-wrap: wrap; }
+}
