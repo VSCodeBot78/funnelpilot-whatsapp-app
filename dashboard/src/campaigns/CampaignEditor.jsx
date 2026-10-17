@@ -1283,7 +1283,7 @@ export default function CampaignEditor({
                   Abbrechen
                 </button>
               </div>
-            )
+            )}
           </div>
         </div>
       </div>
