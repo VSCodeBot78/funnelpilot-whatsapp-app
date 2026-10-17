@@ -147,3 +147,25 @@ test("Phase 4B: preview does not leak a stale campaign across editor selection",
   assert.ok(editor.includes("campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign"));
   assert.ok(editor.includes("key={campaignForm.id}"));
 });
+
+test("Phase 4B: dashboard preview inputs invalidate requests before editing results", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  for (const field of ["setPreviewSource", "setPreviewMessage", "setPreviewMediaId"]) {
+    assert.ok(editor.includes(`invalidatePreview(); ${field}(e.target.value)`));
+  }
+  assert.ok(editor.includes("previewRequestId.current += 1"));
+  assert.ok(editor.includes("requestId === previewRequestId.current"));
+  assert.ok(editor.includes("settings.apiBaseUrl]);"));
+});
+
+test("Phase 4B: webhook preview is race-safe and uses a correct example for each channel", () => {
+  const lab = fs.readFileSync(new URL("./WebhookEventPreview.jsx", import.meta.url), "utf8");
+  assert.ok(lab.includes("const WHATSAPP_EXAMPLE"));
+  assert.ok(lab.includes('object: "whatsapp_business_account"'));
+  assert.ok(lab.includes('nextChannel === "whatsapp" ? WHATSAPP_EXAMPLE : REEL_EXAMPLE'));
+  assert.ok(lab.includes("invalidatePreview(); setPayloadText(e.target.value)"));
+  assert.ok(lab.includes("requestSerial.current += 1"));
+  assert.ok(lab.includes("requestId === requestSerial.current"));
+  assert.ok(lab.includes("Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)"));
+  assert.ok(lab.includes('gesperrt (Prüfmodus)'));
+});
