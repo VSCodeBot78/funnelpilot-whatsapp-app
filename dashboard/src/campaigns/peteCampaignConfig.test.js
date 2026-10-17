@@ -117,3 +117,11 @@ test("Phase 4B: campaign save requires backend confirmation before marking local
   assert.ok(!save.includes("setActiveCampaignId(updatedCampaign.id)"));
   assert.ok(save.includes("prev?.id === updatedCampaign.id"));
 });
+
+test("Phase 4B: campaign editor does not force multi-column overflow on narrow screens", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("repeat(auto-fit, minmax(min(100%, 180px), 1fr))"));
+  assert.ok(editor.includes("repeat(auto-fit, minmax(min(100%, 160px), 1fr))"));
+  assert.ok(!editor.includes("repeat(2, minmax(180px, 1fr))"));
+  assert.ok(!editor.includes("repeat(3, minmax(160px, 1fr))"));
+});
