@@ -381,8 +381,10 @@ export default function CampaignEditor({
                 placeholder="CHECK, KETO, BULLSHIT"
               />
               <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                Durch Komma oder Zeilenumbruch trennen. Keine automatischen Antworten,
-                bevor die Phase-4-Routingprüfung bestanden ist.
+                Durch Komma oder Zeilenumbruch trennen. Für unterschiedliche
+                Antworten pro Keyword bitte jeweils eine eigene Kampagne anlegen.
+                Mehrere Keywords in einer Kampagne verwenden denselben Ablauf.
+                Keine automatischen Antworten vor der Sicherheitsfreigabe.
               </p>
 
               <CampaignFlowEditor
