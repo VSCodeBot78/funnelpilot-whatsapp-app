@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "pete-phase4b-events-"));
+process.env.NODE_ENV = "test";
+process.env.DATA_DIR = temp;
+process.env.INSTAGRAM_SEND_ENABLED = "false";
+process.env.WHATSAPP_SEND_ENABLED = "false";
+process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+delete process.env.OPENAI_API_KEY;
+
 
 // Only pure functions and synthetic inputs. No provider API, HTTP send or model.
 const { classifyCampaignWebhookExample } =
@@ -53,6 +65,7 @@ const rule = { id: "reels-specific", peteCampaign: {
 } };
 
 test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in preview mode", async t => {
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   await t.test("known Reel comment includes verified media ID", () => {
     const event = classifyCampaignWebhookExample("instagram", reel("17851537767246649"));
     assert.equal(event.status, "recognized");
