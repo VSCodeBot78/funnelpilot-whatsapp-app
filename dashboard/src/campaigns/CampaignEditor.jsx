@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { previewCampaignEntryInApi } from "../services/campaignsApi";
 import WebhookEventPreview from "./WebhookEventPreview";
+import DraftToggle from "./DraftToggle.jsx";
+import CampaignFlowEditor from "./CampaignFlowEditor.jsx";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -123,6 +125,24 @@ export default function CampaignEditor({
         [key]: value,
       },
     }));
+  }
+
+  function updateFlowField(key, value) {
+    if (key === "linkUrl") {
+      // Preserve intermediate typing. The persisted value remains HTTPS-only.
+      onCampaignFormChange((prev) => ({
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          linkUrl: getNormalizedPeteCampaignConfig({
+            peteCampaign: { linkUrl: value },
+          }).linkUrl,
+          _linkUrlDraft: value,
+        },
+      }));
+      return;
+    }
+    updatePeteCampaignField(key, value);
   }
 
   function updateKeywordsDraft(raw) {
@@ -306,19 +326,15 @@ export default function CampaignEditor({
                 gap: 8, marginBottom: 16,
               }}>
                 {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
-                  <label key={id} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    color: colors.text, fontSize: 12,
-                    border: `1px solid ${colors.border}`, padding: "8px 10px",
-                    cursor: "pointer",
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={peteCampaign.sources.includes(id)}
-                      onChange={() => toggleEntrySource(id)}
-                    />
-                    {label}
-                  </label>
+                  <DraftToggle
+                    key={id}
+                    colors={colors}
+                    label={label}
+                    hint={id === "instagram_new_follower"
+                      ? "Erste Nachricht immer manuell" : "Nur als Auslöser-Entwurf"}
+                    checked={peteCampaign.sources.includes(id)}
+                    onChange={() => toggleEntrySource(id)}
+                  />
                 ))}
               </div>
 
@@ -327,14 +343,15 @@ export default function CampaignEditor({
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                     Welche Reels sollen berücksichtigt werden?
                   </div>
-                  <select
-                    style={inputStyle(colors)}
-                    value={peteCampaign.reelTarget}
-                    onChange={(e) => updatePeteCampaignField("reelTarget", e.target.value)}
-                  >
-                    <option value="all">Alle Reels</option>
-                    <option value="specific">Nur ausgewählte Reels</option>
-                  </select>
+                  <DraftToggle
+                    colors={colors}
+                    label="Alle Reels"
+                    hint="Aus = Nur ausgewählte Reels. Die Auswahl unten wird dann berücksichtigt."
+                    checked={peteCampaign.reelTarget === "all"}
+                    onChange={(all) => updatePeteCampaignField(
+                      "reelTarget", all ? "all" : "specific",
+                    )}
+                  />
                   {peteCampaign.reelTarget === "specific" && (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
@@ -368,19 +385,14 @@ export default function CampaignEditor({
                 bevor die Phase-4-Routingprüfung bestanden ist.
               </p>
 
-              <div style={{ fontWeight: 600, fontSize: 12, margin: "14px 0 6px" }}>
-                Starttext für den Kampagneneinstieg
-              </div>
-              <textarea
-                style={{ ...inputStyle(colors), minHeight: 95, resize: "vertical" }}
-                value={peteCampaign.openingText}
-                onChange={(e) => updatePeteCampaignField("openingText", e.target.value)}
-                placeholder="Kurze, menschliche Begrüßung, wenn der Einstieg es erlaubt."
+              <CampaignFlowEditor
+                colors={colors}
+                config={{
+                  ...peteCampaign,
+                  linkUrlDraft: campaignForm.peteCampaign?._linkUrlDraft,
+                }}
+                onChange={updateFlowField}
               />
-              <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                Danach führt Pete frei und kontextbezogen weiter.
-                Der Starttext ist kein starres Gesprächsskript.
-              </p>
             </CollapsibleSection>
 
             <CollapsibleSection
