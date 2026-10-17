@@ -138,3 +138,12 @@ test("Phase 4B: versioned preview context is never treated as execution permissi
   assert.ok(api.includes('data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId'));
   assert.ok(api.includes('data.preview.status !== "matched" && data.preview.draftContext != null'));
 });
+
+test("Phase 4B: preview does not leak a stale campaign across editor selection", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("const previewRequestId = useRef(0)"));
+  assert.ok(editor.includes("previewRequestId.current += 1"));
+  assert.ok(editor.includes("requestId === previewRequestId.current"));
+  assert.ok(editor.includes("campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign"));
+  assert.ok(editor.includes("key={campaignForm.id}"));
+});
