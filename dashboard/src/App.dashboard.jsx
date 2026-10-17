@@ -63,6 +63,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     campaigns,
     activeCampaignId,
     campaignForm,
+    campaignFormBaseline,
     campaignMessage,
     campaignSaving,
     campaignLoading,
@@ -368,6 +369,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           campaigns={campaigns}
           activeCampaignId={activeCampaignId}
           campaignForm={campaignForm}
+          campaignFormBaseline={campaignFormBaseline}
           campaignMessage={campaignMessage}
           campaignSaving={campaignSaving}
           campaignLoading={campaignLoading}
