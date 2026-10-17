@@ -39,20 +39,21 @@ test("Desktop campaign finder is visibly connected and accessible", () => {
 test("Desktop unsaved form guard compares confirmed baseline before switching or creating", () => {
   const view = fs.readFileSync(new URL("./campaignsView.jsx", import.meta.url), "utf8");
   const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
-  assert.match(view, /getCampaignDraftChanges\\(/);
-  assert.match(view, /campaignForm, campaignFormBaseline, settings/);
-  assert.match(view, /setPendingNavigation\\(\\{ type: "select", id \\}\\)/);
-  assert.match(view, /setPendingNavigation\\(\\{ type: "create", templateId \\}\\)/);
-  assert.match(view, /Speichern und fortfahren/);
-  assert.match(view, /Änderungen verwerfen und fortfahren/);
-  assert.match(view, /Zurück zum Bearbeiten/);
-  assert.match(view, /const saved = await onSaveCampaign\\(\\)/);
-  assert.match(view, /startedAtRevision === editRevisionRef.current/);
-  assert.match(view, /onSelectCampaign=\\{requestCampaignSelection\\}/);
-  assert.match(view, /onCampaignFormChange=\\{trackFormChange\\}/);
-  assert.match(hook, /setCampaignFormBaseline\\(/);
-  assert.match(hook, /setCampaignMessage\\("Kampagne und Buchungslogik gespeichert."\\);\\s*return true;/);
-  assert.match(hook, /"Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular."\\);\\s*return false;/);
+  for (const required of [
+    "getCampaignDraftChanges(", "campaignForm, campaignFormBaseline, settings",
+    'setPendingNavigation({ type: "select", id });',
+    'setPendingNavigation({ type: "create", templateId });',
+    "Speichern und fortfahren", "Änderungen verwerfen und fortfahren",
+    "Zurück zum Bearbeiten", "const saved = await onSaveCampaign();",
+    "startedAtRevision === editRevisionRef.current",
+    "onSelectCampaign={requestCampaignSelection}",
+    "onCampaignFormChange={trackFormChange}",
+  ]) assert.ok(view.includes(required), required);
+  assert.ok(hook.includes("setCampaignFormBaseline("));
+  assert.ok(hook.includes('setCampaignMessage("Kampagne und Buchungslogik gespeichert.");'));
+  assert.ok(hook.includes("return true;"));
+  assert.ok(hook.includes("Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular."));
+  assert.ok(hook.includes("return false;"));
 });
 
 test("Desktop draft baseline ignores reverted changes but catches material edits", () => {
