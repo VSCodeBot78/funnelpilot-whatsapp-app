@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { getCampaignDraftChanges } from "./campaignDraftChanges.js";
+import { getCampaignSaveInputError } from "./campaignSaveValidation.js";
 
 const settings = { defaultBookingUrl: "", maxSuggestions: 2 };
 const saved = {
@@ -69,4 +70,33 @@ test("Desktop draft guard: selection and create guard use persisted baseline; sa
   assert.match(app, /const result = await deleteCampaign\(\)/);
   assert.match(hook, /setCampaignFormBaseline/);
   assert.match(hook, /getCampaignDraftChanges\(prev, campaignForm, settings\)/);
+});
+
+test("Desktop save: invalid keyword token and incomplete HTTPS link fail before backend writes", () => {
+  const badKeyword = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _keywordDraft: "CHECK, bad keyword",
+  } };
+  assert.match(getCampaignSaveInputError(badKeyword), /Keyword enthält ungültige/);
+  const startedLink = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _linkUrlDraft: "https://",
+    linkEnabled: true,
+  } };
+  assert.match(getCampaignSaveInputError(startedLink), /HTTPS-Link ist noch unvollständig/);
+  const maliciousLink = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _linkUrlDraft: "javascript:alert(1)",
+    linkEnabled: true,
+  } };
+  assert.match(getCampaignSaveInputError(maliciousLink), /HTTPS-Link/);
+  const good = { ...saved, peteCampaign: {
+    ...saved.peteCampaign,
+    _keywordDraft: "CHECK, KETO", keywords: ["CHECK", "KETO"],
+    _linkUrlDraft: "https://check.jochen-kammerer.de",
+    linkUrl: "https://check.jochen-kammerer.de/",
+    linkEnabled: true,
+  } };
+  assert.equal(getCampaignSaveInputError(good), null);
+  assert.equal(getCampaignSaveInputError(saved), null);
+  const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
+  assert.match(hook, /const inputError = getCampaignSaveInputError\(campaignForm\)/);
+  assert.match(hook, /if \(inputError\) \{\s*setCampaignMessage\(inputError\);\s*return false;/);
 });
