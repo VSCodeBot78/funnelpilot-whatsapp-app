@@ -51,3 +51,15 @@ test("Desktop reel picker: editable selected Reel cards and safe fallback are wi
   assert.match(editor, /reelMediaIds=\{peteCampaign\.reelMediaIds\}/);
   assert.doesNotMatch(editor, /_reelMediaDraft/);
 });
+
+test("Desktop flow chat mock only displays configured steps without sending or opening links", () => {
+  const preview = fs.readFileSync(new URL("./CampaignFlowPreview.jsx", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("<CampaignFlowPreview colors={colors} config={config} />"));
+  assert.match(preview, /config\.autoReplyEnabled === true/);
+  assert.match(preview, /config\.linkEnabled === true/);
+  assert.match(preview, /config\.peteHandoffEnabled === true/);
+  assert.match(preview, /VORSCHAU · KEIN LIVE-VERSAND/);
+  assert.match(preview, /Noch keine feste Nachricht/);
+  assert.doesNotMatch(preview, /href=|onClick=|fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+});
