@@ -39,12 +39,16 @@ export default function CampaignList({
               const sourceNames = PETE_CAMPAIGN_SOURCES.filter(([id]) =>
                 config.sources.includes(id)).map(([, label]) => label);
               const count = config.keywords.length;
+              const flowStatus = config.flowDraftEnabled
+                ? "Flow-Entwurf eingeschaltet (nicht live)"
+                : "Flow-Entwurf pausiert";
               return sourceNames.length || count
                 ? "Entwurf · " + [
+                    flowStatus,
                     sourceNames.slice(0, 2).join(", "),
                     count ? `${count} Keyword${count === 1 ? "" : "s"}` : "",
                   ].filter(Boolean).join(" · ")
-                : "Entwurf · Einstiege noch nicht konfiguriert";
+                : flowStatus + " · Einstiege noch nicht konfiguriert";
             })()}
           </div>
         </button>
