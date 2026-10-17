@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { filterCampaigns } from "./campaignSearch.js";
+import { getCampaignDraftChanges } from "./campaignDraftChanges.js";
 
 const fixtures = [
   { id: "a", name: "Elterncheck DM", peteCampaign: {
@@ -35,21 +36,39 @@ test("Desktop campaign finder is visibly connected and accessible", () => {
   assert.match(list, /aria-current=\{activeCampaignId === camp.id/);
 });
 
-test("Desktop unsaved form guard catches edits before both switching and creating", () => {
+test("Desktop unsaved form guard compares confirmed baseline before switching or creating", () => {
   const view = fs.readFileSync(new URL("./campaignsView.jsx", import.meta.url), "utf8");
   const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
-  assert.match(view, /editedCampaignId === campaignForm.id/);
-  assert.match(view, /onCampaignFormChange\(next\)/);
-  assert.match(view, /if \(hasUnsavedChanges\) \{\s*setPendingAction\(\{ kind: "select", id \}\)/);
-  assert.match(view, /if \(hasUnsavedChanges\) \{\s*setPendingAction\(\{ kind: "create", templateId \}\)/);
+  assert.match(view, /getCampaignDraftChanges\\(/);
+  assert.match(view, /campaignForm, campaignFormBaseline, settings/);
+  assert.match(view, /setPendingNavigation\\(\\{ type: "select", id \\}\\)/);
+  assert.match(view, /setPendingNavigation\\(\\{ type: "create", templateId \\}\\)/);
+  assert.match(view, /Speichern und fortfahren/);
   assert.match(view, /Änderungen verwerfen und fortfahren/);
-  assert.match(view, /Abbrechen und weiterbearbeiten/);
-  assert.match(view, /const confirmed = await onSaveCampaign\(\)/);
-  assert.match(view, /if \(confirmed === true\)/);
-  assert.match(view, /onSelectCampaign=\{selectCampaign\}/);
-  assert.match(view, /onCampaignFormChange=\{updateCampaignForm\}/);
-  assert.match(hook, /setCampaignMessage\("Kampagne und Buchungslogik gespeichert."\);\s*return true;/);
-  assert.match(hook, /"Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular."\);\s*return false;/);
+  assert.match(view, /Zurück zum Bearbeiten/);
+  assert.match(view, /const saved = await onSaveCampaign\\(\\)/);
+  assert.match(view, /startedAtRevision === editRevisionRef.current/);
+  assert.match(view, /onSelectCampaign=\\{requestCampaignSelection\\}/);
+  assert.match(view, /onCampaignFormChange=\\{trackFormChange\\}/);
+  assert.match(hook, /setCampaignFormBaseline\\(/);
+  assert.match(hook, /setCampaignMessage\\("Kampagne und Buchungslogik gespeichert."\\);\\s*return true;/);
+  assert.match(hook, /"Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular."\\);\\s*return false;/);
+});
+
+test("Desktop draft baseline ignores reverted changes but catches material edits", () => {
+  const base = { id: "one", name: "Elterncheck",
+    peteCampaign: { sources: ["instagram_dm"], keywords: ["CHECK"],
+      openingText: "Hey!", autoReplyEnabled: false } };
+  assert.equal(getCampaignDraftChanges(base, structuredClone(base)), false);
+  const changed = structuredClone(base);
+  changed.peteCampaign.autoReplyEnabled = true;
+  assert.equal(getCampaignDraftChanges(changed, base), true);
+  changed.peteCampaign.autoReplyEnabled = false;
+  assert.equal(getCampaignDraftChanges(changed, base), false);
+  changed.name = "Neue Kampagne";
+  assert.equal(getCampaignDraftChanges(changed, base), true);
+  const unrelated = { ...changed, id: "other" };
+  assert.equal(getCampaignDraftChanges(unrelated, base), false);
 });
 
 test("Desktop selected template reaches backend, delete waits for confirmed result", () => {
