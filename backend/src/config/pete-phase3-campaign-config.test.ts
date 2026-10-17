@@ -52,5 +52,6 @@ test("Phase 3: normalization prevents unsupported sources and unrequested follow
   assert.equal(result.followUpEnabled, false);
   assert.deepEqual(normalizePeteCampaignConfig(null), {
     sources: [], keywords: [], openingText: "", followUpEnabled: false,
+    reelTarget: "all", reelMediaIds: [],
   });
 });
