@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { getCampaignDraftChanges } from "./campaignDraftChanges.js";
 import CampaignList from "./CampaignList";
 import CampaignEditor from "./CampaignEditor";
 import "./campaignsView.css";
@@ -9,6 +10,7 @@ export default function CampaignsView({
   campaigns = [],
   activeCampaignId,
   campaignForm,
+  campaignFormBaseline,
   campaignMessage,
   campaignSaving,
   campaignLoading,
@@ -18,7 +20,11 @@ export default function CampaignsView({
   onDeleteCampaign,
   onCampaignFormChange,
 }) {
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Compare the current editable form to the last confirmed/loaded values.
+  // A change reverted to its original value must not trigger a false warning.
+  const hasUnsavedChanges = getCampaignDraftChanges(
+    campaignForm, campaignFormBaseline, settings,
+  );
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const editRevisionRef = useRef(0);
   const activeIdRef = useRef(activeCampaignId);
@@ -28,13 +34,11 @@ export default function CampaignsView({
   // Clearing dirty state on a different ID avoids stale warnings.
   useEffect(() => {
     editRevisionRef.current += 1;
-    setHasUnsavedChanges(false);
     setPendingNavigation(null);
   }, [activeCampaignId]);
 
   function trackFormChange(change) {
     editRevisionRef.current += 1;
-    setHasUnsavedChanges(true);
     onCampaignFormChange(change);
   }
 
@@ -64,7 +68,6 @@ export default function CampaignsView({
     // Never clear dirty after a late save if the form was edited again.
     if (saved === true && activeIdRef.current === startedOnId &&
         startedAtRevision === editRevisionRef.current) {
-      setHasUnsavedChanges(false);
       return true;
     }
     return false;
@@ -74,7 +77,6 @@ export default function CampaignsView({
     if (!navigation) return;
     setPendingNavigation(null);
     if (navigation.type === "select") {
-      setHasUnsavedChanges(false);
       onSelectCampaign(navigation.id);
     } else if (navigation.type === "create") {
       // On a failed backend create the original dirty form must stay intact.
