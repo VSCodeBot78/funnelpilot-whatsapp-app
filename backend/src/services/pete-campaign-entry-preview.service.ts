@@ -14,10 +14,11 @@ export type CampaignEntrySource = typeof ENTRY_SOURCES[number];
 export type CampaignPreviewInput = {
   source: unknown;
   messageText: unknown;
+  mediaId?: unknown;
 };
 export type CampaignPreviewStatus =
   | "matched" | "no_match" | "ambiguous" | "manual_only"
-  | "invalid_source" | "invalid_message";
+  | "invalid_source" | "invalid_message" | "manual_review";
 
 export type CampaignEntryPreview = {
   mode: "preview_only";
@@ -59,18 +60,28 @@ export function evaluateCampaignEntryPreview(
 
   const source = input.source as CampaignEntrySource;
   const keyword = normalizeKeyword(input.messageText);
+  const mediaId = typeof input.mediaId === "string" ? input.mediaId.trim() : "";
   const candidates = campaigns.map(campaign => {
     const config = normalizePeteCampaignConfig(campaign.peteCampaign);
     if (!config.sources.includes(source)) return null;
     if (config.keywords.length > 0) {
       if (!keyword || !config.keywords.includes(keyword)) return null;
+      if (source === "instagram_reel_comment" && config.reelTarget === "specific" &&
+          (!mediaId || !config.reelMediaIds.includes(mediaId))) return null;
       return { campaign, config, score: 2, matchedKeyword: keyword };
     }
+    if (source === "instagram_reel_comment" && config.reelTarget === "specific" &&
+        (!mediaId || !config.reelMediaIds.includes(mediaId))) return null;
     return { campaign, config, score: 1, matchedKeyword: null };
   }).filter((candidate): candidate is NonNullable<typeof candidate> =>
     candidate !== null);
 
   if (candidates.length === 0) return emptyResult("no_match");
+  // A Reel comment must carry a verified media identifier before a campaign
+  // could eventually be considered for real trigger matching.
+  if (source === "instagram_reel_comment" && !mediaId) {
+    return emptyResult("manual_review");
+  }
   const bestScore = Math.max(...candidates.map(candidate => candidate.score));
   const preferred = candidates.filter(candidate => candidate.score === bestScore);
   const unique = [...new Set(preferred.map(candidate => String(candidate.campaign.id)))];
