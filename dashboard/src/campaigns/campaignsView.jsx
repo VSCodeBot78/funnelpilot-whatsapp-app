@@ -9,6 +9,8 @@ export default function CampaignsView({
   campaigns = [],
   activeCampaignId,
   campaignForm,
+  previewEntry,
+  previewWebhook,
   campaignMessage,
   campaignSaving,
   campaignLoading,
@@ -38,6 +40,8 @@ export default function CampaignsView({
           settings={settings}
           campaigns={campaigns}
           campaignForm={campaignForm}
+          previewEntry={previewEntry}
+          previewWebhook={previewWebhook}
           campaignMessage={campaignMessage}
           campaignSaving={campaignSaving}
           campaignLoading={campaignLoading}
