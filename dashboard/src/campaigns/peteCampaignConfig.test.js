@@ -125,3 +125,16 @@ test("Phase 4B: campaign editor does not force multi-column overflow on narrow s
   assert.ok(!editor.includes("repeat(2, minmax(180px, 1fr))"));
   assert.ok(!editor.includes("repeat(3, minmax(160px, 1fr))"));
 });
+
+test("Phase 4B: versioned preview context is never treated as execution permission", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const api = fs.readFileSync(new URL("../services/campaignsApi.js", import.meta.url), "utf8");
+  assert.ok(editor.includes("Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)"));
+  assert.ok(editor.includes("previewResponse.draftContext"));
+  assert.ok(editor.includes("Follow-up:"));
+  assert.ok(api.includes('data.preview.draftContext?.version !== 1'));
+  assert.ok(api.includes('data.preview.draftContext?.mode !== "preview_only"'));
+  assert.ok(api.includes('data.preview.draftContext?.sendAllowed !== false'));
+  assert.ok(api.includes('data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId'));
+  assert.ok(api.includes('data.preview.status !== "matched" && data.preview.draftContext != null'));
+});
