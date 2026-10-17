@@ -35,6 +35,40 @@ export const DEMO_CAMPAIGNS = [
       starterCheckoutUrl: "", onboardingBookingUrl: "" },
     followUp24h: "", followUp3d: "",
   },
+  {
+    id: "demo-bullshit", name: "BULLSHIT Reel Demo", trigger: "BULLSHIT",
+    useGlobalBookingDefaults: false,
+    peteCampaign: {
+      sources: ["instagram_reel_comment"],
+      keywords: ["BULLSHIT"],
+      openingText: "Hey, danke für deinen Kommentar. Was möchtest du verändern?",
+      followUpEnabled: true, reelTarget: "specific",
+      reelMediaIds: ["17851537767246649"],
+    },
+    offerContext: { infoLink1Enabled: false, infoLink2Enabled: false,
+      infoLink3Enabled: false, infoLink4Enabled: false,
+      infoLink1Url: "", infoLink2Url: "", infoLink3Url: "", infoLink4Url: "" },
+    booking: { provider: "manual", externalBookingUrl: "",
+      starterCheckoutUrl: "", onboardingBookingUrl: "" },
+    followUp24h: "Kurze Nachfrage als Demo-Entwurf, wird niemals versendet.",
+    followUp3d: "",
+  },
+  {
+    id: "demo-follower", name: "Follower-Begrüßung manuell", trigger: "",
+    useGlobalBookingDefaults: false,
+    peteCampaign: {
+      sources: ["instagram_new_follower"],
+      keywords: [],
+      openingText: "Hey, schön, dass du da bist.",
+      followUpEnabled: false, reelTarget: "all", reelMediaIds: [],
+    },
+    offerContext: { infoLink1Enabled: false, infoLink2Enabled: false,
+      infoLink3Enabled: false, infoLink4Enabled: false,
+      infoLink1Url: "", infoLink2Url: "", infoLink3Url: "", infoLink4Url: "" },
+    booking: { provider: "manual", externalBookingUrl: "",
+      starterCheckoutUrl: "", onboardingBookingUrl: "" },
+    followUp24h: "", followUp3d: "",
+  },
 ];
 
 function empty(status) {
