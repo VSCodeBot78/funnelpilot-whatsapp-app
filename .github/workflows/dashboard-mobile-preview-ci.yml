@@ -29,11 +29,14 @@ jobs:
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
       - run: npm ci
-      - run: npm run test:mobile-preview
-      - run: npm run build:mobile-preview
-      - name: Check dedicated preview has no real app entry
+      - run: npm run build:cloudflare-preview
+      - name: Verify Cloudflare-safe static bundle
         run: |
+          test -f preview-dist/index.html
           test -f preview-dist/mobile-preview.html
-          test ! -f preview-dist/index.html
+          test -f preview-dist/_headers
           test ! -f preview-dist/pete-test.html
-          grep -q "assets/" preview-dist/mobile-preview.html
+          grep -q "connect-src 'none'" preview-dist/_headers
+          grep -q "assets/" preview-dist/index.html
+          ! grep -Rl '/campaigns/preview-entry' preview-dist/assets/
+          ! grep -Rl '/campaigns/preview-event' preview-dist/assets/
