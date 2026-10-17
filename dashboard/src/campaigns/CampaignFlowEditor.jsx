@@ -1,5 +1,6 @@
 import React from "react";
 import DraftToggle from "./DraftToggle.jsx";
+import CampaignFlowPreview from "./CampaignFlowPreview.jsx";
 import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import { inputStyle } from "../theme/dashboardTheme";
 import "./campaignFlowEditor.css";
@@ -119,6 +120,7 @@ export default function CampaignFlowEditor({
           Nachricht. Human Takeover und Opt-out haben später Vorrang.
         </p>
       </div>
+      <CampaignFlowPreview colors={colors} config={config} />
       <div className="fp-flow-footer" role="status" style={{
         border: `1px solid ${colors.border}`, color: colors.sub,
       }}>
