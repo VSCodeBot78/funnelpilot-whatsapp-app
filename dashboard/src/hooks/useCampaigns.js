@@ -317,6 +317,7 @@ export function useCampaigns({
   async function saveCampaign() {
     if (!campaignForm?.id) return;
 
+    let campaignSavedToBackend = false;
     try {
       setCampaignSaving(true);
       setCampaignMessage("");
@@ -338,14 +339,6 @@ export function useCampaigns({
         booking: getNormalizedBookingConfig(campaignForm, settings),
       };
 
-      setCampaigns((prev) =>
-        prev.map((campaign) =>
-          campaign.id === updatedCampaign.id ? updatedCampaign : campaign,
-        ),
-      );
-      setActiveCampaignId(updatedCampaign.id);
-      setCampaignForm(updatedCampaign);
-
       const campaignExistsInBackend = backendCampaignIds.has(updatedCampaign.id);
       if (campaignExistsInBackend) {
         await updateCampaignInApi(updatedCampaign, settings.apiBaseUrl);
@@ -353,6 +346,17 @@ export function useCampaigns({
         const created = await createCampaignInApi(updatedCampaign, settings.apiBaseUrl);
         setBackendCampaignIds((prev) => new Set(prev).add(created.id));
       }
+
+      // Only show a persisted campaign after the backend confirms its write.
+      campaignSavedToBackend = true;
+      setCampaigns((prev) =>
+        prev.map((campaign) =>
+          campaign.id === updatedCampaign.id ? updatedCampaign : campaign,
+        ),
+      );
+      // Do not switch the owner's selection if this request completes late.
+      setCampaignForm((prev) =>
+        prev?.id === updatedCampaign.id ? updatedCampaign : prev);
 
       await saveCampaignSchedulingConfigToApi({
         apiBaseUrl: settings.apiBaseUrl,
@@ -363,11 +367,9 @@ export function useCampaigns({
       setCampaignMessage("Kampagne und Buchungslogik gespeichert.");
     } catch (error) {
       console.error("campaign save error:", error);
-      setCampaignMessage(
-        error instanceof Error
-          ? error.message
-          : "Kampagne lokal gespeichert, aber Backend-Speicherung fehlgeschlagen.",
-      );
+      setCampaignMessage(campaignSavedToBackend
+        ? "Kampagne gespeichert, aber Buchungslogik nicht bestätigt. Bitte erneut speichern."
+        : "Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular.");
     } finally {
       setCampaignSaving(false);
     }
