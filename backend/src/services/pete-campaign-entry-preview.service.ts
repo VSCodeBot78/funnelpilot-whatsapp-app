@@ -20,6 +20,22 @@ export type CampaignPreviewStatus =
   | "matched" | "no_match" | "ambiguous" | "manual_only"
   | "invalid_source" | "invalid_message" | "manual_review";
 
+// Versioned, campaign-scoped data contract for the future Pete adapter.
+// A preview is NOT an instruction to a model and grants no execution rights.
+export type PeteCampaignDraftContext = {
+  version: 1;
+  mode: "preview_only";
+  sendAllowed: false;
+  campaignId: string;
+  campaignName: string;
+  source: CampaignEntrySource;
+  matchedKeyword: string | null;
+  openingText: string | null;
+  followUpDraftConfigured: boolean;
+  reelTarget: "all" | "specific" | null;
+  reelMediaIds: string[];
+};
+
 export type CampaignEntryPreview = {
   mode: "preview_only";
   sendAllowed: false;
@@ -29,6 +45,7 @@ export type CampaignEntryPreview = {
   matchedKeyword: string | null;
   openingTextPreview: string | null;
   followUpDraftConfigured: boolean;
+  draftContext: PeteCampaignDraftContext | null;
 };
 
 const normalizeKeyword = (text: string): string =>
@@ -44,6 +61,7 @@ const emptyResult = (status: CampaignPreviewStatus): CampaignEntryPreview => ({
   matchedKeyword: null,
   openingTextPreview: null,
   followUpDraftConfigured: false,
+  draftContext: null,
 });
 
 export function evaluateCampaignEntryPreview(
@@ -110,6 +128,23 @@ export function evaluateCampaignEntryPreview(
   }
 
   const chosen = preferred[0];
+  const draftContext: PeteCampaignDraftContext = {
+    version: 1,
+    mode: "preview_only",
+    sendAllowed: false,
+    campaignId: unique[0],
+    campaignName: typeof chosen.campaign.name === "string"
+      ? chosen.campaign.name.slice(0, 120) : "",
+    source,
+    matchedKeyword: chosen.matchedKeyword,
+    openingText: chosen.config.openingText || null,
+    followUpDraftConfigured: chosen.config.followUpEnabled,
+    reelTarget: source === "instagram_reel_comment"
+      ? chosen.config.reelTarget as "all" | "specific" : null,
+    reelMediaIds: source === "instagram_reel_comment" &&
+      chosen.config.reelTarget === "specific"
+      ? [...chosen.config.reelMediaIds] : [],
+  };
   return {
     mode: "preview_only",
     sendAllowed: false,
@@ -117,8 +152,9 @@ export function evaluateCampaignEntryPreview(
     matchedCampaignId: unique[0],
     candidateIds: unique,
     matchedKeyword: chosen.matchedKeyword,
-    openingTextPreview: chosen.config.openingText || null,
+    openingTextPreview: draftContext.openingText,
     // Saved setting means "draft prepared", NOT follow-up runtime enabled.
-    followUpDraftConfigured: chosen.config.followUpEnabled,
+    followUpDraftConfigured: draftContext.followUpDraftConfigured,
+    draftContext,
   };
 }
