@@ -76,6 +76,14 @@ export function evaluateCampaignEntryPreview(
   }).filter((candidate): candidate is NonNullable<typeof candidate> =>
     candidate !== null);
 
+  if (source === "instagram_reel_comment" && !mediaId) {
+    const possibleWithoutMediaId = campaigns.some(campaign => {
+      const config = normalizePeteCampaignConfig(campaign.peteCampaign);
+      return config.sources.includes(source) &&
+        (config.keywords.length === 0 || config.keywords.includes(keyword));
+    });
+    if (possibleWithoutMediaId) return emptyResult("manual_review");
+  }
   if (candidates.length === 0) return emptyResult("no_match");
   // A Reel comment must carry a verified media identifier before a campaign
   // could eventually be considered for real trigger matching.
