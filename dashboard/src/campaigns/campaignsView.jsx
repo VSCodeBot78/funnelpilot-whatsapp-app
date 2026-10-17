@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import CampaignList from "./CampaignList";
 import CampaignEditor from "./CampaignEditor";
 import "./campaignsView.css";
@@ -18,96 +18,106 @@ export default function CampaignsView({
   onDeleteCampaign,
   onCampaignFormChange,
 }) {
-  // Explicit user edits are tracked separately from asynchronously loaded
-  // scheduling defaults. Backend reads must not create false "unsaved" alerts.
-  const [editedCampaignId, setEditedCampaignId] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null);
-  const hasUnsavedChanges = Boolean(campaignForm?.id) &&
-    editedCampaignId === campaignForm.id;
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const editRevisionRef = useRef(0);
+  const activeIdRef = useRef(activeCampaignId);
+  activeIdRef.current = activeCampaignId;
 
+  // The user changes selected campaign only after explicit navigation.
+  // Clearing dirty state on a different ID avoids stale warnings.
   useEffect(() => {
-    // Selection changes may also originate from a global dashboard reset.
-    setEditedCampaignId(null);
-    setPendingAction(null);
+    editRevisionRef.current += 1;
+    setHasUnsavedChanges(false);
+    setPendingNavigation(null);
   }, [activeCampaignId]);
 
-  function updateCampaignForm(next) {
-    if (campaignForm?.id) setEditedCampaignId(campaignForm.id);
-    onCampaignFormChange(next);
+  function trackFormChange(change) {
+    editRevisionRef.current += 1;
+    setHasUnsavedChanges(true);
+    onCampaignFormChange(change);
   }
 
-  function selectCampaign(id) {
-    if (!id || id === activeCampaignId || campaignSaving || campaignLoading) return;
+  function requestCampaignSelection(id) {
+    if (id === activeCampaignId || campaignSaving || campaignLoading) return;
     if (hasUnsavedChanges) {
-      setPendingAction({ kind: "select", id });
+      setPendingNavigation({ type: "select", id });
       return;
     }
     onSelectCampaign(id);
   }
 
-  function createCampaign(templateId) {
+  function requestCampaignCreation(templateId) {
     if (campaignSaving || campaignLoading) return;
     if (hasUnsavedChanges) {
-      setPendingAction({ kind: "create", templateId });
+      setPendingNavigation({ type: "create", templateId });
       return;
     }
     onCreateNewCampaign(templateId);
   }
 
-  function confirmDiscard() {
-    if (!pendingAction || campaignSaving || campaignLoading) return;
-    const action = pendingAction;
-    setPendingAction(null);
-    setEditedCampaignId(null);
-    if (action.kind === "select") onSelectCampaign(action.id);
-    else if (action.kind === "create") onCreateNewCampaign(action.templateId);
+  async function saveCurrentCampaign() {
+    if (campaignSaving || campaignLoading) return false;
+    const startedOnId = activeCampaignId;
+    const startedAtRevision = editRevisionRef.current;
+    const saved = await onSaveCampaign();
+    // Never clear dirty after a late save if the form was edited again.
+    if (saved === true && activeIdRef.current === startedOnId &&
+        startedAtRevision === editRevisionRef.current) {
+      setHasUnsavedChanges(false);
+      return true;
+    }
+    return false;
   }
 
-  async function saveCampaign() {
-    if (campaignSaving || campaignLoading) return;
-    const campaignId = campaignForm?.id;
-    const confirmed = await onSaveCampaign();
-    if (confirmed === true) {
-      setEditedCampaignId((current) => current === campaignId ? null : current);
-      setPendingAction(null);
+  async function continuePendingNavigation(navigation) {
+    if (!navigation) return;
+    setPendingNavigation(null);
+    if (navigation.type === "select") {
+      setHasUnsavedChanges(false);
+      onSelectCampaign(navigation.id);
+    } else if (navigation.type === "create") {
+      // On a failed backend create the original dirty form must stay intact.
+      await onCreateNewCampaign(navigation.templateId);
     }
   }
 
-  async function deleteCampaign() {
-    const result = await onDeleteCampaign();
-    if (result?.deletedCampaignId) {
-      setEditedCampaignId(null);
-      setPendingAction(null);
-    }
-    return result;
+  async function saveAndContinue() {
+    const navigation = pendingNavigation;
+    if (!navigation) return;
+    const saved = await saveCurrentCampaign();
+    if (saved) await continuePendingNavigation(navigation);
   }
 
   return (
-    <div
-      style={{
-        background: colors.panel,
-        border: `1px solid ${colors.border}`,
-      }}
-    >
-      {hasUnsavedChanges && !pendingAction && (
-        <p role="status" className="fp-campaign-dirty-banner">
-          Ungespeicherte Änderungen in „{campaignForm.name}“.
-          Bitte speichern, bevor du die Kampagne wechselst.
-        </p>
-      )}
-      {pendingAction && (
-        <div role="group" aria-label="Ungespeicherte Änderungen bestätigen"
-          className="fp-campaign-discard-confirm"
-          style={{ borderBottom: `1px solid ${colors.border}` }}>
-          <strong>Änderungen noch nicht gespeichert.</strong>
-          <p>Wenn du fortfährst, werden deine Änderungen an „{campaignForm.name}“ verworfen.</p>
-          <div className="fp-campaign-discard-actions">
-            <button type="button" onClick={confirmDiscard}
-              disabled={campaignSaving || campaignLoading}>
-              Änderungen verwerfen und fortfahren
+    <div style={{
+      background: colors.panel,
+      border: `1px solid ${colors.border}`,
+    }}>
+      {pendingNavigation && (
+        <div className="fp-campaign-unsaved-guard" role="alertdialog"
+          aria-label="Ungespeicherte Kampagnenänderungen"
+          style={{ background: colors.panelSoft,
+            borderBottom: `2px solid ${colors.borderStrong}`, color: colors.text }}>
+          <strong>Du hast ungespeicherte Änderungen.</strong>
+          <p style={{ margin: "5px 0 10px", fontSize: 12, lineHeight: 1.6 }}>
+            {pendingNavigation.type === "select"
+              ? "Beim Wechsel zur anderen Kampagne gehen sie verloren."
+              : "Beim Anlegen einer neuen Kampagne gehen sie verloren."}
+            {" "}Du kannst zuerst speichern, den Wechsel abbrechen oder die Änderungen verwerfen.
+          </p>
+          <div className="fp-campaign-unsaved-actions">
+            <button type="button" disabled={campaignSaving || campaignLoading}
+              onClick={saveAndContinue}>
+              {campaignSaving ? "Speichere..." : "Speichern und fortfahren"}
             </button>
-            <button type="button" onClick={() => setPendingAction(null)}>
-              Abbrechen und weiterbearbeiten
+            <button type="button" disabled={campaignSaving || campaignLoading}
+              onClick={() => setPendingNavigation(null)}>
+              Zurück zum Bearbeiten
+            </button>
+            <button type="button" disabled={campaignSaving || campaignLoading}
+              onClick={() => continuePendingNavigation(pendingNavigation)}>
+              Änderungen verwerfen und fortfahren
             </button>
           </div>
         </div>
@@ -117,9 +127,10 @@ export default function CampaignsView({
           colors={colors}
           campaigns={campaigns}
           activeCampaignId={activeCampaignId}
-          onSelectCampaign={selectCampaign}
+          onSelectCampaign={requestCampaignSelection}
+          hasUnsavedChanges={hasUnsavedChanges}
+          busy={campaignSaving || campaignLoading}
         />
-
         <CampaignEditor
           colors={colors}
           settings={settings}
@@ -128,10 +139,10 @@ export default function CampaignsView({
           campaignMessage={campaignMessage}
           campaignSaving={campaignSaving}
           campaignLoading={campaignLoading}
-          onCreateNewCampaign={createCampaign}
-          onSaveCampaign={saveCampaign}
-          onDeleteCampaign={deleteCampaign}
-          onCampaignFormChange={updateCampaignForm}
+          onCreateNewCampaign={requestCampaignCreation}
+          onSaveCampaign={saveCurrentCampaign}
+          onDeleteCampaign={onDeleteCampaign}
+          onCampaignFormChange={trackFormChange}
         />
       </div>
     </div>
