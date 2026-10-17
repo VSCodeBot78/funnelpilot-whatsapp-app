@@ -116,7 +116,7 @@ export default function CampaignEditor({
 
   function updateReelIds(raw) {
     onCampaignFormChange((prev) => {
-      const reelMediaIds = raw.split(/[,;\\n]/).map((id) => id.trim());
+      const reelMediaIds = raw.split(/[,;\n]/).map((id) => id.trim());
       return {
         ...prev,
         peteCampaign: {
