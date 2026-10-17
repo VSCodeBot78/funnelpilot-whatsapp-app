@@ -71,7 +71,7 @@ export default function MobileDashboardPreview() {
     simulateWebhook(campaigns, { channel, payload });
 
   return (
-    <div style={{ background: colors.bg, minHeight: "100vh", color: colors.text,
+    <div className="fp-mobile-preview" style={{ background: colors.bg, minHeight: "100vh", color: colors.text,
       fontFamily: "system-ui, -apple-system, Arial, sans-serif" }}>
       <header style={{ background: colors.sidebar, borderBottom: `1px solid ${colors.border}`,
         padding: "15px clamp(14px, 3vw, 28px)", position: "sticky", top: 0, zIndex: 3 }}>
@@ -79,7 +79,7 @@ export default function MobileDashboardPreview() {
           flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Funnel Pilot <span style={{ color: "#ff914d" }}>· Dashboard</span></div>
-            <div style={{ fontSize: 11, color: colors.sub }}>Geschützte Mobilvorschau · synthetische Testdaten</div>
+            <div style={{ fontSize: 11, color: colors.sub }}>Mobilvorschau · synthetische Testdaten · noch ohne Access-Schutz</div>
           </div>
           <span style={{ padding: "5px 9px", border: "1px solid #ff914d",
             color: "#ffb785", fontSize: 11, fontWeight: 700 }}>DEMO · KEIN LIVE-VERSAND</span>
@@ -89,7 +89,7 @@ export default function MobileDashboardPreview() {
         <div style={{ padding: 12, fontSize: 12, lineHeight: 1.6,
           border: `1px solid ${colors.border}`, background: colors.panel,
           marginBottom: 14 }}>
-          <strong>Was du hier prüfen kannst:</strong> Das echte Kampagnen-Dashboard mit seinen Eingabefeldern,
+          <strong>Öffentliche Demo, bitte keine echten Daten eingeben.</strong> Hier kannst du das echte Kampagnen-Dashboard mit seinen Eingabefeldern,
           Keywords, Reel-Auswahl und Testvorschauen. Speichern gilt nur für diese Browser-Sitzung.
           Es gibt keine Kundendaten, keine Verbindung zum Backend, kein Pete-Livegespräch
           und keinen Instagram-/WhatsApp-Versand.
