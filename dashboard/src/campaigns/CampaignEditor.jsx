@@ -20,6 +20,7 @@ import {
 export default function CampaignEditor({
   colors,
   settings,
+  campaigns = [],
   campaignForm,
   campaignMessage,
   campaignSaving,
@@ -34,6 +35,15 @@ export default function CampaignEditor({
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
   const peteCampaign = getNormalizedPeteCampaignConfig(campaignForm);
+  const savedCampaign = campaigns.find((saved) => saved.id === campaignForm.id);
+  const storedPeteCampaign = savedCampaign
+    ? getNormalizedPeteCampaignConfig(savedCampaign) : null;
+  const hasUnsavedPeteChanges = Boolean(savedCampaign) &&
+    (savedCampaign.name !== campaignForm.name ||
+      JSON.stringify(storedPeteCampaign) !== JSON.stringify(peteCampaign));
+  const campaignDraftRevision = JSON.stringify({
+    name: campaignForm.name, peteCampaign,
+  });
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
   const [previewMediaId, setPreviewMediaId] = useState("");
@@ -384,6 +394,12 @@ export default function CampaignEditor({
                 Die Vorschau prüft alle gespeicherten Kampagnen und findet
                 Konflikte, bevor eine Automation aktiviert wird.
               </p>
+              {hasUnsavedPeteChanges && (
+                <p style={{ color: colors.warning, fontSize: 12, lineHeight: 1.5 }}>
+                  Ungespeicherte Pete-Änderungen: Die Vorschau zeigt die
+                  zuletzt gespeicherten Kampagnendaten. Bitte erst speichern.
+                </p>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))", gap: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Einstieg</div>
@@ -491,6 +507,7 @@ export default function CampaignEditor({
                 key={campaignForm.id}
                 colors={colors}
                 apiBaseUrl={settings.apiBaseUrl}
+                campaignDraftRevision={campaignDraftRevision}
               />
             </CollapsibleSection>
 
