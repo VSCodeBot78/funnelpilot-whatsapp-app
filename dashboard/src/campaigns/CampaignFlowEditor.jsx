@@ -1,5 +1,6 @@
 import React from "react";
 import DraftToggle from "./DraftToggle.jsx";
+import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import { inputStyle } from "../theme/dashboardTheme";
 import "./campaignFlowEditor.css";
 
@@ -9,6 +10,7 @@ export default function CampaignFlowEditor({
   colors, config, onChange,
 }) {
   const notConfigured = !config.sources.length || !config.keywords.length;
+  const warnings = getFlowDraftWarnings(config);
   const checked = (key) => config[key] === true;
   const toggle = (key) => (next) => onChange(key, next);
   const cardStyle = {
@@ -121,6 +123,14 @@ export default function CampaignFlowEditor({
         border: `1px solid ${colors.border}`, color: colors.sub,
       }}>
         <strong>{checked("flowDraftEnabled") ? "Ablaufentwurf vorbereitet" : "Ablaufentwurf pausiert"}</strong>
+        {checked("flowDraftEnabled") && (
+          warnings.length
+            ? <div className="fp-flow-warnings" role="status">
+                <strong>Vor dem späteren Aktivieren noch prüfen:</strong>
+                <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+              </div>
+            : <span>Konfiguration vollständig als Entwurf. Noch nicht live.</span>
+        )}
         <span>Zum Übernehmen oben bzw. unten „Kampagne speichern“ klicken.</span>
         <span>Diese Schalter geben niemals den Live-Versand frei.</span>
       </div>
