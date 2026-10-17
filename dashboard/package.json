@@ -11,7 +11,8 @@
     "build:lab": "vite build --config vite.lab.config.js",
     "build:mobile-preview": "vite build --config vite.mobile-preview.config.js",
     "start:mobile-preview": "node preview-server.mjs",
-    "test:mobile-preview": "node --test src/preview/*.test.mjs"
+    "test:mobile-preview": "node --test src/preview/*.test.mjs",
+    "build:cloudflare-preview": "npm run test:mobile-preview && npm run build:mobile-preview && node scripts/prepareCloudflareMobilePreview.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
