@@ -3,6 +3,7 @@ import { previewCampaignEntryInApi } from "../services/campaignsApi";
 import WebhookEventPreview from "./WebhookEventPreview";
 import DraftToggle from "./DraftToggle.jsx";
 import CampaignFlowEditor from "./CampaignFlowEditor.jsx";
+import ReelSelectionEditor from "./ReelSelectionEditor.jsx";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -160,20 +161,16 @@ export default function CampaignEditor({
     });
   }
 
-  function updateReelIds(raw) {
-    onCampaignFormChange((prev) => {
-      const reelMediaIds = raw.split(/[,;\n]/).map((id) => id.trim());
-      return {
-        ...prev,
-        peteCampaign: {
-          ...getNormalizedPeteCampaignConfig(prev),
-          reelMediaIds: getNormalizedPeteCampaignConfig({
-            peteCampaign: { reelMediaIds },
-          }).reelMediaIds,
-          _reelMediaDraft: raw,
-        },
-      };
-    });
+  function updateReelIds(reelMediaIds) {
+    onCampaignFormChange((prev) => ({
+      ...prev,
+      peteCampaign: {
+        ...getNormalizedPeteCampaignConfig(prev),
+        reelMediaIds: getNormalizedPeteCampaignConfig({
+          peteCampaign: { reelMediaIds },
+        }).reelMediaIds,
+      },
+    }));
   }
 
   function toggleEntrySource(sourceId) {
@@ -353,20 +350,12 @@ export default function CampaignEditor({
                     )}
                   />
                   {peteCampaign.reelTarget === "specific" && (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
-                        Reel-Media-IDs
-                      </div>
-                      <textarea
-                        style={{ ...inputStyle(colors), minHeight: 58, resize: "vertical" }}
-                        value={campaignForm.peteCampaign?._reelMediaDraft ?? peteCampaign.reelMediaIds.join(", ")}
-                        onChange={(e) => updateReelIds(e.target.value)}
-                        placeholder="17851537767246649, ..."
-                      />
-                      <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                        Nur bestätigte numerische Media-IDs. Ohne Treffer wird keine Kampagne ausgewählt.
-                      </p>
-                    </div>
+                    <ReelSelectionEditor
+                      colors={colors}
+                      campaignId={campaignForm.id}
+                      reelMediaIds={peteCampaign.reelMediaIds}
+                      onChange={updateReelIds}
+                    />
                   )}
                 </div>
               )}
