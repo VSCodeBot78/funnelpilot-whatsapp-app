@@ -45,6 +45,7 @@ router.post("/preview-entry", (req, res) => {
     const result = evaluateCampaignEntryPreview(getAllCampaigns(), {
       source: input.source,
       messageText: input.messageText,
+      mediaId: input.mediaId,
     });
     if (result.status === "invalid_source" || result.status === "invalid_message") {
       return res.status(400).json({ ok: false, preview: result });
