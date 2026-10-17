@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { previewCampaignEntryInApi } from "../services/campaignsApi";
+import {
+  previewCampaignEntryInApi,
+  previewProviderCampaignInApi,
+} from "../services/campaignsApi";
+import {
+  PROVIDER_PREVIEW_EXAMPLES,
+  getSyntheticProviderPreviewExample,
+} from "./providerPreviewExamples";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -38,6 +45,33 @@ export default function CampaignEditor({
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [providerExample, setProviderExample] = useState("instagram_dm");
+  const [providerPreview, setProviderPreview] = useState(null);
+  const [providerPreviewError, setProviderPreviewError] = useState("");
+  const [providerPreviewLoading, setProviderPreviewLoading] = useState(false);
+
+  async function simulateProviderEvent() {
+    const example = getSyntheticProviderPreviewExample(providerExample, previewMessage);
+    setProviderPreview(null);
+    setProviderPreviewError("");
+    if (!example) {
+      setProviderPreviewError("Ungültiges Testereignis");
+      return;
+    }
+    setProviderPreviewLoading(true);
+    try {
+      const result = await previewProviderCampaignInApi({
+        apiBaseUrl: settings.apiBaseUrl,
+        ...example,
+      });
+      setProviderPreview(result);
+    } catch (error) {
+      setProviderPreviewError(error instanceof Error
+        ? error.message : "Webhook-Vorschau nicht erreichbar");
+    } finally {
+      setProviderPreviewLoading(false);
+    }
+  }
 
   async function checkCampaignEntry() {
     setPreviewLoading(true);
@@ -379,6 +413,73 @@ export default function CampaignEditor({
                   )}
                   <div style={{ color: colors.sub, marginTop: 8 }}>
                     Prüfmodus. Versand ist immer gesperrt. Auch vorbereitete Follow-ups werden nicht ausgelöst.
+                  </div>
+                </div>
+              )}
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              colors={colors}
+              title="Meta-Ereignisse simulieren"
+              description="Nachrichten, Anzeigenherkunft und ungelöste Story-/Reel-Ereignisse prüfen."
+              defaultOpen={false}
+            >
+              <p style={{ color: colors.sub, fontSize: 12, lineHeight: 1.5 }}>
+                Diese Beispiele enthalten ausschließlich erfundene Test-IDs.
+                Keine Instagram-/WhatsApp-Verbindung und kein Versand.
+                Für das Keyword wird der Text aus der Vorschau darüber verwendet.
+              </p>
+              <select
+                style={inputStyle(colors)}
+                value={providerExample}
+                onChange={(e) => { setProviderExample(e.target.value); setProviderPreview(null); }}
+              >
+                {PROVIDER_PREVIEW_EXAMPLES.map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={simulateProviderEvent}
+                disabled={providerPreviewLoading}
+                style={{ ...secondaryButtonStyle(colors), marginTop: 12 }}
+              >
+                {providerPreviewLoading ? "Prüfe..." : "Meta-Testereignis simulieren"}
+              </button>
+              {providerPreviewError && (
+                <p style={{ color: colors.text, fontSize: 12 }}>
+                  Prüfung fehlgeschlagen: {providerPreviewError}
+                </p>
+              )}
+              {providerPreview && (
+                <div style={{
+                  marginTop: 12, padding: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.surface, color: colors.text, fontSize: 12,
+                }}>
+                  <div style={{ fontWeight: 700 }}>
+                    {({
+                      instagram_dm_channel_only: "Instagram-DM erkannt. Story-Herkunft nicht nachweisbar.",
+                      whatsapp_text: "Normale WhatsApp-Nachricht erkannt.",
+                      whatsapp_ad_referral: "WhatsApp-Anzeigenherkunft erkannt.",
+                      ignored_echo: "Eigene Nachricht ignoriert.",
+                      unsupported_media: "Geteilte Medien: manuelle Prüfung.",
+                      unverified_story_or_reel: "Kommentar/Story: Meta-Ereignis noch nicht verifiziert.",
+                      ambiguous_event: "Mehrere Nachrichten: keine automatische Entscheidung.",
+                      unsupported_event: "Nicht unterstütztes Ereignis.",
+                      invalid_payload: "Ungültige Testdaten.",
+                    })[providerPreview.reason] || "Keine sichere Zuordnung"}
+                  </div>
+                  {providerPreview.entryPreview?.matchedCampaignId && (
+                    <div style={{ marginTop: 7 }}>
+                      Kampagne: {providerPreview.entryPreview.matchedCampaignId}
+                    </div>
+                  )}
+                  {providerPreview.entryPreview?.status === "ambiguous" && (
+                    <div style={{ marginTop: 7 }}>Kampagnenkonflikt: Keine Antwort.</div>
+                  )}
+                  <div style={{ color: colors.sub, marginTop: 9 }}>
+                    Nur Vorschau. Kein automatischer Versand und kein Nachfassen.
                   </div>
                 </div>
               )}
