@@ -5,6 +5,7 @@ import DraftToggle from "./DraftToggle.jsx";
 import CampaignFlowEditor from "./CampaignFlowEditor.jsx";
 import ReelSelectionEditor from "./ReelSelectionEditor.jsx";
 import { CAMPAIGN_STARTER_TEMPLATES } from "./campaignTemplates.js";
+import { getCampaignPreviewPrefill } from "./campaignPreviewPrefill.js";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -58,6 +59,7 @@ export default function CampaignEditor({
   const [previewMediaId, setPreviewMediaId] = useState("");
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
+  const [previewPrefillNotice, setPreviewPrefillNotice] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewRequestId = useRef(0);
 
@@ -65,7 +67,18 @@ export default function CampaignEditor({
     previewRequestId.current += 1;
     setPreviewResponse(null);
     setPreviewError("");
+    setPreviewPrefillNotice("");
     setPreviewLoading(false);
+  }
+
+  function useSavedCampaignExample() {
+    const example = getCampaignPreviewPrefill(savedCampaign);
+    invalidatePreview();
+    setPreviewPrefillNotice(example.ok ? example.notice : example.reason);
+    if (!example.ok) return;
+    setPreviewSource(example.source);
+    setPreviewMessage(example.messageText);
+    setPreviewMediaId(example.mediaId);
   }
 
   // Do not show a previous campaign's snapshot after the owner edits or switches.
@@ -434,6 +447,20 @@ export default function CampaignEditor({
                 <p style={{ color: colors.warning, fontSize: 12, lineHeight: 1.5 }}>
                   Ungespeicherte Pete-Änderungen: Die Vorschau zeigt die
                   zuletzt gespeicherten Kampagnendaten. Bitte erst speichern.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={useSavedCampaignExample}
+                disabled={!savedCampaign || hasUnsavedPeteChanges || previewLoading}
+                style={{ ...secondaryButtonStyle(colors), marginBottom: 10 }}
+              >
+                Gespeicherten Kampagneneinstieg übernehmen
+              </button>
+              {previewPrefillNotice && (
+                <p role="status" style={{ fontSize: 12, lineHeight: 1.5,
+                  color: colors.sub, margin: "0 0 10px" }}>
+                  {previewPrefillNotice}
                 </p>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))", gap: 10 }}>
