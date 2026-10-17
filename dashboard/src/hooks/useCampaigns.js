@@ -161,6 +161,8 @@ export function useCampaigns({
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [activeCampaignId, setActiveCampaignId] = useState(initialCampaignId);
   const [campaignForm, setCampaignForm] = useState(initialCampaigns[0] || null);
+  // Latest confirmed/loaded values, separate from locally edited fields.
+  const [campaignFormBaseline, setCampaignFormBaseline] = useState(initialCampaigns[0] || null);
   const [campaignMessage, setCampaignMessage] = useState("");
   const [campaignSaving, setCampaignSaving] = useState(false);
   const [campaignLoading, setCampaignLoading] = useState(false);
@@ -185,6 +187,7 @@ export function useCampaigns({
       };
 
       setCampaignForm(nextCampaignForm);
+      setCampaignFormBaseline(nextCampaignForm);
       loadSchedulingConfigForCampaign(nextCampaignForm);
     }
 
@@ -205,8 +208,16 @@ export function useCampaigns({
           return;
         }
 
-        // A slow response for campaign A must never change campaign B's form.
-        setCampaignForm((prev) => prev?.id === campaignToLoad.id
+        // A late backend response must never clobber a different campaign
+        // or an owner-edited booking form.
+        setCampaignForm((prev) => {
+          if (prev?.id !== campaignToLoad.id) return prev;
+          const bookingWasNotEdited =
+            JSON.stringify(getNormalizedBookingConfig(prev, settings)) ===
+            JSON.stringify(getNormalizedBookingConfig(campaignToLoad, settings));
+          return bookingWasNotEdited ? { ...prev, booking: bookingConfig } : prev;
+        });
+        setCampaignFormBaseline((prev) => prev?.id === campaignToLoad.id
           ? { ...prev, booking: bookingConfig }
           : prev);
       } catch (error) {
@@ -311,6 +322,7 @@ export function useCampaigns({
       setCampaigns((prev) => [...prev, saved]);
       setActiveCampaignId(saved.id);
       setCampaignForm(saved);
+      setCampaignFormBaseline(saved);
       setCampaignMessage("Kampagne aus Vorlage angelegt. Noch kein Live-Versand.");
     } catch (error) {
       console.error("campaign create error:", error);
@@ -362,6 +374,8 @@ export function useCampaigns({
       );
       // Do not switch the owner's selection if this request completes late.
       setCampaignForm((prev) =>
+        prev?.id === updatedCampaign.id ? updatedCampaign : prev);
+      setCampaignFormBaseline((prev) =>
         prev?.id === updatedCampaign.id ? updatedCampaign : prev);
 
       await saveCampaignSchedulingConfigToApi({
@@ -418,6 +432,7 @@ export function useCampaigns({
     setCampaigns(remaining);
     setActiveCampaignId(fallbackCampaign.id);
     setCampaignForm(fallbackCampaign);
+    setCampaignFormBaseline(fallbackCampaign);
 
     return {
       deletedCampaignId: deleteId,
@@ -429,6 +444,7 @@ export function useCampaigns({
     campaigns,
     activeCampaignId,
     campaignForm,
+    campaignFormBaseline,
     campaignMessage,
     campaignSaving,
     campaignLoading,
