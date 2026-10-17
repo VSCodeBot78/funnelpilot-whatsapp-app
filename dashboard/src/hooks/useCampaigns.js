@@ -10,6 +10,7 @@ import {
   getNormalizedPeteCampaignConfig,
 } from "../utils/dashboardHelpers";
 import { applyCampaignStarterTemplate } from "../campaigns/campaignTemplates.js";
+import { getCampaignSaveInputError } from "../campaigns/campaignSaveValidation.js";
 import { getCampaignDraftChanges } from "../campaigns/campaignDraftChanges.js";
 import {
   loadCampaignSchedulingConfigFromApi,
@@ -342,6 +343,11 @@ export function useCampaigns({
 
   async function saveCampaign() {
     if (!campaignForm?.id) return false;
+    const inputError = getCampaignSaveInputError(campaignForm);
+    if (inputError) {
+      setCampaignMessage(inputError);
+      return false;
+    }
 
     let campaignSavedToBackend = false;
     try {
