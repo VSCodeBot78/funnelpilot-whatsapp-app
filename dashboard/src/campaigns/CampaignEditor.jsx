@@ -21,6 +21,8 @@ export default function CampaignEditor({
   colors,
   settings,
   campaigns = [],
+  previewEntry = previewCampaignEntryInApi,
+  previewWebhook = null,
   campaignForm,
   campaignMessage,
   campaignSaving,
@@ -70,7 +72,7 @@ export default function CampaignEditor({
     setPreviewResponse(null);
     setPreviewError("");
     try {
-      const result = await previewCampaignEntryInApi({
+      const result = await previewEntry({
         apiBaseUrl: settings.apiBaseUrl,
         source: previewSource,
         messageText: previewMessage,
@@ -508,6 +510,7 @@ export default function CampaignEditor({
                 colors={colors}
                 apiBaseUrl={settings.apiBaseUrl}
                 campaignDraftRevision={campaignDraftRevision}
+                previewWebhook={previewWebhook || undefined}
               />
             </CollapsibleSection>
 
