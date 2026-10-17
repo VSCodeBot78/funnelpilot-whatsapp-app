@@ -60,3 +60,29 @@ test("Phase 4: dashboard exposes only preview endpoint, never a send command", (
   assert.match(api, /\/campaigns\/preview-entry/);
   assert.match(api, /data\.preview\.sendAllowed !== false/);
 });
+
+test("Phase 4B: Meta examples are synthetic and preview-only", async () => {
+  const { PROVIDER_PREVIEW_EXAMPLES, getSyntheticProviderPreviewExample } =
+    await import("./providerPreviewExamples.js");
+  const kinds = PROVIDER_PREVIEW_EXAMPLES.map(([id]) => id);
+  assert.ok(kinds.includes("instagram_dm"));
+  assert.ok(kinds.includes("instagram_comment"));
+  assert.ok(kinds.includes("whatsapp_ctwa"));
+  assert.equal(new Set(kinds).size, kinds.length);
+
+  const dm = getSyntheticProviderPreviewExample("instagram_dm", "CHECK");
+  assert.equal(dm.provider, "instagram");
+  assert.equal(dm.payload.entry[0].messaging[0].message.text, "CHECK");
+
+  const ad = getSyntheticProviderPreviewExample("whatsapp_ctwa", "START");
+  assert.equal(ad.provider, "whatsapp");
+  assert.equal(ad.payload.entry[0].changes[0].value.messages[0].referral.source_type, "ad");
+  assert.equal(getSyntheticProviderPreviewExample("unknown"), null);
+
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const api = fs.readFileSync(new URL("../services/campaignsApi.js", import.meta.url), "utf8");
+  assert.match(editor, /Meta-Ereignisse simulieren/);
+  assert.match(editor, /simulateProviderEvent/);
+  assert.match(api, /\/campaigns\/preview-provider-entry/);
+  assert.match(api, /data\.preview\.sendAllowed !== false/);
+});

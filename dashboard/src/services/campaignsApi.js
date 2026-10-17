@@ -151,3 +151,20 @@ export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageTex
   }
   return data.preview;
 }
+
+// Owner-only synthetic Meta event preview. NEVER sends a provider message.
+export async function previewProviderCampaignInApi({ apiBaseUrl, provider, payload }) {
+  const response = await fetch(buildApiUrl("/campaigns/preview-provider-entry", apiBaseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, payload }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data?.ok || !data?.preview ||
+      data.preview.mode !== "preview_only" ||
+      data.preview.sendAllowed !== false ||
+      data.preview.entryPreview?.sendAllowed === true) {
+    throw new Error(data?.error || "provider_campaign_preview_failed");
+  }
+  return data.preview;
+}

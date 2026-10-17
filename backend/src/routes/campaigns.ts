@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
+import { previewProviderCampaignEntry } from "../services/pete-provider-entry-preview.service.js";
 import {
   deleteCampaign,
   getAllCampaigns,
@@ -38,6 +39,25 @@ router.get("/", (_req, res) => {
 // Owner-only control-plane preview, guarded by the existing app admin guard.
 // Never starts a lead conversation or invokes a provider; sendAllowed is
 // permanently false and no scheduling or campaign changes are made.
+// Strict read-only preview of a synthetic/pasted provider webhook envelope.
+// Not connected to IG/WA webhook processing, sending or lead creation.
+router.post("/preview-provider-entry", (req, res) => {
+  try {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const preview = previewProviderCampaignEntry(getAllCampaigns(), {
+      provider: body.provider,
+      payload: body.payload,
+    });
+    if (preview.reason === "invalid_provider" || preview.reason === "invalid_payload") {
+      return res.status(400).json({ ok: false, preview });
+    }
+    return res.json({ ok: true, preview });
+  } catch (error) {
+    console.error("provider entry preview error:", error);
+    return res.status(500).json({ ok: false, error: "provider_campaign_preview_failed" });
+  }
+});
+
 router.post("/preview-entry", (req, res) => {
   try {
     const input = req.body && typeof req.body === "object" ? req.body : {};
