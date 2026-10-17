@@ -35,6 +35,7 @@ export default function CampaignEditor({
   const peteCampaign = getNormalizedPeteCampaignConfig(campaignForm);
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
+  const [previewMediaId, setPreviewMediaId] = useState("");
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -48,6 +49,7 @@ export default function CampaignEditor({
         apiBaseUrl: settings.apiBaseUrl,
         source: previewSource,
         messageText: previewMessage,
+        mediaId: previewMediaId,
       });
       setPreviewResponse(result);
     } catch (error) {
@@ -106,6 +108,22 @@ export default function CampaignEditor({
           keywords: getNormalizedPeteCampaignConfig({ peteCampaign: { keywords: parsed } }).keywords,
           // UI-only draft preserves commas/newlines while typing. Save normalizes it.
           _keywordDraft: raw,
+        },
+      };
+    });
+  }
+
+  function updateReelIds(raw) {
+    onCampaignFormChange((prev) => {
+      const reelMediaIds = raw.split(/[,;\\n]/).map((id) => id.trim());
+      return {
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          reelMediaIds: getNormalizedPeteCampaignConfig({
+            peteCampaign: { reelMediaIds },
+          }).reelMediaIds,
+          _reelMediaDraft: raw,
         },
       };
     });
@@ -277,6 +295,38 @@ export default function CampaignEditor({
                 ))}
               </div>
 
+              {peteCampaign.sources.includes("instagram_reel_comment") && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                    Welche Reels sollen berücksichtigt werden?
+                  </div>
+                  <select
+                    style={inputStyle(colors)}
+                    value={peteCampaign.reelTarget}
+                    onChange={(e) => updatePeteCampaignField("reelTarget", e.target.value)}
+                  >
+                    <option value="all">Alle Reels</option>
+                    <option value="specific">Nur ausgewählte Reels</option>
+                  </select>
+                  {peteCampaign.reelTarget === "specific" && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                        Reel-Media-IDs
+                      </div>
+                      <textarea
+                        style={{ ...inputStyle(colors), minHeight: 58, resize: "vertical" }}
+                        value={campaignForm.peteCampaign?._reelMediaDraft ?? peteCampaign.reelMediaIds.join(", ")}
+                        onChange={(e) => updateReelIds(e.target.value)}
+                        placeholder="17851537767246649, ..."
+                      />
+                      <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
+                        Nur bestätigte numerische Media-IDs. Ohne Treffer wird keine Kampagne ausgewählt.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Keywords (z. B. CHECK, KETO, BULLSHIT)
               </div>
@@ -341,6 +391,19 @@ export default function CampaignEditor({
                   />
                 </div>
               </div>
+              {previewSource === "instagram_reel_comment" && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                    Reel-Media-ID für die Vorschau
+                  </div>
+                  <input
+                    style={inputStyle(colors)}
+                    value={previewMediaId}
+                    onChange={(e) => { setPreviewMediaId(e.target.value); setPreviewResponse(null); }}
+                    placeholder="17851537767246649"
+                  />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={checkCampaignEntry}
@@ -364,6 +427,7 @@ export default function CampaignEditor({
                       no_match: "Keine passende Kampagne",
                       ambiguous: "Mehrere Kampagnen: keine eindeutige Zuordnung",
                       manual_only: "Follower-Begrüßung nur manuell",
+                      manual_review: "Herkunft unklar. Bitte manuell prüfen.",
                     })[previewResponse.status] || "Kein Ergebnis"}
                   </strong>
                   {previewResponse.matchedCampaignId && (
