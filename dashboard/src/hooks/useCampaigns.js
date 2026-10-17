@@ -9,6 +9,7 @@ import {
   getNormalizedEntryConfig,
   getNormalizedPeteCampaignConfig,
 } from "../utils/dashboardHelpers";
+import { applyCampaignStarterTemplate } from "../campaigns/campaignTemplates.js";
 import {
   loadCampaignSchedulingConfigFromApi,
   saveCampaignSchedulingConfigToApi,
@@ -275,42 +276,47 @@ export function useCampaigns({
     return () => clearTimeout(timeout);
   }, [campaignMessage]);
 
-  async function createNewCampaign() {
-    const newId = makeId();
-
-    const newCampaign = {
-      ...emptyCampaignForm,
-      id: newId,
-      name: "Neue Kampagne",
-      trigger: "",
-      slot1: "",
-      slot2: "",
-      booking: getDefaultBookingConfig(settings),
-      offerContext: getDefaultOfferContext(),
-      peteCampaign: getNormalizedPeteCampaignConfig(),
-      entryConfig: getDefaultEntryConfig(""),
-      useGlobalBookingDefaults: false,
-      // No scripted A/B/C question defaults in newly created campaigns.
-      welcome: "",
-      q1: "", q2: "", q3: "", goal: "", scale: "", hot: "",
-      followUp24h: "",
-      followUp3d: "",
-    };
-
-    setCampaigns((prev) => [...prev, newCampaign]);
-    setActiveCampaignId(newId);
-    setCampaignForm(newCampaign);
-
+  async function createNewCampaign(templateId = "blank") {
+    // Fail closed on an unknown template and never show a phantom saved campaign.
+    let newCampaign;
+    try {
+      newCampaign = applyCampaignStarterTemplate({
+        ...emptyCampaignForm,
+        id: makeId(),
+        name: "Neue Kampagne",
+        trigger: "",
+        slot1: "", slot2: "",
+        booking: getDefaultBookingConfig(settings),
+        offerContext: getDefaultOfferContext(),
+        peteCampaign: getNormalizedPeteCampaignConfig(),
+        entryConfig: getDefaultEntryConfig(""),
+        useGlobalBookingDefaults: false,
+      }, templateId);
+    } catch (error) {
+      setCampaignMessage("Vorlage nicht gefunden. Keine Kampagne angelegt.");
+      return;
+    }
+    setCampaignSaving(true);
+    setCampaignMessage("");
     try {
       const created = await createCampaignInApi(newCampaign, settings.apiBaseUrl);
-      setBackendCampaignIds((prev) => new Set(prev).add(created.id));
+      // Backend confirmation is the only point at which a campaign is created locally.
+      const saved = {
+        ...newCampaign, ...created,
+        peteCampaign: getNormalizedPeteCampaignConfig(created),
+        offerContext: getNormalizedOfferContext(created),
+        entryConfig: getNormalizedEntryConfig(created),
+      };
+      setBackendCampaignIds((prev) => new Set(prev).add(saved.id));
+      setCampaigns((prev) => [...prev, saved]);
+      setActiveCampaignId(saved.id);
+      setCampaignForm(saved);
+      setCampaignMessage("Kampagne aus Vorlage angelegt. Noch kein Live-Versand.");
     } catch (error) {
       console.error("campaign create error:", error);
-      setCampaignMessage(
-        error instanceof Error
-          ? error.message
-          : "Neue Kampagne konnte nicht im Backend gespeichert werden.",
-      );
+      setCampaignMessage("Kampagne konnte nicht im Backend angelegt werden. Bitte erneut versuchen.");
+    } finally {
+      setCampaignSaving(false);
     }
   }
 
