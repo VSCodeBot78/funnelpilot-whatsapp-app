@@ -184,3 +184,69 @@ test("Phase 4B: editor warns when comparing unsaved Pete settings to the saved p
   assert.ok(lab.includes("[apiBaseUrl, campaignDraftRevision]"));
   assert.ok(lab.includes("invalidatePreview()"));
 });
+
+test("Desktop Flow 1: ManyChat-like switches are normalized without any send permission", () => {
+  const config = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+    reelTarget: "specific", reelMediaIds: ["17851537767246649"],
+    openingText: "Hier ist der Elterncheck.",
+    flowDraftEnabled: true, autoReplyEnabled: true,
+    linkEnabled: true, linkLabel: "Zum Elterncheck",
+    linkUrl: "https://check.jochen-kammerer.de/",
+    peteHandoffEnabled: true,
+  } });
+  assert.equal(config.flowDraftEnabled, true);
+  assert.equal(config.autoReplyEnabled, true);
+  assert.equal(config.linkEnabled, true);
+  assert.equal(config.linkLabel, "Zum Elterncheck");
+  assert.equal(config.linkUrl, "https://check.jochen-kammerer.de/");
+  assert.equal(config.peteHandoffEnabled, true);
+  assert.equal(config.reelTarget, "specific");
+
+  const legacy = getNormalizedPeteCampaignConfig({});
+  for (const key of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+    "peteHandoffEnabled"]) assert.equal(legacy[key], false);
+  assert.equal(legacy.linkUrl, "");
+});
+
+test("Desktop Flow 1: invalid URLs and truthy strings fail closed", () => {
+  for (const url of [
+    "http://example.com", "//example.com", "javascript:alert(1)",
+    "https://localhost/test", "https://u:p@example.com",
+    "https://127.0.0.1/", "bad url",
+  ]) {
+    const config = getNormalizedPeteCampaignConfig({ peteCampaign: {
+      flowDraftEnabled: "true", autoReplyEnabled: "yes", linkEnabled: 1,
+      peteHandoffEnabled: "true", linkUrl: url,
+    } });
+    assert.equal(config.linkUrl, "", url);
+    assert.equal(config.flowDraftEnabled, false);
+    assert.equal(config.autoReplyEnabled, false);
+    assert.equal(config.linkEnabled, false);
+    assert.equal(config.peteHandoffEnabled, false);
+  }
+});
+
+test("Desktop Flow 1: editor uses accessible toggles and never a live sender", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const flow = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const toggle = fs.readFileSync(new URL("./DraftToggle.jsx", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("./campaignFlowEditor.css", import.meta.url), "utf8");
+
+  assert.match(editor, /import CampaignFlowEditor from/);
+  assert.match(editor, /<CampaignFlowEditor/);
+  assert.match(editor, /onChange=\{updateFlowField\}/);
+  assert.match(editor, /label="Alle Reels"/);
+  assert.match(editor, /"reelTarget", all \? "all" : "specific"/);
+  assert.match(editor, /_linkUrlDraft: value/);
+  for (const field of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+    "peteHandoffEnabled"]) assert.ok(flow.includes(field));
+  for (const node of ["Auslöser", "Feste Nachricht", "Link oder Aktion",
+    "Übergabe an Pete"]) assert.ok(flow.includes(node));
+  assert.match(flow, /Diese Schalter geben niemals den Live-Versand frei/);
+  assert.match(toggle, /role="switch"/);
+  assert.match(toggle, /checked=\{checked\}/);
+  assert.match(toggle, /aria-label=\{label\}/);
+  assert.match(css, /focus-visible/);
+  assert.doesNotMatch(flow, /fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+});
