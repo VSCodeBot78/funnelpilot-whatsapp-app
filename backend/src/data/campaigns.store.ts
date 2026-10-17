@@ -9,6 +9,8 @@ export type PeteCampaignConfig = {
   keywords: string[];
   openingText: string;
   followUpEnabled: boolean;
+  reelTarget: "all" | "specific";
+  reelMediaIds: string[];
 };
 
 const PETE_CAMPAIGN_SOURCES = [
@@ -18,6 +20,7 @@ const PETE_CAMPAIGN_SOURCES = [
 
 export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
   sources: [], keywords: [], openingText: "", followUpEnabled: false,
+  reelTarget: "all", reelMediaIds: [],
 };
 
 export function normalizePeteCampaignConfig(input: unknown): PeteCampaignConfig {
@@ -34,6 +37,13 @@ export function normalizePeteCampaignConfig(input: unknown): PeteCampaignConfig 
     sources, keywords,
     openingText: typeof value.openingText === "string" ? value.openingText.slice(0, 1000) : "",
     followUpEnabled: value.followUpEnabled === true,
+    reelTarget: value.reelTarget === "specific" ? "specific" : "all",
+    reelMediaIds: Array.isArray(value.reelMediaIds)
+      ? [...new Set(value.reelMediaIds
+          .filter((id): id is string => typeof id === "string")
+          .map(id => id.trim())
+          .filter(id => /^\\d{8,32}$/.test(id)))].slice(0, 40)
+      : [],
   };
 }
 
