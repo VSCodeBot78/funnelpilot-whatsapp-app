@@ -61,7 +61,7 @@ export function evaluateCampaignEntryPreview(
   const source = input.source as CampaignEntrySource;
   const keyword = normalizeKeyword(input.messageText);
   const mediaId = typeof input.mediaId === "string" ? input.mediaId.trim() : "";
-  if (source === "instagram_reel_comment" && mediaId && !/^\\d{8,32}$/.test(mediaId)) {
+  if (source === "instagram_reel_comment" && mediaId && !/^\d{8,32}$/.test(mediaId)) {
     return emptyResult("manual_review");
   }
   const candidates = campaigns.map(campaign => {
