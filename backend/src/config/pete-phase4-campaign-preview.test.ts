@@ -123,4 +123,48 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     assert.equal(result.matchedCampaignId, "phase4-preview-campaign");
     assert.equal(result.sendAllowed, false);
   });
+
+  await t.test("Pete draft blocks the old ghosting sender even when a template toggle is true", async () => {
+    const { getOrCreateConversationState, persistConversationState } =
+      await import("../core/state-manager.js");
+    const { getConversationState } = await import("../data/store.js");
+    const { default: app } = await import("../app.js");
+    const campaignId = "phase4-ghosting-draft";
+    const leadId = "phase4-ghosting-test-lead";
+    saveCampaign({ id: campaignId, peteCampaign: {
+      sources: ["instagram_dm"], keywords: ["CHECK"],
+      openingText: "Bitte erstmal nur prüfen.", followUpEnabled: true,
+    } });
+    const state = getOrCreateConversationState(leadId, campaignId);
+    state.source = "Instagram";
+    state.owner = "ai";
+    state.aiPaused = false;
+    state.flags.stopped = false;
+    persistConversationState(state);
+    const originalLength = state.messages.length;
+    const server = app.listen(0, "127.0.0.1");
+    await new Promise<void>(resolve => server.once("listening", resolve));
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address !== "string");
+      const result = await fetch(
+        `http://127.0.0.1:${address.port}/ghosting/send-due/${campaignId}/${leadId}`,
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sendAt: new Date().toISOString() }) },
+      );
+      assert.equal(result.status, 200);
+      const body = await result.json() as Record<string, unknown>;
+      assert.equal(body.sent, false);
+      assert.equal(body.dryRun, true);
+      assert.equal(body.sendSkipped, true);
+      assert.equal(body.sendSkipReason, "pete_campaign_preview_only");
+      const saved = getConversationState(leadId, campaignId);
+      assert.ok(saved);
+      assert.equal(saved.messages.length, originalLength);
+      assert.equal(saved.ghosting?.sentHistory?.length ?? 0, 0);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => error ? reject(error) : resolve()));
+    }
+  });
 });
