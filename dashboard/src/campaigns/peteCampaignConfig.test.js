@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
+import { CAMPAIGN_STARTER_TEMPLATES, applyCampaignStarterTemplate } from "./campaignTemplates.js";
 import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import {
   getNormalizedPeteCampaignConfig,
@@ -289,4 +290,59 @@ test("Desktop Flow 2: follower-first DMs remain manual even if a draft toggle is
   assert.ok(list.includes("Flow-Entwurf pausiert"));
   const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
   assert.ok(editor.includes("Antworten pro Keyword"));
+});
+
+test("Desktop templates: 6 editable starter choices and every automation defaults OFF", () => {
+  assert.deepEqual(CAMPAIGN_STARTER_TEMPLATES.map((t) => t.id), [
+    "blank", "ig_dm", "ig_reel", "ig_story", "wa_dm", "follower_manual",
+  ]);
+  const base = {
+    id: "sample-id", name: "previous", trigger: "", booking: { provider: "manual" },
+    peteCampaign: { flowDraftEnabled: true, autoReplyEnabled: true,
+      linkEnabled: true, linkUrl: "https://example.org", peteHandoffEnabled: true },
+    welcome: "old script", q1: "old question", followUp24h: "old followup",
+  };
+  for (const template of CAMPAIGN_STARTER_TEMPLATES) {
+    const result = applyCampaignStarterTemplate(base, template.id);
+    const flow = result.peteCampaign;
+    assert.equal(result.id, "sample-id");
+    assert.equal(result.booking.provider, "manual");
+    assert.equal(result.name, template.name);
+    assert.deepEqual(flow.sources, template.sources);
+    assert.deepEqual(flow.keywords, template.keywords);
+    for (const key of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+      "peteHandoffEnabled", "followUpEnabled"]) assert.equal(flow[key], false);
+    assert.equal(flow.linkUrl, "");
+    assert.equal(result.q1, "");
+    assert.equal(result.followUp24h, "");
+  }
+  assert.equal(base.peteCampaign.flowDraftEnabled, true, "caller must not be mutated");
+  assert.equal(base.q1, "old question");
+  assert.equal(applyCampaignStarterTemplate(base, "ig_reel").peteCampaign.reelTarget, "all");
+  assert.deepEqual(
+    applyCampaignStarterTemplate(base, "follower_manual").peteCampaign.sources,
+    ["instagram_new_follower"],
+  );
+  assert.throws(() => applyCampaignStarterTemplate(base, "not-a-template"),
+    /unknown_campaign_template/);
+});
+
+test("Desktop templates: create is persisted first and the editor guides owner through preview", () => {
+  const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const creation = hook.split('  async function createNewCampaign(templateId = "blank") {')[1]
+    .split("  async function saveCampaign() {")[0];
+  assert.ok(creation);
+  assert.ok(creation.includes("applyCampaignStarterTemplate"));
+  assert.ok(creation.includes("await createCampaignInApi(newCampaign, settings.apiBaseUrl)"));
+  assert.ok(creation.includes("setCampaigns((prev) => [...prev, saved]);"));
+  assert.ok(creation.indexOf("await createCampaignInApi(newCampaign, settings.apiBaseUrl)") <
+    creation.indexOf("setCampaigns((prev) => [...prev, saved]);"));
+  assert.ok(creation.includes("catch (error)"));
+  assert.ok(creation.includes("Kampagne konnte nicht im Backend angelegt werden"));
+  assert.ok(editor.includes("CAMPAIGN_STARTER_TEMPLATES.map"));
+  assert.ok(editor.includes('onClick={() => onCreateNewCampaign(starterTemplateId)}'));
+  assert.ok(editor.includes("disabled={campaignSaving || campaignLoading}"));
+  assert.ok(editor.includes("Kampagnen-Einstieg testen"));
+  assert.ok(editor.includes("Jede Vorlage ist änderbar und startet ohne Live-Automation."));
 });
