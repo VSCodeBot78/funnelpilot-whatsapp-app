@@ -18,7 +18,7 @@ const { classifyCampaignWebhookExample } =
   await import("../services/pete-campaign-event-classifier.service.js");
 const { evaluateCampaignEntryPreview } =
   await import("../services/pete-campaign-entry-preview.service.js");
-const { normalizePeteCampaignConfig } =
+const { normalizePeteCampaignConfig, saveCampaign } =
   await import("../data/campaigns.store.js");
 
 const story = {
@@ -253,6 +253,15 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
   });
 
   await t.test("HTTP preview endpoint never creates a send intent", async () => {
+    saveCampaign({
+      id: "http-preview-reel-synthetic",
+      name: "Synthetische Coach-Kampagne",
+      peteCampaign: {
+        sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+        openingText: "Nur ein Test-Starttext.", followUpEnabled: false,
+        reelTarget: "specific", reelMediaIds: ["17851537767246649"],
+      },
+    });
     const { default: app } = await import("../app.js");
     const server = app.listen(0, "127.0.0.1");
     await new Promise<void>(resolve => server.once("listening", resolve));
@@ -270,7 +279,23 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
       assert.equal(body.ok, true);
       assert.equal(body.event.source, "instagram_reel_comment");
       assert.equal(body.event.sendAllowed, false);
-      assert.equal(body.preview?.sendAllowed ?? false, false);
+      assert.equal(body.preview?.sendAllowed, false);
+      assert.equal(body.preview?.status, "matched");
+      assert.equal(body.preview?.draftContext?.version, 1);
+      assert.equal(body.preview?.draftContext?.campaignId, "http-preview-reel-synthetic");
+      assert.equal(body.preview?.draftContext?.campaignName, "Synthetische Coach-Kampagne");
+      assert.equal(body.preview?.draftContext?.openingText, "Nur ein Test-Starttext.");
+      assert.equal(body.preview?.draftContext?.sendAllowed, false);
+      const direct = await fetch(base + "/campaigns/preview-entry", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "instagram_reel_comment", messageText: "CHECK",
+          mediaId: "17851537767246649",
+        }),
+      });
+      assert.equal(direct.status, 200);
+      const directBody = await direct.json() as Record<string, any>;
+      assert.deepEqual(directBody.preview?.draftContext, body.preview?.draftContext);
       const invalid = await fetch(base + "/campaigns/preview-event", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channel: "unknown", payload: {} }),
