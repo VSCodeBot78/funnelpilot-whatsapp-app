@@ -22,6 +22,18 @@ import {
   PETE_CAMPAIGN_SOURCES,
 } from "../utils/dashboardHelpers";
 
+// Preserve incomplete UI input while owner changes another switch. These
+// fields are stripped by normalization before any backend persistence.
+function preserveTypedCampaignDrafts(peteCampaign) {
+  const raw = peteCampaign || {};
+  return {
+    ...(typeof raw._keywordDraft === "string"
+      ? { _keywordDraft: raw._keywordDraft } : {}),
+    ...(typeof raw._linkUrlDraft === "string"
+      ? { _linkUrlDraft: raw._linkUrlDraft } : {}),
+  };
+}
+
 export default function CampaignEditor({
   colors,
   settings,
@@ -142,6 +154,9 @@ export default function CampaignEditor({
       ...prev,
       peteCampaign: {
         ...getNormalizedPeteCampaignConfig(prev),
+        ...preserveTypedCampaignDrafts(prev.peteCampaign),
+        ...(key === "linkEnabled" && value === false
+          ? { _linkUrlDraft: undefined } : {}),
         [key]: value,
       },
     }));
@@ -154,6 +169,7 @@ export default function CampaignEditor({
         ...prev,
         peteCampaign: {
           ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
           linkUrl: getNormalizedPeteCampaignConfig({
             peteCampaign: { linkUrl: value },
           }).linkUrl,
@@ -172,6 +188,7 @@ export default function CampaignEditor({
         ...prev,
         peteCampaign: {
           ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
           keywords: getNormalizedPeteCampaignConfig({ peteCampaign: { keywords: parsed } }).keywords,
           // UI-only draft preserves commas/newlines while typing. Save normalizes it.
           _keywordDraft: raw,
@@ -185,6 +202,7 @@ export default function CampaignEditor({
       ...prev,
       peteCampaign: {
         ...getNormalizedPeteCampaignConfig(prev),
+        ...preserveTypedCampaignDrafts(prev.peteCampaign),
         reelMediaIds: getNormalizedPeteCampaignConfig({
           peteCampaign: { reelMediaIds },
         }).reelMediaIds,
