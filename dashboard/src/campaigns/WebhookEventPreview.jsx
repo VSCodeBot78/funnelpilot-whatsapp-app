@@ -38,7 +38,7 @@ const WHATSAPP_EXAMPLE = JSON.stringify({
   }],
 }, null, 2);
 
-export default function WebhookEventPreview({ colors, apiBaseUrl }) {
+export default function WebhookEventPreview({ colors, apiBaseUrl, campaignDraftRevision }) {
   const [channel, setChannel] = useState("instagram");
   const [payloadText, setPayloadText] = useState(REEL_EXAMPLE);
   const [result, setResult] = useState(null);
@@ -53,6 +53,10 @@ export default function WebhookEventPreview({ colors, apiBaseUrl }) {
     setLoading(false);
   }
 
+  // Keep typed examples, but discard the preview when the edited draft changes.
+  useEffect(() => {
+    invalidatePreview();
+  }, [apiBaseUrl, campaignDraftRevision]);
   useEffect(() => () => { requestSerial.current += 1; }, []);
 
   async function previewEvent() {
