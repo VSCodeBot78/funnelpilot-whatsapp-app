@@ -95,7 +95,7 @@ export default function CampaignFlowEditor({
           <label className="fp-flow-field">
             <strong>HTTPS-Link</strong>
             <input style={inputStyle(colors)} type="url"
-              value={config.linkUrl}
+              value={config.linkUrlDraft ?? config.linkUrl}
               onChange={(e) => onChange("linkUrl", e.target.value)}
               placeholder="https://..." />
           </label>
