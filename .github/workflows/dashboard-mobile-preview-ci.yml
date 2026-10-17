@@ -1,0 +1,42 @@
+name: Isolated Dashboard Mobile Preview - Offline CI
+
+on:
+  push:
+    branches:
+      - feat/dashboard-mobile-preview-isolated-20261017
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    env:
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      PETE_LLM_CONVERSATION_ENABLED: "false"
+      PETE_LLM_API_CALLS_APPROVED: "false"
+      VITE_API_BASE_URL: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build:cloudflare-preview
+      - name: Verify Cloudflare-safe static bundle
+        run: |
+          test -f preview-dist/index.html
+          test -f preview-dist/mobile-preview.html
+          test -f preview-dist/_headers
+          test ! -f preview-dist/pete-test.html
+          grep -q "connect-src 'none'" preview-dist/_headers
+          grep -q "assets/" preview-dist/index.html
+          ! grep -Rl '/campaigns/preview-entry' preview-dist/assets/
+          ! grep -Rl '/campaigns/preview-event' preview-dist/assets/

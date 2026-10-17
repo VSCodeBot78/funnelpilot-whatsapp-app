@@ -1,0 +1,37 @@
+/* Mobile-only demonstration polish. Does not alter the production dashboard. */
+.fp-mobile-preview {
+  overflow-x: clip;
+}
+.fp-mobile-preview button,
+.fp-mobile-preview input,
+.fp-mobile-preview textarea,
+.fp-mobile-preview select {
+  touch-action: manipulation;
+}
+@media (max-width: 800px) {
+  .fp-mobile-preview .fp-campaigns-layout > :first-child {
+    display: flex;
+    overflow-x: auto;
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    border-right: none !important;
+    border-bottom: 1px solid #555;
+    scrollbar-width: thin;
+  }
+  .fp-mobile-preview .fp-campaigns-layout > :first-child > button {
+    flex: 0 0 190px;
+    min-width: 190px;
+    max-width: 220px;
+    padding: 12px;
+  }
+  .fp-mobile-preview .fp-campaigns-layout > :first-child > button:focus-visible {
+    outline: 2px solid #ff914d;
+    outline-offset: -3px;
+  }
+  .fp-mobile-preview select,
+  .fp-mobile-preview input,
+  .fp-mobile-preview textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}

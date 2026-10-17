@@ -38,7 +38,10 @@ const WHATSAPP_EXAMPLE = JSON.stringify({
   }],
 }, null, 2);
 
-export default function WebhookEventPreview({ colors, apiBaseUrl, campaignDraftRevision }) {
+export default function WebhookEventPreview({
+  colors, apiBaseUrl, campaignDraftRevision,
+  previewWebhook = previewCampaignWebhookInApi,
+}) {
   const [channel, setChannel] = useState("instagram");
   const [payloadText, setPayloadText] = useState(REEL_EXAMPLE);
   const [result, setResult] = useState(null);
@@ -72,7 +75,7 @@ export default function WebhookEventPreview({ colors, apiBaseUrl, campaignDraftR
     }
     setLoading(true);
     try {
-      const nextResult = await previewCampaignWebhookInApi({ apiBaseUrl, channel, payload });
+      const nextResult = await previewWebhook({ apiBaseUrl, channel, payload });
       if (requestId === requestSerial.current) setResult(nextResult);
     } catch (cause) {
       if (requestId === requestSerial.current) {
