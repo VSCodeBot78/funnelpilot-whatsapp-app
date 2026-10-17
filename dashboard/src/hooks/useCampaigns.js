@@ -169,6 +169,8 @@ export function useCampaigns({
   );
 
   useEffect(() => {
+    // Discard in-flight booking loads when the owner selects another campaign.
+    let cancelled = false;
     const campaign = campaigns.find((c) => c.id === activeCampaignId);
 
     if (campaign) {
@@ -198,34 +200,40 @@ export function useCampaigns({
           settings,
         });
 
-        if (campaignToLoad.useGlobalBookingDefaults === true) {
+        if (cancelled || campaignToLoad.useGlobalBookingDefaults === true) {
           return;
         }
 
-        setCampaignForm((prev) => ({
-          ...prev,
-          booking: bookingConfig,
-        }));
+        // A slow response for campaign A must never change campaign B's form.
+        setCampaignForm((prev) => prev?.id === campaignToLoad.id
+          ? { ...prev, booking: bookingConfig }
+          : prev);
       } catch (error) {
-        console.error("scheduling config load error:", error);
-        setCampaignMessage(
-          error instanceof Error
-            ? error.message
-            : "Scheduling-Konfiguration konnte nicht geladen werden.",
-        );
+        if (!cancelled) {
+          console.error("scheduling config load error:", error);
+          setCampaignMessage(
+            error instanceof Error
+              ? error.message
+              : "Scheduling-Konfiguration konnte nicht geladen werden.",
+          );
+        }
       } finally {
-        setCampaignLoading(false);
+        if (!cancelled) setCampaignLoading(false);
       }
     }
+
+    return () => { cancelled = true; };
   }, [activeCampaignId, campaigns, settings]);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadCampaigns() {
       try {
         setCampaignsLoading(true);
         setCampaignMessage("");
 
         const loadedCampaigns = await loadCampaignsFromApi(settings.apiBaseUrl);
+        if (cancelled) return;
         if (Array.isArray(loadedCampaigns) && loadedCampaigns.length) {
           const normalizedCampaigns = loadedCampaigns.map((campaign) => ({
             ...campaign,
@@ -239,24 +247,27 @@ export function useCampaigns({
             new Set(normalizedCampaigns.map((campaign) => campaign.id)),
           );
 
-          if (!normalizedCampaigns.some((campaign) => campaign.id === activeCampaignId)) {
-            setActiveCampaignId(normalizedCampaigns[0].id);
-          }
+          setActiveCampaignId((currentId) =>
+            normalizedCampaigns.some((campaign) => campaign.id === currentId)
+              ? currentId : normalizedCampaigns[0].id);
         }
       } catch (error) {
-        console.error("campaigns load error:", error);
-        setCampaignMessage(
-          error instanceof Error
-            ? error.message
-            : "Kampagnen konnten nicht geladen werden.",
-        );
+        if (!cancelled) {
+          console.error("campaigns load error:", error);
+          setCampaignMessage(
+            error instanceof Error
+              ? error.message
+              : "Kampagnen konnten nicht geladen werden.",
+          );
+        }
       } finally {
-        setCampaignsLoading(false);
+        if (!cancelled) setCampaignsLoading(false);
       }
     }
 
     loadCampaigns();
-  }, [settings.apiBaseUrl, activeCampaignId]);
+    return () => { cancelled = true; };
+  }, [settings.apiBaseUrl]);
 
   useEffect(() => {
     if (!campaignMessage) return;
