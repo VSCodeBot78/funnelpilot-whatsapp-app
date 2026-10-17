@@ -187,4 +187,34 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
     assert.deepEqual(config.reelMediaIds, ["17851537767246649"]);
     assert.equal(config.followUpEnabled, false);
   });
+}
+  await t.test("HTTP preview endpoint never creates a send intent", async () => {
+    const { default: app } = await import("../app.js");
+    const server = app.listen(0, "127.0.0.1");
+    await new Promise<void>(resolve => server.once("listening", resolve));
+    try {
+      const addr = server.address();
+      assert.ok(addr && typeof addr !== "string");
+      const base = `http://127.0.0.1:${addr.port}`;
+      const response = await fetch(base + "/campaigns/preview-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "instagram", payload: reel("17851537767246649") }),
+      });
+      assert.equal(response.status, 200);
+      const body = await response.json() as Record<string, any>;
+      assert.equal(body.ok, true);
+      assert.equal(body.event.source, "instagram_reel_comment");
+      assert.equal(body.event.sendAllowed, false);
+      assert.equal(body.preview?.sendAllowed ?? false, false);
+      const invalid = await fetch(base + "/campaigns/preview-event", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "unknown", payload: {} }),
+      });
+      assert.equal(invalid.status, 400);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => error ? reject(error) : resolve()));
+    }
+  });
 });
