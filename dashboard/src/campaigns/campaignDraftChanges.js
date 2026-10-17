@@ -28,5 +28,19 @@ export function getCampaignDraftChanges(current, baseline, settings = {}) {
     scale: campaign.scale || "",
     hot: campaign.hot || "",
   });
-  return JSON.stringify(pick(current)) !== JSON.stringify(pick(baseline));
+  if (JSON.stringify(pick(current)) !== JSON.stringify(pick(baseline))) return true;
+
+  // A half-typed HTTPS link or keyword is not yet a valid persisted value.
+  // Do not silently discard such work when switching campaigns. The usual
+  // normalized comparison above intentionally strips these UI-only fields.
+  const transient = current.peteCampaign || {};
+  const savedFlow = getNormalizedPeteCampaignConfig(baseline);
+  const drafts = [
+    ["_keywordDraft", savedFlow.keywords.join(", ")],
+    ["_linkUrlDraft", savedFlow.linkUrl],
+    ["_reelMediaDraft", savedFlow.reelMediaIds.join(", ")],
+  ];
+  return drafts.some(([key, lastSaved]) =>
+    typeof transient[key] === "string" &&
+    transient[key].trim() !== lastSaved.trim());
 }
