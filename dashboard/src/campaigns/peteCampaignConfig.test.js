@@ -89,6 +89,8 @@ test("Phase 4B: webhook origin lab only uses a read-only preview API", () => {
   assert.ok(lab.includes("Webhook nur simulieren"));
   assert.ok(lab.includes("previewCampaignWebhookInApi"));
   assert.match(api, /\/campaigns\/preview-event/);
+  assert.match(api, /data\.event\.mode !== "preview_only"/);
+  assert.match(api, /data\.preview\.mode !== "preview_only"/);
   assert.match(api, /data\.event\.sendAllowed !== false/);
   assert.match(api, /data\.preview\.sendAllowed !== false/);
 });
