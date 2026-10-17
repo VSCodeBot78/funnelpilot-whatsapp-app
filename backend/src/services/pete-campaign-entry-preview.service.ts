@@ -34,6 +34,17 @@ export type PeteCampaignDraftContext = {
   followUpDraftConfigured: boolean;
   reelTarget: "all" | "specific" | null;
   reelMediaIds: string[];
+  // Serialized config only. These steps are NEVER executed by preview.
+  flowDraft: {
+    enabled: boolean;
+    autoReplyEnabled: boolean;
+    text: string | null;
+    linkEnabled: boolean;
+    linkLabel: string;
+    linkUrl: string | null;
+    peteHandoffEnabled: boolean;
+    sendAllowed: false;
+  };
 };
 
 export type CampaignEntryPreview = {
@@ -144,6 +155,16 @@ export function evaluateCampaignEntryPreview(
     reelMediaIds: source === "instagram_reel_comment" &&
       chosen.config.reelTarget === "specific"
       ? [...chosen.config.reelMediaIds] : [],
+    flowDraft: {
+      enabled: chosen.config.flowDraftEnabled,
+      autoReplyEnabled: chosen.config.autoReplyEnabled,
+      text: chosen.config.autoReplyEnabled ? chosen.config.openingText || null : null,
+      linkEnabled: chosen.config.linkEnabled,
+      linkLabel: chosen.config.linkLabel,
+      linkUrl: chosen.config.linkEnabled ? chosen.config.linkUrl || null : null,
+      peteHandoffEnabled: chosen.config.peteHandoffEnabled,
+      sendAllowed: false,
+    },
   };
   return {
     mode: "preview_only",
