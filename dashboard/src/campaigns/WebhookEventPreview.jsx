@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { inputStyle, secondaryButtonStyle } from "../theme/dashboardTheme";
 import { previewCampaignWebhookInApi } from "../services/campaignsApi";
 
@@ -20,14 +20,43 @@ const REEL_EXAMPLE = JSON.stringify({
   }],
 }, null, 2);
 
+const WHATSAPP_EXAMPLE = JSON.stringify({
+  object: "whatsapp_business_account",
+  entry: [{
+    changes: [{
+      field: "messages",
+      value: {
+        messages: [{
+          id: "wamid.synthetic-example",
+          from: "synthetic-parent",
+          type: "text",
+          text: { body: "CHECK" },
+          referral: { ctwa_clid: "synthetic-click" },
+        }],
+      },
+    }],
+  }],
+}, null, 2);
+
 export default function WebhookEventPreview({ colors, apiBaseUrl }) {
   const [channel, setChannel] = useState("instagram");
   const [payloadText, setPayloadText] = useState(REEL_EXAMPLE);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const requestSerial = useRef(0);
+
+  function invalidatePreview() {
+    requestSerial.current += 1;
+    setResult(null);
+    setError("");
+    setLoading(false);
+  }
+
+  useEffect(() => () => { requestSerial.current += 1; }, []);
 
   async function previewEvent() {
+    const requestId = ++requestSerial.current;
     setResult(null);
     setError("");
     let payload;
@@ -39,11 +68,14 @@ export default function WebhookEventPreview({ colors, apiBaseUrl }) {
     }
     setLoading(true);
     try {
-      setResult(await previewCampaignWebhookInApi({ apiBaseUrl, channel, payload }));
+      const nextResult = await previewCampaignWebhookInApi({ apiBaseUrl, channel, payload });
+      if (requestId === requestSerial.current) setResult(nextResult);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Labor-Vorschau fehlgeschlagen");
+      if (requestId === requestSerial.current) {
+        setError(cause instanceof Error ? cause.message : "Labor-Vorschau fehlgeschlagen");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestSerial.current) setLoading(false);
     }
   }
 
@@ -58,7 +90,12 @@ export default function WebhookEventPreview({ colors, apiBaseUrl }) {
       <select
         style={inputStyle(colors)}
         value={channel}
-        onChange={(e) => { setChannel(e.target.value); setResult(null); }}
+        onChange={(e) => {
+          const nextChannel = e.target.value;
+          invalidatePreview();
+          setChannel(nextChannel);
+          setPayloadText(nextChannel === "whatsapp" ? WHATSAPP_EXAMPLE : REEL_EXAMPLE);
+        }}
       >
         <option value="instagram">Instagram</option>
         <option value="whatsapp">WhatsApp</option>
@@ -67,7 +104,7 @@ export default function WebhookEventPreview({ colors, apiBaseUrl }) {
       <textarea
         style={{ ...inputStyle(colors), minHeight: 160, resize: "vertical", fontFamily: "monospace" }}
         value={payloadText}
-        onChange={(e) => { setPayloadText(e.target.value); setResult(null); }}
+        onChange={(e) => { invalidatePreview(); setPayloadText(e.target.value); }}
         maxLength={20000}
         spellCheck={false}
       />
@@ -94,6 +131,16 @@ export default function WebhookEventPreview({ colors, apiBaseUrl }) {
           <div><strong>Media-ID:</strong> {result.event.mediaId || "-"}</div>
           <div><strong>Kampagnenprüfung:</strong> {result.preview?.status || "manuell prüfen"}</div>
           <div><strong>Kampagne:</strong> {result.preview?.matchedCampaignId || "-"}</div>
+          {result.preview?.draftContext && (
+            <div style={{ marginTop: 10 }}>
+              <strong>Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)</strong>
+              <div>Name: {result.preview.draftContext.campaignName || result.preview.draftContext.campaignId}</div>
+              <div>Keyword: {result.preview.draftContext.matchedKeyword || "kein Keyword erforderlich"}</div>
+              <div>Starttext: {result.preview.draftContext.openingText || "nicht hinterlegt"}</div>
+              <div>Follow-up: {result.preview.draftContext.followUpDraftConfigured
+                ? "nur als Entwurf" : "nicht vorgesehen"}</div>
+            </div>
+          )}
           <div><strong>Versand:</strong> gesperrt (Prüfmodus)</div>
         </div>
       )}
