@@ -177,7 +177,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
         sources: ["instagram_dm", "instagram_reel_comment"],
         keywords: ["CHECK"], openingText: "Hier ist dein Elterncheck.",
         followUpEnabled: false, reelTarget: "specific",
-        reelMediaIds: ["17851537767246649"],
+        reelMediaIds: ["17851537767246651"],
         flowDraftEnabled: true, autoReplyEnabled: true,
         linkEnabled: true, linkLabel: "Elterncheck öffnen",
         linkUrl: "https://check.jochen-kammerer.de",
@@ -194,7 +194,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     assert.equal(flow.peteHandoffEnabled, true);
     const preview = evaluateCampaignEntryPreview(getAllCampaigns(), {
       source: "instagram_reel_comment", messageText: "CHECK",
-      mediaId: "17851537767246649",
+      mediaId: "17851537767246651",
     });
     assert.equal(preview.status, "matched");
     assert.equal(preview.sendAllowed, false);
