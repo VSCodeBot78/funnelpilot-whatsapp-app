@@ -202,7 +202,7 @@ test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in previe
     assert.deepEqual(config.reelMediaIds, ["17851537767246649"]);
     assert.equal(config.followUpEnabled, false);
   });
-}
+
   await t.test("HTTP preview endpoint never creates a send intent", async () => {
     const { default: app } = await import("../app.js");
     const server = app.listen(0, "127.0.0.1");
