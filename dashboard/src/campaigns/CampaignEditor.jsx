@@ -49,6 +49,10 @@ export default function CampaignEditor({
     name: campaignForm.name, peteCampaign,
   });
   const [starterTemplateId, setStarterTemplateId] = useState("blank");
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+
+  // A confirmation always belongs to the currently selected campaign.
+  useEffect(() => { setDeleteConfirmationOpen(false); }, [campaignForm?.id]);
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
   const [previewMediaId, setPreviewMediaId] = useState("");
@@ -1249,13 +1253,37 @@ export default function CampaignEditor({
               {campaignSaving ? "Speichert..." : "Kampagne speichern"}
             </button>
 
-            <button
-              type="button"
-              onClick={onDeleteCampaign}
-              style={secondaryButtonStyle(colors)}
-            >
-              Kampagne löschen
-            </button>
+            {!deleteConfirmationOpen ? (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmationOpen(true)}
+                disabled={campaignSaving || campaignLoading || campaigns.length <= 1}
+                style={secondaryButtonStyle(colors)}
+              >
+                Kampagne löschen
+              </button>
+            ) : (
+              <div role="group" aria-label="Kampagne löschen bestätigen"
+                style={{ display: "flex", gap: 8, alignItems: "center",
+                  flexWrap: "wrap", border: `1px solid ${colors.border}`,
+                  padding: 8, maxWidth: "100%" }}>
+                <strong style={{ fontSize: 12 }}>„{campaignForm.name}“ wirklich löschen?</strong>
+                <button type="button"
+                  onClick={async () => {
+                    const deleted = await onDeleteCampaign();
+                    if (deleted) setDeleteConfirmationOpen(false);
+                  }}
+                  disabled={campaignSaving || campaignLoading}
+                  style={secondaryButtonStyle(colors)}>
+                  Ja, endgültig löschen
+                </button>
+                <button type="button"
+                  onClick={() => setDeleteConfirmationOpen(false)}
+                  style={secondaryButtonStyle(colors)}>
+                  Abbrechen
+                </button>
+              </div>
+            )
           </div>
         </div>
       </div>
