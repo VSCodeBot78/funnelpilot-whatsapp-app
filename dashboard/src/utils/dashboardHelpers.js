@@ -191,7 +191,27 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG = {
   followUpEnabled: false,
   reelTarget: "all",
   reelMediaIds: [],
+  flowDraftEnabled: false,
+  autoReplyEnabled: false,
+  linkEnabled: false,
+  linkLabel: "",
+  linkUrl: "",
+  peteHandoffEnabled: false,
 };
+
+// Only HTTPS links may be stored as preconfigured draft actions. They
+// never authorize sending, clicking, fetching or opening the URL.
+function normalizePeteDraftLink(raw) {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim().slice(0, 1000);
+  if (trimmed.length > 500 || !/^https:\/\//i.test(trimmed)) return "";
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" && !url.username && !url.password &&
+      url.hostname && !/^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?)$/i.test(url.hostname)
+      ? url.href : "";
+  } catch { return ""; }
+}
 
 export function getNormalizedPeteCampaignConfig(campaign = {}) {
   const raw = campaign?.peteCampaign || {};
@@ -217,6 +237,12 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
           .map((id) => id.trim())
           .filter((id) => /^\d{8,32}$/.test(id)))].slice(0, 40)
       : [],
+    flowDraftEnabled: raw.flowDraftEnabled === true,
+    autoReplyEnabled: raw.autoReplyEnabled === true,
+    linkEnabled: raw.linkEnabled === true,
+    linkLabel: typeof raw.linkLabel === "string" ? raw.linkLabel.trim().slice(0, 120) : "",
+    linkUrl: normalizePeteDraftLink(raw.linkUrl),
+    peteHandoffEnabled: raw.peteHandoffEnabled === true,
   };
 }
 
