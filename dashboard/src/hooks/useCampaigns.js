@@ -10,6 +10,7 @@ import {
   getNormalizedPeteCampaignConfig,
 } from "../utils/dashboardHelpers";
 import { applyCampaignStarterTemplate } from "../campaigns/campaignTemplates.js";
+import { getCampaignDraftChanges } from "../campaigns/campaignDraftChanges.js";
 import {
   loadCampaignSchedulingConfigFromApi,
   saveCampaignSchedulingConfigToApi,
@@ -175,6 +176,13 @@ export function useCampaigns({
     // Discard in-flight booking loads when the owner selects another campaign.
     let cancelled = false;
     const campaign = campaigns.find((c) => c.id === activeCampaignId);
+    // A background refresh or save response must not erase unsaved edits.
+    // An explicit campaign switch has a different ID and loads normally.
+    if (campaignForm?.id === activeCampaignId &&
+        campaignFormBaseline?.id === activeCampaignId &&
+        getCampaignDraftChanges(campaignForm, campaignFormBaseline, settings)) {
+      return () => { cancelled = true; };
+    }
 
     if (campaign) {
       const nextCampaignForm = {
@@ -372,9 +380,12 @@ export function useCampaigns({
           campaign.id === updatedCampaign.id ? updatedCampaign : campaign,
         ),
       );
-      // Do not switch the owner's selection if this request completes late.
+      // Preserve edits made while a save was in flight; the baseline still
+      // advances to what the backend actually confirmed.
       setCampaignForm((prev) =>
-        prev?.id === updatedCampaign.id ? updatedCampaign : prev);
+        prev?.id === updatedCampaign.id &&
+          !getCampaignDraftChanges(prev, campaignForm, settings)
+          ? updatedCampaign : prev);
       setCampaignFormBaseline((prev) =>
         prev?.id === updatedCampaign.id ? updatedCampaign : prev);
 
