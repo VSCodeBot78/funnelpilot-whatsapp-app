@@ -104,3 +104,16 @@ test("Phase 4B: campaign switching keeps stale scheduling data out of the active
   assert.match(hook, /prev\?\.id === campaignToLoad\.id/);
   assert.match(hook, /if \(!cancelled\) setCampaignLoading\(false\)/);
 });
+
+test("Phase 4B: campaign save requires backend confirmation before marking local state saved", () => {
+  const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
+  const save = hook.split("  async function saveCampaign() {")[1]
+    .split("  async function deleteCampaign() {")[0];
+  assert.ok(save.includes("campaignSavedToBackend = true;"));
+  assert.ok(save.indexOf("campaignSavedToBackend = true;") <
+    save.indexOf("setCampaigns((prev) =>"));
+  assert.ok(save.includes("Kampagne nicht im Backend gespeichert."));
+  assert.ok(save.includes("Kampagne gespeichert, aber Buchungslogik nicht bestätigt."));
+  assert.ok(!save.includes("setActiveCampaignId(updatedCampaign.id)"));
+  assert.ok(save.includes("prev?.id === updatedCampaign.id"));
+});
