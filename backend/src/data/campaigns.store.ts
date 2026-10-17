@@ -9,8 +9,8 @@ export type PeteCampaignConfig = {
   keywords: string[];
   openingText: string;
   followUpEnabled: boolean;
-  reelTarget: "all" | "specific";
-  reelMediaIds: string[];
+  reelTarget?: string;
+  reelMediaIds?: string[];
 };
 
 const PETE_CAMPAIGN_SOURCES = [
@@ -23,7 +23,7 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
   reelTarget: "all", reelMediaIds: [],
 };
 
-export function normalizePeteCampaignConfig(input: unknown): PeteCampaignConfig {
+export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampaignConfig> {
   const value = input && typeof input === "object" && !Array.isArray(input)
     ? input as Partial<PeteCampaignConfig> : {};
   const sources = Array.isArray(value.sources) ?
