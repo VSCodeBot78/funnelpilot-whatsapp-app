@@ -169,3 +169,18 @@ test("Phase 4B: webhook preview is race-safe and uses a correct example for each
   assert.ok(lab.includes("Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)"));
   assert.ok(lab.includes('gesperrt (Prüfmodus)'));
 });
+
+test("Phase 4B: editor warns when comparing unsaved Pete settings to the saved preview", () => {
+  const view = fs.readFileSync(new URL("./campaignsView.jsx", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const lab = fs.readFileSync(new URL("./WebhookEventPreview.jsx", import.meta.url), "utf8");
+  assert.ok(view.includes("campaigns={campaigns}"));
+  assert.ok(editor.includes("const hasUnsavedPeteChanges"));
+  assert.ok(editor.includes("JSON.stringify(storedPeteCampaign) !== JSON.stringify(peteCampaign)"));
+  assert.ok(editor.includes("Ungespeicherte Pete-Änderungen"));
+  assert.ok(editor.includes("zuletzt gespeicherten Kampagnendaten"));
+  assert.ok(editor.includes("campaignDraftRevision={campaignDraftRevision}"));
+  assert.ok(lab.includes("campaignDraftRevision"));
+  assert.ok(lab.includes("[apiBaseUrl, campaignDraftRevision]"));
+  assert.ok(lab.includes("invalidatePreview()"));
+});
