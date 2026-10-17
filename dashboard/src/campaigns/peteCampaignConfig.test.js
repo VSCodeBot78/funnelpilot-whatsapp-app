@@ -80,3 +80,15 @@ test("Phase 4B: Reel campaigns support all-vs-selected media IDs without enablin
   assert.ok(editor.includes("Nur ausgewählte Reels"));
   assert.ok(editor.includes("Reel-Media-ID für die Vorschau"));
 });
+
+test("Phase 4B: webhook origin lab only uses a read-only preview API", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const lab = fs.readFileSync(new URL("./WebhookEventPreview.jsx", import.meta.url), "utf8");
+  const api = fs.readFileSync(new URL("../services/campaignsApi.js", import.meta.url), "utf8");
+  assert.ok(editor.includes('title="Webhook-Herkunft prüfen (Labor)"'));
+  assert.ok(lab.includes("Webhook nur simulieren"));
+  assert.ok(lab.includes("previewCampaignWebhookInApi"));
+  assert.match(api, /\/campaigns\/preview-event/);
+  assert.match(api, /data\.event\.sendAllowed !== false/);
+  assert.match(api, /data\.preview\.sendAllowed !== false/);
+});
