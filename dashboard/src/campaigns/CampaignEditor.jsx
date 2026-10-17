@@ -276,7 +276,7 @@ export default function CampaignEditor({
                 Auslöser auswählen (Mehrfachauswahl)
               </div>
               <div style={{
-                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
                 gap: 8, marginBottom: 16,
               }}>
                 {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
@@ -368,7 +368,7 @@ export default function CampaignEditor({
                 Die Vorschau prüft alle gespeicherten Kampagnen und findet
                 Konflikte, bevor eine Automation aktiviert wird.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))", gap: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Einstieg</div>
                   <select
@@ -478,7 +478,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -555,7 +555,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(160px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -621,7 +621,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -723,7 +723,7 @@ export default function CampaignEditor({
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                         gap: 12,
                       }}
                     >
@@ -847,7 +847,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 10,
                 }}
@@ -893,7 +893,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 10,
                 }}
@@ -1049,7 +1049,7 @@ export default function CampaignEditor({
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                     gap: 10,
                   }}
                 >
