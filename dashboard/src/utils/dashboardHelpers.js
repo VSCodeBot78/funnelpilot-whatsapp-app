@@ -215,7 +215,7 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
       ? [...new Set(raw.reelMediaIds
           .filter((id) => typeof id === "string")
           .map((id) => id.trim())
-          .filter((id) => /^\\d{8,32}$/.test(id)))].slice(0, 40)
+          .filter((id) => /^\d{8,32}$/.test(id)))].slice(0, 40)
       : [],
   };
 }
