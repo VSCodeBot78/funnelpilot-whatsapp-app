@@ -89,6 +89,21 @@ export function previewProviderCampaignEntry(
     if (fields.some(field => field !== "messages")) {
       return blocked("unverified_story_or_reel");
     }
+    // The parser deduplicates by message ID. For an owner preview, do not
+    // silently ignore a second raw event (even with the same message ID).
+    const rawMessages = entries.flatMap(entry => {
+      const event = object(entry);
+      const fromMessaging = array(event?.messaging);
+      const fromChanges = array(event?.changes)
+        .filter(change => asText(object(change)?.field) === "messages")
+        .map(change => object(change)?.value)
+        .filter(Boolean);
+      return [...fromMessaging, ...fromChanges]
+        .filter(item => object(object(item)?.message) !== null);
+    });
+    if (rawMessages.length !== 1) {
+      return blocked(rawMessages.length > 1 ? "ambiguous_event" : "unsupported_event");
+    }
     const parsed = parseInstagramMessageEvents(payload);
     if (parsed.length !== 1) {
       return blocked(parsed.length > 1 ? "ambiguous_event" : "unsupported_event");
