@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { previewCampaignEntryInApi } from "../services/campaignsApi";
+import WebhookEventPreview from "./WebhookEventPreview";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -446,6 +447,15 @@ export default function CampaignEditor({
                   </div>
                 </div>
               )}
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              colors={colors}
+              title="Webhook-Herkunft prüfen (Labor)"
+              description="Anonymisiertes Webhook-Beispiel auswerten, ohne eine Nachricht zu senden."
+              defaultOpen={false}
+            >
+              <WebhookEventPreview colors={colors} apiBaseUrl={settings.apiBaseUrl} />
             </CollapsibleSection>
 
             <CollapsibleSection
