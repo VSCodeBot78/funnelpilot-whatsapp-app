@@ -139,15 +139,45 @@ export async function deleteCampaignInApi(campaignId, apiBaseUrl) {
 }
 
 // Read-only campaign preview. Does not start a bot or send any message.
-export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageText }) {
+export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageText, mediaId }) {
   const response = await fetch(buildApiUrl("/campaigns/preview-entry", apiBaseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source, messageText }),
+    body: JSON.stringify({ source, messageText, mediaId }),
   });
   const data = await response.json();
-  if (!response.ok || !data?.ok || !data?.preview || data.preview.sendAllowed !== false) {
+  if (!response.ok || !data?.ok || !data?.preview ||
+      data.preview.mode !== "preview_only" || data.preview.sendAllowed !== false ||
+      (data.preview.status === "matched" &&
+        (data.preview.draftContext?.version !== 1 ||
+         data.preview.draftContext?.mode !== "preview_only" ||
+         data.preview.draftContext?.sendAllowed !== false ||
+         data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId)) ||
+      (data.preview.status !== "matched" && data.preview.draftContext != null)) {
     throw new Error(data?.error || "campaign_preview_failed");
   }
   return data.preview;
+}
+
+// The event classifier only checks anonymized payload examples. Never send.
+export async function previewCampaignWebhookInApi({ apiBaseUrl, channel, payload }) {
+  const response = await fetch(buildApiUrl("/campaigns/preview-event", apiBaseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channel, payload }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data?.ok || !data?.event ||
+      data.event.mode !== "preview_only" || data.event.sendAllowed !== false ||
+      (data.preview && (data.preview.mode !== "preview_only" ||
+        data.preview.sendAllowed !== false ||
+        (data.preview.status === "matched" &&
+          (data.preview.draftContext?.version !== 1 ||
+           data.preview.draftContext?.mode !== "preview_only" ||
+           data.preview.draftContext?.sendAllowed !== false ||
+           data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId)) ||
+        (data.preview.status !== "matched" && data.preview.draftContext != null)))) {
+    throw new Error(data?.error || "campaign_event_preview_failed");
+  }
+  return data;
 }

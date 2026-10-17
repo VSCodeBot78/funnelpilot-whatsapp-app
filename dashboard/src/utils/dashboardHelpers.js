@@ -189,6 +189,8 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG = {
   keywords: [],
   openingText: "",
   followUpEnabled: false,
+  reelTarget: "all",
+  reelMediaIds: [],
 };
 
 export function getNormalizedPeteCampaignConfig(campaign = {}) {
@@ -208,6 +210,13 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
     keywords,
     openingText: typeof raw.openingText === "string" ? raw.openingText.slice(0, 1000) : "",
     followUpEnabled: raw.followUpEnabled === true,
+    reelTarget: raw.reelTarget === "specific" ? "specific" : "all",
+    reelMediaIds: Array.isArray(raw.reelMediaIds)
+      ? [...new Set(raw.reelMediaIds
+          .filter((id) => typeof id === "string")
+          .map((id) => id.trim())
+          .filter((id) => /^\d{8,32}$/.test(id)))].slice(0, 40)
+      : [],
   };
 }
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
+import { classifyCampaignWebhookExample } from "../services/pete-campaign-event-classifier.service.js";
 import {
   deleteCampaign,
   getAllCampaigns,
@@ -44,6 +45,7 @@ router.post("/preview-entry", (req, res) => {
     const result = evaluateCampaignEntryPreview(getAllCampaigns(), {
       source: input.source,
       messageText: input.messageText,
+      mediaId: input.mediaId,
     });
     if (result.status === "invalid_source" || result.status === "invalid_message") {
       return res.status(400).json({ ok: false, preview: result });
@@ -52,6 +54,30 @@ router.post("/preview-entry", (req, res) => {
   } catch (error) {
     console.error("campaign entry preview error:", error);
     return res.status(500).json({ ok: false, error: "campaign_preview_failed" });
+  }
+});
+
+// A human submits a synthetic/redacted provider event to the control plane.
+// It does NOT feed real webhooks, reply to comments or queue any outbound job.
+router.post("/preview-event", (req, res) => {
+  try {
+    const input = req.body && typeof req.body === "object" ? req.body : {};
+    const channel = input.channel;
+    if (channel !== "instagram" && channel !== "whatsapp") {
+      return res.status(400).json({ ok: false, error: "invalid_preview_channel" });
+    }
+    const event = classifyCampaignWebhookExample(channel, input.payload);
+    const preview = event.status === "recognized" && event.source
+      ? evaluateCampaignEntryPreview(getAllCampaigns(), {
+          source: event.source,
+          messageText: event.messageText,
+          mediaId: event.mediaId,
+        })
+      : null;
+    return res.json({ ok: true, event, preview });
+  } catch (error) {
+    console.error("campaign webhook preview error:", error);
+    return res.status(500).json({ ok: false, error: "campaign_event_preview_failed" });
   }
 });
 

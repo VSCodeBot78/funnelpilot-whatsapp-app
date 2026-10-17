@@ -124,6 +124,66 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     assert.equal(result.sendAllowed, false);
   });
 
+  await t.test("Pete receives a versioned read-only snapshot of exactly the saved campaign", () => {
+    saveCampaign({
+      id: "coach-campaign-check",
+      name: "Coach-spezifischer Check",
+      peteCampaign: {
+        sources: ["instagram_reel_comment"],
+        keywords: ["CHECK"],
+        openingText: "Willkommen beim gespeicherten Check.",
+        followUpEnabled: true,
+        reelTarget: "specific",
+        reelMediaIds: ["17851537767246649"],
+      },
+    });
+    const result = evaluateCampaignEntryPreview(getAllCampaigns(), {
+      source: "instagram_reel_comment", messageText: "CHECK",
+      mediaId: "17851537767246649",
+    });
+    assert.equal(result.status, "matched");
+    assert.equal(result.sendAllowed, false);
+    assert.deepEqual(result.draftContext, {
+      version: 1, mode: "preview_only", sendAllowed: false,
+      campaignId: "coach-campaign-check",
+      campaignName: "Coach-spezifischer Check",
+      source: "instagram_reel_comment",
+      matchedKeyword: "CHECK",
+      openingText: "Willkommen beim gespeicherten Check.",
+      followUpDraftConfigured: true,
+      reelTarget: "specific",
+      reelMediaIds: ["17851537767246649"],
+    });
+    // The context shows stored configuration; it cannot send messages.
+    assert.equal(result.draftContext?.sendAllowed, false);
+    assert.equal(result.followUpDraftConfigured, true);
+  });
+
+  await t.test("unmatched, ambiguous and manual follower entries never expose a Pete context", () => {
+    const noMatch = evaluateCampaignEntryPreview(campaigns, {
+      source: "instagram_dm", messageText: "INVALID-KEYWORD",
+    });
+    // A generic campaign can legitimately match unmatched keywords.
+    assert.equal(noMatch.status, "matched");
+    assert.equal(noMatch.draftContext?.campaignId, "generic");
+    const noSource = evaluateCampaignEntryPreview(campaigns, {
+      source: "whatsapp_ctwa", messageText: "CHECK",
+    });
+    assert.equal(noSource.status, "no_match");
+    assert.equal(noSource.draftContext, null);
+    const ambiguous = evaluateCampaignEntryPreview([
+      { id: "a", peteCampaign: { sources: ["instagram_dm"], keywords: ["CHECK"], openingText: "A", followUpEnabled: false } },
+      { id: "b", peteCampaign: { sources: ["instagram_dm"], keywords: ["CHECK"], openingText: "B", followUpEnabled: false } },
+    ], { source: "instagram_dm", messageText: "CHECK" });
+    assert.equal(ambiguous.status, "ambiguous");
+    assert.equal(ambiguous.draftContext, null);
+    const follower = evaluateCampaignEntryPreview(campaigns, {
+      source: "instagram_new_follower", messageText: "CHECK",
+    });
+    assert.equal(follower.status, "manual_only");
+    assert.equal(follower.draftContext, null);
+  });
+
   await t.test("Pete draft blocks the old ghosting sender even when a template toggle is true", async () => {
     const { getOrCreateConversationState, persistConversationState } =
       await import("../core/state-manager.js");

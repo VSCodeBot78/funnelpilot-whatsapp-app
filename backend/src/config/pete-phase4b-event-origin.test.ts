@@ -1,0 +1,309 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "pete-phase4b-events-"));
+process.env.NODE_ENV = "test";
+process.env.DATA_DIR = temp;
+process.env.INSTAGRAM_SEND_ENABLED = "false";
+process.env.WHATSAPP_SEND_ENABLED = "false";
+process.env.PETE_LLM_API_CALLS_APPROVED = "false";
+delete process.env.OPENAI_API_KEY;
+
+
+// Only pure functions and synthetic inputs. No provider API, HTTP send or model.
+const { classifyCampaignWebhookExample } =
+  await import("../services/pete-campaign-event-classifier.service.js");
+const { evaluateCampaignEntryPreview } =
+  await import("../services/pete-campaign-entry-preview.service.js");
+const { normalizePeteCampaignConfig, saveCampaign } =
+  await import("../data/campaigns.store.js");
+
+const story = {
+  object: "instagram",
+  entry: [{ messaging: [{
+    sender: { id: "test-parent" },
+    recipient: { id: "test-business" },
+    message: {
+      mid: "story-1", text: "KETO",
+      reply_to: { story: { id: "17893310459840806" } },
+    },
+  }] }],
+};
+
+const reel = (mediaId: string, kind = "REELS") => ({
+  object: "instagram",
+  entry: [{ changes: [{
+    field: "comments",
+    value: {
+      id: "comment-1", text: "CHECK",
+      from: { id: "test-commenter" },
+      media: { id: mediaId, media_product_type: kind },
+    },
+  }] }],
+});
+
+const wa = (referral: Record<string, unknown> | null) => ({
+  object: "whatsapp_business_account",
+  entry: [{ changes: [{
+    field: "messages", value: {
+      messages: [{
+        id: "wamid.test", from: "test-contact", type: "text",
+        text: { body: "CHECK" },
+        ...(referral ? { referral } : {}),
+      }],
+    },
+  }] }],
+});
+
+const rule = { id: "reels-specific", peteCampaign: {
+  sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+  reelTarget: "specific", reelMediaIds: ["17851537767246649"],
+  openingText: "Danke für den Kommentar.", followUpEnabled: false,
+} };
+
+test("Phase 4B: Instagram/WhatsApp webhook origins are classified only in preview mode", async t => {
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  await t.test("known Reel comment includes verified media ID", () => {
+    const event = classifyCampaignWebhookExample("instagram", reel("17851537767246649"));
+    assert.equal(event.status, "recognized");
+    assert.equal(event.source, "instagram_reel_comment");
+    assert.equal(event.mediaId, "17851537767246649");
+    assert.equal(event.sendAllowed, false);
+    const preview = evaluateCampaignEntryPreview([rule], {
+      source: event.source, messageText: event.messageText, mediaId: event.mediaId,
+    });
+    assert.equal(preview.matchedCampaignId, "reels-specific");
+    assert.equal(preview.sendAllowed, false);
+  });
+
+  await t.test("invalid Reel media ID never qualifies even for all-Reel draft", () => {
+    const preview = evaluateCampaignEntryPreview([{
+      id: "all", peteCampaign: {
+        sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+        reelTarget: "all", reelMediaIds: [],
+        openingText: "", followUpEnabled: false,
+      },
+    }], {
+      source: "instagram_reel_comment", messageText: "CHECK", mediaId: "unverified",
+    });
+    assert.equal(preview.status, "manual_review");
+    assert.equal(preview.matchedCampaignId, null);
+    assert.equal(preview.sendAllowed, false);
+  });
+
+  await t.test("only a selected Reel media ID is eligible", () => {
+    const unknown = classifyCampaignWebhookExample("instagram", reel("17851537767246650"));
+    assert.equal(unknown.status, "recognized");
+    const preview = evaluateCampaignEntryPreview([rule], {
+      source: unknown.source, messageText: unknown.messageText, mediaId: unknown.mediaId,
+    });
+    assert.equal(preview.status, "no_match");
+    const withoutMedia = evaluateCampaignEntryPreview([rule], {
+      source: "instagram_reel_comment", messageText: "CHECK",
+    });
+    assert.equal(withoutMedia.sendAllowed, false);
+    assert.equal(withoutMedia.matchedCampaignId, null);
+  });
+
+  await t.test("all Reels permits verified IDs, but never enables sending", () => {
+    const all = { id: "all-reels", peteCampaign: {
+      sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+      reelTarget: "all", reelMediaIds: [],
+      openingText: "", followUpEnabled: true,
+    } };
+    const matched = evaluateCampaignEntryPreview([all], {
+      source: "instagram_reel_comment", messageText: "CHECK", mediaId: "17851537767246651",
+    });
+    assert.equal(matched.matchedCampaignId, "all-reels");
+    assert.equal(matched.followUpDraftConfigured, true);
+    assert.equal(matched.sendAllowed, false);
+  });
+
+  await t.test("non-Reel and missing author metadata fail closed", () => {
+    for (const payload of [
+      reel("17851537767246649", "FEED"),
+      { object: "instagram", entry: [{ changes: [{ field: "comments",
+        value: { id: "comment-1", media: { id: "17851537767246649",
+          media_product_type: "REELS" }, text: "CHECK" } }] }] },
+    ]) {
+      const event = classifyCampaignWebhookExample("instagram", payload);
+      assert.equal(event.status, "manual_review");
+      assert.equal(event.sendAllowed, false);
+      assert.equal(event.source, null);
+    }
+  });
+
+  await t.test("Story reply is not treated like an ordinary DM", () => {
+    const event = classifyCampaignWebhookExample("instagram", story);
+    assert.equal(event.status, "recognized");
+    assert.equal(event.source, "instagram_story_reply");
+    assert.equal(event.mediaId, "17893310459840806");
+    assert.equal(event.sendAllowed, false);
+  });
+
+  await t.test("unverified reply context and media-only shares need a human", () => {
+    const cases = [
+      { object: "instagram", entry: [{ messaging: [{
+        sender: { id: "x" }, message: { mid: "x", text: "CHECK", reply_to: {} },
+      }] }] },
+      { object: "instagram", entry: [{ messaging: [{
+        sender: { id: "x" }, message: { mid: "x", attachments: [{ type: "image" }] },
+      }] }] },
+      { object: "instagram", entry: [{ messaging: [{
+        sender: { id: "x" }, message: { mid: "x", text: "CHECK", is_echo: true },
+      }] }] },
+    ];
+    for (const payload of cases) {
+      const event = classifyCampaignWebhookExample("instagram", payload);
+      assert.equal(event.status, "manual_review");
+      assert.equal(event.sendAllowed, false);
+    }
+  });
+
+  await t.test("unknown Instagram changes cannot be ignored beside a valid DM", () => {
+    const event = classifyCampaignWebhookExample("instagram", {
+      object: "instagram",
+      entry: [{
+        messaging: [{
+          sender: { id: "parent" },
+          message: { mid: "dm-with-unknown-change", text: "CHECK" },
+        }],
+        changes: [{ field: "mentions", value: { id: "unexpected" } }],
+      }],
+    });
+    assert.equal(event.status, "manual_review");
+    assert.equal(event.reason, "unsupported_instagram_change");
+    assert.equal(event.sendAllowed, false);
+  });
+
+  await t.test("media attachments require a standalone keyword, never media interpretation", () => {
+    const withMedia = (text: string) => ({
+      object: "instagram",
+      entry: [{ messaging: [{
+        sender: { id: "parent" },
+        message: { mid: "attached-media", text, attachments: [{ type: "share" }] },
+      }] }],
+    });
+    const keyword = classifyCampaignWebhookExample("instagram", withMedia("CHECK"));
+    assert.equal(keyword.status, "recognized");
+    assert.equal(keyword.source, "instagram_dm");
+    assert.equal(keyword.sendAllowed, false);
+    const question = classifyCampaignWebhookExample("instagram", withMedia("CHECK dieses Reel"));
+    assert.equal(question.status, "manual_review");
+    assert.equal(question.source, null);
+    assert.equal(question.sendAllowed, false);
+  });
+
+  await t.test("a WhatsApp webhook with extra change types fails closed", () => {
+    const event = classifyCampaignWebhookExample("whatsapp", {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [
+        { field: "messages", value: { messages: [{
+          id: "wamid.synthetic", from: "parent", type: "text",
+          text: { body: "CHECK" },
+        }] } },
+        { field: "statuses", value: { statuses: [{ id: "status-1" }] } },
+      ] }],
+    });
+    assert.equal(event.status, "manual_review");
+    assert.equal(event.sendAllowed, false);
+  });
+
+  await t.test("plain Instagram text DM is recognized without guessing a Reel", () => {
+    const event = classifyCampaignWebhookExample("instagram", {
+      object: "instagram", entry: [{ messaging: [{
+        sender: { id: "parent" }, message: { mid: "dm-1", text: "Hallo" },
+      }] }],
+    });
+    assert.equal(event.source, "instagram_dm");
+    assert.equal(event.sendAllowed, false);
+  });
+
+  await t.test("WhatsApp CTWA requires explicit referral evidence", () => {
+    assert.equal(classifyCampaignWebhookExample("whatsapp", wa({ ctwa_clid: "abc" })).source, "whatsapp_ctwa");
+    assert.equal(classifyCampaignWebhookExample("whatsapp", wa({ source_type: "ad" })).source, "whatsapp_ctwa");
+    assert.equal(classifyCampaignWebhookExample("whatsapp", wa(null)).source, "whatsapp_dm");
+    const ambiguous = classifyCampaignWebhookExample("whatsapp", wa({ source_type: "post" }));
+    assert.equal(ambiguous.status, "manual_review");
+    assert.equal(ambiguous.sendAllowed, false);
+  });
+
+  await t.test("combined messages and comments are not picked opportunistically", () => {
+    const payload = reel("17851537767246649");
+    payload.entry[0].changes.push({ field: "messages", value: {
+      sender: { id: "user" }, message: { mid: "other", text: "CHECK" },
+    } } as never);
+    const event = classifyCampaignWebhookExample("instagram", payload);
+    assert.equal(event.status, "manual_review");
+  });
+
+  await t.test("normalization enforces exact numeric Reel IDs", () => {
+    const config = normalizePeteCampaignConfig({
+      sources: ["instagram_reel_comment"], keywords: ["check"],
+      reelTarget: "specific",
+      reelMediaIds: ["17851537767246649", "17851537767246649", "not-a-media-id", " "],
+      followUpEnabled: "true",
+    });
+    assert.equal(config.reelTarget, "specific");
+    assert.deepEqual(config.reelMediaIds, ["17851537767246649"]);
+    assert.equal(config.followUpEnabled, false);
+  });
+
+  await t.test("HTTP preview endpoint never creates a send intent", async () => {
+    saveCampaign({
+      id: "http-preview-reel-synthetic",
+      name: "Synthetische Coach-Kampagne",
+      peteCampaign: {
+        sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+        openingText: "Nur ein Test-Starttext.", followUpEnabled: false,
+        reelTarget: "specific", reelMediaIds: ["17851537767246649"],
+      },
+    });
+    const { default: app } = await import("../app.js");
+    const server = app.listen(0, "127.0.0.1");
+    await new Promise<void>(resolve => server.once("listening", resolve));
+    try {
+      const addr = server.address();
+      assert.ok(addr && typeof addr !== "string");
+      const base = `http://127.0.0.1:${addr.port}`;
+      const response = await fetch(base + "/campaigns/preview-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "instagram", payload: reel("17851537767246649") }),
+      });
+      assert.equal(response.status, 200);
+      const body = await response.json() as Record<string, any>;
+      assert.equal(body.ok, true);
+      assert.equal(body.event.source, "instagram_reel_comment");
+      assert.equal(body.event.sendAllowed, false);
+      assert.equal(body.preview?.sendAllowed, false);
+      assert.equal(body.preview?.status, "matched");
+      assert.equal(body.preview?.draftContext?.version, 1);
+      assert.equal(body.preview?.draftContext?.campaignId, "http-preview-reel-synthetic");
+      assert.equal(body.preview?.draftContext?.campaignName, "Synthetische Coach-Kampagne");
+      assert.equal(body.preview?.draftContext?.openingText, "Nur ein Test-Starttext.");
+      assert.equal(body.preview?.draftContext?.sendAllowed, false);
+      const direct = await fetch(base + "/campaigns/preview-entry", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "instagram_reel_comment", messageText: "CHECK",
+          mediaId: "17851537767246649",
+        }),
+      });
+      assert.equal(direct.status, 200);
+      const directBody = await direct.json() as Record<string, any>;
+      assert.deepEqual(directBody.preview?.draftContext, body.preview?.draftContext);
+      const invalid = await fetch(base + "/campaigns/preview-event", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "unknown", payload: {} }),
+      });
+      assert.equal(invalid.status, 400);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => error ? reject(error) : resolve()));
+    }
+  });
+});

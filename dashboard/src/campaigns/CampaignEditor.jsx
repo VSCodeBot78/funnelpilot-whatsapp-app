@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { previewCampaignEntryInApi } from "../services/campaignsApi";
+import WebhookEventPreview from "./WebhookEventPreview";
 import {
   inputStyle,
   primaryButtonStyle,
@@ -19,6 +20,7 @@ import {
 export default function CampaignEditor({
   colors,
   settings,
+  campaigns = [],
   campaignForm,
   campaignMessage,
   campaignSaving,
@@ -33,13 +35,37 @@ export default function CampaignEditor({
   const offerContext = getNormalizedOfferContext(campaignForm);
   const entryConfig = getNormalizedEntryConfig(campaignForm);
   const peteCampaign = getNormalizedPeteCampaignConfig(campaignForm);
+  const savedCampaign = campaigns.find((saved) => saved.id === campaignForm.id);
+  const storedPeteCampaign = savedCampaign
+    ? getNormalizedPeteCampaignConfig(savedCampaign) : null;
+  const hasUnsavedPeteChanges = Boolean(savedCampaign) &&
+    (savedCampaign.name !== campaignForm.name ||
+      JSON.stringify(storedPeteCampaign) !== JSON.stringify(peteCampaign));
+  const campaignDraftRevision = JSON.stringify({
+    name: campaignForm.name, peteCampaign,
+  });
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
+  const [previewMediaId, setPreviewMediaId] = useState("");
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
+  const previewRequestId = useRef(0);
+
+  function invalidatePreview() {
+    previewRequestId.current += 1;
+    setPreviewResponse(null);
+    setPreviewError("");
+    setPreviewLoading(false);
+  }
+
+  // Do not show a previous campaign's snapshot after the owner edits or switches.
+  useEffect(() => {
+    invalidatePreview();
+  }, [campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign, settings.apiBaseUrl]);
 
   async function checkCampaignEntry() {
+    const requestId = ++previewRequestId.current;
     setPreviewLoading(true);
     setPreviewResponse(null);
     setPreviewError("");
@@ -48,12 +74,15 @@ export default function CampaignEditor({
         apiBaseUrl: settings.apiBaseUrl,
         source: previewSource,
         messageText: previewMessage,
+        mediaId: previewMediaId,
       });
-      setPreviewResponse(result);
+      if (requestId === previewRequestId.current) setPreviewResponse(result);
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : "Vorschau nicht erreichbar");
+      if (requestId === previewRequestId.current) {
+        setPreviewError(error instanceof Error ? error.message : "Vorschau nicht erreichbar");
+      }
     } finally {
-      setPreviewLoading(false);
+      if (requestId === previewRequestId.current) setPreviewLoading(false);
     }
   }
   const useGlobalBookingDefaults = campaignForm.useGlobalBookingDefaults === true;
@@ -106,6 +135,22 @@ export default function CampaignEditor({
           keywords: getNormalizedPeteCampaignConfig({ peteCampaign: { keywords: parsed } }).keywords,
           // UI-only draft preserves commas/newlines while typing. Save normalizes it.
           _keywordDraft: raw,
+        },
+      };
+    });
+  }
+
+  function updateReelIds(raw) {
+    onCampaignFormChange((prev) => {
+      const reelMediaIds = raw.split(/[,;\n]/).map((id) => id.trim());
+      return {
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          reelMediaIds: getNormalizedPeteCampaignConfig({
+            peteCampaign: { reelMediaIds },
+          }).reelMediaIds,
+          _reelMediaDraft: raw,
         },
       };
     });
@@ -257,7 +302,7 @@ export default function CampaignEditor({
                 Auslöser auswählen (Mehrfachauswahl)
               </div>
               <div style={{
-                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
                 gap: 8, marginBottom: 16,
               }}>
                 {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
@@ -276,6 +321,38 @@ export default function CampaignEditor({
                   </label>
                 ))}
               </div>
+
+              {peteCampaign.sources.includes("instagram_reel_comment") && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                    Welche Reels sollen berücksichtigt werden?
+                  </div>
+                  <select
+                    style={inputStyle(colors)}
+                    value={peteCampaign.reelTarget}
+                    onChange={(e) => updatePeteCampaignField("reelTarget", e.target.value)}
+                  >
+                    <option value="all">Alle Reels</option>
+                    <option value="specific">Nur ausgewählte Reels</option>
+                  </select>
+                  {peteCampaign.reelTarget === "specific" && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                        Reel-Media-IDs
+                      </div>
+                      <textarea
+                        style={{ ...inputStyle(colors), minHeight: 58, resize: "vertical" }}
+                        value={campaignForm.peteCampaign?._reelMediaDraft ?? peteCampaign.reelMediaIds.join(", ")}
+                        onChange={(e) => updateReelIds(e.target.value)}
+                        placeholder="17851537767246649, ..."
+                      />
+                      <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
+                        Nur bestätigte numerische Media-IDs. Ohne Treffer wird keine Kampagne ausgewählt.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Keywords (z. B. CHECK, KETO, BULLSHIT)
@@ -317,13 +394,19 @@ export default function CampaignEditor({
                 Die Vorschau prüft alle gespeicherten Kampagnen und findet
                 Konflikte, bevor eine Automation aktiviert wird.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+              {hasUnsavedPeteChanges && (
+                <p style={{ color: colors.warning, fontSize: 12, lineHeight: 1.5 }}>
+                  Ungespeicherte Pete-Änderungen: Die Vorschau zeigt die
+                  zuletzt gespeicherten Kampagnendaten. Bitte erst speichern.
+                </p>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))", gap: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Einstieg</div>
                   <select
                     style={inputStyle(colors)}
                     value={previewSource}
-                    onChange={(e) => { setPreviewSource(e.target.value); setPreviewResponse(null); }}
+                    onChange={(e) => { invalidatePreview(); setPreviewSource(e.target.value); }}
                   >
                     {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
                       <option key={id} value={id}>{label}</option>
@@ -335,12 +418,25 @@ export default function CampaignEditor({
                   <input
                     style={inputStyle(colors)}
                     value={previewMessage}
-                    onChange={(e) => { setPreviewMessage(e.target.value); setPreviewResponse(null); }}
+                    onChange={(e) => { invalidatePreview(); setPreviewMessage(e.target.value); }}
                     maxLength={2000}
                     placeholder="CHECK"
                   />
                 </div>
               </div>
+              {previewSource === "instagram_reel_comment" && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                    Reel-Media-ID für die Vorschau
+                  </div>
+                  <input
+                    style={inputStyle(colors)}
+                    value={previewMediaId}
+                    onChange={(e) => { invalidatePreview(); setPreviewMediaId(e.target.value); }}
+                    placeholder="17851537767246649"
+                  />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={checkCampaignEntry}
@@ -364,6 +460,7 @@ export default function CampaignEditor({
                       no_match: "Keine passende Kampagne",
                       ambiguous: "Mehrere Kampagnen: keine eindeutige Zuordnung",
                       manual_only: "Follower-Begrüßung nur manuell",
+                      manual_review: "Herkunft unklar. Bitte manuell prüfen.",
                     })[previewResponse.status] || "Kein Ergebnis"}
                   </strong>
                   {previewResponse.matchedCampaignId && (
@@ -372,9 +469,25 @@ export default function CampaignEditor({
                   {previewResponse.candidateIds?.length > 1 && (
                     <div style={{ marginTop: 6 }}>Konflikt: {previewResponse.candidateIds.join(", ")}</div>
                   )}
-                  {previewResponse.openingTextPreview && (
-                    <div style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>
-                      Vorgesehener Starttext: {previewResponse.openingTextPreview}
+                  {previewResponse.draftContext && (
+                    <div style={{ marginTop: 10, lineHeight: 1.6 }}>
+                      <strong>Pete-Kontext aus der gespeicherten Kampagne (nur Vorschau)</strong>
+                      <div>Name: {previewResponse.draftContext.campaignName || previewResponse.draftContext.campaignId}</div>
+                      <div>Einstieg: {previewResponse.draftContext.source}</div>
+                      <div>Keyword: {previewResponse.draftContext.matchedKeyword || "kein Keyword erforderlich"}</div>
+                      <div>
+                        Starttext: {previewResponse.draftContext.openingText || "nicht hinterlegt"}
+                      </div>
+                      <div>
+                        Follow-up: {previewResponse.draftContext.followUpDraftConfigured
+                          ? "als Entwurf konfiguriert" : "nicht vorgesehen"}
+                      </div>
+                      {previewResponse.draftContext.reelTarget && (
+                        <div>
+                          Reel-Auswahl: {previewResponse.draftContext.reelTarget === "specific"
+                            ? "ausgewählte Reels" : "alle Reels"}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div style={{ color: colors.sub, marginTop: 8 }}>
@@ -382,6 +495,20 @@ export default function CampaignEditor({
                   </div>
                 </div>
               )}
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              colors={colors}
+              title="Webhook-Herkunft prüfen (Labor)"
+              description="Anonymisiertes Webhook-Beispiel auswerten, ohne eine Nachricht zu senden."
+              defaultOpen={false}
+            >
+              <WebhookEventPreview
+                key={campaignForm.id}
+                colors={colors}
+                apiBaseUrl={settings.apiBaseUrl}
+                campaignDraftRevision={campaignDraftRevision}
+              />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -404,7 +531,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -481,7 +608,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(160px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -547,7 +674,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 12,
                 }}
@@ -649,7 +776,7 @@ export default function CampaignEditor({
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                         gap: 12,
                       }}
                     >
@@ -773,7 +900,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 10,
                 }}
@@ -819,7 +946,7 @@ export default function CampaignEditor({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: 12,
                   marginBottom: 10,
                 }}
@@ -975,7 +1102,7 @@ export default function CampaignEditor({
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                     gap: 10,
                   }}
                 >
