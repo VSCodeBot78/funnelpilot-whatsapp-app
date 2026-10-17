@@ -346,3 +346,16 @@ test("Desktop templates: create is persisted first and the editor guides owner t
   assert.ok(editor.includes("Kampagnen-Einstieg testen"));
   assert.ok(editor.includes("Jede Vorlage ist änderbar und startet ohne Live-Automation."));
 });
+
+test("Desktop campaign manager: deletion needs an explicit second action and allows cancel", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("deleteConfirmationOpen"));
+  assert.ok(editor.includes('setDeleteConfirmationOpen(false); }, [campaignForm?.id]'));
+  assert.ok(editor.includes('onClick={() => setDeleteConfirmationOpen(true)}'));
+  assert.ok(editor.includes("Ja, endgültig löschen"));
+  assert.ok(editor.includes("Abbrechen"));
+  assert.ok(editor.includes("const deleted = await onDeleteCampaign();"));
+  assert.ok(editor.includes("if (deleted) setDeleteConfirmationOpen(false)"));
+  assert.ok(editor.includes("campaigns.length <= 1"));
+  assert.ok(!editor.includes("onClick={onDeleteCampaign}"));
+});
