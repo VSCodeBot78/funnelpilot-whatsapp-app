@@ -77,7 +77,7 @@ export function classifyCampaignWebhookExample(
       const mediaId = idFrom(media?.id) || idFrom(comment?.media_id);
       const eventId = idFrom(comment?.id);
       const fromId = idFrom(field(comment?.from, "id"));
-      if (!comment || !eventId || !mediaId || !fromId) {
+      if (!comment || !eventId || !/^\\d{8,32}$/.test(mediaId) || !fromId) {
         return result("manual_review", "comment_identity_or_media_missing");
       }
       if (!["REELS", "REEL"].includes(kind)) {
@@ -107,7 +107,7 @@ export function classifyCampaignWebhookExample(
     }
     if (story) {
       const storyId = idFrom(story.id);
-      if (!storyId) return result("manual_review", "story_id_missing");
+      if (!/^\\d{8,32}$/.test(storyId)) return result("manual_review", "story_id_missing");
       return result("recognized", "verified_story_reply",
         "instagram_story_reply", eventId, text, storyId);
     }
