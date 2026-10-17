@@ -42,13 +42,17 @@ export default function CampaignEditor({
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewRequestId = useRef(0);
 
-  // Do not show a previous campaign's snapshot after the owner edits or switches.
-  useEffect(() => {
+  function invalidatePreview() {
     previewRequestId.current += 1;
     setPreviewResponse(null);
     setPreviewError("");
     setPreviewLoading(false);
-  }, [campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign]);
+  }
+
+  // Do not show a previous campaign's snapshot after the owner edits or switches.
+  useEffect(() => {
+    invalidatePreview();
+  }, [campaignForm?.id, campaignForm?.name, campaignForm?.peteCampaign, settings.apiBaseUrl]);
 
   async function checkCampaignEntry() {
     const requestId = ++previewRequestId.current;
@@ -386,7 +390,7 @@ export default function CampaignEditor({
                   <select
                     style={inputStyle(colors)}
                     value={previewSource}
-                    onChange={(e) => { setPreviewSource(e.target.value); setPreviewResponse(null); }}
+                    onChange={(e) => { invalidatePreview(); setPreviewSource(e.target.value); }}
                   >
                     {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
                       <option key={id} value={id}>{label}</option>
@@ -398,7 +402,7 @@ export default function CampaignEditor({
                   <input
                     style={inputStyle(colors)}
                     value={previewMessage}
-                    onChange={(e) => { setPreviewMessage(e.target.value); setPreviewResponse(null); }}
+                    onChange={(e) => { invalidatePreview(); setPreviewMessage(e.target.value); }}
                     maxLength={2000}
                     placeholder="CHECK"
                   />
@@ -412,7 +416,7 @@ export default function CampaignEditor({
                   <input
                     style={inputStyle(colors)}
                     value={previewMediaId}
-                    onChange={(e) => { setPreviewMediaId(e.target.value); setPreviewResponse(null); }}
+                    onChange={(e) => { invalidatePreview(); setPreviewMediaId(e.target.value); }}
                     placeholder="17851537767246649"
                   />
                 </div>
