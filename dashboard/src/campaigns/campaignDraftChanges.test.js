@@ -34,12 +34,24 @@ test("Desktop draft guard: catches campaign flow, booking, offer and message cha
   }, saved, settings), true);
 });
 
-test("Desktop draft guard: ephemeral typing fields do not create false dirty markers", () => {
+test("Desktop draft guard: incomplete keyword and HTTPS typing is not silently discarded", () => {
   const input = { ...saved, peteCampaign: {
     ...saved.peteCampaign, _keywordDraft: "CHECK, ", _reelMediaDraft: "123",
     _linkUrlDraft: "https://",
   } };
-  assert.equal(getCampaignDraftChanges(input, saved, settings), false);
+  assert.equal(getCampaignDraftChanges(input, saved, settings), true);
+  const unchangedKeyword = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _keywordDraft: "CHECK",
+  } };
+  assert.equal(getCampaignDraftChanges(unchangedKeyword, saved, settings), false);
+  const unfinishedLink = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _linkUrlDraft: "https://",
+  } };
+  assert.equal(getCampaignDraftChanges(unfinishedLink, saved, settings), true);
+  const unfinishedKeyword = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _keywordDraft: "CHECK, INV",
+  } };
+  assert.equal(getCampaignDraftChanges(unfinishedKeyword, saved, settings), true);
   assert.equal(getCampaignDraftChanges({ ...saved, id: "another-id" }, saved, settings), false);
 });
 
