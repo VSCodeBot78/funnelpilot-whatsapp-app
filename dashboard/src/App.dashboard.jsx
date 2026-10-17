@@ -278,14 +278,14 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     return () => clearTimeout(timeout);
   }, [ghostingMessage]);
 
-  function handleCreateNewCampaign() {
-    createNewCampaign();
+  async function handleCreateNewCampaign(templateId = "blank") {
+    await createNewCampaign(templateId);
     setSection("campaigns");
   }
 
-  function handleDeleteCampaign() {
-    const result = deleteCampaign();
-    if (!result?.deletedCampaignId) return;
+  async function handleDeleteCampaign() {
+    const result = await deleteCampaign();
+    if (!result?.deletedCampaignId) return null;
 
     const deleteId = result.deletedCampaignId;
     const fallbackCampaignId = result.fallbackCampaignId;
@@ -302,6 +302,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         ? { ...prev, campaignId: fallbackCampaignId }
         : prev,
     );
+    return result;
   }
 
   function renderPlaceholder(title, text) {
