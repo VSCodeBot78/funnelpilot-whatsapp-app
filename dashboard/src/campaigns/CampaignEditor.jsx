@@ -494,6 +494,23 @@ export default function CampaignEditor({
                         Follow-up: {previewResponse.draftContext.followUpDraftConfigured
                           ? "als Entwurf konfiguriert" : "nicht vorgesehen"}
                       </div>
+                      {previewResponse.draftContext.flowDraft && (
+                        <div style={{ marginTop: 8, padding: 10,
+                          border: `1px solid ${colors.border}` }}>
+                          <strong>Gespeicherter Nachrichtenablauf (nur Entwurf)</strong>
+                          <div>Schalter: {previewResponse.draftContext.flowDraft.enabled
+                            ? "vorbereitet" : "pausiert"}</div>
+                          <div>Feste Antwort: {previewResponse.draftContext.flowDraft.autoReplyEnabled
+                            ? previewResponse.draftContext.flowDraft.text || "Text fehlt"
+                            : "aus"}</div>
+                          <div>Link: {previewResponse.draftContext.flowDraft.linkEnabled
+                            ? previewResponse.draftContext.flowDraft.linkUrl || "HTTPS-Link fehlt"
+                            : "aus"}</div>
+                          <div>Pete-Übergabe: {previewResponse.draftContext.flowDraft.peteHandoffEnabled
+                            ? "vorgesehen" : "aus"}</div>
+                          <div>Versand: gesperrt</div>
+                        </div>
+                      )}
                       {previewResponse.draftContext.reelTarget && (
                         <div>
                           Reel-Auswahl: {previewResponse.draftContext.reelTarget === "specific"
