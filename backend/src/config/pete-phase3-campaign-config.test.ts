@@ -56,5 +56,7 @@ test("Phase 3: normalization prevents unsupported sources and unrequested follow
     flowDraftEnabled: false, autoReplyEnabled: false,
     linkEnabled: false, linkLabel: "", linkUrl: "",
     peteHandoffEnabled: false,
+    commentReplyEnabled: false, commentReplyVariants: [],
+    openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
   });
 });
