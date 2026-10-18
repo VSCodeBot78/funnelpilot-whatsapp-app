@@ -161,6 +161,8 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
         linkLabel: "",
         linkUrl: null,
         peteHandoffEnabled: false,
+        commentReplyEnabled: false, commentReplyVariants: [],
+        openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
         sendAllowed: false,
       },
     });
@@ -207,6 +209,8 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
       linkLabel: "Elterncheck öffnen",
       linkUrl: "https://check.jochen-kammerer.de/",
       peteHandoffEnabled: true,
+      commentReplyEnabled: false, commentReplyVariants: [],
+      openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
       sendAllowed: false,
     });
   });
