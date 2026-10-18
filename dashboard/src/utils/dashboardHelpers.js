@@ -251,7 +251,7 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
     commentReplyEnabled: raw.commentReplyEnabled === true,
     commentReplyVariants: Array.isArray(raw.commentReplyVariants)
       ? raw.commentReplyVariants.filter((v) => typeof v === "string")
-          .map((v) => v.trim().slice(0, 220)).filter(Boolean).slice(0, 3) : [],
+          .map((v) => v.slice(0, 220)).slice(0, 3) : [],
     openingDmButtonEnabled: raw.openingDmButtonEnabled === true,
     openingDmButtonLabel: typeof raw.openingDmButtonLabel === "string"
       ? raw.openingDmButtonLabel.trim().slice(0, 80) : "",
