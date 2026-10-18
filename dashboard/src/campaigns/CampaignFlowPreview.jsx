@@ -7,7 +7,11 @@ export default function CampaignFlowPreview({ colors, config }) {
   const showText = config.autoReplyEnabled === true;
   const showLink = config.linkEnabled === true;
   const showPete = config.peteHandoffEnabled === true;
-  const anyStep = showText || showLink || showPete;
+  const showPublicReply = config.sources?.includes("instagram_reel_comment") &&
+    config.commentReplyEnabled === true;
+  const publicVariants = (config.commentReplyVariants || []).filter((v) => v.trim());
+  const showOpeningButton = showText && config.openingDmButtonEnabled === true;
+  const anyStep = showPublicReply || showText || showLink || showPete;
   return (
     <aside className="fp-flow-chat-preview" aria-label="Nachrichtenablauf als Chat-Vorschau"
       style={{ border: `1px solid ${colors.border}`, background: colors.panel }}>
@@ -24,15 +28,34 @@ export default function CampaignFlowPreview({ colors, config }) {
         {!stepsEnabled && <div className="fp-flow-chat-info">
           Entwurfsschalter ist aus. Die folgenden Schritte sind nicht aktiviert.
         </div>}
+        {showPublicReply && (
+          <div className="fp-flow-chat-public-reply">
+            <small>Öffentliche Antwort unter dem Reel (nur Entwurf)</small>
+            <div>{publicVariants.length
+              ? publicVariants.join(" / ")
+              : "Bitte mindestens eine Antwortvariante ergänzen."}</div>
+          </div>
+        )}
         {showText && (
           <div className="fp-flow-chat-bubble">
-            <small>Feste Antwort als Entwurf</small>
+            <small>Erste DM als Entwurf</small>
             <div>{config.openingText?.trim() || "Antworttext fehlt noch."}</div>
+            {showOpeningButton && (
+              <div className="fp-flow-chat-fake-button">
+                {config.openingDmButtonLabel || "Buttontext fehlt noch."}
+              </div>
+            )}
+          </div>
+        )}
+        {showOpeningButton && showLink && (
+          <div className="fp-flow-chat-info">
+            Nächster Schritt erst nach geplanter Button-Interaktion. Kein echter Klick möglich.
           </div>
         )}
         {showLink && (
           <div className="fp-flow-chat-bubble">
-            <small>Link als Entwurf</small>
+            <small>Separate DM mit Link (nur Entwurf)</small>
+            {config.linkMessageText && <div>{config.linkMessageText}</div>}
             <strong>{config.linkLabel || "Link öffnen"}</strong>
             <div className="fp-flow-chat-url">
               {config.linkUrl || "Gültiger HTTPS-Link fehlt noch."}
