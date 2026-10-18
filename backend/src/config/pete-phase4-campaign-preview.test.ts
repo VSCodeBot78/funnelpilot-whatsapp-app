@@ -215,6 +215,51 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     });
   });
 
+  await t.test("Public comment, DM-button and link-message drafts persist but never execute", () => {
+    saveCampaign({
+      id: "manychat-style-draft",
+      name: "No Bullshit Demoflow",
+      peteCampaign: {
+        sources: ["instagram_reel_comment"],
+        keywords: ["BULLSHIT"],
+        openingText: "Hey, du hast BULLSHIT geschrieben.",
+        reelTarget: "specific",
+        reelMediaIds: ["17851537767246657"],
+        flowDraftEnabled: true,
+        commentReplyEnabled: true,
+        commentReplyVariants: ["Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text", "nicht mehr"],
+        autoReplyEnabled: true,
+        openingDmButtonEnabled: true,
+        openingDmButtonLabel: "Ja, zeig mir das Bundle",
+        linkEnabled: true,
+        linkMessageText: "Perfekt, hier findest du das Bundle.",
+        linkLabel: "No Bullshit Bundle",
+        linkUrl: "https://example.org/bundle",
+        peteHandoffEnabled: false,
+      },
+    });
+    const saved = getAllCampaigns().find(c => c.id === "manychat-style-draft");
+    assert.ok(saved);
+    const config = saved.peteCampaign;
+    assert.equal(config?.commentReplyEnabled, true);
+    assert.deepEqual(config?.commentReplyVariants, [
+      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text",
+    ]);
+    const preview = evaluateCampaignEntryPreview(getAllCampaigns(), {
+      source: "instagram_reel_comment", messageText: "BULLSHIT",
+      mediaId: "17851537767246657",
+    });
+    assert.equal(preview.status, "matched");
+    assert.equal(preview.sendAllowed, false);
+    assert.equal(preview.draftContext?.flowDraft.sendAllowed, false);
+    assert.equal(preview.draftContext?.flowDraft.openingDmButtonEnabled, true);
+    assert.equal(preview.draftContext?.flowDraft.openingDmButtonLabel, "Ja, zeig mir das Bundle");
+    assert.equal(preview.draftContext?.flowDraft.linkMessageText, "Perfekt, hier findest du das Bundle.");
+    assert.deepEqual(preview.draftContext?.flowDraft.commentReplyVariants, [
+      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text",
+    ]);
+  });
+
   await t.test("unsafe links and nonboolean switches are not enabled by coercion", async () => {
     const { normalizePeteCampaignConfig } = await import("../data/campaigns.store.js");
     for (const unsafe of [
