@@ -369,9 +369,10 @@ test("ManyChat screenshot adaptation: comments, DM buttons and link texts are dr
       "Hey, schau in deine DM!",
       "Nachricht ist vorbereitet.",
       "Du bekommst gleich eine Nachricht!",
-      "ignored-fourth",
+      "Vierte Antwort",
     ],
     autoReplyEnabled: true, openingText: "Hey, du hast BULLSHIT geschrieben.",
+    openingDmVariants: ["Hi, du bist hier richtig.", "Danke dir, das Paket wartet."],
     openingDmButtonEnabled: true, openingDmButtonLabel: "Ja, zeig mir das Bundle",
     linkEnabled: true, linkMessageText: "Perfekt. Hier sind die Infos.",
     linkLabel: "No Bullshit Bundle", linkUrl: "https://example.org/bundle",
@@ -379,8 +380,9 @@ test("ManyChat screenshot adaptation: comments, DM buttons and link texts are dr
   assert.equal(normalized.commentReplyEnabled, true);
   assert.deepEqual(normalized.commentReplyVariants, [
     "Hey, schau in deine DM!", "Nachricht ist vorbereitet.",
-    "Du bekommst gleich eine Nachricht!",
+    "Du bekommst gleich eine Nachricht!", "Vierte Antwort",
   ]);
+  assert.deepEqual(normalized.openingDmVariants, ["Hi, du bist hier richtig.", "Danke dir, das Paket wartet."]);
   assert.equal(normalized.openingDmButtonEnabled, true);
   assert.equal(normalized.openingDmButtonLabel, "Ja, zeig mir das Bundle");
   assert.equal(normalized.linkMessageText, "Perfekt. Hier sind die Infos.");
@@ -398,6 +400,7 @@ test("ManyChat screenshot adaptation: comments, DM buttons and link texts are dr
   const legacy = getNormalizedPeteCampaignConfig({});
   assert.equal(legacy.commentReplyEnabled, false);
   assert.deepEqual(legacy.commentReplyVariants, []);
+  assert.deepEqual(legacy.openingDmVariants, []);
   assert.equal(legacy.openingDmButtonEnabled, false);
   assert.equal(legacy.openingDmButtonLabel, "");
   assert.equal(legacy.linkMessageText, "");
@@ -410,4 +413,31 @@ test("ManyChat screenshot adaptation: comments, DM buttons and link texts are dr
   } }));
   assert.ok(missing.some((line) => line.includes("öffentliche Kommentarantwort")));
   assert.ok(missing.some((line) => line.includes("DM-Antwortbutton")));
+});
+
+test("X-Wing: flexible public and opening DM variants preserve legacy primary and keep drafts offline", () => {
+  const full = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+    openingText: "Ursprüngliche erste DM", autoReplyEnabled: true,
+    openingDmVariants: ["Andere DM 2", "Andere DM 3", ...Array(20).fill("Zusatz")],
+    commentReplyEnabled: true,
+    commentReplyVariants: ["Kommentar 1", "Kommentar 2", "Kommentar 3", ...Array(20).fill("Zusatz")],
+  } });
+  assert.equal(full.commentReplyVariants.length, 10);
+  assert.equal(full.openingDmVariants.length, 9);
+  assert.equal(full.openingText, "Ursprüngliche erste DM");
+  const editor = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const preview = fs.readFileSync(new URL("./CampaignFlowPreview.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("Weitere Kommentarvariante hinzufügen"));
+  assert.ok(editor.includes("Weitere DM-Variante hinzufügen"));
+  assert.ok(editor.includes('onChange("openingDmVariants"'));
+  assert.ok(preview.includes("openingAlternatives.map"));
+  assert.doesNotMatch(preview, /href=|onClick=|fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+  const warnings = getFlowDraftWarnings(full);
+  assert.ok(warnings.some(warning => warning.includes("doppelte Texte")));
+  const legacy = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    openingText: "Vorhandener Kampagnentext",
+  } });
+  assert.deepEqual(legacy.openingDmVariants, []);
+  assert.equal(legacy.openingText, "Vorhandener Kampagnentext");
 });

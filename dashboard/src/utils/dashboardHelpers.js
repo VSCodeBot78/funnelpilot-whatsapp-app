@@ -199,6 +199,7 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG = {
   peteHandoffEnabled: false,
   commentReplyEnabled: false,
   commentReplyVariants: [],
+  openingDmVariants: [],
   openingDmButtonEnabled: false,
   openingDmButtonLabel: "",
   linkMessageText: "",
@@ -251,7 +252,10 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
     commentReplyEnabled: raw.commentReplyEnabled === true,
     commentReplyVariants: Array.isArray(raw.commentReplyVariants)
       ? raw.commentReplyVariants.filter((v) => typeof v === "string")
-          .map((v) => v.slice(0, 220)).slice(0, 3) : [],
+          .map((v) => v.slice(0, 220)).slice(0, 10) : [],
+    openingDmVariants: Array.isArray(raw.openingDmVariants)
+      ? raw.openingDmVariants.filter((v) => typeof v === "string")
+          .map((v) => v.slice(0, 1000)).slice(0, 9) : [],
     openingDmButtonEnabled: raw.openingDmButtonEnabled === true,
     openingDmButtonLabel: typeof raw.openingDmButtonLabel === "string"
       ? raw.openingDmButtonLabel.trim().slice(0, 80) : "",

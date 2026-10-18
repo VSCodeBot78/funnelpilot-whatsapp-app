@@ -45,6 +45,7 @@ export type PeteCampaignDraftContext = {
     peteHandoffEnabled: boolean;
     commentReplyEnabled: boolean;
     commentReplyVariants: string[];
+    openingDmVariants: string[];
     openingDmButtonEnabled: boolean;
     openingDmButtonLabel: string;
     linkMessageText: string;
@@ -170,6 +171,7 @@ export function evaluateCampaignEntryPreview(
       peteHandoffEnabled: chosen.config.peteHandoffEnabled,
       commentReplyEnabled: chosen.config.commentReplyEnabled,
       commentReplyVariants: [...chosen.config.commentReplyVariants],
+      openingDmVariants: [...chosen.config.openingDmVariants],
       openingDmButtonEnabled: chosen.config.openingDmButtonEnabled,
       openingDmButtonLabel: chosen.config.openingDmButtonLabel,
       linkMessageText: chosen.config.linkMessageText,

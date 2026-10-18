@@ -22,6 +22,18 @@ export function getFlowDraftWarnings(config) {
       !String(config.openingDmButtonLabel || "").trim()) {
     warnings.push("Beschriftung für den DM-Antwortbutton ergänzen.");
   }
+  const normalizedReply = (value) => typeof value === "string"
+    ? value.trim().toLocaleLowerCase("de-DE").replace(/\\s+/g, " ") : "";
+  const duplicates = (values) => {
+    const texts = values.map(normalizedReply).filter(Boolean);
+    return new Set(texts).size !== texts.length;
+  };
+  if (config.commentReplyEnabled && duplicates(config.commentReplyVariants || [])) {
+    warnings.push("Öffentliche Kommentarantworten enthalten doppelte Texte.");
+  }
+  if (config.autoReplyEnabled && duplicates([config.openingText, ...(config.openingDmVariants || [])])) {
+    warnings.push("Erste DM und Alternativen enthalten doppelte Texte.");
+  }
   if (config.autoReplyEnabled && !String(config.openingText || "").trim()) {
     warnings.push("Text für die feste Antwort ergänzen.");
   }

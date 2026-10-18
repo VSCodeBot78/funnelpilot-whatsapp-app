@@ -19,6 +19,8 @@ export type PeteCampaignConfig = {
   peteHandoffEnabled?: boolean;
   commentReplyEnabled?: boolean;
   commentReplyVariants?: string[];
+  // Additional alternatives to the existing openingText, never send authorization.
+  openingDmVariants?: string[];
   openingDmButtonEnabled?: boolean;
   openingDmButtonLabel?: string;
   linkMessageText?: string;
@@ -34,7 +36,7 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
   reelTarget: "all", reelMediaIds: [],
   flowDraftEnabled: false, autoReplyEnabled: false, linkEnabled: false,
   linkLabel: "", linkUrl: "", peteHandoffEnabled: false,
-  commentReplyEnabled: false, commentReplyVariants: [],
+  commentReplyEnabled: false, commentReplyVariants: [], openingDmVariants: [],
   openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
 };
 
@@ -82,7 +84,10 @@ export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampai
     commentReplyEnabled: value.commentReplyEnabled === true,
     commentReplyVariants: Array.isArray(value.commentReplyVariants)
       ? value.commentReplyVariants.filter((v): v is string => typeof v === "string")
-          .map((v) => v.trim().slice(0, 220)).filter(Boolean).slice(0, 3) : [],
+          .map((v) => v.trim().slice(0, 220)).filter(Boolean).slice(0, 10) : [],
+    openingDmVariants: Array.isArray(value.openingDmVariants)
+      ? value.openingDmVariants.filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim().slice(0, 1000)).filter(Boolean).slice(0, 9) : [],
     openingDmButtonEnabled: value.openingDmButtonEnabled === true,
     openingDmButtonLabel: typeof value.openingDmButtonLabel === "string"
       ? value.openingDmButtonLabel.trim().slice(0, 80) : "",

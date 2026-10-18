@@ -161,7 +161,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
         linkLabel: "",
         linkUrl: null,
         peteHandoffEnabled: false,
-        commentReplyEnabled: false, commentReplyVariants: [],
+        commentReplyEnabled: false, commentReplyVariants: [], openingDmVariants: [],
         openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
         sendAllowed: false,
       },
@@ -209,7 +209,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
       linkLabel: "Elterncheck öffnen",
       linkUrl: "https://check.jochen-kammerer.de/",
       peteHandoffEnabled: true,
-      commentReplyEnabled: false, commentReplyVariants: [],
+      commentReplyEnabled: false, commentReplyVariants: [], openingDmVariants: [],
       openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
       sendAllowed: false,
     });
@@ -228,8 +228,9 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
         reelMediaIds: ["17851537767246657"],
         flowDraftEnabled: true,
         commentReplyEnabled: true,
-        commentReplyVariants: ["Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text", "nicht mehr"],
+        commentReplyVariants: ["Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text", "Vierte Antwort"],
         autoReplyEnabled: true,
+        openingDmVariants: ["Zweite DM", "Dritte DM"],
         openingDmButtonEnabled: true,
         openingDmButtonLabel: "Ja, zeig mir das Bundle",
         linkEnabled: true,
@@ -244,7 +245,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     const config = saved.peteCampaign;
     assert.equal(config?.commentReplyEnabled, true);
     assert.deepEqual(config?.commentReplyVariants, [
-      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text",
+      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text", "Vierte Antwort",
     ]);
     const preview = evaluateCampaignEntryPreview(getAllCampaigns(), {
       source: "instagram_reel_comment", messageText: "BULLSHIT",
@@ -253,11 +254,13 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
     assert.equal(preview.status, "matched");
     assert.equal(preview.sendAllowed, false);
     assert.equal(preview.draftContext?.flowDraft.sendAllowed, false);
+    assert.deepEqual(config?.openingDmVariants, ["Zweite DM", "Dritte DM"]);
+    assert.deepEqual(preview.draftContext?.flowDraft.openingDmVariants, ["Zweite DM", "Dritte DM"]);
     assert.equal(preview.draftContext?.flowDraft.openingDmButtonEnabled, true);
     assert.equal(preview.draftContext?.flowDraft.openingDmButtonLabel, "Ja, zeig mir das Bundle");
     assert.equal(preview.draftContext?.flowDraft.linkMessageText, "Perfekt, hier findest du das Bundle.");
     assert.deepEqual(preview.draftContext?.flowDraft.commentReplyVariants, [
-      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text",
+      "Hey, schau in deine DM!", "Nachricht vorbereitet.", "Dritter Text", "Vierte Antwort",
     ]);
   });
 

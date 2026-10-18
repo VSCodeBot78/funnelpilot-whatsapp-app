@@ -13,6 +13,8 @@ export default function CampaignFlowEditor({
 }) {
   const notConfigured = !config.sources.length || !config.keywords.length;
   const warnings = getFlowDraftWarnings(config);
+  const publicVariants = Array.isArray(config.commentReplyVariants) ? config.commentReplyVariants : [];
+  const dmAlternatives = Array.isArray(config.openingDmVariants) ? config.openingDmVariants : [];
   const checked = (key) => config[key] === true;
   const toggle = (key) => (next) => onChange(key, next);
   const cardStyle = {
@@ -66,28 +68,42 @@ export default function CampaignFlowEditor({
             <div className="fp-flow-step-heading">
               {stepLabel("2", "Öffentlich unter dem Reel antworten")}
               <InfoHint title="Öffentliche Kommentarantwort"
-                text="Bis zu drei kurze Varianten für Antworten direkt unter dem Instagram-Kommentar. VieleChat-ähnliche Entwurfsfunktion. Die Varianten werden gespeichert, aber noch nicht gesendet." />
+                text="Drei Textfelder als Start, bis zu zehn frei editierbare öffentliche Kommentarantworten. Der Entwurf verschickt keine Nachrichten." />
             </div>
             <DraftToggle colors={colors}
               checked={checked("commentReplyEnabled")}
               label="Öffentliche Kommentarantwort vorbereiten"
               hint="Optional. Antwortvarianten werden vor einer DM vorgesehen."
               onChange={toggle("commentReplyEnabled")} />
-            {checked("commentReplyEnabled") && [0, 1, 2].map((i) => (
-              <label className="fp-flow-field" key={i}>
-                <strong>Antwortvariante {i + 1}</strong>
-                <input style={inputStyle(colors)} maxLength={220}
-                  value={config.commentReplyVariants?.[i] || ""}
-                  onChange={(e) => {
-                    const next = Array.isArray(config.commentReplyVariants)
-                      ? [...config.commentReplyVariants] : [];
-                    next[i] = e.target.value;
-                    onChange("commentReplyVariants", next);
-                  }}
-                  placeholder={i === 0
-                    ? "Hey, danke! Ich habe dir eine DM vorbereitet." : "Weitere Variante (optional)"} />
-              </label>
-            ))}
+            {checked("commentReplyEnabled") && <>
+              <small style={{ color: colors.sub }}>Alternative Formulierungen. Pro Kommentar später nur eine Antwort, nicht alle auf einmal.</small>
+              {Array.from({ length: Math.max(3, publicVariants.length) }, (_, i) => (
+                <div className="fp-flow-field" key={i}>
+                  <label htmlFor={`fp-public-variant-${i}`}><strong>Antwortvariante ${i + 1}</strong></label>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <input id={`fp-public-variant-${i}`} maxLength={220}
+                      style={{ ...inputStyle(colors), flex: "1 1 230px", minWidth: 0 }}
+                      value={publicVariants[i] || ""}
+                      onChange={(event) => {
+                        const next = Array.from({ length: Math.max(3, publicVariants.length) },
+                          (_, j) => publicVariants[j] || "");
+                        next[i] = event.target.value;
+                        onChange("commentReplyVariants", next);
+                      }}
+                      placeholder={i === 0 ? "Danke dir! Schau mal in deine DMs." : "Weitere Formulierung (optional)"} />
+                    {i >= 3 && <button type="button"
+                      onClick={() => onChange("commentReplyVariants",
+                        publicVariants.filter((_, j) => j !== i))}>Entfernen</button>}
+                  </div>
+                </div>
+              ))}
+              {Math.max(3, publicVariants.length) < 10 && (
+                <button type="button" onClick={() => onChange("commentReplyVariants", [
+                  ...Array.from({ length: Math.max(3, publicVariants.length) },
+                    (_, j) => publicVariants[j] || ""), "",
+                ])}>Weitere Kommentarvariante hinzufügen</button>
+              )}
+            </>}
           </div>
         </>
       )}
@@ -107,6 +123,40 @@ export default function CampaignFlowEditor({
             placeholder="Hey, danke für deinen Kommentar. Hier ist der versprochene Check."
             maxLength={1000} />
         </label>
+        {checked("autoReplyEnabled") && <>
+          <div className="fp-flow-step-heading">
+            <strong>Alternative erste DMs</strong>
+            <InfoHint title="DM-Textvarianten"
+              text="Der Text darüber bleibt die erste Variante. Zwei alternative Eingaben stehen bereit. Weitere bis zu insgesamt zehn Varianten sind möglich. Eine spätere Auswahl darf nur eine DM senden; noch ist alles ein Entwurf." />
+          </div>
+          <small style={{ color: colors.sub }}>Verschiedene Formulierungen für unterschiedliche Kontakte. Keine zusätzlichen DMs pro Kontakt.</small>
+          {Array.from({ length: Math.max(2, dmAlternatives.length) }, (_, i) => (
+            <div className="fp-flow-field" key={i}>
+              <label htmlFor={`fp-dm-alternative-${i}`}><strong>Alternative DM ${i + 2}</strong></label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <textarea id={`fp-dm-alternative-${i}`} maxLength={1000}
+                  style={{ ...inputStyle(colors), minWidth: 0, flex: "1 1 230px", minHeight: 65, resize: "vertical" }}
+                  value={dmAlternatives[i] || ""}
+                  onChange={(event) => {
+                    const next = Array.from({ length: Math.max(2, dmAlternatives.length) },
+                      (_, j) => dmAlternatives[j] || "");
+                    next[i] = event.target.value;
+                    onChange("openingDmVariants", next);
+                  }}
+                  placeholder="Andere persönliche Begrüßung (optional)" />
+                {i >= 2 && <button type="button"
+                  onClick={() => onChange("openingDmVariants",
+                    dmAlternatives.filter((_, j) => j !== i))}>Entfernen</button>}
+              </div>
+            </div>
+          ))}
+          {Math.max(2, dmAlternatives.length) < 9 && (
+            <button type="button" onClick={() => onChange("openingDmVariants", [
+              ...Array.from({ length: Math.max(2, dmAlternatives.length) },
+                (_, j) => dmAlternatives[j] || ""), "",
+            ])}>Weitere DM-Variante hinzufügen</button>
+          )}
+        </>}
         {checked("autoReplyEnabled") && !config.openingText.trim() &&
           <small role="status" style={{ color: colors.warning || "#d9a441" }}>
             Es fehlt noch dein Antworttext.
