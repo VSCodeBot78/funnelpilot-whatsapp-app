@@ -53,7 +53,7 @@ $inside = (& git.exe -C $repo rev-parse --is-inside-work-tree).Trim()
 if ($LASTEXITCODE -ne 0 -or $inside -ne "true") {
   throw "SICHERHEITS-STOP: Kein Git-Testworktree."
 }
-$branch = (& git.exe -C $repo branch --show-current).Trim()
+$branch = ([string](& git.exe -C $repo branch --show-current)).Trim()
 if ($LASTEXITCODE -ne 0 -or $branch) {
   throw "SICHERHEITS-STOP: Der Testordner muss als detached HEAD laufen."
 }
@@ -130,7 +130,8 @@ $preflight = Join-Path $PSScriptRoot "xwing-offline-preflight.mjs"
 $ready = $false
 for ($attempt = 0; $attempt -lt 25; $attempt++) {
   Start-Sleep -Seconds 1
-  & node.exe $preflight 2>$null
+  # cmd redirects native stderr without a WinPS 5.1 NativeCommandError while services start.
+  & cmd.exe /d /c "node.exe `"$preflight`" >NUL 2>&1"
   if ($LASTEXITCODE -eq 0) { $ready = $true; break }
 }
 if (-not $ready) {
