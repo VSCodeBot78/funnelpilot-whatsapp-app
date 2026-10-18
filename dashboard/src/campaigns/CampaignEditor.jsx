@@ -12,6 +12,7 @@ import {
   secondaryButtonStyle,
 } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
+import InfoHint from "../components/layout/common/InfoHint";
 import CollapsibleSection from "../components/layout/common/CollapsibleSection";
 import {
   getEffectiveCampaignBookingConfig,
@@ -381,6 +382,8 @@ export default function CampaignEditor({
               </p>
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>
                 Auslöser auswählen (Mehrfachauswahl)
+                <InfoHint title="Auslöser und Kanäle"
+                  text="Eine Kampagne kann auf Instagram-DM, Reel-Kommentar, Story oder WhatsApp reagieren. Follower-Begrüßung bleibt immer manuell. Alle Schalter speichern zunächst nur einen Entwurf." />
               </div>
               <div style={{
                 display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
@@ -403,6 +406,8 @@ export default function CampaignEditor({
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                     Welche Reels sollen berücksichtigt werden?
+                    <InfoHint title="Reel-Auswahl"
+                      text="Alle Reels oder ausgewählte Reels sind im Entwurf vorbereitet. Eine echte Reel-Galerie braucht später lesenden Meta-Zugriff. Nächstes Reel kann erst nach einer sicheren Anbieterprüfung aktiviert werden." />
                   </div>
                   <DraftToggle
                     colors={colors}
@@ -413,6 +418,10 @@ export default function CampaignEditor({
                       "reelTarget", all ? "all" : "specific",
                     )}
                   />
+                  <div style={{ marginTop: 7, color: colors.sub, fontSize: 11 }}>
+                    Nächstes Reel automatisch auswählen: geplant, derzeit nicht verfügbar.
+                    Ohne Meta-Berechtigung kein sicherer automatischer Media-ID-Wechsel.
+                  </div>
                   {peteCampaign.reelTarget === "specific" && (
                     <ReelSelectionEditor
                       colors={colors}
@@ -426,6 +435,8 @@ export default function CampaignEditor({
 
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Keywords (z. B. CHECK, KETO, BULLSHIT)
+                <InfoHint title="Keyword-Filter"
+                  text="Mehrere Schreibweisen eines Keywords werden bereits unabhängig von Groß- und Kleinschreibung erkannt. Unterschiedliche Antworten bitte als eigene Kampagnen anlegen. Beliebiges Wort als Auslöser wird erst nach gesonderter Prüfung freigegeben." />
               </div>
               <textarea
                 style={{ ...inputStyle(colors), minHeight: 65, resize: "vertical" }}
@@ -438,6 +449,7 @@ export default function CampaignEditor({
                 Antworten pro Keyword bitte jeweils eine eigene Kampagne anlegen.
                 Mehrere Keywords in einer Kampagne verwenden denselben Ablauf.
                 Keine automatischen Antworten vor der Sicherheitsfreigabe.
+                Alle Wörter ohne Keyword-Filter: noch nicht freigegeben.
               </p>
 
               <CampaignFlowEditor
