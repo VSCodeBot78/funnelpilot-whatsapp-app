@@ -223,6 +223,7 @@ test("Phase 4: read-only campaign matching stays fail-closed", async t => {
         sources: ["instagram_reel_comment"],
         keywords: ["BULLSHIT"],
         openingText: "Hey, du hast BULLSHIT geschrieben.",
+        followUpEnabled: false,
         reelTarget: "specific",
         reelMediaIds: ["17851537767246657"],
         flowDraftEnabled: true,
