@@ -43,6 +43,11 @@ export type PeteCampaignDraftContext = {
     linkLabel: string;
     linkUrl: string | null;
     peteHandoffEnabled: boolean;
+    commentReplyEnabled: boolean;
+    commentReplyVariants: string[];
+    openingDmButtonEnabled: boolean;
+    openingDmButtonLabel: string;
+    linkMessageText: string;
     sendAllowed: false;
   };
 };
@@ -163,6 +168,11 @@ export function evaluateCampaignEntryPreview(
       linkLabel: chosen.config.linkLabel,
       linkUrl: chosen.config.linkEnabled ? chosen.config.linkUrl || null : null,
       peteHandoffEnabled: chosen.config.peteHandoffEnabled,
+      commentReplyEnabled: chosen.config.commentReplyEnabled,
+      commentReplyVariants: [...chosen.config.commentReplyVariants],
+      openingDmButtonEnabled: chosen.config.openingDmButtonEnabled,
+      openingDmButtonLabel: chosen.config.openingDmButtonLabel,
+      linkMessageText: chosen.config.linkMessageText,
       sendAllowed: false,
     },
   };
