@@ -14,6 +14,14 @@ export function getFlowDraftWarnings(config) {
       (!Array.isArray(config.reelMediaIds) || !config.reelMediaIds.length)) {
     warnings.push("Bei ausgewählten Reels mindestens eine Reel-Media-ID hinterlegen.");
   }
+  if (sources.includes("instagram_reel_comment") && config.commentReplyEnabled &&
+      !(config.commentReplyVariants || []).some((v) => typeof v === "string" && v.trim())) {
+    warnings.push("Mindestens eine öffentliche Kommentarantwort hinterlegen.");
+  }
+  if (config.autoReplyEnabled && config.openingDmButtonEnabled &&
+      !String(config.openingDmButtonLabel || "").trim()) {
+    warnings.push("Beschriftung für den DM-Antwortbutton ergänzen.");
+  }
   if (config.autoReplyEnabled && !String(config.openingText || "").trim()) {
     warnings.push("Text für die feste Antwort ergänzen.");
   }
