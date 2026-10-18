@@ -32,6 +32,7 @@ export default function SetupWizardModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [savedSetupSteps, setSavedSetupSteps] = useState({ brand: false, offers: false });
   const [checkout, setCheckout] = useState(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const dialogRef = useRef(null);
@@ -99,6 +100,8 @@ export default function SetupWizardModal({
   }, [stage, reload, dryRun]);
 
   function update(key, value) {
+    if (stage === 1) setSavedSetupSteps(previous => ({ ...previous, brand: false }));
+    if (stage === 2) setSavedSetupSteps(previous => ({ ...previous, offers: false }));
     onSettingsChange(previous => ({ ...previous, [key]: value }));
   }
 
@@ -130,9 +133,20 @@ export default function SetupWizardModal({
       try {
         const saved = await onSaveSettings();
         if (!saved) { setMessage("Speichern fehlgeschlagen. Einstellungen prüfen."); return; }
+        setSavedSetupSteps(previous => ({ ...previous,
+          [stage === 1 ? "brand" : "offers"]: true,
+        }));
       } finally { setSaving(false); }
     }
     setStage(value => Math.min(value + 1, STAGES.length - 1));
+  }
+
+  function completeWizard() {
+    if (!dryRun && (!savedSetupSteps.brand || !savedSetupSteps.offers)) {
+      setMessage("Einrichtung noch nicht als abgeschlossen markiert: Bitte Marke & Pete sowie Angebote jeweils mit Weiter erfolgreich speichern. Alternativ über ✕ ohne Abschluss verlassen.");
+      return;
+    }
+    onFinish();
   }
 
   function input(label, key, options = {}) {
@@ -455,8 +469,9 @@ export default function SetupWizardModal({
             </button>
             <div style={box}>
               <strong>Weiterführende Angebote & Links</strong>
-              <p style={small}>Zusätzliche Produktlinks und Kampagnenregeln kannst du bereits
-                im bestehenden Kampagneneditor pflegen. Diese Wizard-Felder werden im Backend gespeichert.</p>
+              <p style={small}>{dryRun
+                ? "Zusätzliche Kampagnen und Produktlinks sind in diesem Offline-Trockenlauf bewusst nicht mit dem echten Backend verknüpft."
+                : "Zusätzliche Produktlinks und Kampagnenregeln kannst du im Kampagneneditor pflegen. Diese Wizard-Felder werden im Backend gespeichert."}</p>
               {dryRun
                 ? <p style={small}>Kampagneneditor im Trockenlauf nicht öffnen. Später separat mit einem Dummy testen.</p>
                 : <button type="button" style={btn} onClick={() => onOpenSection("campaigns")}>
@@ -489,10 +504,9 @@ export default function SetupWizardModal({
 
           {stage === 4 && <div>
             <h3 style={{ marginTop: 0 }}>Teste Funnel Pilot vor dem Start</h3>
-            <p style={small}>Dashboard, Leads, Inbox, Termine und Follow-ups
-              lassen sich lokal prüfen. Der Pete-Testchat verwendet weiterhin
-              den bestehenden Single-Workspace, NICHT automatisch den neuen
-              Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert.</p>
+            <p style={small}>{dryRun
+              ? "Hier wird nur die Benutzerführung des Einrichtungsassistenten geprüft. Für echte Dialoge, Inbox, Termine und Anbieter-Verbindungen folgen später gesonderte Tests."
+              : "Dashboard, Leads, Inbox, Termine und Follow-ups lassen sich lokal prüfen. Der Pete-Testchat verwendet den bestehenden Single-Workspace, NICHT automatisch den neuen Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert."}</p>
             {dryRun ? <div style={{ ...box, fontSize: 13 }}>
               X-Wing Offline-Stufe: Probiere hier aus, ob du die Orientierung und Testschritte verstehst.
               Live-Pete, Inbox, Kalender und Testkäufe sind bewusst gesperrt.
@@ -559,7 +573,7 @@ export default function SetupWizardModal({
                 {loading ? "Prüfe…" : "Diagnose aktualisieren"}
               </button>
             </div>}
-            <button type="button" style={{ ...primary, alignSelf: "start" }} onClick={onFinish}>
+            <button type="button" style={{ ...primary, alignSelf: "start" }} onClick={completeWizard}>
               {dryRun ? "Trockenlauf verwerfen und schließen →" : "Einrichtung abschließen →"}
             </button>
           </div>}
@@ -575,7 +589,7 @@ export default function SetupWizardModal({
             ? <button type="button" style={primary} onClick={next} disabled={saving}>
                 {saving ? "Speichere…" : "Weiter →"}
               </button>
-            : <button type="button" style={primary} onClick={onFinish}>
+            : <button type="button" style={primary} onClick={completeWizard}>
                 {dryRun ? "Trockenlauf schließen" : "Einrichtung abschließen"}</button>}
         </div>
       </div>

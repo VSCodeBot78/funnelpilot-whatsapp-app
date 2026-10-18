@@ -67,3 +67,12 @@ test("X-Wing: closing real wizard is not a completion signal", () => {
   assert.ok(finish.includes("funnelpilot-onboarding-complete-v1"));
   assert.ok(finish.includes("if (!xwingDryRunOpen)"));
 });
+
+test("X-Wing: skipping essential steps cannot mark real wizard complete", () => {
+  const wizard = read("./SetupWizardModal.jsx");
+  assert.ok(wizard.includes("const [savedSetupSteps, setSavedSetupSteps]"));
+  assert.ok(wizard.includes("if (!dryRun && (!savedSetupSteps.brand || !savedSetupSteps.offers))"));
+  assert.ok(wizard.includes("setSavedSetupSteps(previous => ({ ...previous,"));
+  assert.ok(wizard.includes('onClick={completeWizard}'));
+  assert.ok(!wizard.includes("onClick={onFinish}"));
+});
