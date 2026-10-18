@@ -1,6 +1,7 @@
 import React from "react";
 import DraftToggle from "./DraftToggle.jsx";
 import CampaignFlowPreview from "./CampaignFlowPreview.jsx";
+import InfoHint from "../components/layout/common/InfoHint.jsx";
 import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import { inputStyle } from "../theme/dashboardTheme";
 import "./campaignFlowEditor.css";
@@ -58,9 +59,41 @@ export default function CampaignFlowEditor({
           eine manuell gestartete erste Nachricht.
         </div>}
       </div>
+      {config.sources.includes("instagram_reel_comment") && (
+        <>
+          <div className="fp-flow-arrow" aria-hidden="true">↓</div>
+          <div className="fp-flow-step" style={cardStyle}>
+            <div className="fp-flow-step-heading">
+              {stepLabel("2", "Öffentlich unter dem Reel antworten")}
+              <InfoHint title="Öffentliche Kommentarantwort"
+                text="Bis zu drei kurze Varianten für Antworten direkt unter dem Instagram-Kommentar. VieleChat-ähnliche Entwurfsfunktion. Die Varianten werden gespeichert, aber noch nicht gesendet." />
+            </div>
+            <DraftToggle colors={colors}
+              checked={checked("commentReplyEnabled")}
+              label="Öffentliche Kommentarantwort vorbereiten"
+              hint="Optional. Antwortvarianten werden vor einer DM vorgesehen."
+              onChange={toggle("commentReplyEnabled")} />
+            {checked("commentReplyEnabled") && [0, 1, 2].map((i) => (
+              <label className="fp-flow-field" key={i}>
+                <strong>Antwortvariante {i + 1}</strong>
+                <input style={inputStyle(colors)} maxLength={220}
+                  value={config.commentReplyVariants?.[i] || ""}
+                  onChange={(e) => {
+                    const next = Array.isArray(config.commentReplyVariants)
+                      ? [...config.commentReplyVariants] : [];
+                    next[i] = e.target.value;
+                    onChange("commentReplyVariants", next);
+                  }}
+                  placeholder={i === 0
+                    ? "Hey, danke! Ich habe dir eine DM vorbereitet." : "Weitere Variante (optional)"} />
+              </label>
+            ))}
+          </div>
+        </>
+      )}
       <div className="fp-flow-arrow" aria-hidden="true">↓</div>
       <div className="fp-flow-step" style={cardStyle}>
-        {stepLabel("2", "Feste Nachricht")}
+        {stepLabel("3", "Erste DM / Feste Nachricht")}
         <DraftToggle colors={colors}
           checked={checked("autoReplyEnabled")}
           label="Vorgefertigte Antwort verwenden"
@@ -78,18 +111,51 @@ export default function CampaignFlowEditor({
           <small role="status" style={{ color: colors.warning || "#d9a441" }}>
             Es fehlt noch dein Antworttext.
           </small>}
+        {checked("autoReplyEnabled") && <>
+          <div className="fp-flow-step-heading">
+            <strong>Button in der ersten DM</strong>
+            <InfoHint title="DM-Button"
+              text="Der Empfänger soll aktiv auf einen Button antworten können. Erst nach dieser Interaktion wäre ein nächster Schritt geplant. Die aktuelle Vorschau löst keinen Klick aus." />
+          </div>
+          <DraftToggle colors={colors} checked={checked("openingDmButtonEnabled")}
+            label="Antwort-Button vorbereiten"
+            hint="Beispiel: Ja, zeig mir das Bundle"
+            onChange={toggle("openingDmButtonEnabled")} />
+          {checked("openingDmButtonEnabled") && (
+            <label className="fp-flow-field">
+              <strong>Beschriftung des Antwort-Buttons</strong>
+              <input style={inputStyle(colors)} maxLength={80}
+                value={config.openingDmButtonLabel || ""}
+                onChange={(e) => onChange("openingDmButtonLabel", e.target.value)}
+                placeholder="Ja, zeig mir das Bundle" />
+            </label>
+          )}
+        </>}
       </div>
       <div className="fp-flow-arrow" aria-hidden="true">↓</div>
       <div className="fp-flow-step" style={cardStyle}>
-        {stepLabel("3", "Link oder Aktion (optional)")}
+        {stepLabel("4", "DM mit Link (optional)")}
         <DraftToggle colors={colors}
           checked={checked("linkEnabled")}
           label="Link nach der Antwort vorbereiten"
           hint="Beispielsweise Elterncheck, Anleitung oder ein Angebot."
           onChange={toggle("linkEnabled")} />
         {checked("linkEnabled") && <>
+          <div className="fp-flow-step-heading">
+            <strong>Nachricht mit Link</strong>
+            <InfoHint title="Link nach Button oder Einstieg"
+              text="Der Link ist eine separate Nachrichtenstufe. Ist der Antwort-Button eingeschaltet, kommt diese Stufe im geplanten Ablauf nach dem Button-Klick. Ohne Button ist keine Klick-Bedingung eingerichtet. Alles noch ohne Meta-Versand." />
+          </div>
           <label className="fp-flow-field">
-            <strong>Link-Beschriftung</strong>
+            <strong>Nachrichtentext vor dem Link</strong>
+            <textarea style={{ ...inputStyle(colors), minHeight: 90, resize: "vertical" }}
+              value={config.linkMessageText || ""}
+              maxLength={1000}
+              onChange={(e) => onChange("linkMessageText", e.target.value)}
+              placeholder="Perfekt. Hier findest du alle Informationen zum Bundle." />
+          </label>
+          <label className="fp-flow-field">
+            <strong>Link-Button</strong>
             <input style={inputStyle(colors)} maxLength={120}
               value={config.linkLabel}
               onChange={(e) => onChange("linkLabel", e.target.value)}
@@ -109,7 +175,7 @@ export default function CampaignFlowEditor({
       </div>
       <div className="fp-flow-arrow" aria-hidden="true">↓</div>
       <div className="fp-flow-step" style={cardStyle}>
-        {stepLabel("4", "Übergabe an Pete (optional)")}
+        {stepLabel("5", "Übergabe an Pete (optional)")}
         <DraftToggle colors={colors}
           checked={checked("peteHandoffEnabled")}
           label="Pete soll anschließend übernehmen"
