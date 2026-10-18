@@ -24,6 +24,7 @@ import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
+import { createXWingOfflineSettings } from "./onboarding/xwingOfflineSettings.js";
 
 const navItems = ALL_NAV;
 
@@ -40,6 +41,12 @@ function firstSection() {
 export default function AppDashboard({ onOpenTestChat = () => {} }) {
   const [section, setSection] = useState(firstSection);
   const [onboardingStartStep, setOnboardingStartStep] = useState(0);
+  const [xwingDryRunOpen, setXwingDryRunOpen] = useState(false);
+  const [xwingSettings, setXwingSettings] = useState(createXWingOfflineSettings);
+  const [setupFinishedLocally, setSetupFinishedLocally] = useState(() => {
+    try { return window.localStorage.getItem("funnelpilot-onboarding-complete-v1") === "true"; }
+    catch { return false; }
+  });
   const [search, setSearch] = useState("");
   const [activeContactId, setActiveContactId] = useState(null);
   const [openChatTabs, setOpenChatTabs] = useState([]);
@@ -325,12 +332,35 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     );
   }
 
+  const openXwingDryRun = useCallback(() => {
+    // A genuinely fresh, disposable profile: no copy of workspace tokens or leads.
+    setXwingSettings(createXWingOfflineSettings());
+    setOnboardingStartStep(0);
+    setXwingDryRunOpen(true);
+  }, []);
+
   const handleCloseWizard = useCallback(() => {
     setOnboardingStartStep(0);
+    if (xwingDryRunOpen) {
+      setXwingDryRunOpen(false);
+      setXwingSettings(createXWingOfflineSettings());
+      return; // Never touch real onboarding state or browser storage.
+    }
     try { window.localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"); }
     catch { /* private browser mode */ }
     setSection("dashboard");
-  }, []);
+  }, [xwingDryRunOpen]);
+
+  const handleFinishWizard = useCallback(() => {
+    if (!xwingDryRunOpen) {
+      // This records only that the real wizard was completed on this browser.
+      // It does NOT prove Meta, Calendly, Pete, or any send integration.
+      try { window.localStorage.setItem("funnelpilot-onboarding-complete-v1", "true"); }
+      catch { /* private browser mode */ }
+      setSetupFinishedLocally(true);
+    }
+    handleCloseWizard();
+  }, [xwingDryRunOpen, handleCloseWizard]);
 
   function renderContent() {
     if (section === "dashboard" || section === "onboarding") {
@@ -357,6 +387,8 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
             setOnboardingStartStep(3);
             setSection("onboarding");
           }}
+          onStartXwingTest={openXwingDryRun}
+          setupFinishedLocally={setupFinishedLocally}
         />
       );
     }
@@ -585,17 +617,21 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         </main>
       </div>
 
-      {section === "onboarding" && (
+      {(section === "onboarding" || xwingDryRunOpen) && (
         <SetupWizardModal
-          startStep={onboardingStartStep}
+          startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
+          dryRun={xwingDryRunOpen}
           colors={colors}
-          settings={settings}
-          onSettingsChange={setSettings}
-          onSaveSettings={handleSaveSettings}
-          onSaveCoachDraft={saveCoachDraftOnly}
-          onOpenTestChat={() => { setSection("dashboard"); onOpenTestChat(); }}
-          onOpenSection={setSection}
+          settings={xwingDryRunOpen ? xwingSettings : settings}
+          onSettingsChange={xwingDryRunOpen ? setXwingSettings : setSettings}
+          onSaveSettings={xwingDryRunOpen ? async () => ({ ...xwingSettings }) : handleSaveSettings}
+          onSaveCoachDraft={xwingDryRunOpen
+            ? async () => true : saveCoachDraftOnly}
+          onOpenTestChat={xwingDryRunOpen
+            ? () => {} : () => { setSection("dashboard"); onOpenTestChat(); }}
+          onOpenSection={xwingDryRunOpen ? () => {} : setSection}
           onClose={handleCloseWizard}
+          onFinish={handleFinishWizard}
         />
       )}
 
