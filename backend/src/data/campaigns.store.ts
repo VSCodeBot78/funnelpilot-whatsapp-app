@@ -17,6 +17,11 @@ export type PeteCampaignConfig = {
   linkLabel?: string;
   linkUrl?: string;
   peteHandoffEnabled?: boolean;
+  commentReplyEnabled?: boolean;
+  commentReplyVariants?: string[];
+  openingDmButtonEnabled?: boolean;
+  openingDmButtonLabel?: string;
+  linkMessageText?: string;
 };
 
 const PETE_CAMPAIGN_SOURCES = [
@@ -29,6 +34,8 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG: PeteCampaignConfig = {
   reelTarget: "all", reelMediaIds: [],
   flowDraftEnabled: false, autoReplyEnabled: false, linkEnabled: false,
   linkLabel: "", linkUrl: "", peteHandoffEnabled: false,
+  commentReplyEnabled: false, commentReplyVariants: [],
+  openingDmButtonEnabled: false, openingDmButtonLabel: "", linkMessageText: "",
 };
 
 // Link input is untrusted user configuration, not permission to visit/send it.
@@ -72,6 +79,15 @@ export function normalizePeteCampaignConfig(input: unknown): Required<PeteCampai
     linkLabel: typeof value.linkLabel === "string" ? value.linkLabel.trim().slice(0, 120) : "",
     linkUrl: normalizePeteDraftLink(value.linkUrl),
     peteHandoffEnabled: value.peteHandoffEnabled === true,
+    commentReplyEnabled: value.commentReplyEnabled === true,
+    commentReplyVariants: Array.isArray(value.commentReplyVariants)
+      ? value.commentReplyVariants.filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim().slice(0, 220)).filter(Boolean).slice(0, 3) : [],
+    openingDmButtonEnabled: value.openingDmButtonEnabled === true,
+    openingDmButtonLabel: typeof value.openingDmButtonLabel === "string"
+      ? value.openingDmButtonLabel.trim().slice(0, 80) : "",
+    linkMessageText: typeof value.linkMessageText === "string"
+      ? value.linkMessageText.slice(0, 1000) : "",
   };
 }
 
