@@ -243,8 +243,9 @@ test("Desktop Flow 1: editor uses accessible toggles and never a live sender", (
   assert.match(editor, /_linkUrlDraft: value/);
   for (const field of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
     "peteHandoffEnabled"]) assert.ok(flow.includes(field));
-  for (const node of ["Auslöser", "Feste Nachricht", "Link oder Aktion",
-    "Übergabe an Pete"]) assert.ok(flow.includes(node));
+  for (const node of ["Auslöser", "Öffentlich unter dem Reel antworten",
+    "Erste DM / Feste Nachricht", "DM mit Link", "Übergabe an Pete"])
+    assert.ok(flow.includes(node));
   assert.match(flow, /Diese Schalter geben niemals den Live-Versand frei/);
   assert.match(toggle, /role="switch"/);
   assert.match(toggle, /checked=\{checked\}/);
@@ -358,4 +359,55 @@ test("Desktop campaign manager: deletion needs an explicit second action and all
   assert.ok(editor.includes("if (deleted) setDeleteConfirmationOpen(false)"));
   assert.ok(editor.includes("campaigns.length <= 1"));
   assert.ok(!editor.includes("onClick={onDeleteCampaign}"));
+});
+
+test("ManyChat screenshot adaptation: comments, DM buttons and link texts are draft-only", () => {
+  const normalized = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["BULLSHIT"],
+    commentReplyEnabled: true,
+    commentReplyVariants: [
+      "Hey, schau in deine DM!",
+      "Nachricht ist vorbereitet.",
+      "Du bekommst gleich eine Nachricht!",
+      "ignored-fourth",
+    ],
+    autoReplyEnabled: true, openingText: "Hey, du hast BULLSHIT geschrieben.",
+    openingDmButtonEnabled: true, openingDmButtonLabel: "Ja, zeig mir das Bundle",
+    linkEnabled: true, linkMessageText: "Perfekt. Hier sind die Infos.",
+    linkLabel: "No Bullshit Bundle", linkUrl: "https://example.org/bundle",
+  } });
+  assert.equal(normalized.commentReplyEnabled, true);
+  assert.deepEqual(normalized.commentReplyVariants, [
+    "Hey, schau in deine DM!", "Nachricht ist vorbereitet.",
+    "Du bekommst gleich eine Nachricht!",
+  ]);
+  assert.equal(normalized.openingDmButtonEnabled, true);
+  assert.equal(normalized.openingDmButtonLabel, "Ja, zeig mir das Bundle");
+  assert.equal(normalized.linkMessageText, "Perfekt. Hier sind die Infos.");
+
+  const flow = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const preview = fs.readFileSync(new URL("./CampaignFlowPreview.jsx", import.meta.url), "utf8");
+  assert.match(flow, /InfoHint/);
+  assert.match(flow, /Antwortvariante/);
+  assert.match(flow, /Link-Button/);
+  assert.match(flow, /Öffentliche Kommentarantwort vorbereiten/);
+  assert.match(preview, /fp-flow-chat-public-reply/);
+  assert.match(preview, /fp-flow-chat-fake-button/);
+  assert.doesNotMatch(preview, /href=|onClick=|fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+
+  const legacy = getNormalizedPeteCampaignConfig({});
+  assert.equal(legacy.commentReplyEnabled, false);
+  assert.deepEqual(legacy.commentReplyVariants, []);
+  assert.equal(legacy.openingDmButtonEnabled, false);
+  assert.equal(legacy.openingDmButtonLabel, "");
+  assert.equal(legacy.linkMessageText, "");
+
+  const missing = getFlowDraftWarnings(getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["BULLSHIT"],
+    commentReplyEnabled: true, commentReplyVariants: [],
+    autoReplyEnabled: true, openingText: "Hi",
+    openingDmButtonEnabled: true,
+  } }));
+  assert.ok(missing.some((line) => line.includes("öffentliche Kommentarantwort")));
+  assert.ok(missing.some((line) => line.includes("DM-Antwortbutton")));
 });
