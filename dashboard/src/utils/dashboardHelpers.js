@@ -197,6 +197,11 @@ export const DEFAULT_PETE_CAMPAIGN_CONFIG = {
   linkLabel: "",
   linkUrl: "",
   peteHandoffEnabled: false,
+  commentReplyEnabled: false,
+  commentReplyVariants: [],
+  openingDmButtonEnabled: false,
+  openingDmButtonLabel: "",
+  linkMessageText: "",
 };
 
 // Only HTTPS links may be stored as preconfigured draft actions. They
@@ -243,6 +248,15 @@ export function getNormalizedPeteCampaignConfig(campaign = {}) {
     linkLabel: typeof raw.linkLabel === "string" ? raw.linkLabel.trim().slice(0, 120) : "",
     linkUrl: normalizePeteDraftLink(raw.linkUrl),
     peteHandoffEnabled: raw.peteHandoffEnabled === true,
+    commentReplyEnabled: raw.commentReplyEnabled === true,
+    commentReplyVariants: Array.isArray(raw.commentReplyVariants)
+      ? raw.commentReplyVariants.filter((v) => typeof v === "string")
+          .map((v) => v.trim().slice(0, 220)).filter(Boolean).slice(0, 3) : [],
+    openingDmButtonEnabled: raw.openingDmButtonEnabled === true,
+    openingDmButtonLabel: typeof raw.openingDmButtonLabel === "string"
+      ? raw.openingDmButtonLabel.trim().slice(0, 80) : "",
+    linkMessageText: typeof raw.linkMessageText === "string"
+      ? raw.linkMessageText.slice(0, 1000) : "",
   };
 }
 
