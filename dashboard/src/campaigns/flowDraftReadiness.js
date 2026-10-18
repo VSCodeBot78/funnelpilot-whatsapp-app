@@ -23,7 +23,7 @@ export function getFlowDraftWarnings(config) {
     warnings.push("Beschriftung für den DM-Antwortbutton ergänzen.");
   }
   const normalizedReply = (value) => typeof value === "string"
-    ? value.trim().toLocaleLowerCase("de-DE").replace(/\\s+/g, " ") : "";
+    ? value.trim().toLocaleLowerCase("de-DE").replace(/\s+/g, " ") : "";
   const duplicates = (values) => {
     const texts = values.map(normalizedReply).filter(Boolean);
     return new Set(texts).size !== texts.length;
