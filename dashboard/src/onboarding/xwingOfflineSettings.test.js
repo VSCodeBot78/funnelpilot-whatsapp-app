@@ -79,3 +79,21 @@ test("X-Wing: skipping essential steps cannot mark real wizard complete", () => 
   assert.ok(wizard.includes('onClick={completeWizard}'));
   assert.ok(!wizard.includes("onClick={onFinish}"));
 });
+
+test("X-Wing: follow-up editor is reachable from Nachfassaktionen and never grants live sends", () => {
+  const view = read("../ghosting/GhostingView.jsx");
+  const settings = read("../settings/SettingsGhostingPanel.jsx");
+  const hook = read("../hooks/useGhostingConfig.js");
+  const app = read("../App.dashboard.jsx");
+  assert.ok(view.includes("Zyklen und Texte bearbeiten"));
+  assert.ok(view.includes("<SettingsGhostingPanel"));
+  assert.ok(view.includes("Keine Änderung erlaubt automatisch") ||
+    view.includes("Vor Live-Nachfassen müssen die Meta-Nachrichtenfenster"));
+  assert.ok(settings.includes("Weiteren Zyklus hinzufügen"));
+  assert.ok(settings.includes("Letzten Zyklus entfernen"));
+  assert.ok(hook.includes("if (schedules.length >= 3) return config;"));
+  assert.ok(hook.includes("if (schedules.length <= 1"));
+  assert.ok(app.includes('autoLoad: section === "settings" || section === "ghosting"'));
+  assert.ok(!view.includes("META_ACCESS_TOKEN"));
+});
+
