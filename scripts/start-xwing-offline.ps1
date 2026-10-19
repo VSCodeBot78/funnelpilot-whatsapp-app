@@ -53,7 +53,9 @@ $inside = (& git.exe -C $repo rev-parse --is-inside-work-tree).Trim()
 if ($LASTEXITCODE -ne 0 -or $inside -ne "true") {
   throw "SICHERHEITS-STOP: Kein Git-Testworktree."
 }
-$branch = ([string](& git.exe -C $repo branch --show-current)).Trim()
+# Detached HEAD correctly yields no output. PowerShell 5.1 treats that as $null.
+# Force an array and join to a real string before calling Trim().
+$branch = (@(& git.exe -C $repo branch --show-current) -join "").Trim()
 if ($LASTEXITCODE -ne 0 -or $branch) {
   throw "SICHERHEITS-STOP: Der Testordner muss als detached HEAD laufen."
 }
