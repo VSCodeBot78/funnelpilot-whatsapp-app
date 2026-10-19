@@ -32,6 +32,10 @@ function preserveTypedCampaignDrafts(peteCampaign) {
       ? { _keywordDraft: raw._keywordDraft } : {}),
     ...(typeof raw._linkUrlDraft === "string"
       ? { _linkUrlDraft: raw._linkUrlDraft } : {}),
+    ...(typeof raw._linkLabelDraft === "string"
+      ? { _linkLabelDraft: raw._linkLabelDraft } : {}),
+    ...(typeof raw._openingDmButtonLabelDraft === "string"
+      ? { _openingDmButtonLabelDraft: raw._openingDmButtonLabelDraft } : {}),
   };
 }
 
@@ -164,6 +168,24 @@ export default function CampaignEditor({
   }
 
   function updateFlowField(key, value) {
+    // Keep the owner's spaces while typing. Persisted button labels are still
+    // safely normalized on save; a trailing space is not the finished input.
+    if (key === "linkLabel" || key === "openingDmButtonLabel") {
+      const draftKey = key === "linkLabel"
+        ? "_linkLabelDraft" : "_openingDmButtonLabelDraft";
+      onCampaignFormChange((prev) => ({
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
+          [key]: getNormalizedPeteCampaignConfig({
+            peteCampaign: { [key]: value },
+          })[key],
+          [draftKey]: value,
+        },
+      }));
+      return;
+    }
     if (key === "linkUrl") {
       // Preserve intermediate typing. The persisted value remains HTTPS-only.
       onCampaignFormChange((prev) => ({
@@ -457,6 +479,8 @@ export default function CampaignEditor({
                 config={{
                   ...peteCampaign,
                   linkUrlDraft: campaignForm.peteCampaign?._linkUrlDraft,
+                  linkLabelDraft: campaignForm.peteCampaign?._linkLabelDraft,
+                  openingDmButtonLabelDraft: campaignForm.peteCampaign?._openingDmButtonLabelDraft,
                 }}
                 onChange={updateFlowField}
               />
