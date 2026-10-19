@@ -112,10 +112,14 @@ $externalCredentials = @(
 foreach ($name in $externalCredentials) {
   $securityFlags += '$env:' + $name + ' = " "'
 }
+# Build the DATA_DIR assignment as one complete string BEFORE creating the
+# command array. PowerShell 5.1 otherwise combines the comma after a string
+# concatenation with the next array item and emits invalid "path npm.cmd".
+$dataDirAssignment = '$env:DATA_DIR = ' + "'" + $escapedDataDir + "'"
 $backendCommand = @(
   "Set-Location -LiteralPath '$escapedBackend'"
 ) + $securityFlags + @(
-  '$env:DATA_DIR = ' + "'$escapedDataDir'",
+  $dataDirAssignment,
   'npm.cmd run dev'
 )
 $dashboardCommand = @(
