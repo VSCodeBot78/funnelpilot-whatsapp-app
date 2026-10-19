@@ -118,6 +118,32 @@ function removeSlot(config, scheduleIndex, slotIndex) {
   };
 }
 
+// Editing is local until "Ghosting speichern". Never sends a message.
+function addCycle(config) {
+  const schedules = config.schedules || [];
+  if (schedules.length >= 5) return config;
+  const cycle = Math.max(0, ...schedules.map((item) => item.cycle)) + 1;
+  const stage = `cycle${cycle}_custom_${Date.now()}`;
+  return {
+    ...config,
+    schedules: [...schedules, {
+      cycle, slots: [{ cycle, stage, dayOffsetHours: cycle * 24,
+        sendHour: 9, sendMinute: 0 }],
+    }],
+    messages: { ...(config.messages || {}), [stage]: "" },
+  };
+}
+
+function removeLastCycle(config, scheduleIndex) {
+  const schedules = config.schedules || [];
+  // Remove only the final cycle so existing numbering and stage IDs stay stable.
+  if (schedules.length <= 1 || scheduleIndex !== schedules.length - 1) return config;
+  const removed = schedules[scheduleIndex];
+  const messages = { ...(config.messages || {}) };
+  for (const slot of removed.slots || []) delete messages[slot.stage];
+  return { ...config, schedules: schedules.slice(0, -1), messages };
+}
+
 export function useGhostingConfig({
   apiBaseUrl,
   autoLoad = false,
@@ -192,6 +218,14 @@ export function useGhostingConfig({
     setGhostingConfig((prev) => removeSlot(prev, scheduleIndex, slotIndex));
   }
 
+  function onAddGhostingCycle() {
+    setGhostingConfig((prev) => addCycle(prev));
+  }
+
+  function onRemoveGhostingCycle(scheduleIndex) {
+    setGhostingConfig((prev) => removeLastCycle(prev, scheduleIndex));
+  }
+
   async function onSaveGhostingConfig() {
     try {
       setGhostingConfigMessage("");
@@ -253,6 +287,8 @@ export function useGhostingConfig({
     onGhostingMessageChange,
     onAddGhostingSlot,
     onRemoveGhostingSlot,
+    onAddGhostingCycle,
+    onRemoveGhostingCycle,
     onSaveGhostingConfig,
     onReloadGhostingConfig,
     onResetGhostingConfig,
