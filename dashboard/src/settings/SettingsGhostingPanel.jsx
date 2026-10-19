@@ -68,7 +68,7 @@ export default function SettingsGhostingPanel({
         Keine Änderung erlaubt automatisch einen Meta-Versand.
       </p>
       <button type="button" onClick={onAddGhostingCycle}
-        disabled={schedules.length >= 5}
+        disabled={schedules.length >= 3}
         style={secondaryButtonStyle(colors)}>
         Weiteren Zyklus hinzufügen
       </button>
