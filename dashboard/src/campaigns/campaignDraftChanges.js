@@ -38,9 +38,13 @@ export function getCampaignDraftChanges(current, baseline, settings = {}) {
   const drafts = [
     ["_keywordDraft", savedFlow.keywords.join(", ")],
     ["_linkUrlDraft", savedFlow.linkUrl],
+    ["_linkLabelDraft", savedFlow.linkLabel],
+    ["_openingDmButtonLabelDraft", savedFlow.openingDmButtonLabel],
     ["_reelMediaDraft", savedFlow.reelMediaIds.join(", ")],
   ];
   return drafts.some(([key, lastSaved]) =>
     typeof transient[key] === "string" &&
-    transient[key].trim() !== lastSaved.trim());
+    (key === "_linkLabelDraft" || key === "_openingDmButtonLabelDraft"
+      ? transient[key] !== lastSaved
+      : transient[key].trim() !== lastSaved.trim()));
 }
