@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import SettingsGhostingPanel from "../settings/SettingsGhostingPanel.jsx";
 import {
   primaryButtonStyle,
   secondaryButtonStyle,
@@ -71,7 +72,19 @@ export default function GhostingView({
   onSendDue,
   onMarkSent,
   onOpenLead,
+  ghostingConfig,
+  ghostingConfigMessage,
+  onGhostingSlotChange,
+  onGhostingMessageChange,
+  onAddGhostingSlot,
+  onRemoveGhostingSlot,
+  onAddGhostingCycle,
+  onRemoveGhostingCycle,
+  onSaveGhostingConfig,
+  onReloadGhostingConfig,
+  onResetGhostingConfig,
 }) {
+  const [showEditor, setShowEditor] = useState(false);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
@@ -87,14 +100,20 @@ export default function GhostingView({
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Ghosting</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Nachfassaktionen</div>
           <div style={{ color: colors.sub, fontSize: 12, marginTop: 4 }}>
             Echte Preview- und Sendelogik aus dem Backend. Die Tabelle zeigt klar, was fällig ist und warum etwas nicht ausführbar ist.
           </div>
         </div>
-        <button type="button" onClick={onReload} style={ghostButtonStyle(colors)}>
-          {loading ? "Lädt..." : "Neu laden"}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => setShowEditor((open) => !open)}
+            style={secondaryButtonStyle(colors)}>
+            {showEditor ? "Bearbeitung schließen" : "Zyklen und Texte bearbeiten"}
+          </button>
+          <button type="button" onClick={onReload} style={ghostButtonStyle(colors)}>
+            {loading ? "Lädt..." : "Neu laden"}
+          </button>
+        </div>
       </div>
 
       {message ? (
@@ -111,6 +130,30 @@ export default function GhostingView({
         </div>
       ) : null}
 
+      {showEditor && (
+        <div role="region" aria-label="Nachfasszyklen bearbeiten">
+          <p style={{ color: colors.sub, fontSize: 12 }}>
+            Zeitpunkt, Texte und Anzahl der Zyklen bearbeiten. Speichern ändert nur
+            die Konfiguration. Die Vorschau unten verschickt keine Nachrichten.
+            Vor Live-Nachfassen müssen die Meta-Nachrichtenfenster und Opt-outs geprüft werden.
+          </p>
+          <SettingsGhostingPanel
+            colors={colors}
+            ghostingConfig={ghostingConfig}
+            ghostingMessage={ghostingConfigMessage}
+            onGhostingSlotChange={onGhostingSlotChange}
+            onGhostingMessageChange={onGhostingMessageChange}
+            onAddGhostingSlot={onAddGhostingSlot}
+            onRemoveGhostingSlot={onRemoveGhostingSlot}
+            onAddGhostingCycle={onAddGhostingCycle}
+            onRemoveGhostingCycle={onRemoveGhostingCycle}
+            onSaveGhostingConfig={onSaveGhostingConfig}
+            onReloadGhostingConfig={onReloadGhostingConfig}
+            onResetGhostingConfig={onResetGhostingConfig}
+          />
+        </div>
+      )}
+
       <div
         style={{
           background: colors.panel,
@@ -119,7 +162,7 @@ export default function GhostingView({
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
-          Ghosting-Zyklen
+          Aktuelle Nachfasszyklen
         </div>
         <div
           style={{
