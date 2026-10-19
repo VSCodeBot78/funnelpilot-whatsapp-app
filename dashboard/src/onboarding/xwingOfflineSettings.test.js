@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
 import { createXWingOfflineSettings } from "./xwingOfflineSettings.js";
-const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
+// Git may check out files with CRLF on Windows. Normalize newlines before
+// asserting source guards, without loosening any safety condition.
+const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8")
+  .replace(/\r\n?/g, "\n");
 
 test("X-Wing: every rehearsal starts with fresh empty identity and no live links or provider tokens", () => {
   const a = createXWingOfflineSettings();
