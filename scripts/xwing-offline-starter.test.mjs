@@ -49,6 +49,14 @@ test("X-Wing launcher is detached-worktree-only with offline credentials and loc
   assert.ok(rootCmd.includes('start-xwing-offline.ps1'));
 });
 
+test("Windows detached HEAD branch check handles empty git output without bypassing safety", () => {
+  // In Windows PowerShell 5.1, a command that prints nothing can yield $null.
+  // The launcher must coerce git output to an array before .Trim().
+  assert.ok(launcher.includes('(@(& git.exe -C $repo branch --show-current) -join "").Trim()'));
+  assert.ok(launcher.includes('if ($LASTEXITCODE -ne 0 -or $branch)'));
+  assert.ok(!launcher.includes('([string](& git.exe -C $repo branch --show-current)).Trim()'));
+});
+
 test("X-Wing local preflight passes only when known local services are safe", async () => {
   const pass = await runXWingOfflinePreflight({ fetchImpl: fakeFetch() });
   assert.deepEqual(pass, { passed: true, failures: [] });
