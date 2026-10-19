@@ -57,6 +57,17 @@ test("Windows detached HEAD branch check handles empty git output without bypass
   assert.ok(!launcher.includes('([string](& git.exe -C $repo branch --show-current)).Trim()'));
 });
 
+test("X-Wing Windows backend startup keeps DATA_DIR and npm as separate commands", () => {
+  // A concatenation followed immediately by a comma in PowerShell 5.1
+  // turns the two intended lines into an invalid single command.
+  assert.ok(launcher.includes("$dataDirAssignment = '$env:DATA_DIR = ' +"));
+  const commandSection = launcher.split("$backendCommand = @(")[1]
+    ?.split("$dashboardCommand = @(")[0] || "";
+  assert.ok(commandSection.includes("$dataDirAssignment,"));
+  assert.ok(commandSection.includes("'npm.cmd run dev'"));
+  assert.doesNotMatch(commandSection, /'\\$env:DATA_DIR = '\\s*\\+[^\\n]*,[\\r\\n]+\\s*'npm\\.cmd run dev'/);
+});
+
 test("X-Wing local preflight passes only when known local services are safe", async () => {
   const pass = await runXWingOfflinePreflight({ fetchImpl: fakeFetch() });
   assert.deepEqual(pass, { passed: true, failures: [] });
