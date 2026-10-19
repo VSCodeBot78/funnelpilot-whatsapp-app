@@ -24,6 +24,8 @@ export default function SettingsView({
   onGhostingMessageChange,
   onAddGhostingSlot,
   onRemoveGhostingSlot,
+  onAddGhostingCycle,
+  onRemoveGhostingCycle,
   onSaveGhostingConfig,
   onReloadGhostingConfig,
   onResetGhostingConfig,
@@ -233,6 +235,8 @@ export default function SettingsView({
           onGhostingMessageChange={onGhostingMessageChange}
           onAddGhostingSlot={onAddGhostingSlot}
           onRemoveGhostingSlot={onRemoveGhostingSlot}
+          onAddGhostingCycle={onAddGhostingCycle}
+          onRemoveGhostingCycle={onRemoveGhostingCycle}
           onSaveGhostingConfig={onSaveGhostingConfig}
           onReloadGhostingConfig={onReloadGhostingConfig}
           onResetGhostingConfig={onResetGhostingConfig}
