@@ -79,7 +79,7 @@ export default function CampaignFlowEditor({
               <small style={{ color: colors.sub }}>Alternative Formulierungen. Pro Kommentar später nur eine Antwort, nicht alle auf einmal.</small>
               {Array.from({ length: Math.max(3, publicVariants.length) }, (_, i) => (
                 <div className="fp-flow-field" key={i}>
-                  <label htmlFor={`fp-public-variant-${i}`}><strong>Antwortvariante ${i + 1}</strong></label>
+                  <label htmlFor={`fp-public-variant-${i}`}><strong>Antwortvariante {i + 1}</strong></label>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <input id={`fp-public-variant-${i}`} maxLength={220}
                       style={{ ...inputStyle(colors), flex: "1 1 230px", minWidth: 0 }}
@@ -132,7 +132,7 @@ export default function CampaignFlowEditor({
           <small style={{ color: colors.sub }}>Verschiedene Formulierungen für unterschiedliche Kontakte. Keine zusätzlichen DMs pro Kontakt.</small>
           {Array.from({ length: Math.max(2, dmAlternatives.length) }, (_, i) => (
             <div className="fp-flow-field" key={i}>
-              <label htmlFor={`fp-dm-alternative-${i}`}><strong>Alternative DM ${i + 2}</strong></label>
+              <label htmlFor={`fp-dm-alternative-${i}`}><strong>Alternative DM {i + 2}</strong></label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <textarea id={`fp-dm-alternative-${i}`} maxLength={1000}
                   style={{ ...inputStyle(colors), minWidth: 0, flex: "1 1 230px", minHeight: 65, resize: "vertical" }}
@@ -175,7 +175,7 @@ export default function CampaignFlowEditor({
             <label className="fp-flow-field">
               <strong>Beschriftung des Antwort-Buttons</strong>
               <input style={inputStyle(colors)} maxLength={80}
-                value={config.openingDmButtonLabel || ""}
+                value={config.openingDmButtonLabelDraft ?? config.openingDmButtonLabel ?? ""}
                 onChange={(e) => onChange("openingDmButtonLabel", e.target.value)}
                 placeholder="Ja, zeig mir das Bundle" />
             </label>
@@ -207,7 +207,7 @@ export default function CampaignFlowEditor({
           <label className="fp-flow-field">
             <strong>Link-Button</strong>
             <input style={inputStyle(colors)} maxLength={120}
-              value={config.linkLabel}
+              value={config.linkLabelDraft ?? config.linkLabel}
               onChange={(e) => onChange("linkLabel", e.target.value)}
               placeholder="Zum Elterncheck" />
           </label>
