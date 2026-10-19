@@ -34,6 +34,23 @@ export type PeteCampaignDraftContext = {
   followUpDraftConfigured: boolean;
   reelTarget: "all" | "specific" | null;
   reelMediaIds: string[];
+  // Serialized config only. These steps are NEVER executed by preview.
+  flowDraft: {
+    enabled: boolean;
+    autoReplyEnabled: boolean;
+    text: string | null;
+    linkEnabled: boolean;
+    linkLabel: string;
+    linkUrl: string | null;
+    peteHandoffEnabled: boolean;
+    commentReplyEnabled: boolean;
+    commentReplyVariants: string[];
+    openingDmVariants: string[];
+    openingDmButtonEnabled: boolean;
+    openingDmButtonLabel: string;
+    linkMessageText: string;
+    sendAllowed: false;
+  };
 };
 
 export type CampaignEntryPreview = {
@@ -144,6 +161,22 @@ export function evaluateCampaignEntryPreview(
     reelMediaIds: source === "instagram_reel_comment" &&
       chosen.config.reelTarget === "specific"
       ? [...chosen.config.reelMediaIds] : [],
+    flowDraft: {
+      enabled: chosen.config.flowDraftEnabled,
+      autoReplyEnabled: chosen.config.autoReplyEnabled,
+      text: chosen.config.autoReplyEnabled ? chosen.config.openingText || null : null,
+      linkEnabled: chosen.config.linkEnabled,
+      linkLabel: chosen.config.linkLabel,
+      linkUrl: chosen.config.linkEnabled ? chosen.config.linkUrl || null : null,
+      peteHandoffEnabled: chosen.config.peteHandoffEnabled,
+      commentReplyEnabled: chosen.config.commentReplyEnabled,
+      commentReplyVariants: [...chosen.config.commentReplyVariants],
+      openingDmVariants: [...chosen.config.openingDmVariants],
+      openingDmButtonEnabled: chosen.config.openingDmButtonEnabled,
+      openingDmButtonLabel: chosen.config.openingDmButtonLabel,
+      linkMessageText: chosen.config.linkMessageText,
+      sendAllowed: false,
+    },
   };
   return {
     mode: "preview_only",

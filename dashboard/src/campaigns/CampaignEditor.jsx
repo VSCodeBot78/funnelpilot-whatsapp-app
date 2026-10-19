@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import { previewCampaignEntryInApi } from "../services/campaignsApi";
 import WebhookEventPreview from "./WebhookEventPreview";
+import DraftToggle from "./DraftToggle.jsx";
+import CampaignFlowEditor from "./CampaignFlowEditor.jsx";
+import ReelSelectionEditor from "./ReelSelectionEditor.jsx";
+import { CAMPAIGN_STARTER_TEMPLATES } from "./campaignTemplates.js";
+import { getCampaignPreviewPrefill } from "./campaignPreviewPrefill.js";
 import {
   inputStyle,
   primaryButtonStyle,
   secondaryButtonStyle,
 } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
+import InfoHint from "../components/layout/common/InfoHint";
 import CollapsibleSection from "../components/layout/common/CollapsibleSection";
 import {
   getEffectiveCampaignBookingConfig,
@@ -16,6 +22,22 @@ import {
   getNormalizedPeteCampaignConfig,
   PETE_CAMPAIGN_SOURCES,
 } from "../utils/dashboardHelpers";
+
+// Preserve incomplete UI input while owner changes another switch. These
+// fields are stripped by normalization before any backend persistence.
+function preserveTypedCampaignDrafts(peteCampaign) {
+  const raw = peteCampaign || {};
+  return {
+    ...(typeof raw._keywordDraft === "string"
+      ? { _keywordDraft: raw._keywordDraft } : {}),
+    ...(typeof raw._linkUrlDraft === "string"
+      ? { _linkUrlDraft: raw._linkUrlDraft } : {}),
+    ...(typeof raw._linkLabelDraft === "string"
+      ? { _linkLabelDraft: raw._linkLabelDraft } : {}),
+    ...(typeof raw._openingDmButtonLabelDraft === "string"
+      ? { _openingDmButtonLabelDraft: raw._openingDmButtonLabelDraft } : {}),
+  };
+}
 
 export default function CampaignEditor({
   colors,
@@ -44,11 +66,17 @@ export default function CampaignEditor({
   const campaignDraftRevision = JSON.stringify({
     name: campaignForm.name, peteCampaign,
   });
+  const [starterTemplateId, setStarterTemplateId] = useState("blank");
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+
+  // A confirmation always belongs to the currently selected campaign.
+  useEffect(() => { setDeleteConfirmationOpen(false); }, [campaignForm?.id]);
   const [previewSource, setPreviewSource] = useState("instagram_dm");
   const [previewMessage, setPreviewMessage] = useState("CHECK");
   const [previewMediaId, setPreviewMediaId] = useState("");
   const [previewResponse, setPreviewResponse] = useState(null);
   const [previewError, setPreviewError] = useState("");
+  const [previewPrefillNotice, setPreviewPrefillNotice] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewRequestId = useRef(0);
 
@@ -56,7 +84,18 @@ export default function CampaignEditor({
     previewRequestId.current += 1;
     setPreviewResponse(null);
     setPreviewError("");
+    setPreviewPrefillNotice("");
     setPreviewLoading(false);
+  }
+
+  function useSavedCampaignExample() {
+    const example = getCampaignPreviewPrefill(savedCampaign);
+    invalidatePreview();
+    setPreviewPrefillNotice(example.ok ? example.notice : example.reason);
+    if (!example.ok) return;
+    setPreviewSource(example.source);
+    setPreviewMessage(example.messageText);
+    setPreviewMediaId(example.mediaId);
   }
 
   // Do not show a previous campaign's snapshot after the owner edits or switches.
@@ -120,9 +159,49 @@ export default function CampaignEditor({
       ...prev,
       peteCampaign: {
         ...getNormalizedPeteCampaignConfig(prev),
+        ...preserveTypedCampaignDrafts(prev.peteCampaign),
+        ...(key === "linkEnabled" && value === false
+          ? { _linkUrlDraft: undefined } : {}),
         [key]: value,
       },
     }));
+  }
+
+  function updateFlowField(key, value) {
+    // Keep the owner's spaces while typing. Persisted button labels are still
+    // safely normalized on save; a trailing space is not the finished input.
+    if (key === "linkLabel" || key === "openingDmButtonLabel") {
+      const draftKey = key === "linkLabel"
+        ? "_linkLabelDraft" : "_openingDmButtonLabelDraft";
+      onCampaignFormChange((prev) => ({
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
+          [key]: getNormalizedPeteCampaignConfig({
+            peteCampaign: { [key]: value },
+          })[key],
+          [draftKey]: value,
+        },
+      }));
+      return;
+    }
+    if (key === "linkUrl") {
+      // Preserve intermediate typing. The persisted value remains HTTPS-only.
+      onCampaignFormChange((prev) => ({
+        ...prev,
+        peteCampaign: {
+          ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
+          linkUrl: getNormalizedPeteCampaignConfig({
+            peteCampaign: { linkUrl: value },
+          }).linkUrl,
+          _linkUrlDraft: value,
+        },
+      }));
+      return;
+    }
+    updatePeteCampaignField(key, value);
   }
 
   function updateKeywordsDraft(raw) {
@@ -132,6 +211,7 @@ export default function CampaignEditor({
         ...prev,
         peteCampaign: {
           ...getNormalizedPeteCampaignConfig(prev),
+          ...preserveTypedCampaignDrafts(prev.peteCampaign),
           keywords: getNormalizedPeteCampaignConfig({ peteCampaign: { keywords: parsed } }).keywords,
           // UI-only draft preserves commas/newlines while typing. Save normalizes it.
           _keywordDraft: raw,
@@ -140,20 +220,17 @@ export default function CampaignEditor({
     });
   }
 
-  function updateReelIds(raw) {
-    onCampaignFormChange((prev) => {
-      const reelMediaIds = raw.split(/[,;\n]/).map((id) => id.trim());
-      return {
-        ...prev,
-        peteCampaign: {
-          ...getNormalizedPeteCampaignConfig(prev),
-          reelMediaIds: getNormalizedPeteCampaignConfig({
-            peteCampaign: { reelMediaIds },
-          }).reelMediaIds,
-          _reelMediaDraft: raw,
-        },
-      };
-    });
+  function updateReelIds(reelMediaIds) {
+    onCampaignFormChange((prev) => ({
+      ...prev,
+      peteCampaign: {
+        ...getNormalizedPeteCampaignConfig(prev),
+        ...preserveTypedCampaignDrafts(prev.peteCampaign),
+        reelMediaIds: getNormalizedPeteCampaignConfig({
+          peteCampaign: { reelMediaIds },
+        }).reelMediaIds,
+      },
+    }));
   }
 
   function toggleEntrySource(sourceId) {
@@ -226,21 +303,41 @@ export default function CampaignEditor({
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 14 }}>Kampagnen & Texte</div>
-        <button
-          type="button"
-          onClick={onCreateNewCampaign}
-          style={{
-            border: `1px solid ${colors.borderStrong}`,
-            background: colors.surface,
-            color: colors.text,
-            padding: "8px 12px",
-            cursor: "pointer",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          Kampagne anlegen
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8,
+          alignItems: "flex-end", maxWidth: "100%" }}>
+          <label style={{ display: "grid", gap: 3, fontSize: 11,
+            color: colors.sub, minWidth: "min(100%, 220px)" }}>
+            Vorlage für neue Kampagne
+            <select value={starterTemplateId}
+              onChange={(e) => setStarterTemplateId(e.target.value)}
+              disabled={campaignSaving || campaignLoading}
+              aria-label="Vorlage für neue Kampagne"
+              style={{ ...inputStyle(colors), maxWidth: "100%" }}>
+              {CAMPAIGN_STARTER_TEMPLATES.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => onCreateNewCampaign(starterTemplateId)}
+            disabled={campaignSaving || campaignLoading}
+            style={{
+              border: `1px solid ${colors.borderStrong}`,
+              background: colors.surface,
+              color: colors.text,
+              padding: "8px 12px",
+              cursor: campaignSaving || campaignLoading ? "not-allowed" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              minHeight: 40,
+            }}
+          >
+            {campaignSaving ? "Bitte warten..." : "Kampagne anlegen"}
+          </button>
+        </div>
       </div>
 
       {campaignMessage ? (
@@ -263,6 +360,13 @@ export default function CampaignEditor({
           <div style={{ color: colors.sub, fontSize: 12, marginBottom: 10 }}>
             Aktive Bearbeitung: {campaignForm.name}
           </div>
+          <p style={{ fontSize: 12, color: colors.sub, lineHeight: 1.6,
+            margin: "0 0 12px" }}>
+            1. Vorlage auswählen und „Kampagne anlegen“ klicken. 2. Auslöser,
+            Text und optionalen Link einstellen. 3. „Kampagne speichern“.
+            4. Unter „Kampagnen-Einstieg testen“ mit Beispieldaten prüfen.
+            Jede Vorlage ist änderbar und startet ohne Live-Automation.
+          </p>
 
           <div
             style={{
@@ -300,25 +404,23 @@ export default function CampaignEditor({
               </p>
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>
                 Auslöser auswählen (Mehrfachauswahl)
+                <InfoHint title="Auslöser und Kanäle"
+                  text="Eine Kampagne kann auf Instagram-DM, Reel-Kommentar, Story oder WhatsApp reagieren. Follower-Begrüßung bleibt immer manuell. Alle Schalter speichern zunächst nur einen Entwurf." />
               </div>
               <div style={{
                 display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
                 gap: 8, marginBottom: 16,
               }}>
                 {PETE_CAMPAIGN_SOURCES.map(([id, label]) => (
-                  <label key={id} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    color: colors.text, fontSize: 12,
-                    border: `1px solid ${colors.border}`, padding: "8px 10px",
-                    cursor: "pointer",
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={peteCampaign.sources.includes(id)}
-                      onChange={() => toggleEntrySource(id)}
-                    />
-                    {label}
-                  </label>
+                  <DraftToggle
+                    key={id}
+                    colors={colors}
+                    label={label}
+                    hint={id === "instagram_new_follower"
+                      ? "Erste Nachricht immer manuell" : "Nur als Auslöser-Entwurf"}
+                    checked={peteCampaign.sources.includes(id)}
+                    onChange={() => toggleEntrySource(id)}
+                  />
                 ))}
               </div>
 
@@ -326,36 +428,37 @@ export default function CampaignEditor({
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                     Welche Reels sollen berücksichtigt werden?
+                    <InfoHint title="Reel-Auswahl"
+                      text="Alle Reels oder ausgewählte Reels sind im Entwurf vorbereitet. Eine echte Reel-Galerie braucht später lesenden Meta-Zugriff. Nächstes Reel kann erst nach einer sicheren Anbieterprüfung aktiviert werden." />
                   </div>
-                  <select
-                    style={inputStyle(colors)}
-                    value={peteCampaign.reelTarget}
-                    onChange={(e) => updatePeteCampaignField("reelTarget", e.target.value)}
-                  >
-                    <option value="all">Alle Reels</option>
-                    <option value="specific">Nur ausgewählte Reels</option>
-                  </select>
+                  <DraftToggle
+                    colors={colors}
+                    label="Alle Reels"
+                    hint="Aus = Nur ausgewählte Reels. Die Auswahl unten wird dann berücksichtigt."
+                    checked={peteCampaign.reelTarget === "all"}
+                    onChange={(all) => updatePeteCampaignField(
+                      "reelTarget", all ? "all" : "specific",
+                    )}
+                  />
+                  <div style={{ marginTop: 7, color: colors.sub, fontSize: 11 }}>
+                    Nächstes Reel automatisch auswählen: geplant, derzeit nicht verfügbar.
+                    Ohne Meta-Berechtigung kein sicherer automatischer Media-ID-Wechsel.
+                  </div>
                   {peteCampaign.reelTarget === "specific" && (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
-                        Reel-Media-IDs
-                      </div>
-                      <textarea
-                        style={{ ...inputStyle(colors), minHeight: 58, resize: "vertical" }}
-                        value={campaignForm.peteCampaign?._reelMediaDraft ?? peteCampaign.reelMediaIds.join(", ")}
-                        onChange={(e) => updateReelIds(e.target.value)}
-                        placeholder="17851537767246649, ..."
-                      />
-                      <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                        Nur bestätigte numerische Media-IDs. Ohne Treffer wird keine Kampagne ausgewählt.
-                      </p>
-                    </div>
+                    <ReelSelectionEditor
+                      colors={colors}
+                      campaignId={campaignForm.id}
+                      reelMediaIds={peteCampaign.reelMediaIds}
+                      onChange={updateReelIds}
+                    />
                   )}
                 </div>
               )}
 
               <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
                 Keywords (z. B. CHECK, KETO, BULLSHIT)
+                <InfoHint title="Keyword-Filter"
+                  text="Mehrere Schreibweisen eines Keywords werden bereits unabhängig von Groß- und Kleinschreibung erkannt. Unterschiedliche Antworten bitte als eigene Kampagnen anlegen. Beliebiges Wort als Auslöser wird erst nach gesonderter Prüfung freigegeben." />
               </div>
               <textarea
                 style={{ ...inputStyle(colors), minHeight: 65, resize: "vertical" }}
@@ -364,23 +467,23 @@ export default function CampaignEditor({
                 placeholder="CHECK, KETO, BULLSHIT"
               />
               <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                Durch Komma oder Zeilenumbruch trennen. Keine automatischen Antworten,
-                bevor die Phase-4-Routingprüfung bestanden ist.
+                Durch Komma oder Zeilenumbruch trennen. Für unterschiedliche
+                Antworten pro Keyword bitte jeweils eine eigene Kampagne anlegen.
+                Mehrere Keywords in einer Kampagne verwenden denselben Ablauf.
+                Keine automatischen Antworten vor der Sicherheitsfreigabe.
+                Alle Wörter ohne Keyword-Filter: noch nicht freigegeben.
               </p>
 
-              <div style={{ fontWeight: 600, fontSize: 12, margin: "14px 0 6px" }}>
-                Starttext für den Kampagneneinstieg
-              </div>
-              <textarea
-                style={{ ...inputStyle(colors), minHeight: 95, resize: "vertical" }}
-                value={peteCampaign.openingText}
-                onChange={(e) => updatePeteCampaignField("openingText", e.target.value)}
-                placeholder="Kurze, menschliche Begrüßung, wenn der Einstieg es erlaubt."
+              <CampaignFlowEditor
+                colors={colors}
+                config={{
+                  ...peteCampaign,
+                  linkUrlDraft: campaignForm.peteCampaign?._linkUrlDraft,
+                  linkLabelDraft: campaignForm.peteCampaign?._linkLabelDraft,
+                  openingDmButtonLabelDraft: campaignForm.peteCampaign?._openingDmButtonLabelDraft,
+                }}
+                onChange={updateFlowField}
               />
-              <p style={{ color: colors.sub, fontSize: 11, marginTop: 4 }}>
-                Danach führt Pete frei und kontextbezogen weiter.
-                Der Starttext ist kein starres Gesprächsskript.
-              </p>
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -398,6 +501,20 @@ export default function CampaignEditor({
                 <p style={{ color: colors.warning, fontSize: 12, lineHeight: 1.5 }}>
                   Ungespeicherte Pete-Änderungen: Die Vorschau zeigt die
                   zuletzt gespeicherten Kampagnendaten. Bitte erst speichern.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={useSavedCampaignExample}
+                disabled={!savedCampaign || hasUnsavedPeteChanges || previewLoading}
+                style={{ ...secondaryButtonStyle(colors), marginBottom: 10 }}
+              >
+                Gespeicherten Kampagneneinstieg übernehmen
+              </button>
+              {previewPrefillNotice && (
+                <p role="status" style={{ fontSize: 12, lineHeight: 1.5,
+                  color: colors.sub, margin: "0 0 10px" }}>
+                  {previewPrefillNotice}
                 </p>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))", gap: 10 }}>
@@ -482,6 +599,23 @@ export default function CampaignEditor({
                         Follow-up: {previewResponse.draftContext.followUpDraftConfigured
                           ? "als Entwurf konfiguriert" : "nicht vorgesehen"}
                       </div>
+                      {previewResponse.draftContext.flowDraft && (
+                        <div style={{ marginTop: 8, padding: 10,
+                          border: `1px solid ${colors.border}` }}>
+                          <strong>Gespeicherter Nachrichtenablauf (nur Entwurf)</strong>
+                          <div>Schalter: {previewResponse.draftContext.flowDraft.enabled
+                            ? "vorbereitet" : "pausiert"}</div>
+                          <div>Feste Antwort: {previewResponse.draftContext.flowDraft.autoReplyEnabled
+                            ? previewResponse.draftContext.flowDraft.text || "Text fehlt"
+                            : "aus"}</div>
+                          <div>Link: {previewResponse.draftContext.flowDraft.linkEnabled
+                            ? previewResponse.draftContext.flowDraft.linkUrl || "HTTPS-Link fehlt"
+                            : "aus"}</div>
+                          <div>Pete-Übergabe: {previewResponse.draftContext.flowDraft.peteHandoffEnabled
+                            ? "vorgesehen" : "aus"}</div>
+                          <div>Versand: gesperrt</div>
+                        </div>
+                      )}
                       {previewResponse.draftContext.reelTarget && (
                         <div>
                           Reel-Auswahl: {previewResponse.draftContext.reelTarget === "specific"
@@ -1200,13 +1334,37 @@ export default function CampaignEditor({
               {campaignSaving ? "Speichert..." : "Kampagne speichern"}
             </button>
 
-            <button
-              type="button"
-              onClick={onDeleteCampaign}
-              style={secondaryButtonStyle(colors)}
-            >
-              Kampagne löschen
-            </button>
+            {!deleteConfirmationOpen ? (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmationOpen(true)}
+                disabled={campaignSaving || campaignLoading || campaigns.length <= 1}
+                style={secondaryButtonStyle(colors)}
+              >
+                Kampagne löschen
+              </button>
+            ) : (
+              <div role="group" aria-label="Kampagne löschen bestätigen"
+                style={{ display: "flex", gap: 8, alignItems: "center",
+                  flexWrap: "wrap", border: `1px solid ${colors.border}`,
+                  padding: 8, maxWidth: "100%" }}>
+                <strong style={{ fontSize: 12 }}>„{campaignForm.name}“ wirklich löschen?</strong>
+                <button type="button"
+                  onClick={async () => {
+                    const deleted = await onDeleteCampaign();
+                    if (deleted) setDeleteConfirmationOpen(false);
+                  }}
+                  disabled={campaignSaving || campaignLoading}
+                  style={secondaryButtonStyle(colors)}>
+                  Ja, endgültig löschen
+                </button>
+                <button type="button"
+                  onClick={() => setDeleteConfirmationOpen(false)}
+                  style={secondaryButtonStyle(colors)}>
+                  Abbrechen
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
+import { CAMPAIGN_STARTER_TEMPLATES, applyCampaignStarterTemplate } from "./campaignTemplates.js";
+import { getFlowDraftWarnings } from "./flowDraftReadiness.js";
 import {
   getNormalizedPeteCampaignConfig,
   PETE_CAMPAIGN_SOURCES,
@@ -183,4 +185,259 @@ test("Phase 4B: editor warns when comparing unsaved Pete settings to the saved p
   assert.ok(lab.includes("campaignDraftRevision"));
   assert.ok(lab.includes("[apiBaseUrl, campaignDraftRevision]"));
   assert.ok(lab.includes("invalidatePreview()"));
+});
+
+test("Desktop Flow 1: ManyChat-like switches are normalized without any send permission", () => {
+  const config = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+    reelTarget: "specific", reelMediaIds: ["17851537767246649"],
+    openingText: "Hier ist der Elterncheck.",
+    flowDraftEnabled: true, autoReplyEnabled: true,
+    linkEnabled: true, linkLabel: "Zum Elterncheck",
+    linkUrl: "https://check.jochen-kammerer.de/",
+    peteHandoffEnabled: true,
+  } });
+  assert.equal(config.flowDraftEnabled, true);
+  assert.equal(config.autoReplyEnabled, true);
+  assert.equal(config.linkEnabled, true);
+  assert.equal(config.linkLabel, "Zum Elterncheck");
+  assert.equal(config.linkUrl, "https://check.jochen-kammerer.de/");
+  assert.equal(config.peteHandoffEnabled, true);
+  assert.equal(config.reelTarget, "specific");
+
+  const legacy = getNormalizedPeteCampaignConfig({});
+  for (const key of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+    "peteHandoffEnabled"]) assert.equal(legacy[key], false);
+  assert.equal(legacy.linkUrl, "");
+});
+
+test("Desktop Flow 1: invalid URLs and truthy strings fail closed", () => {
+  for (const url of [
+    "http://example.com", "//example.com", "javascript:alert(1)",
+    "https://localhost/test", "https://u:p@example.com",
+    "https://127.0.0.1/", "bad url",
+  ]) {
+    const config = getNormalizedPeteCampaignConfig({ peteCampaign: {
+      flowDraftEnabled: "true", autoReplyEnabled: "yes", linkEnabled: 1,
+      peteHandoffEnabled: "true", linkUrl: url,
+    } });
+    assert.equal(config.linkUrl, "", url);
+    assert.equal(config.flowDraftEnabled, false);
+    assert.equal(config.autoReplyEnabled, false);
+    assert.equal(config.linkEnabled, false);
+    assert.equal(config.peteHandoffEnabled, false);
+  }
+});
+
+test("Desktop Flow 1: editor uses accessible toggles and never a live sender", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const flow = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const toggle = fs.readFileSync(new URL("./DraftToggle.jsx", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("./campaignFlowEditor.css", import.meta.url), "utf8");
+
+  assert.match(editor, /import CampaignFlowEditor from/);
+  assert.match(editor, /<CampaignFlowEditor/);
+  assert.match(editor, /onChange=\{updateFlowField\}/);
+  assert.match(editor, /label="Alle Reels"/);
+  assert.match(editor, /"reelTarget", all \? "all" : "specific"/);
+  assert.match(editor, /_linkUrlDraft: value/);
+  for (const field of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+    "peteHandoffEnabled"]) assert.ok(flow.includes(field));
+  for (const node of ["Auslöser", "Öffentlich unter dem Reel antworten",
+    "Erste DM / Feste Nachricht", "DM mit Link", "Übergabe an Pete"])
+    assert.ok(flow.includes(node));
+  assert.match(flow, /Diese Schalter geben niemals den Live-Versand frei/);
+  assert.match(toggle, /role="switch"/);
+  assert.match(toggle, /checked=\{checked\}/);
+  assert.match(toggle, /aria-label=\{label\}/);
+  assert.match(css, /focus-visible/);
+  assert.doesNotMatch(flow, /fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+});
+
+test("Desktop Flow 2: missing trigger/reel/auto-answer/link is reported, not silently enabled", () => {
+  const invalid = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true,
+    sources: ["instagram_reel_comment"],
+    keywords: [],
+    reelTarget: "specific", reelMediaIds: [],
+    autoReplyEnabled: true, openingText: "",
+    linkEnabled: true, linkUrl: "javascript:alert(1)",
+    peteHandoffEnabled: false,
+  } });
+  const warnings = getFlowDraftWarnings(invalid);
+  assert.equal(warnings.length, 4);
+  assert.ok(warnings.some((value) => value.includes("Keyword")));
+  assert.ok(warnings.some((value) => value.includes("Reel-Media-ID")));
+  assert.ok(warnings.some((value) => value.includes("Text")));
+  assert.ok(warnings.some((value) => value.includes("HTTPS-Link")));
+  const ready = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true, sources: ["instagram_dm"],
+    keywords: ["CHECK"], autoReplyEnabled: true,
+    openingText: "Hallo!",
+  } });
+  assert.deepEqual(getFlowDraftWarnings(ready), []);
+});
+
+test("Desktop Flow 2: follower-first DMs remain manual even if a draft toggle is enabled", () => {
+  const flow = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    flowDraftEnabled: true, sources: ["instagram_new_follower"],
+    keywords: [], autoReplyEnabled: true,
+    openingText: "Hey, schön, dass du folgst.",
+  } });
+  const warnings = getFlowDraftWarnings(flow);
+  assert.ok(warnings.some((warning) => warning.includes("immer manuell")));
+  const list = fs.readFileSync(new URL("./CampaignList.jsx", import.meta.url), "utf8");
+  assert.ok(list.includes("Flow-Entwurf eingeschaltet (nicht live)"));
+  assert.ok(list.includes("Flow-Entwurf pausiert"));
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("Antworten pro Keyword"));
+});
+
+test("Desktop templates: 6 editable starter choices and every automation defaults OFF", () => {
+  assert.deepEqual(CAMPAIGN_STARTER_TEMPLATES.map((t) => t.id), [
+    "blank", "ig_dm", "ig_reel", "ig_story", "wa_dm", "follower_manual",
+  ]);
+  const base = {
+    id: "sample-id", name: "previous", trigger: "", booking: { provider: "manual" },
+    peteCampaign: { flowDraftEnabled: true, autoReplyEnabled: true,
+      linkEnabled: true, linkUrl: "https://example.org", peteHandoffEnabled: true },
+    welcome: "old script", q1: "old question", followUp24h: "old followup",
+  };
+  for (const template of CAMPAIGN_STARTER_TEMPLATES) {
+    const result = applyCampaignStarterTemplate(base, template.id);
+    const flow = result.peteCampaign;
+    assert.equal(result.id, "sample-id");
+    assert.equal(result.booking.provider, "manual");
+    assert.equal(result.name, template.name);
+    assert.deepEqual(flow.sources, template.sources);
+    assert.deepEqual(flow.keywords, template.keywords);
+    for (const key of ["flowDraftEnabled", "autoReplyEnabled", "linkEnabled",
+      "peteHandoffEnabled", "followUpEnabled"]) assert.equal(flow[key], false);
+    assert.equal(flow.linkUrl, "");
+    assert.equal(result.q1, "");
+    assert.equal(result.followUp24h, "");
+  }
+  assert.equal(base.peteCampaign.flowDraftEnabled, true, "caller must not be mutated");
+  assert.equal(base.q1, "old question");
+  assert.equal(applyCampaignStarterTemplate(base, "ig_reel").peteCampaign.reelTarget, "all");
+  assert.deepEqual(
+    applyCampaignStarterTemplate(base, "follower_manual").peteCampaign.sources,
+    ["instagram_new_follower"],
+  );
+  assert.throws(() => applyCampaignStarterTemplate(base, "not-a-template"),
+    /unknown_campaign_template/);
+});
+
+test("Desktop templates: create is persisted first and the editor guides owner through preview", () => {
+  const hook = fs.readFileSync(new URL("../hooks/useCampaigns.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const creation = hook.split('  async function createNewCampaign(templateId = "blank") {')[1]
+    .split("  async function saveCampaign() {")[0];
+  assert.ok(creation);
+  assert.ok(creation.includes("applyCampaignStarterTemplate"));
+  assert.ok(creation.includes("await createCampaignInApi(newCampaign, settings.apiBaseUrl)"));
+  assert.ok(creation.includes("setCampaigns((prev) => [...prev, saved]);"));
+  assert.ok(creation.indexOf("await createCampaignInApi(newCampaign, settings.apiBaseUrl)") <
+    creation.indexOf("setCampaigns((prev) => [...prev, saved]);"));
+  assert.ok(creation.includes("catch (error)"));
+  assert.ok(creation.includes("Kampagne konnte nicht im Backend angelegt werden"));
+  assert.ok(editor.includes("CAMPAIGN_STARTER_TEMPLATES.map"));
+  assert.ok(editor.includes('onClick={() => onCreateNewCampaign(starterTemplateId)}'));
+  assert.ok(editor.includes("disabled={campaignSaving || campaignLoading}"));
+  assert.ok(editor.includes("Kampagnen-Einstieg testen"));
+  assert.ok(editor.includes("Jede Vorlage ist änderbar und startet ohne Live-Automation."));
+});
+
+test("Desktop campaign manager: deletion needs an explicit second action and allows cancel", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("deleteConfirmationOpen"));
+  assert.ok(editor.includes('setDeleteConfirmationOpen(false); }, [campaignForm?.id]'));
+  assert.ok(editor.includes('onClick={() => setDeleteConfirmationOpen(true)}'));
+  assert.ok(editor.includes("Ja, endgültig löschen"));
+  assert.ok(editor.includes("Abbrechen"));
+  assert.ok(editor.includes("const deleted = await onDeleteCampaign();"));
+  assert.ok(editor.includes("if (deleted) setDeleteConfirmationOpen(false)"));
+  assert.ok(editor.includes("campaigns.length <= 1"));
+  assert.ok(!editor.includes("onClick={onDeleteCampaign}"));
+});
+
+test("ManyChat screenshot adaptation: comments, DM buttons and link texts are draft-only", () => {
+  const normalized = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["BULLSHIT"],
+    commentReplyEnabled: true,
+    commentReplyVariants: [
+      "Hey, schau in deine DM!",
+      "Nachricht ist vorbereitet.",
+      "Du bekommst gleich eine Nachricht!",
+      "Vierte Antwort",
+    ],
+    autoReplyEnabled: true, openingText: "Hey, du hast BULLSHIT geschrieben.",
+    openingDmVariants: ["Hi, du bist hier richtig.", "Danke dir, das Paket wartet."],
+    openingDmButtonEnabled: true, openingDmButtonLabel: "Ja, zeig mir das Bundle",
+    linkEnabled: true, linkMessageText: "Perfekt. Hier sind die Infos.",
+    linkLabel: "No Bullshit Bundle", linkUrl: "https://example.org/bundle",
+  } });
+  assert.equal(normalized.commentReplyEnabled, true);
+  assert.deepEqual(normalized.commentReplyVariants, [
+    "Hey, schau in deine DM!", "Nachricht ist vorbereitet.",
+    "Du bekommst gleich eine Nachricht!", "Vierte Antwort",
+  ]);
+  assert.deepEqual(normalized.openingDmVariants, ["Hi, du bist hier richtig.", "Danke dir, das Paket wartet."]);
+  assert.equal(normalized.openingDmButtonEnabled, true);
+  assert.equal(normalized.openingDmButtonLabel, "Ja, zeig mir das Bundle");
+  assert.equal(normalized.linkMessageText, "Perfekt. Hier sind die Infos.");
+
+  const flow = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const preview = fs.readFileSync(new URL("./CampaignFlowPreview.jsx", import.meta.url), "utf8");
+  assert.match(flow, /InfoHint/);
+  assert.match(flow, /Antwortvariante/);
+  assert.match(flow, /Link-Button/);
+  assert.match(flow, /Öffentliche Kommentarantwort vorbereiten/);
+  assert.match(preview, /fp-flow-chat-public-reply/);
+  assert.match(preview, /fp-flow-chat-fake-button/);
+  assert.doesNotMatch(preview, /href=|onClick=|fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+
+  const legacy = getNormalizedPeteCampaignConfig({});
+  assert.equal(legacy.commentReplyEnabled, false);
+  assert.deepEqual(legacy.commentReplyVariants, []);
+  assert.deepEqual(legacy.openingDmVariants, []);
+  assert.equal(legacy.openingDmButtonEnabled, false);
+  assert.equal(legacy.openingDmButtonLabel, "");
+  assert.equal(legacy.linkMessageText, "");
+
+  const missing = getFlowDraftWarnings(getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["BULLSHIT"],
+    commentReplyEnabled: true, commentReplyVariants: [],
+    autoReplyEnabled: true, openingText: "Hi",
+    openingDmButtonEnabled: true,
+  } }));
+  assert.ok(missing.some((line) => line.includes("öffentliche Kommentarantwort")));
+  assert.ok(missing.some((line) => line.includes("DM-Antwortbutton")));
+});
+
+test("X-Wing: flexible public and opening DM variants preserve legacy primary and keep drafts offline", () => {
+  const full = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    sources: ["instagram_reel_comment"], keywords: ["CHECK"],
+    openingText: "Ursprüngliche erste DM", autoReplyEnabled: true,
+    openingDmVariants: ["Andere DM 2", "Andere DM 3", ...Array(20).fill("Zusatz")],
+    commentReplyEnabled: true,
+    commentReplyVariants: ["Kommentar 1", "Kommentar 2", "Kommentar 3", ...Array(20).fill("Zusatz")],
+  } });
+  assert.equal(full.commentReplyVariants.length, 10);
+  assert.equal(full.openingDmVariants.length, 9);
+  assert.equal(full.openingText, "Ursprüngliche erste DM");
+  const editor = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  const preview = fs.readFileSync(new URL("./CampaignFlowPreview.jsx", import.meta.url), "utf8");
+  assert.ok(editor.includes("Weitere Kommentarvariante hinzufügen"));
+  assert.ok(editor.includes("Weitere DM-Variante hinzufügen"));
+  assert.ok(editor.includes('onChange("openingDmVariants"'));
+  assert.ok(preview.includes("openingAlternatives.map"));
+  assert.doesNotMatch(preview, /href=|onClick=|fetch\(|sendMessage|axios|MetaGraph|OpenAI/);
+  const warnings = getFlowDraftWarnings(full);
+  assert.ok(warnings.some(warning => warning.includes("doppelte Texte")));
+  const legacy = getNormalizedPeteCampaignConfig({ peteCampaign: {
+    openingText: "Vorhandener Kampagnentext",
+  } });
+  assert.deepEqual(legacy.openingDmVariants, []);
+  assert.equal(legacy.openingText, "Vorhandener Kampagnentext");
 });

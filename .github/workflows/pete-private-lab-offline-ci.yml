@@ -5,6 +5,7 @@ on:
     branches:
       - feat/pete-private-lab-yoda-sync-20261014
       - feat/pete-phase4b-event-origin-readonly-20261017
+      - feat/pete-desktop-flow-builder-draft-20261017
   pull_request:
     branches:
       - deploy-pete-testlabor-temp-20261011

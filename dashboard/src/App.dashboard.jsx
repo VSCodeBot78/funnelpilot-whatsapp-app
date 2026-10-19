@@ -24,6 +24,7 @@ import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
+import { createXWingOfflineSettings } from "./onboarding/xwingOfflineSettings.js";
 
 const navItems = ALL_NAV;
 
@@ -40,6 +41,12 @@ function firstSection() {
 export default function AppDashboard({ onOpenTestChat = () => {} }) {
   const [section, setSection] = useState(firstSection);
   const [onboardingStartStep, setOnboardingStartStep] = useState(0);
+  const [xwingDryRunOpen, setXwingDryRunOpen] = useState(false);
+  const [xwingSettings, setXwingSettings] = useState(createXWingOfflineSettings);
+  const [setupFinishedLocally, setSetupFinishedLocally] = useState(() => {
+    try { return window.localStorage.getItem("funnelpilot-onboarding-complete-v1") === "true"; }
+    catch { return false; }
+  });
   const [search, setSearch] = useState("");
   const [activeContactId, setActiveContactId] = useState(null);
   const [openChatTabs, setOpenChatTabs] = useState([]);
@@ -63,6 +70,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     campaigns,
     activeCampaignId,
     campaignForm,
+    campaignFormBaseline,
     campaignMessage,
     campaignSaving,
     campaignLoading,
@@ -151,12 +159,14 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     onGhostingMessageChange,
     onAddGhostingSlot,
     onRemoveGhostingSlot,
+    onAddGhostingCycle,
+    onRemoveGhostingCycle,
     onSaveGhostingConfig,
     onReloadGhostingConfig,
     onResetGhostingConfig,
   } = useGhostingConfig({
     apiBaseUrl: settings.apiBaseUrl,
-    autoLoad: section === "settings",
+    autoLoad: section === "settings" || section === "ghosting",
     onConfigChanged: async () => {
       if (section === "ghosting") {
         await loadGhostingData();
@@ -278,14 +288,14 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     return () => clearTimeout(timeout);
   }, [ghostingMessage]);
 
-  function handleCreateNewCampaign() {
-    createNewCampaign();
+  async function handleCreateNewCampaign(templateId = "blank") {
+    await createNewCampaign(templateId);
     setSection("campaigns");
   }
 
-  function handleDeleteCampaign() {
-    const result = deleteCampaign();
-    if (!result?.deletedCampaignId) return;
+  async function handleDeleteCampaign() {
+    const result = await deleteCampaign();
+    if (!result?.deletedCampaignId) return null;
 
     const deleteId = result.deletedCampaignId;
     const fallbackCampaignId = result.fallbackCampaignId;
@@ -302,6 +312,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         ? { ...prev, campaignId: fallbackCampaignId }
         : prev,
     );
+    return result;
   }
 
   function renderPlaceholder(title, text) {
@@ -323,12 +334,35 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     );
   }
 
+  const openXwingDryRun = useCallback(() => {
+    // A genuinely fresh, disposable profile: no copy of workspace tokens or leads.
+    setXwingSettings(createXWingOfflineSettings());
+    setOnboardingStartStep(0);
+    setXwingDryRunOpen(true);
+  }, []);
+
   const handleCloseWizard = useCallback(() => {
     setOnboardingStartStep(0);
+    if (xwingDryRunOpen) {
+      setXwingDryRunOpen(false);
+      setXwingSettings(createXWingOfflineSettings());
+      return; // Never touch real onboarding state or browser storage.
+    }
     try { window.localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"); }
     catch { /* private browser mode */ }
     setSection("dashboard");
-  }, []);
+  }, [xwingDryRunOpen]);
+
+  const handleFinishWizard = useCallback(() => {
+    if (!xwingDryRunOpen) {
+      // This records only that the real wizard was completed on this browser.
+      // It does NOT prove Meta, Calendly, Pete, or any send integration.
+      try { window.localStorage.setItem("funnelpilot-onboarding-complete-v1", "true"); }
+      catch { /* private browser mode */ }
+      setSetupFinishedLocally(true);
+    }
+    handleCloseWizard();
+  }, [xwingDryRunOpen, handleCloseWizard]);
 
   function renderContent() {
     if (section === "dashboard" || section === "onboarding") {
@@ -355,6 +389,8 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
             setOnboardingStartStep(3);
             setSection("onboarding");
           }}
+          onStartXwingTest={openXwingDryRun}
+          setupFinishedLocally={setupFinishedLocally}
         />
       );
     }
@@ -367,6 +403,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           campaigns={campaigns}
           activeCampaignId={activeCampaignId}
           campaignForm={campaignForm}
+          campaignFormBaseline={campaignFormBaseline}
           campaignMessage={campaignMessage}
           campaignSaving={campaignSaving}
           campaignLoading={campaignLoading}
@@ -444,6 +481,17 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onSendDue={sendGhostingDue}
           onMarkSent={markGhostingSent}
           onOpenLead={(id) => { setMobileInboxPane("chat"); openChat(id); }}
+          ghostingConfig={ghostingConfig}
+          ghostingConfigMessage={ghostingConfigMessage}
+          onGhostingSlotChange={onGhostingSlotChange}
+          onGhostingMessageChange={onGhostingMessageChange}
+          onAddGhostingSlot={onAddGhostingSlot}
+          onRemoveGhostingSlot={onRemoveGhostingSlot}
+          onAddGhostingCycle={onAddGhostingCycle}
+          onRemoveGhostingCycle={onRemoveGhostingCycle}
+          onSaveGhostingConfig={onSaveGhostingConfig}
+          onReloadGhostingConfig={onReloadGhostingConfig}
+          onResetGhostingConfig={onResetGhostingConfig}
         />
       );
     }
@@ -487,6 +535,8 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onGhostingMessageChange={onGhostingMessageChange}
           onAddGhostingSlot={onAddGhostingSlot}
           onRemoveGhostingSlot={onRemoveGhostingSlot}
+          onAddGhostingCycle={onAddGhostingCycle}
+          onRemoveGhostingCycle={onRemoveGhostingCycle}
           onSaveGhostingConfig={onSaveGhostingConfig}
           onReloadGhostingConfig={onReloadGhostingConfig}
           onResetGhostingConfig={onResetGhostingConfig}
@@ -582,17 +632,21 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         </main>
       </div>
 
-      {section === "onboarding" && (
+      {(section === "onboarding" || xwingDryRunOpen) && (
         <SetupWizardModal
-          startStep={onboardingStartStep}
+          startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
+          dryRun={xwingDryRunOpen}
           colors={colors}
-          settings={settings}
-          onSettingsChange={setSettings}
-          onSaveSettings={handleSaveSettings}
-          onSaveCoachDraft={saveCoachDraftOnly}
-          onOpenTestChat={() => { setSection("dashboard"); onOpenTestChat(); }}
-          onOpenSection={setSection}
+          settings={xwingDryRunOpen ? xwingSettings : settings}
+          onSettingsChange={xwingDryRunOpen ? setXwingSettings : setSettings}
+          onSaveSettings={xwingDryRunOpen ? async () => ({ ...xwingSettings }) : handleSaveSettings}
+          onSaveCoachDraft={xwingDryRunOpen
+            ? async () => true : saveCoachDraftOnly}
+          onOpenTestChat={xwingDryRunOpen
+            ? () => {} : () => { setSection("dashboard"); onOpenTestChat(); }}
+          onOpenSection={xwingDryRunOpen ? () => {} : setSection}
           onClose={handleCloseWizard}
+          onFinish={handleFinishWizard}
         />
       )}
 

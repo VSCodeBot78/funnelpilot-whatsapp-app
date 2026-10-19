@@ -9,6 +9,9 @@ import {
   getNormalizedEntryConfig,
   getNormalizedPeteCampaignConfig,
 } from "../utils/dashboardHelpers";
+import { applyCampaignStarterTemplate } from "../campaigns/campaignTemplates.js";
+import { getCampaignSaveInputError } from "../campaigns/campaignSaveValidation.js";
+import { getCampaignDraftChanges } from "../campaigns/campaignDraftChanges.js";
 import {
   loadCampaignSchedulingConfigFromApi,
   saveCampaignSchedulingConfigToApi,
@@ -160,6 +163,8 @@ export function useCampaigns({
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [activeCampaignId, setActiveCampaignId] = useState(initialCampaignId);
   const [campaignForm, setCampaignForm] = useState(initialCampaigns[0] || null);
+  // Latest confirmed/loaded values, separate from locally edited fields.
+  const [campaignFormBaseline, setCampaignFormBaseline] = useState(initialCampaigns[0] || null);
   const [campaignMessage, setCampaignMessage] = useState("");
   const [campaignSaving, setCampaignSaving] = useState(false);
   const [campaignLoading, setCampaignLoading] = useState(false);
@@ -172,6 +177,13 @@ export function useCampaigns({
     // Discard in-flight booking loads when the owner selects another campaign.
     let cancelled = false;
     const campaign = campaigns.find((c) => c.id === activeCampaignId);
+    // A background refresh or save response must not erase unsaved edits.
+    // An explicit campaign switch has a different ID and loads normally.
+    if (campaignForm?.id === activeCampaignId &&
+        campaignFormBaseline?.id === activeCampaignId &&
+        getCampaignDraftChanges(campaignForm, campaignFormBaseline, settings)) {
+      return () => { cancelled = true; };
+    }
 
     if (campaign) {
       const nextCampaignForm = {
@@ -184,6 +196,7 @@ export function useCampaigns({
       };
 
       setCampaignForm(nextCampaignForm);
+      setCampaignFormBaseline(nextCampaignForm);
       loadSchedulingConfigForCampaign(nextCampaignForm);
     }
 
@@ -204,8 +217,16 @@ export function useCampaigns({
           return;
         }
 
-        // A slow response for campaign A must never change campaign B's form.
-        setCampaignForm((prev) => prev?.id === campaignToLoad.id
+        // A late backend response must never clobber a different campaign
+        // or an owner-edited booking form.
+        setCampaignForm((prev) => {
+          if (prev?.id !== campaignToLoad.id) return prev;
+          const bookingWasNotEdited =
+            JSON.stringify(getNormalizedBookingConfig(prev, settings)) ===
+            JSON.stringify(getNormalizedBookingConfig(campaignToLoad, settings));
+          return bookingWasNotEdited ? { ...prev, booking: bookingConfig } : prev;
+        });
+        setCampaignFormBaseline((prev) => prev?.id === campaignToLoad.id
           ? { ...prev, booking: bookingConfig }
           : prev);
       } catch (error) {
@@ -275,47 +296,58 @@ export function useCampaigns({
     return () => clearTimeout(timeout);
   }, [campaignMessage]);
 
-  async function createNewCampaign() {
-    const newId = makeId();
-
-    const newCampaign = {
-      ...emptyCampaignForm,
-      id: newId,
-      name: "Neue Kampagne",
-      trigger: "",
-      slot1: "",
-      slot2: "",
-      booking: getDefaultBookingConfig(settings),
-      offerContext: getDefaultOfferContext(),
-      peteCampaign: getNormalizedPeteCampaignConfig(),
-      entryConfig: getDefaultEntryConfig(""),
-      useGlobalBookingDefaults: false,
-      // No scripted A/B/C question defaults in newly created campaigns.
-      welcome: "",
-      q1: "", q2: "", q3: "", goal: "", scale: "", hot: "",
-      followUp24h: "",
-      followUp3d: "",
-    };
-
-    setCampaigns((prev) => [...prev, newCampaign]);
-    setActiveCampaignId(newId);
-    setCampaignForm(newCampaign);
-
+  async function createNewCampaign(templateId = "blank") {
+    // Fail closed on an unknown template and never show a phantom saved campaign.
+    let newCampaign;
+    try {
+      newCampaign = applyCampaignStarterTemplate({
+        ...emptyCampaignForm,
+        id: makeId(),
+        name: "Neue Kampagne",
+        trigger: "",
+        slot1: "", slot2: "",
+        booking: getDefaultBookingConfig(settings),
+        offerContext: getDefaultOfferContext(),
+        peteCampaign: getNormalizedPeteCampaignConfig(),
+        entryConfig: getDefaultEntryConfig(""),
+        useGlobalBookingDefaults: false,
+      }, templateId);
+    } catch (error) {
+      setCampaignMessage("Vorlage nicht gefunden. Keine Kampagne angelegt.");
+      return;
+    }
+    setCampaignSaving(true);
+    setCampaignMessage("");
     try {
       const created = await createCampaignInApi(newCampaign, settings.apiBaseUrl);
-      setBackendCampaignIds((prev) => new Set(prev).add(created.id));
+      // Backend confirmation is the only point at which a campaign is created locally.
+      const saved = {
+        ...newCampaign, ...created,
+        peteCampaign: getNormalizedPeteCampaignConfig(created),
+        offerContext: getNormalizedOfferContext(created),
+        entryConfig: getNormalizedEntryConfig(created),
+      };
+      setBackendCampaignIds((prev) => new Set(prev).add(saved.id));
+      setCampaigns((prev) => [...prev, saved]);
+      setActiveCampaignId(saved.id);
+      setCampaignForm(saved);
+      setCampaignFormBaseline(saved);
+      setCampaignMessage("Kampagne aus Vorlage angelegt. Noch kein Live-Versand.");
     } catch (error) {
       console.error("campaign create error:", error);
-      setCampaignMessage(
-        error instanceof Error
-          ? error.message
-          : "Neue Kampagne konnte nicht im Backend gespeichert werden.",
-      );
+      setCampaignMessage("Kampagne konnte nicht im Backend angelegt werden. Bitte erneut versuchen.");
+    } finally {
+      setCampaignSaving(false);
     }
   }
 
   async function saveCampaign() {
-    if (!campaignForm?.id) return;
+    if (!campaignForm?.id) return false;
+    const inputError = getCampaignSaveInputError(campaignForm);
+    if (inputError) {
+      setCampaignMessage(inputError);
+      return false;
+    }
 
     let campaignSavedToBackend = false;
     try {
@@ -354,8 +386,13 @@ export function useCampaigns({
           campaign.id === updatedCampaign.id ? updatedCampaign : campaign,
         ),
       );
-      // Do not switch the owner's selection if this request completes late.
+      // Preserve edits made while a save was in flight; the baseline still
+      // advances to what the backend actually confirmed.
       setCampaignForm((prev) =>
+        prev?.id === updatedCampaign.id &&
+          !getCampaignDraftChanges(prev, campaignForm, settings)
+          ? updatedCampaign : prev);
+      setCampaignFormBaseline((prev) =>
         prev?.id === updatedCampaign.id ? updatedCampaign : prev);
 
       await saveCampaignSchedulingConfigToApi({
@@ -365,11 +402,13 @@ export function useCampaigns({
       });
 
       setCampaignMessage("Kampagne und Buchungslogik gespeichert.");
+      return true;
     } catch (error) {
       console.error("campaign save error:", error);
       setCampaignMessage(campaignSavedToBackend
         ? "Kampagne gespeichert, aber Buchungslogik nicht bestätigt. Bitte erneut speichern."
         : "Kampagne nicht im Backend gespeichert. Änderungen bleiben im Formular.");
+      return false;
     } finally {
       setCampaignSaving(false);
     }
@@ -412,6 +451,7 @@ export function useCampaigns({
     setCampaigns(remaining);
     setActiveCampaignId(fallbackCampaign.id);
     setCampaignForm(fallbackCampaign);
+    setCampaignFormBaseline(fallbackCampaign);
 
     return {
       deletedCampaignId: deleteId,
@@ -423,6 +463,7 @@ export function useCampaigns({
     campaigns,
     activeCampaignId,
     campaignForm,
+    campaignFormBaseline,
     campaignMessage,
     campaignSaving,
     campaignLoading,

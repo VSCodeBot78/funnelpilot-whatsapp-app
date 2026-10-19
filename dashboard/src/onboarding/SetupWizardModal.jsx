@@ -20,10 +20,10 @@ export function initialSetupStep(search = "") {
 
 export default function SetupWizardModal({
   colors, settings, onSettingsChange, onSaveSettings, onSaveCoachDraft, onOpenTestChat,
-  onOpenSection, onClose, startStep = 0,
+  onOpenSection, onClose, onFinish = onClose, startStep = 0, dryRun = false,
 }) {
   const [stage, setStage] = useState(() =>
-    new URLSearchParams(window.location.search).get("setup") === "connections"
+    !dryRun && new URLSearchParams(window.location.search).get("setup") === "connections"
       ? initialSetupStep(window.location.search)
       : Math.max(0, Math.min(STAGES.length - 1, startStep))
   );
@@ -32,6 +32,7 @@ export default function SetupWizardModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [savedSetupSteps, setSavedSetupSteps] = useState({ brand: false, offers: false });
   const [checkout, setCheckout] = useState(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const dialogRef = useRef(null);
@@ -49,6 +50,7 @@ export default function SetupWizardModal({
   }, [onClose]);
 
   useEffect(() => {
+    if (dryRun) return; // Never mutate URL or consume real OAuth callback during rehearsal.
     if (window.location.search.includes("setup=connections")) {
       const params = new URLSearchParams(window.location.search);
       const result = params.get("result");
@@ -62,6 +64,11 @@ export default function SetupWizardModal({
   }, []);
 
   const reload = useCallback(async () => {
+    if (dryRun) {
+      setReadiness(null); setIntegrations(null);
+      setMessage("X-Wing-Trockenlauf: keine Backend-, Meta- oder Kalenderprüfung.");
+      return;
+    }
     setLoading(true);
     // Keep the local safety reading even when optional OAuth diagnostics fail.
     // Both requests are read-only. No secrets or provider access is exposed.
@@ -86,13 +93,15 @@ export default function SetupWizardModal({
         setMessage("Backend erreichbar, aber Anbieterstatus nicht abrufbar. Kalender/CRM bleiben ungeprüft.");
       }
     } finally { setLoading(false); }
-  }, [settings.apiBaseUrl]);
+  }, [settings.apiBaseUrl, dryRun]);
 
   useEffect(() => {
-    if (stage >= 3) reload();
-  }, [stage, reload]);
+    if (!dryRun && stage >= 3) reload();
+  }, [stage, reload, dryRun]);
 
   function update(key, value) {
+    if (stage === 1) setSavedSetupSteps(previous => ({ ...previous, brand: false }));
+    if (stage === 2) setSavedSetupSteps(previous => ({ ...previous, offers: false }));
     onSettingsChange(previous => ({ ...previous, [key]: value }));
   }
 
@@ -102,7 +111,9 @@ export default function SetupWizardModal({
     try {
       const saved = await onSaveCoachDraft(settings.coachOnboardingDraft);
       setMessage(saved
-        ? "Coach-Entwurf im bestehenden Workspace gespeichert. Kein neuer Coach-Zugang und keine Live-Freigabe."
+        ? dryRun
+          ? "Coach-Entwurf nur im flüchtigen X-Wing-Testprofil übernommen. Beim Schließen verworfen."
+          : "Coach-Entwurf im bestehenden Workspace gespeichert. Kein neuer Coach-Zugang und keine Live-Freigabe."
         : "Coach-Entwurf konnte nicht gespeichert werden. Felder und HTTPS-Links kontrollieren.");
     } catch {
       setMessage("Coach-Entwurf konnte nicht gespeichert werden. Kein Live-Betrieb aktiviert.");
@@ -122,9 +133,20 @@ export default function SetupWizardModal({
       try {
         const saved = await onSaveSettings();
         if (!saved) { setMessage("Speichern fehlgeschlagen. Einstellungen prüfen."); return; }
+        setSavedSetupSteps(previous => ({ ...previous,
+          [stage === 1 ? "brand" : "offers"]: true,
+        }));
       } finally { setSaving(false); }
     }
     setStage(value => Math.min(value + 1, STAGES.length - 1));
+  }
+
+  function completeWizard() {
+    if (!dryRun && (!savedSetupSteps.brand || !savedSetupSteps.offers)) {
+      setMessage("Einrichtung noch nicht als abgeschlossen markiert: Bitte Marke & Pete sowie Angebote jeweils mit Weiter erfolgreich speichern. Alternativ über ✕ ohne Abschluss verlassen.");
+      return;
+    }
+    onFinish();
   }
 
   function input(label, key, options = {}) {
@@ -144,6 +166,7 @@ export default function SetupWizardModal({
   }
 
   function providerStatus(provider) {
+    if (dryRun) return { label: "Offline-Test: keine Anmeldung, keine echten Kontodaten.", status: "dry_run" };
     if (["instagram", "facebook", "whatsapp"].includes(provider)) {
       return { label: "Meta-Freigabe / Embedded Signup ausstehend", status: "external" };
     }
@@ -160,6 +183,7 @@ export default function SetupWizardModal({
   }
 
   function authStart(provider) {
+    if (dryRun) return;
     const base = String(settings.apiBaseUrl || "").trim().replace(/\/+$/, "");
     const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     const service = base || (local ? "http://localhost:3001" : window.location.origin);
@@ -167,6 +191,7 @@ export default function SetupWizardModal({
   }
 
   async function verifyConnection(provider) {
+    if (dryRun) return;
     setMessage("");
     try {
       const response = await fetch(
@@ -189,6 +214,7 @@ export default function SetupWizardModal({
   }
 
   async function disconnect(provider) {
+    if (dryRun) return;
     if (!window.confirm("Berechtigung für " + provider + " lokal trennen?")) return;
     try {
       const response = await fetch(buildApiUrl("/integrations/oauth/" + provider + "/disconnect", settings.apiBaseUrl), {
@@ -201,6 +227,7 @@ export default function SetupWizardModal({
   }
 
   async function testPurchase() {
+    if (dryRun) return;
     setCheckout(null); setCheckoutBusy(true);
     try {
       const leadId = "fp-setup-" + Date.now();
@@ -253,9 +280,10 @@ export default function SetupWizardModal({
         )}
       </div>
       : <div style={{ ...small, fontWeight: 600 }}>
-        {current.status === "external"
-          ? "Meta-Verknüpfung folgt nach App-Einrichtung."
-          : "Noch kein Login möglich, bis die Entwickler-App eingerichtet ist."}
+        {current.status === "dry_run" ? "Zum Verbinden später den regulären Einrichtungsassistenten öffnen."
+          : current.status === "external"
+            ? "Meta-Verknüpfung folgt nach App-Einrichtung."
+            : "Noch kein Login möglich, bis die Entwickler-App eingerichtet ist."}
       </div>}
     </div>;
   }
@@ -280,14 +308,24 @@ export default function SetupWizardModal({
         <div style={{ padding: "22px 28px 15px", borderBottom: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 10 }}>
             <div>
-              <h2 id="setup-title" style={{ margin: 0, fontSize: 25 }}>🚀 Funnel Pilot einrichten</h2>
+              <h2 id="setup-title" style={{ margin: 0, fontSize: 25 }}>
+                {dryRun ? "🛩️ X-Wing: Erststart offline testen" : "🚀 Funnel Pilot einrichten"}
+              </h2>
               <div style={{ ...small, marginTop: 5 }}>
-                Dein persönlicher Startassistent. Alle Einstellungen später jederzeit ändern.
+                {dryRun
+                  ? "Flüchtiger Test mit denselben Formularschritten. Keine Speicherung, Provider-Anmeldung oder echten Kundenaktionen."
+                  : "Dein persönlicher Startassistent. Alle Einstellungen später jederzeit ändern."}
               </div>
             </div>
             <button type="button" style={{ ...btn, padding: "5px 11px" }}
               aria-label="Einrichtung schließen" onClick={onClose}>✕</button>
           </div>
+          {dryRun && <div role="status" style={{ marginTop: 12, border: "2px solid #f59e0b",
+            background: "#fffbeb", padding: 11, borderRadius: 10,
+            color: "#92400e", fontSize: 13, fontWeight: 700 }}>
+            X-WING TROCKENLAUF · Alle Eingaben bleiben nur in diesem Fenster und werden beim Schließen verworfen.
+            Keine echten Anmeldungen, Buchungen, Sends oder API-Aufrufe aus diesem Assistenten.
+          </div>}
           <div style={{ display: "flex", overflowX: "auto", gap: 9, marginTop: 18 }}>
             {STAGES.map((label, index) =>
               <button type="button" key={label} onClick={() => { setMessage(""); setStage(index); }}
@@ -317,7 +355,7 @@ export default function SetupWizardModal({
             <div style={box}>
               <h3 style={{ marginTop: 0 }}>So möchtest du starten</h3>
               <p style={small}>Kurze Einführung ansehen oder direkt selbst einrichten.</p>
-              {/^https:\/\//i.test(settings.setupVideoUrl || "")
+              {!dryRun && /^https:\/\//i.test(settings.setupVideoUrl || "")
                 ? <a href={settings.setupVideoUrl} target="_blank" rel="noopener noreferrer"
                     style={{ ...btn, display: "inline-block", textDecoration: "none", marginBottom: 10 }}>
                     ▶ Setup-Video ansehen
@@ -335,10 +373,16 @@ export default function SetupWizardModal({
           {stage === 1 && <div>
             <p style={{ ...small, padding: 12, border: "1px solid #fed7aa",
               borderRadius: 9, background: "#fff7ed", marginTop: 0 }}>
-              <strong>Wichtig:</strong> Diese Einrichtung bearbeitet derzeit deinen einzigen
-              bestehenden Workspace. Ein fremder Coach hat hier NOCH KEIN eigenes Konto
-              oder getrennte Daten. Andere Marken nur in einer separaten Testumgebung
-              ausprobieren, nicht über deinen laufenden Eltern-fit-&amp;-vital-Workspace.
+              {dryRun ? <>
+                <strong>X-Wing-Testprofil:</strong> Trage beliebige Beispieldaten ein. Sie bleiben
+                ausschließlich im Speicher dieser Ansicht und verändern keinen bestehenden Workspace.
+                Dies ist noch keine echte Coach-Mandantentrennung.
+              </> : <>
+                <strong>Wichtig:</strong> Diese Einrichtung bearbeitet derzeit deinen einzigen
+                bestehenden Workspace. Ein fremder Coach hat hier NOCH KEIN eigenes Konto
+                oder getrennte Daten. Andere Marken nur in einer separaten Testumgebung
+                ausprobieren, nicht über deinen laufenden Eltern-fit-&amp;-vital-Workspace.
+              </>}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
             <div>
@@ -390,11 +434,16 @@ export default function SetupWizardModal({
           {stage === 2 && <div style={{ display: "grid", gap: 16 }}>
             <p style={{ ...small, padding: 12, border: "1px solid #fed7aa",
               borderRadius: 9, background: "#fff7ed" }}>
-              <strong>Wichtig:</strong> Die bestehenden Marken-, Buchungs- und Checkout-Felder
-              oberhalb des neuen Editors gehören weiterhin zum aktuellen Workspace und
-              können von aktiven Funktionen genutzt werden. Nur die zusätzlichen
-              Coach-Identitätsdaten, Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
-              Test-Coaches im laufenden Workspace einrichten.
+              {dryRun ? <>
+                <strong>Offline:</strong> Alle Eingaben auf dieser Seite gehören ausschließlich zum
+                flüchtigen Testprofil. Die URL- und Angebotsfelder werden nicht live verwendet.
+              </> : <>
+                <strong>Wichtig:</strong> Die bestehenden Marken-, Buchungs- und Checkout-Felder
+                oberhalb des neuen Editors gehören weiterhin zum aktuellen Workspace und
+                können von aktiven Funktionen genutzt werden. Nur die zusätzlichen
+                Coach-Identitätsdaten, Angebote und FAQs darunter sind reine Entwürfe. Keine fremden
+                Test-Coaches im laufenden Workspace einrichten.
+              </>}
             </p>
             <h3 style={{ marginTop: 0 }}>Angebote und nächste Schritte</h3>
             {input("Deine Angebote und Zielsetzung", "companyOfferSummary", { multiline: true,
@@ -405,10 +454,9 @@ export default function SetupWizardModal({
               { placeholder: "https://..." })}
             <p style={{ ...small, background: "#eff6ff", border: "1px solid #bfdbfe",
               padding: 10, borderRadius: 8 }}>
-              „Coach-Entwurf speichern“ sichert ausschließlich die unten erfassten
-              Identitätsdaten, Angebotsentwürfe und FAQs. Andere Änderungen im Einrichtungsformular
-              werden dadurch nicht gespeichert. „Weiter“ speichert weiterhin
-              die gesamten aktuellen Einstellungen dieses einen Arbeitsbereichs.
+              {dryRun
+                ? "Im X-Wing-Test übernimmt der Button nur Eingaben innerhalb dieses Fensters. Beim Schließen wird alles verworfen."
+                : "„Coach-Entwurf speichern“ sichert ausschließlich den Coach-Entwurf. „Weiter“ speichert die aktuellen Einstellungen des Arbeitsbereichs."}
             </p>
             <CoachDraftEditor
               value={settings.coachOnboardingDraft}
@@ -421,11 +469,14 @@ export default function SetupWizardModal({
             </button>
             <div style={box}>
               <strong>Weiterführende Angebote & Links</strong>
-              <p style={small}>Zusätzliche Produktlinks und Kampagnenregeln kannst du bereits
-                im bestehenden Kampagneneditor pflegen. Diese Wizard-Felder werden im Backend gespeichert.</p>
-              <button type="button" style={btn} onClick={() => onOpenSection("campaigns")}>
-                Kampagneneditor öffnen
-              </button>
+              <p style={small}>{dryRun
+                ? "Zusätzliche Kampagnen und Produktlinks sind in diesem Offline-Trockenlauf bewusst nicht mit dem echten Backend verknüpft."
+                : "Zusätzliche Produktlinks und Kampagnenregeln kannst du im Kampagneneditor pflegen. Diese Wizard-Felder werden im Backend gespeichert."}</p>
+              {dryRun
+                ? <p style={small}>Kampagneneditor im Trockenlauf nicht öffnen. Später separat mit einem Dummy testen.</p>
+                : <button type="button" style={btn} onClick={() => onOpenSection("campaigns")}>
+                    Kampagneneditor öffnen
+                  </button>}
             </div>
           </div>}
 
@@ -434,8 +485,12 @@ export default function SetupWizardModal({
             <p style={small}>Bei unterstützten Anbietern öffnet „Konto verbinden“ die offizielle
               Anmeldung. Funnel Pilot speichert keine Anbieter-Passwörter. „Autorisierung vorhanden“
               bedeutet noch nicht, dass Leads oder Kalendertermine synchronisiert werden.</p>
-            <button type="button" style={{ ...btn, margin: "0 0 12px" }} onClick={reload}
-              disabled={loading}>{loading ? "Prüfe…" : "Status aktualisieren"}</button>
+            {dryRun
+              ? <p style={{ ...small, fontWeight: 700 }}>Instagram, WhatsApp, Calendly und HubSpot:
+                  Verbindung ausschließlich im regulären Einrichtungsmodus möglich.
+                  Dieser Schritt zeigt absichtlich keine echten Zugänge.</p>
+              : <button type="button" style={{ ...btn, margin: "0 0 12px" }} onClick={reload}
+                  disabled={loading}>{loading ? "Prüfe…" : "Status aktualisieren"}</button>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(235px, 1fr))", gap: 12 }}>
               {PROVIDERS.map(connectTile)}
             </div>
@@ -449,11 +504,14 @@ export default function SetupWizardModal({
 
           {stage === 4 && <div>
             <h3 style={{ marginTop: 0 }}>Teste Funnel Pilot vor dem Start</h3>
-            <p style={small}>Dashboard, Leads, Inbox, Termine und Follow-ups
-              lassen sich lokal prüfen. Der Pete-Testchat verwendet weiterhin
-              den bestehenden Single-Workspace, NICHT automatisch den neuen
-              Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert.</p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <p style={small}>{dryRun
+              ? "Hier wird nur die Benutzerführung des Einrichtungsassistenten geprüft. Für echte Dialoge, Inbox, Termine und Anbieter-Verbindungen folgen später gesonderte Tests."
+              : "Dashboard, Leads, Inbox, Termine und Follow-ups lassen sich lokal prüfen. Der Pete-Testchat verwendet den bestehenden Single-Workspace, NICHT automatisch den neuen Coach-Entwurf. Echte Meta-Sends bleiben deaktiviert."}</p>
+            {dryRun ? <div style={{ ...box, fontSize: 13 }}>
+              X-Wing Offline-Stufe: Probiere hier aus, ob du die Orientierung und Testschritte verstehst.
+              Live-Pete, Inbox, Kalender und Testkäufe sind bewusst gesperrt.
+              Für echte Integrationsprüfungen folgt später eine separate Freigabe.
+            </div> : <><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button type="button" style={primary} onClick={onOpenTestChat}>Pete-Testgespräch öffnen</button>
               <button type="button" style={btn} onClick={() => onOpenSection("inbox")}>Inbox / Human Takeover</button>
               <button type="button" style={btn} onClick={() => onOpenSection("ghosting")}>Follow-ups</button>
@@ -470,15 +528,17 @@ export default function SetupWizardModal({
                 {"\n\n"}Nur vorbereitet, nicht versendet:
                 {"\n"}{checkout.reply}
               </div>}
-            </div>
+            </div></>}
           </div>}
 
           {stage === 5 && <div style={{ display: "grid", gap: 15 }}>
-            <h2 style={{ margin: 0 }}>Dein Dashboard ist vorbereitet.</h2>
+            <h2 style={{ margin: 0 }}>{dryRun
+              ? "X-Wing: Einrichtungsablauf durchgespielt" : "Dein Dashboard ist vorbereitet."}</h2>
             <CoachProfilePreview settings={settings} />
-            <p style={small}>Die Einstellungen lassen sich jederzeit ergänzen. Der
-              Einrichtungsassistent aktiviert ausdrücklich noch keine externen Nachrichten.</p>
-            <div style={box}>
+            <p style={small}>{dryRun
+              ? "Trockenlauf beendet. Diese Daten sind nur eine ungespeicherte Übung und werden beim Schließen verworfen. Keine echte Verbindung, keine Live-Freigabe, keine vollständig geprüfte Einrichtung."
+              : "Die Einstellungen lassen sich jederzeit ergänzen. Der Einrichtungsassistent aktiviert ausdrücklich noch keine externen Nachrichten."}</p>
+            {!dryRun && <div style={box}>
               <strong>Einrichtungs- und Sicherheitsdiagnose</strong>
               <p style={{ ...small, fontWeight: 700, marginTop: 8 }}>
                 {diagnostics.localTestReady
@@ -512,9 +572,9 @@ export default function SetupWizardModal({
               <button type="button" style={btn} onClick={reload} disabled={loading}>
                 {loading ? "Prüfe…" : "Diagnose aktualisieren"}
               </button>
-            </div>
-            <button type="button" style={{ ...primary, alignSelf: "start" }} onClick={onClose}>
-              Zum Dashboard →
+            </div>}
+            <button type="button" style={{ ...primary, alignSelf: "start" }} onClick={completeWizard}>
+              {dryRun ? "Trockenlauf verwerfen und schließen →" : "Einrichtung abschließen →"}
             </button>
           </div>}
           {message && <div role="status" style={{ marginTop: 13, padding: 10, borderRadius: 9,
@@ -529,7 +589,8 @@ export default function SetupWizardModal({
             ? <button type="button" style={primary} onClick={next} disabled={saving}>
                 {saving ? "Speichere…" : "Weiter →"}
               </button>
-            : <button type="button" style={primary} onClick={onClose}>Dashboard öffnen</button>}
+            : <button type="button" style={primary} onClick={completeWizard}>
+                {dryRun ? "Trockenlauf schließen" : "Einrichtung abschließen"}</button>}
         </div>
       </div>
     </div>

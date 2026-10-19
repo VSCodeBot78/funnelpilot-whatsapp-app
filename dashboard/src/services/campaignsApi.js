@@ -152,6 +152,7 @@ export async function previewCampaignEntryInApi({ apiBaseUrl, source, messageTex
         (data.preview.draftContext?.version !== 1 ||
          data.preview.draftContext?.mode !== "preview_only" ||
          data.preview.draftContext?.sendAllowed !== false ||
+         data.preview.draftContext?.flowDraft?.sendAllowed !== false ||
          data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId)) ||
       (data.preview.status !== "matched" && data.preview.draftContext != null)) {
     throw new Error(data?.error || "campaign_preview_failed");
@@ -175,6 +176,7 @@ export async function previewCampaignWebhookInApi({ apiBaseUrl, channel, payload
           (data.preview.draftContext?.version !== 1 ||
            data.preview.draftContext?.mode !== "preview_only" ||
            data.preview.draftContext?.sendAllowed !== false ||
+           data.preview.draftContext?.flowDraft?.sendAllowed !== false ||
            data.preview.draftContext?.campaignId !== data.preview.matchedCampaignId)) ||
         (data.preview.status !== "matched" && data.preview.draftContext != null)))) {
     throw new Error(data?.error || "campaign_event_preview_failed");

@@ -15,6 +15,8 @@ export default function DashboardHome({
   apiBaseUrl = "",
   onRestartOnboarding,
   onEditConnections,
+  onStartXwingTest = () => {},
+  setupFinishedLocally = false,
 }) {
   const stats = getWorkSummary(contacts);
   const priorityContacts = sortedContacts
@@ -111,6 +113,11 @@ export default function DashboardHome({
         <p style={{ color: colors.sub, fontSize: 12 }}>
           Nur bei Änderungen benötigt. Bestehende Einstellungen und Verbindungen bleiben erhalten.
         </p>
+        <p style={{ color: colors.sub, fontSize: 12 }}>
+          {setupFinishedLocally
+            ? "Einrichtungsassistent auf diesem Browser durchlaufen. Anbieter-Verbindungen separat prüfen."
+            : "Einrichtung auf diesem Browser noch nicht ausdrücklich abgeschlossen."}
+        </p>
         <div className="fp-home-setup-actions">
           <button type="button" onClick={onRestartOnboarding}
             style={{ background: colors.panelSoft, color: colors.text,
@@ -121,6 +128,11 @@ export default function DashboardHome({
             style={{ background: colors.panelSoft, color: colors.text,
               border: `1px solid ${colors.border}`, borderRadius: 8 }}>
             Verbindungen bearbeiten
+          </button>
+          <button type="button" onClick={onStartXwingTest}
+            style={{ background: colors.panelSoft, color: colors.text,
+              border: `1px solid ${colors.border}`, borderRadius: 8 }}>
+            X-Wing: Erststart offline testen
           </button>
         </div>
       </details>

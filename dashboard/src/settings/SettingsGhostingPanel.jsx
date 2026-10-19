@@ -37,6 +37,8 @@ export default function SettingsGhostingPanel({
   onGhostingMessageChange,
   onAddGhostingSlot,
   onRemoveGhostingSlot,
+  onAddGhostingCycle,
+  onRemoveGhostingCycle,
   onSaveGhostingConfig,
   onReloadGhostingConfig,
   onResetGhostingConfig,
@@ -60,6 +62,16 @@ export default function SettingsGhostingPanel({
         </div>
       ) : null}
 
+      <p style={{ color: colors.sub, fontSize: 12, lineHeight: 1.5 }}>
+        Du kannst selbst festlegen, wie viele Nachfasszyklen es gibt, wann sie
+        fällig werden und welchen Text sie erhalten. Noch keine KI-Texterstellung.
+        Keine Änderung erlaubt automatisch einen Meta-Versand.
+      </p>
+      <button type="button" onClick={onAddGhostingCycle}
+        disabled={schedules.length >= 3}
+        style={secondaryButtonStyle(colors)}>
+        Weiteren Zyklus hinzufügen
+      </button>
       {schedules.length === 0 ? (
         <div
           style={{
@@ -102,13 +114,25 @@ export default function SettingsGhostingPanel({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => onAddGhostingSlot(scheduleIndex)}
-              style={secondaryButtonStyle(colors)}
-            >
-              Slot hinzufügen
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => onAddGhostingSlot(scheduleIndex)}
+                style={secondaryButtonStyle(colors)}
+              >
+                Zeitpunkt hinzufügen
+              </button>
+              {schedules.length > 1 && scheduleIndex === schedules.length - 1 && (
+                <button type="button" style={ghostButtonStyle(colors)}
+                  onClick={() => {
+                    if (window.confirm("Letzten Zyklus im Entwurf entfernen? Erst Speichern übernimmt die Änderung.")) {
+                      onRemoveGhostingCycle(scheduleIndex);
+                    }
+                  }}>
+                  Letzten Zyklus entfernen
+                </button>
+              )}
+            </div>
           </div>
 
           <div
