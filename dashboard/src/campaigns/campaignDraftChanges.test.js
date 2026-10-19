@@ -72,6 +72,32 @@ test("Desktop draft guard: selection and create guard use persisted baseline; sa
   assert.match(hook, /getCampaignDraftChanges\(prev, campaignForm, settings\)/);
 });
 
+test("Desktop typing: link and DM button labels keep a trailing space until save", () => {
+  const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
+  const flow = fs.readFileSync(new URL("./CampaignFlowEditor.jsx", import.meta.url), "utf8");
+  for (const field of ["linkLabel", "openingDmButtonLabel"]) {
+    assert.ok(editor.includes(`key === "${field}"`));
+    assert.ok(flow.includes(`onChange={(e) => onChange("${field}", e.target.value)}`));
+  }
+  for (const field of ["_linkLabelDraft", "_openingDmButtonLabelDraft"]) {
+    assert.ok(editor.includes(field));
+  }
+  assert.ok(flow.includes("linkLabelDraft ?? config.linkLabel"));
+  assert.ok(flow.includes("openingDmButtonLabelDraft ?? config.openingDmButtonLabel"));
+  const drafted = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _linkLabelDraft: "Zum Eltern Check ",
+  } };
+  assert.equal(getCampaignDraftChanges(drafted, saved, settings), true);
+  const dmDraft = { ...saved, peteCampaign: {
+    ...saved.peteCampaign, _openingDmButtonLabelDraft: "Ja, zeig mir das Bundle ",
+  } };
+  assert.equal(getCampaignDraftChanges(dmDraft, saved, settings), true);
+  assert.ok(flow.includes("Antwortvariante {i + 1}"));
+  assert.ok(flow.includes("Alternative DM {i + 2}"));
+  assert.ok(!flow.includes("Antwortvariante ${i + 1}"));
+  assert.ok(!flow.includes("Alternative DM ${i + 2}"));
+});
+
 test("Desktop save: invalid keyword token and incomplete HTTPS link fail before backend writes", () => {
   const badKeyword = { ...saved, peteCampaign: {
     ...saved.peteCampaign, _keywordDraft: "CHECK, bad keyword",
@@ -105,7 +131,7 @@ test("Desktop editor retains incomplete typing across toggles before owner expli
   const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
   assert.match(editor, /function preserveTypedCampaignDrafts\(peteCampaign\)/);
   const hits = editor.match(/\.\.\.preserveTypedCampaignDrafts\(prev\.peteCampaign\)/g) || [];
-  assert.equal(hits.length, 5, "all flow button-label, entry/keyword/link/reel edits must preserve in-progress typing");
+  assert.equal(hits.length, 6, "all flow button-label, entry/keyword/link/reel edits must preserve in-progress typing");
   assert.match(editor, /key === "linkEnabled" && value === false/);
   assert.match(editor, /_linkUrlDraft: undefined/);
 });
