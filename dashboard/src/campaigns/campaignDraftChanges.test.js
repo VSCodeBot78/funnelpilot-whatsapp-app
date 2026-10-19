@@ -105,7 +105,7 @@ test("Desktop editor retains incomplete typing across toggles before owner expli
   const editor = fs.readFileSync(new URL("./CampaignEditor.jsx", import.meta.url), "utf8");
   assert.match(editor, /function preserveTypedCampaignDrafts\(peteCampaign\)/);
   const hits = editor.match(/\.\.\.preserveTypedCampaignDrafts\(prev\.peteCampaign\)/g) || [];
-  assert.equal(hits.length, 4, "all entry/keyword/link/reel editing must preserve draft typing");
+  assert.equal(hits.length, 5, "all flow button-label, entry/keyword/link/reel edits must preserve in-progress typing");
   assert.match(editor, /key === "linkEnabled" && value === false/);
   assert.match(editor, /_linkUrlDraft: undefined/);
 });
