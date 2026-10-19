@@ -159,12 +159,14 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     onGhostingMessageChange,
     onAddGhostingSlot,
     onRemoveGhostingSlot,
+    onAddGhostingCycle,
+    onRemoveGhostingCycle,
     onSaveGhostingConfig,
     onReloadGhostingConfig,
     onResetGhostingConfig,
   } = useGhostingConfig({
     apiBaseUrl: settings.apiBaseUrl,
-    autoLoad: section === "settings",
+    autoLoad: section === "settings" || section === "ghosting",
     onConfigChanged: async () => {
       if (section === "ghosting") {
         await loadGhostingData();
@@ -479,6 +481,17 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onSendDue={sendGhostingDue}
           onMarkSent={markGhostingSent}
           onOpenLead={(id) => { setMobileInboxPane("chat"); openChat(id); }}
+          ghostingConfig={ghostingConfig}
+          ghostingConfigMessage={ghostingConfigMessage}
+          onGhostingSlotChange={onGhostingSlotChange}
+          onGhostingMessageChange={onGhostingMessageChange}
+          onAddGhostingSlot={onAddGhostingSlot}
+          onRemoveGhostingSlot={onRemoveGhostingSlot}
+          onAddGhostingCycle={onAddGhostingCycle}
+          onRemoveGhostingCycle={onRemoveGhostingCycle}
+          onSaveGhostingConfig={onSaveGhostingConfig}
+          onReloadGhostingConfig={onReloadGhostingConfig}
+          onResetGhostingConfig={onResetGhostingConfig}
         />
       );
     }
@@ -522,6 +535,8 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           onGhostingMessageChange={onGhostingMessageChange}
           onAddGhostingSlot={onAddGhostingSlot}
           onRemoveGhostingSlot={onRemoveGhostingSlot}
+          onAddGhostingCycle={onAddGhostingCycle}
+          onRemoveGhostingCycle={onRemoveGhostingCycle}
           onSaveGhostingConfig={onSaveGhostingConfig}
           onReloadGhostingConfig={onReloadGhostingConfig}
           onResetGhostingConfig={onResetGhostingConfig}
