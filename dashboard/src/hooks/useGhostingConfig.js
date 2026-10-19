@@ -121,7 +121,7 @@ function removeSlot(config, scheduleIndex, slotIndex) {
 // Editing is local until "Ghosting speichern". Never sends a message.
 function addCycle(config) {
   const schedules = config.schedules || [];
-  if (schedules.length >= 5) return config;
+  if (schedules.length >= 3) return config;
   const cycle = Math.max(0, ...schedules.map((item) => item.cycle)) + 1;
   const stage = `cycle${cycle}_custom_${Date.now()}`;
   return {
