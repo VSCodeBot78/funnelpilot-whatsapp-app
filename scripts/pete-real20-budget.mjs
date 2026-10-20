@@ -43,9 +43,11 @@ if (held !== data.reservedMicroUsd ||
 }
 
 if (action === "reserve") {
-  if (data.activeReservations[key] ||
-      data.completedBatches.some(entry => entry.id === key)) {
-    throw Error("pete_real20_run_replay_denied");
+  // Exactly ONE real-model QA run for this $2 owner approval, across ALL
+  // GitHub reruns/new commits. Never create another $2 authorization implicitly.
+  if (Object.keys(data.activeReservations).some(id => id.startsWith("pete-real20-")) ||
+      data.completedBatches.some(entry => String(entry.id).startsWith("pete-real20-"))) {
+    throw Error("pete_real20_one_time_owner_approval_already_used");
   }
   if (data.spentMicroUsd + data.reservedMicroUsd + reservation > cap) {
     throw Error("pete_real20_project_cap_exceeded");
