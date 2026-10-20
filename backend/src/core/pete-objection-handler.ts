@@ -1,3 +1,4 @@
+import { findPeteStopKeyword } from "./pete-stop-keyword.js";
 export type ObjectionIntent =
   | "price"
   | "time"
@@ -310,7 +311,7 @@ export function classifyPeteObjection(
     return { intent: "none" };
   }
 
-  const hardStopMatch = includesAnyKeyword(normalized, HARD_STOP_KEYWORDS);
+  const hardStopMatch = findPeteStopKeyword(normalized, HARD_STOP_KEYWORDS);
   if (hardStopMatch) {
     return { intent: "hard_stop", matchedKeyword: hardStopMatch };
   }
