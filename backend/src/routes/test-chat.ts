@@ -221,6 +221,8 @@ router.post("/message", async (req, res) => {
       detectedIntent: result.detectedIntent,
       replySource: result.state.answers.peteReplySource ?? "legacy",
       replySuppressedReason: result.replySuppressedReason ?? null,
+      // QA: distinct from simulated/guarded answers; no credentials included.
+      peteLlmTestBudget: getPeteBudgetStatusSafe(),
       state: result.state,
     });
   } catch (error) {
