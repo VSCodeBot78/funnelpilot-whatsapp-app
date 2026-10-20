@@ -6,6 +6,17 @@ function makeTestLeadId() {
   return `lead_${rand}`;
 }
 
+const PETE_REPLY_SOURCE_LABELS = Object.freeze({
+  llm: "OpenAI-Sprachmodell",
+  verified_transaction: "Geprüfte Angebots-/Linkregel, keine freie KI-Antwort",
+  guarded_safety: "Sicherheitsregel, keine freie KI-Antwort",
+  deterministic: "Fest programmierte Antwort",
+  safe_noncritical: "Geprüfte Sicherheitsantwort",
+  llm_handoff: "KI-Fallback: Übergabe, keine Modellantwort",
+  human_handoff: "An Menschen übergeben",
+  legacy: "Legacy-Regel, keine bestätigte KI-Antwort",
+});
+
 function getCurrentTime() {
   return new Date().toLocaleTimeString("de-DE", {
     hour: "2-digit",
@@ -397,6 +408,37 @@ export default function ChatTest() {
             </div>
           )}
         </div>
+
+        {debug?.replySource ? (
+          <div
+            role="status"
+            data-testid="pete-qa-reply-source"
+            style={{
+              marginTop: 12,
+              background: "#101827",
+              color: "#e2e8f0",
+              border: "1px solid #64748b",
+              borderRadius: 10,
+              padding: "10px 12px",
+              fontSize: 13,
+            }}
+          >
+            <strong>Antwortquelle:</strong>{" "}
+            {PETE_REPLY_SOURCE_LABELS[debug.replySource] ||
+              "Nicht als freie KI-Antwort bestätigt"}
+            {debug.replySource === "llm" &&
+              debug.peteLlmTestBudget?.ok !== true ? (
+                <div>API-Zähler nicht verfügbar. Antwort noch nicht abrechnungstechnisch verifiziert.</div>
+              ) : null}
+            {debug.peteLlmTestBudget?.ok ? (
+              <div style={{ marginTop: 5, color: "#cbd5e1" }}>
+                API-Anfragen gezählt: {debug.peteLlmTestBudget.requestsMetered}
+                {" | "}Testbudget übrig:{" "}
+                {Number(debug.peteLlmTestBudget.remainingUsd).toFixed(4)} USD
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div
           style={{
