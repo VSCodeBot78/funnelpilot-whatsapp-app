@@ -8,7 +8,6 @@ import { useLeads } from "./hooks/useLeads";
 import { useInbox } from "./hooks/useInbox";
 import { useCampaigns, createInitialCampaigns } from "./hooks/useCampaigns";
 import { useGhostingConfig } from "./hooks/useGhostingConfig";
-import { useAvailabilityConfig } from "./hooks/useAvailabilityConfig";
 import { useSettingsConfig, defaultSettings } from "./hooks/useSettingsConfig";
 import { useGhostingRuntime } from "./hooks/useGhostingRuntime";
 import { useBackendHealth } from "./hooks/useBackendHealth";
@@ -128,20 +127,6 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
         await loadInboxData();
       }
     },
-  });
-
-  const {
-    availabilityForm,
-    availabilityLoading,
-    availabilitySaving,
-    availabilityMessage,
-    setAvailabilityForm,
-    loadAvailabilityConfig,
-    saveAvailabilityConfig,
-    resetAvailabilityConfigForm,
-  } = useAvailabilityConfig({
-    apiBaseUrl: settings.apiBaseUrl,
-    autoLoad: true,
   });
 
   const {
@@ -502,14 +487,6 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           colors={colors}
           contacts={sortedContacts}
           inboxContacts={inboxContacts}
-          availabilityForm={availabilityForm}
-          availabilityLoading={availabilityLoading}
-          availabilitySaving={availabilitySaving}
-          availabilityMessage={availabilityMessage}
-          onAvailabilityFormChange={setAvailabilityForm}
-          onReloadAvailability={loadAvailabilityConfig}
-          onSaveAvailability={saveAvailabilityConfig}
-          onResetAvailability={resetAvailabilityConfigForm}
           onOpenLead={(id) => { setMobileInboxPane("chat"); openChat(id); }}
           renderPlaceholder={renderPlaceholder}
         />
