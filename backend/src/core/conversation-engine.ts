@@ -1,5 +1,6 @@
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
+import { normalizeText, nowIso } from "./conversation-engine-utils.js";
 import {
   isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
@@ -265,14 +266,6 @@ const COACHING_ENTRY_BUY_SIGNAL_KEYWORDS = [
   "mache ich",
   "mach ich",
 ];
-
-function normalizeText(value: string): string {
-  return value.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
 
 function isIntroAckAccepted(input: string): boolean {
   const normalized = normalizeText(input);
