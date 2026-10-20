@@ -1,0 +1,45 @@
+name: Pete P0 Offline Selftest
+on:
+  push:
+    branches:
+      - fix/pete-stopword-booking-ui-qa-20261020
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      INSTAGRAM_SEND_ENABLED: "false"
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      PETE_LLM_API_CALLS_APPROVED: "false"
+      PETE_LLM_CONVERSATION_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build
