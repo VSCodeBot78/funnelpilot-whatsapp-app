@@ -1,0 +1,109 @@
+name: Pete REAL20 One-time Paid QA ($2)
+
+on:
+  push:
+    branches:
+      - qa/pete-real20-approved-20261020
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  real20:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/qa/pete-real20-approved-20261020' &&
+      startsWith(github.event.head_commit.message, 'PETE_REAL20_USER_APPROVED_2USD_EXECUTE')
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      NODE_ENV: test
+      DATA_DIR: ${{ github.workspace }}/backend/.real20-data
+      OPENAI_MODEL: gpt-4.1-mini
+      PETE_LLM_CONVERSATION_ENABLED: 'true'
+      PETE_LLM_API_CALLS_APPROVED: 'true'
+      PETE_REAL20_APPROVAL: USER_APPROVED_2026_10_20_2USD
+      PETE_REAL20_MAX_MICRO_USD: '2000000'
+      FUNNELPILOT_LOCAL_TEST_MODE: 'false'
+      INSTAGRAM_ENGINE_ENABLED: 'false'
+      INSTAGRAM_SEND_ENABLED: 'false'
+      INSTAGRAM_ALLOW_ALL_SENDERS: 'false'
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: 'false'
+      INSTAGRAM_ALLOWED_SENDER_IDS: ''
+      WHATSAPP_SEND_ENABLED: 'false'
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: 'false'
+      WHATSAPP_ALLOWED_RECIPIENT_IDS: ''
+      ENABLE_GENERIC_WEBHOOKS: 'false'
+      DISABLE_DESTRUCTIVE_ROUTES: 'true'
+    steps:
+      - name: Checkout proposed QA engine
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout existing durable project budget ledger
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          persist-credentials: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Offline build and test before paid provider calls
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          npm test
+      - name: Verify credential exists without printing value
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo '::error::OpenAI secret is absent. No paid call allowed.'
+            exit 1
+          fi
+          test -f budget-ledger/phase3-budget-ledger.json
+      - name: Reserve exactly $2 on durable project ledger BEFORE provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C budget-ledger config user.name 'Pete REAL20 QA Budget'
+          git -C budget-ledger config user.email 'actions@users.noreply.github.com'
+          node scripts/pete-real20-budget.mjs reserve
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Reserve owner approved REAL20 $GITHUB_RUN_ID"
+          # NO force push, NO auto-reset, NO API requests if this push fails.
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+      - name: Execute REAL Pete model through normal engine; settle budget even on test failure
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          set +e
+          (cd backend && npx tsx src/config/pete-real20-runner.ts)
+          rc=$?
+          set -e
+          node scripts/pete-real20-budget.mjs settle
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Settle owner approved REAL20 $GITHUB_RUN_ID"
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          exit "$rc"
+      - name: Archive only synthetic, anonymized QA dialogue report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-real20-qa-fake-leads
+          path: backend/.real20-data/real20-report.json
+          if-no-files-found: warn
+          retention-days: 14
