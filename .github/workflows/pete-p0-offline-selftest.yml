@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/pete-stopword-booking-ui-qa-20261020
+      - qa/pete-real20-approved-20261020
 permissions:
   contents: read
 jobs:
