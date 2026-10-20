@@ -24,8 +24,10 @@ jobs:
       NODE_ENV: test
       DATA_DIR: ${{ github.workspace }}/backend/.real20-data
       OPENAI_MODEL: gpt-4.1-mini
-      PETE_LLM_CONVERSATION_ENABLED: 'true'
-      PETE_LLM_API_CALLS_APPROVED: 'true'
+      # CI preflight is strictly offline. Only the paid runner step below
+      # may flip these two flags after a confirmed, durable $2 reservation.
+      PETE_LLM_CONVERSATION_ENABLED: 'false'
+      PETE_LLM_API_CALLS_APPROVED: 'false'
       PETE_REAL20_APPROVAL: USER_APPROVED_2026_10_20_2USD
       PETE_REAL20_MAX_MICRO_USD: '2000000'
       FUNNELPILOT_LOCAL_TEST_MODE: 'false'
@@ -88,6 +90,8 @@ jobs:
         shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PETE_LLM_CONVERSATION_ENABLED: 'true'
+          PETE_LLM_API_CALLS_APPROVED: 'true'
         run: |
           set -euo pipefail
           set +e
