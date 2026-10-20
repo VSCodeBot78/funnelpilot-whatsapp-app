@@ -1,5 +1,4 @@
 import React from "react";
-import AvailabilityPanel from "./AvailabilityPanel";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
 import { formatBookingSlot } from "../utils/dashboardHelpers";
 
@@ -137,14 +136,6 @@ export default function AppointmentsView({
   colors,
   contacts,
   inboxContacts,
-  availabilityForm,
-  availabilityLoading,
-  availabilitySaving,
-  availabilityMessage,
-  onAvailabilityFormChange,
-  onReload,
-  onSave,
-  onReset,
   onOpenLead,
   renderPlaceholder,
 }) {
@@ -256,17 +247,20 @@ export default function AppointmentsView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <AvailabilityPanel
-        colors={colors}
-        availabilityForm={availabilityForm}
-        availabilityLoading={availabilityLoading}
-        availabilitySaving={availabilitySaving}
-        availabilityMessage={availabilityMessage}
-        onAvailabilityFormChange={onAvailabilityFormChange}
-        onReload={onReload}
-        onSave={onSave}
-        onReset={onReset}
-      />
+      <div
+        style={{
+          background: colors.panel,
+          border: `1px solid ${colors.border}`,
+          padding: 14,
+          color: colors.sub,
+          fontSize: 12,
+        }}
+      >
+        Die alten manuellen Wochenslots werden hier nicht mehr gepflegt.
+        Solange die eigene Buchungsfunktion noch nicht umgesetzt ist,
+        läuft die Terminvergabe über den separat eingerichteten Buchungsanbieter
+        (zum Beispiel Calendly). Hier erscheinen die tatsächlich erfassten Termine.
+      </div>
 
       <div
         style={{
