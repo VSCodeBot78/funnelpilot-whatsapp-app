@@ -1,0 +1,31 @@
+name: Pete OpenAI Credential Read-only Check
+on:
+  push:
+    branches:
+      - qa/pete-real20-approved-20261020
+permissions:
+  contents: read
+jobs:
+  check-model-access:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      startsWith(github.event.head_commit.message, 'PETE_REAL20_KEY_READONLY_DIAG')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check listed model access (GET only, no model inference)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo 'DIAGNOSTIC: missing key'; exit 1
+          fi
+          # Credential validity check only. No /responses call, no content sent.
+          status=$(curl --silent --show-error --max-time 15 \
+            --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer $OPENAI_API_KEY" \
+            https://api.openai.com/v1/models/gpt-4.1-mini)
+          echo "DIAGNOSTIC: OpenAI GET model HTTP $status"
+          test "$status" = 200
