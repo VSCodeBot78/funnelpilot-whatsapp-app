@@ -28,6 +28,6 @@ export function matchExplicitStopPhrase(
     if (phrase === "stop" || phrase === "stopp") {
       return /(?:^|[^\p{L}\p{N}-])stopp?(?=$|[^\p{L}\p{N}-])/iu.test(inputText);
     }
-    return inputWithBoundaries.includes(` \${phrase} `);
+    return inputWithBoundaries.includes(` ${phrase} `);
   });
 }
