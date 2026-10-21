@@ -12,7 +12,28 @@ import path from "node:path";
 import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
-const USD_MICROS_CAP = 8_000_000; // Conservative internal limit for 10 EUR authorization.
+const USD_MICROS_CAP = 8_000_000; // Existing project-wide internal cap.
+const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower QA authorization.
+
+/**
+ * The 21 Oct genuine-model QA run is opt-in AND only valid in a no-send GitHub
+ * Actions test. This does not change existing production/lab authorizations.
+ * Never allow a self-selected amount or a missing guard to raise this cap.
+ */
+function qualityQaCapMicros(): number | null {
+  if (process.env.PETE_QUALITY_QA_20261021 !== "true") return null;
+  if (process.env.GITHUB_ACTIONS !== "true" ||
+      process.env.PETE_QUALITY_QA_APPROVAL !== "single-run-20261021" ||
+      process.env.NODE_ENV !== "test" ||
+      process.env.OPENAI_MODEL !== "gpt-4.1-mini" ||
+      process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+      process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+      process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+      process.env.ENABLE_GENERIC_WEBHOOKS !== "false") {
+    throw new PeteBudgetStop("unavailable");
+  }
+  return PETE_QA_20261021_CAP_MICROS;
+}
 /**
  * Separate private-lab authorizations: $2 initially plus $2 approved on 16 Oct 2026; at most $4 of cumulative lab calls.
  * The older GitHub project ledger is $4.583900; the lab's immutable prior
@@ -163,7 +184,9 @@ export function getPeteBudgetStatus() {
   const prior = priorSpentMicros() + approval.historicalAdjustment;
   const globalRemaining = Math.max(0, USD_MICROS_CAP - prior - data.committedMicroUsd);
   const labRemaining = Math.max(0, approval.newCap - data.committedMicroUsd);
-  const remaining = approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining;
+  const qaCap = qualityQaCapMicros();
+  const qaRemaining = qaCap === null ? globalRemaining : Math.max(0, qaCap - data.committedMicroUsd);
+  const remaining = Math.min(approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining, qaRemaining);
   return {
     model: approval.active ? "gpt-5.4" : MODEL,
     hardCapUsd: USD_MICROS_CAP / 1_000_000,
@@ -173,9 +196,10 @@ export function getPeteBudgetStatus() {
     reservedUsd: data.reservedMicroUsd / 1_000_000,
     remainingUsd: remaining / 1_000_000,
     // The lab shows its OWN cumulative $4 permission separately from lifetime spend; the $8 lifetime cap remains stricter.
-    labAuthorizedUsd: approval.active ? approval.newCap / 1_000_000 : null,
-    labCommittedUsd: approval.active ? data.committedMicroUsd / 1_000_000 : null,
-    labRemainingUsd: approval.active ? remaining / 1_000_000 : null,
+    labAuthorizedUsd: qaCap !== null ? qaCap / 1_000_000 :
+      (approval.active ? approval.newCap / 1_000_000 : null),
+    labCommittedUsd: qaCap !== null || approval.active ? data.committedMicroUsd / 1_000_000 : null,
+    labRemainingUsd: qaCap !== null || approval.active ? remaining / 1_000_000 : null,
     globalRemainingUsd: globalRemaining / 1_000_000,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
@@ -221,6 +245,9 @@ export function reservePeteBudget(params: {
         data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
       throw new PeteBudgetStop("exhausted");
     if (approval.active && data.committedMicroUsd + reservedMicros > approval.newCap)
+      throw new PeteBudgetStop("exhausted");
+    const qaCap = qualityQaCapMicros();
+    if (qaCap !== null && data.committedMicroUsd + reservedMicros > qaCap)
       throw new PeteBudgetStop("exhausted");
     const id = crypto.randomUUID();
     data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(), model: params.model as PricedModel };
