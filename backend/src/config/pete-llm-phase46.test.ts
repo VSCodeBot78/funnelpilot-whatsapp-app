@@ -247,6 +247,18 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
       null);
   });
 
+  await t.test("round2 Yoda: positive setter progression instructions complement hard lead boundaries", () => {
+    const instructions = buildPeteEffectiveInstructions();
+    // Free, deterministic prompt contract. This is not evidence that a
+    // provider will follow the instruction in a real sales conversation.
+    assert.match(instructions, /GESPRÄCHSFORTSCHRITT STATT VERSTÄNDNIS-SCHLEIFE/);
+    assert.match(instructions, /KURZE OFFENE LEADS/);
+    assert.match(instructions, /DIREKTE ZEIT- UND UMSETZUNGSFRAGEN/);
+    assert.match(instructions, /FRAGESTOPP HAT VORRANG/);
+    assert.match(instructions, /Nenne NIE Preise/);
+    assert.match(instructions, /kein(?:e|en)? (?:weiteren?|neuen?) Fragen|keine weiteren Fragen/i);
+  });
+
   await t.test("real QA follow-up: current lead facts steer model without exposing rules", () => {
     const scenarios = [
       {
