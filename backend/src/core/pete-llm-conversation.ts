@@ -48,6 +48,10 @@ export function isPeteLlmReadyForProvider(): boolean {
  */
 export function isExplicitPeteHumanTakeoverRequest(text: string): boolean {
   const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Lead wording observed in real QA: "Bitte lass Jochen persönlich hier übernehmen."
+  // This is a genuine request for human ownership, not a reason to call the model.
+  // Keep an explicit imperative shape to avoid "Jochen bitte NICHT übernehmen".
+  if (/^(?:bitte\s+)?lass\s+jochen\s+(?:(?:bitte|personlich|hier|jetzt|im\s+chat)\s+){0,5}(?:ubernehm\w*|ubernimm\w*|antwort\w*|schreib\w*)[.!\s]*$/i.test(input)) return true;
   if (/\b(?:mit\s+jochen\s+(?:(?:personlich|direkt)\s+)?(?:schreiben|reden|sprechen)|kein\s+bot\s+bitte)\b/i.test(input) &&
       !/\b(?:nicht|kein)\s+(?:mit\s+jochen|personlich\s+schreiben)\b/i.test(input)) return true;
   if (/\bjochen\s+(?:(?:soll|kann|konnte)\s+)?(?:bitte\s+)?(?:hier\s+)?(?:(?:in\s+diesem|im)\s+chat\s+)?(?:ubernehm\w*|ubernimm\w*|antwort\w*|schreib\w*)\b/i.test(input)) return true;
