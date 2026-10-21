@@ -25,6 +25,35 @@ test("real QA F20: 'keine weiteren Fragen' is a direct no-question boundary", ()
   assert.match(result, /NULL Fragen/);
 });
 
+test("QA: a no-question boundary survives an unrelated later user message", () => {
+  const text = guide(
+    "Bitte keine weiteren Fragen, ich möchte gerade nicht ausgefragt werden.",
+    "Ich arbeite im Schichtdienst und meine Pausen fallen aus.");
+  assert.match(text, /NULL Fragen/);
+});
+
+test("QA: explicit invitation reopens questions without overriding other safety rules", () => {
+  const text = guide(
+    "Bitte keine weiteren Fragen.",
+    "Du darfst mich jetzt wieder fragen.",
+    "Ich arbeite im Schichtdienst.");
+  assert.doesNotMatch(text, /NULL Fragen/);
+});
+
+test("QA: a user's own question does not silently invite Pete to interrogate them", () => {
+  const text = guide(
+    "Ich will nicht dauernd ausgefragt werden.",
+    "Wie funktioniert eure Methode?");
+  assert.match(text, /NULL Fragen/);
+});
+
+test("QA: neutral messages about questions are not treated as a no-question order", () => {
+  const text = guide(
+    "Meine Tochter hat Fragen zum Schwimmen.",
+    "Ich will wieder mehr Energie.");
+  assert.doesNotMatch(text, /NULL Fragen/);
+});
+
 test("real QA F03: the food is ALREADY packed; breaks are the problem", () => {
   const result = guide(
     "Ich trainiere viermal die Woche und nehme Essen mit. Meine Schicht ist chaotisch.",
