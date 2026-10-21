@@ -43,7 +43,7 @@ test("QA resume: no paid calls until auth check and same original money remains 
   const reserve = yaml.indexOf("node scripts/pete-quality-resume-budget.mjs reserve");
   const run = yaml.indexOf("npx tsx src/config/pete-quality-real-runner.ts");
   assert.ok(auth > 0 && reserve > auth && run > reserve);
-  assert.match(yaml, /api\\.openai\\.com\\/v1\\/models\\/gpt-4\\.1-mini/);
+  assert.match(yaml, /api\.openai\.com\/v1\/models\/gpt-4\.1-mini/);
   assert.match(yaml, /pete-quality-real-resume-20261021/);
   assert.match(yaml, /PETE_QUALITY_QA_RESUME_20261021/);
   assert.match(yaml, /PETE_QA_RESUME_APPROVED_20261021/);
