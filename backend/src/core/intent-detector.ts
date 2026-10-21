@@ -1,4 +1,5 @@
 import { getMatchedPricingIntent } from "../domain/pricing-rules.js";
+import { matchExplicitStopPhrase } from "./stop-keyword-match.js";
 import type {
   IntentDetectionResult,
   LeadIntent,
@@ -275,7 +276,7 @@ export function detectLeadIntent(input: string): IntentDetectionResult {
     return buildIntentResult("unknown", 0);
   }
 
-  const stopMatch = includesAnyKeyword(normalized, STOP_KEYWORDS);
+  const stopMatch = matchExplicitStopPhrase(input, STOP_KEYWORDS);
   if (stopMatch) {
     return buildIntentResult("stop", 0.99, stopMatch);
   }

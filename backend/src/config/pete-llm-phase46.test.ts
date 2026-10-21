@@ -19,7 +19,7 @@ const { processIncomingMessage } = await import("../core/conversation-engine.js"
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
 const { writeSettings } = await import("../services/settings-store.js");
-const { buildPeteContext, validatePeteLlmReply, isTrustedPeteTransactionRequest,
+const { buildPeteContext, buildPeteTurnPriorityGuidance, buildPeteEffectiveInstructions, validatePeteLlmReply, isTrustedPeteTransactionRequest,
   isExplicitPeteHumanTakeoverRequest, isPeteLlmReadyForProvider, evaluatePeteLlmContinuity } =
   await import("../core/pete-llm-conversation.js");
 
@@ -85,8 +85,10 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     let calls = 0;
     globalThis.fetch = async () => { calls++; throw Error("must not fetch"); };
     assert.equal(isExplicitPeteHumanTakeoverRequest("Jochen soll bitte hier übernehmen"), true);
+    assert.equal(isExplicitPeteHumanTakeoverRequest("Bitte lass Jochen persönlich hier übernehmen."), true);
+    assert.equal(isExplicitPeteHumanTakeoverRequest("Bitte lass Jochen NICHT hier übernehmen."), false);
     assert.equal(isExplicitPeteHumanTakeoverRequest("Ich brauche jemanden an meiner Seite beim Coaching"), false);
-    const out = await send("phase46-human-request", "Jochen soll bitte hier übernehmen");
+    const out = await send("phase46-human-request", "Bitte lass Jochen persönlich hier übernehmen.");
     assert.equal(out.state.owner, "human");
     assert.equal(out.state.aiPaused, true);
     assert.equal(out.state.flags.peteRuntimeHandoffActive, true);
@@ -243,6 +245,208 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(evaluatePeteLlmContinuity(state,
       "Stimmt, ich habe dich zweimal gefragt. Deine Schichten sind der Engpass beim Essen, nicht die Trainingshäufigkeit."),
       null);
+  });
+
+  await t.test("round2 Yoda: positive setter progression instructions complement hard lead boundaries", () => {
+    const instructions = buildPeteEffectiveInstructions();
+    // Free, deterministic prompt contract. This is not evidence that a
+    // provider will follow the instruction in a real sales conversation.
+    assert.match(instructions, /GESPRÄCHSFORTSCHRITT STATT VERSTÄNDNIS-SCHLEIFE/);
+    assert.match(instructions, /KURZE OFFENE LEADS/);
+    assert.match(instructions, /DIREKTE ZEIT- UND UMSETZUNGSFRAGEN/);
+    assert.match(instructions, /FRAGESTOPP HAT VORRANG/);
+    assert.match(instructions, /Nenne NIE Preise/);
+    assert.match(instructions, /kein(?:e|en)? (?:weiteren?|neuen?) Fragen|keine weiteren Fragen/i);
+  });
+
+  await t.test("assertive setter: real runtime permits one honest hesitation question in a buyer dialogue", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    const receivedInstructions: string[] = [];
+    let calls = 0;
+    globalThis.fetch = async (_url, options) => {
+      const request = JSON.parse(String(options?.body));
+      receivedInstructions.push(String(request.instructions));
+      const message = calls++ === 0
+        ? "Du willst etwas ändern, doch Job und Kinder machen es schwer. Was müsste für dich zuerst leichter werden?"
+        : "Klar, eine Nacht drüber schlafen ist okay. Was genau möchtest du noch abwägen?";
+      return mockResponse(message);
+    };
+    const first = await send("phase46-proactive-buyer",
+      "Ich interessiere mich für Coaching, damit ich trotz Job und Kindern wieder fitter werde.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+    const hesitant = await send("phase46-proactive-buyer",
+      "Ich muss erst noch eine Nacht drüber schlafen.");
+    assert.equal(hesitant.state.answers.peteReplySource, "llm");
+    assert.equal(hesitant.state.owner, "ai");
+    assert.match(hesitant.text ?? "", /Was genau möchtest du noch abwägen/);
+    assert.equal(calls, 2);
+    assert.match(receivedInstructions[1], /Kaufgespraech mit erstem offenen Bedenkzeit-Einwand/);
+    assert.match(receivedInstructions[1], /YODA-MODUS/);
+    assert.match(receivedInstructions[1], /GRENZEN SIND KEINE CHALLENGE/);
+    assert.match(receivedInstructions[1], /Nenne NIE Preise/);
+  });
+
+  await t.test("real QA follow-up: current lead facts steer model without exposing rules", () => {
+    const scenarios = [
+      {
+        id: "F03: packed food with canceled breaks",
+        lead: [
+          "Ich bin 42, trainiere viermal pro Woche und arbeite Schicht.",
+          "Ich nehme Essen mit, aber meine Pausen fallen aus. Dann stopfe ich abends irgendwas in mich rein.",
+        ],
+        required: /Snackboxen|mitgenommenes Essen/,
+      },
+      {
+        id: "F04: sick child breaks training, no re-asking why",
+        lead: [
+          "Ich hatte mir drei Trainingstage vorgenommen.",
+          "Mein Kind war krank. Deshalb ist das Training diese Woche ausgefallen.",
+        ],
+        required: /krankes Kind/,
+      },
+      {
+        id: "F08: direct question about offering",
+        lead: ["Was genau machst du denn?"],
+        required: /kostenlosen Coachingservice/,
+      },
+      {
+        id: "F12: already tried many things",
+        lead: ["Ich habe schon so viel probiert. Irgendwann glaubt man nicht mehr dran."],
+        required: /bisher ausprobiert/,
+      },
+      {
+        id: "F02: no more questions",
+        lead: ["Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden."],
+        required: /NULL Fragen/,
+      },
+    ];
+    for (const scenario of scenarios) {
+      const state = { messages: scenario.lead.map(text => ({ role: "user", text })) } as any;
+      const guidance = buildPeteTurnPriorityGuidance(state);
+      assert.match(guidance, scenario.required, scenario.id);
+      assert.doesNotMatch(guidance, /\n.*(?:Verlauf|leadText)=/i, scenario.id);
+    }
+    const base = buildPeteEffectiveInstructions();
+    assert.match(base, /INTERNE REGELN SIND KEIN KUNDENTEXT/);
+    assert.match(base, /FRAGE-ENTSCHEIDUNG STATT FRAGEBOGEN/);
+  });
+
+  await t.test("real QA follow-up: avoid spurious priority hints for normal small talk", () => {
+    const state = { messages: [
+      { role: "user", text: "Hi! Ich folge seit heute und schaue mich erst mal um." },
+    ] } as any;
+    assert.equal(buildPeteTurnPriorityGuidance(state), "");
+  });
+
+  await t.test("real QA P0: no more questions must be honored even if model asks", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return mockResponse(calls === 1
+        ? "Verstanden, keine weiteren Nachfragen. Was raubt dir gerade besonders viel Energie?"
+        : "Ich bin da, wenn du von dir aus weiterschreiben möchtest.");
+    };
+    const out = await send("phase46-no-more-questions-qa",
+      "Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden.");
+    assert.equal(calls, 1);
+    assert.equal(out.state.answers.peteReplySource, "safe_noncritical");
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.match(out.text ?? "", /keine weiteren Fragen/);
+    assert.doesNotMatch(out.text ?? "", /Was raubt dir/);
+    const noRetry = await send("phase46-no-more-questions-qa", "Hallo?");
+    assert.equal(noRetry.state.answers.peteReplySource, "llm");
+    assert.equal(noRetry.state.owner, "ai");
+    assert.equal(calls, 2);
+  });
+
+  await t.test("real QA P0: answer without question survives explicit boundary", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    globalThis.fetch = async () => mockResponse(
+      "Das klingt nach mehr Belastung, als gerade Platz hat. Ich halte mich mit Nachfragen zurück."
+    );
+    const out = await send("phase46-no-more-questions-valid",
+      "Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden.");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(out.state.owner, "ai");
+    assert.doesNotMatch(out.text ?? "", /\?/);
+  });
+
+  await t.test("real QA P0: false question ban must not block ordinary qualification", () => {
+    for (const lead of [
+      "Ich habe keine Ahnung, was ich ändern will.",
+      "Ich möchte eine Frage zum Ablauf stellen.",
+      "Du darfst ruhig eine Frage stellen.",
+    ]) {
+      const state = { messages: [{ role: "user", text: lead }] } as any;
+      assert.equal(evaluatePeteLlmContinuity(state, "Was wäre dir am wichtigsten?"), null);
+    }
+    for (const lead of [
+      "Ich möchte keine weiteren Fragen.",
+      "Frag bitte nicht weiter.",
+      "Ich will nicht dauernd ausgefragt werden.",
+      "Ich will jetzt keine Fragen.",
+    ]) {
+      const state = { messages: [{ role: "user", text: lead }] } as any;
+      assert.equal(evaluatePeteLlmContinuity(state,
+        "Okay, das respektiere ich. Darf ich nur noch eine Sache fragen?"),
+        "question_after_explicit_boundary", lead);
+      assert.equal(evaluatePeteLlmContinuity(state,
+        "Verstanden. Das reicht fürs Erste. Melde dich jederzeit, wenn du magst."), null, lead);
+    }
+  });
+
+  await t.test("real QA: a later ordinary message does not cancel a no-questions boundary", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let modelCalls = 0;
+    globalThis.fetch = async () => {
+      modelCalls++;
+      return mockResponse(modelCalls === 1
+        ? "Das hört sich nach einer ziemlich vollen Woche an. Ich lasse dir erst einmal Raum."
+        : "Was würdest du dir für den Schichtalltag wünschen?");
+    };
+    const leadId = "phase46-boundary-sticks";
+    const first = await send(leadId,
+      "Ich bin gerade erschöpft. Bitte keine weiteren Fragen.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+    assert.equal(first.state.owner, "ai");
+
+    const second = await send(leadId,
+      "Die Schichtarbeit und die Kinder sind gerade ziemlich viel.");
+    assert.equal(modelCalls, 2);
+    assert.equal(second.state.answers.peteReplySource, "safe_noncritical");
+    assert.equal(second.state.owner, "ai");
+    assert.equal(second.state.aiPaused, false);
+    assert.match(second.text ?? "", /keine weiteren Fragen/);
+    assert.doesNotMatch(second.text ?? "", /Schichtalltag wünschen/);
+  });
+
+  await t.test("real QA: explicit permission permits questions again, not a silent reset", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let modelCalls = 0;
+    globalThis.fetch = async () => {
+      modelCalls++;
+      return mockResponse(modelCalls === 1
+        ? "Du hast gerade viel auf einmal. Ich bleibe ohne weitere Rückfragen."
+        : "Was wäre dir in deinem Alltag als Erstes wichtig?");
+    };
+    const leadId = "phase46-boundary-reopened";
+    const first = await send(leadId,
+      "Bitte keine weiteren Fragen. Ich bin gerade überfordert.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+
+    const second = await send(leadId,
+      "Du darfst mich jetzt wieder fragen. Ich möchte mehr Energie.");
+    assert.equal(modelCalls, 2);
+    assert.equal(second.state.answers.peteReplySource, "llm");
+    assert.equal(second.state.owner, "ai");
+    assert.match(second.text ?? "", /Was wäre dir/);
   });
 
   await t.test("mocked duplicate model pitch hands off without sending it to the lead", async () => {
