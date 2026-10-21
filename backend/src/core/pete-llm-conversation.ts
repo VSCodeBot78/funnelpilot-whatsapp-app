@@ -237,6 +237,15 @@ export function buildPeteTurnPriorityGuidance(state: ConversationState): string 
     .join(" ").toLocaleLowerCase("de-DE")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const priority: string[] = [];
+  // In the real Yoda sample several replies were consecutive qualifying
+  // questions even after substantive lead answers. This is a model hint,
+  // never a forced script or a block on legitimate direct buyer questions.
+  const lastAssistant = [...(state.messages ?? [])].reverse()
+    .find(message => message.role === "assistant");
+  if (lastAssistant && lastAssistant.text.includes("?") &&
+      current.length >= 35 && !current.includes("?")) {
+    priority.push("Pete hat zuletzt bereits eine Frage gestellt, auf die der Lead jetzt mit einer konkreten Aussage geantwortet hat. Verarbeite diese neue Information zuerst und zeige echten Gesprächsfortschritt. Keine zweite automatische Bedarfserhebung; eine neue Frage nur, wenn eine entscheidende Information wirklich noch fehlt. Ein verständlicher Satz ohne Frage ist oft besser.");
+  }
 
   const explicitNoQuestions = hasPeteActiveNoQuestionBoundary(state);
   if (explicitNoQuestions) {
