@@ -163,3 +163,42 @@ test("QA: short leads are not forced into a fixed response", () => {
   ] } as any;
   assert.doesNotMatch(buildPeteTurnPriorityGuidance(state), /zweite automatische Bedarfserhebung/);
 });
+
+
+test("strong setter: in active purchase talk, first sleep-on-it objection invites exactly one clarification", () => {
+  const guidance = guide(
+    "Ich interessiere mich für den Selbststarter und überlege zu kaufen.",
+    "Ich muss erst noch eine Nacht drüber schlafen.");
+  assert.match(guidance, /Kaufgespraech mit erstem offenen Bedenkzeit-Einwand/);
+  assert.match(guidance, /Genau EINE kurze Frage/);
+  assert.match(guidance, /Bedenkzeit ohne weitere Verkaufsschleife respektieren/);
+});
+
+test("strong setter: hesitating outside a purchasing conversation is not assumed to be an objection", () => {
+  assert.doesNotMatch(guide("Ich muss erst noch eine Nacht drüber schlafen."), /Kaufgespraech/);
+  assert.doesNotMatch(guide(
+    "Ich wollte bloß die Reels anschauen.",
+    "Ich denke darüber nach."), /Kaufgespraech/);
+});
+
+test("strong setter: no-questions and explicit disinterest override an open sales context", () => {
+  const boundary = guide(
+    "Ich interessiere mich für den Selbststarter.",
+    "Ich will nicht dauernd ausgefragt werden.",
+    "Ich möchte noch eine Nacht drüber schlafen.");
+  assert.match(boundary, /NULL Fragen/);
+  assert.doesNotMatch(boundary, /Kaufgespraech mit erstem offenen Bedenkzeit-Einwand/);
+  const decline = guide(
+    "Ich interessiere mich für den Selbststarter.",
+    "Nein danke, ich muss erst noch eine Nacht drüber schlafen.");
+  assert.doesNotMatch(decline, /Kaufgespraech mit erstem offenen Bedenkzeit-Einwand/);
+});
+
+test("strong setter: partner's role is respected, never framed as an obstacle", () => {
+  const guidance = guide(
+    "Ich interessiere mich für das Coaching.",
+    "Ich muss erst mit meiner Partnerin sprechen.");
+  assert.match(guidance, /Legitime Partnerentscheidung/);
+  assert.match(guidance, /keine Umgehung oder Abwertung/);
+  assert.doesNotMatch(guide("Ich muss mit meiner Frau reden."), /Legitime Partnerentscheidung/);
+});
