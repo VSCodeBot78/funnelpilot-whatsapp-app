@@ -10,6 +10,7 @@ import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
 import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
+import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
@@ -237,12 +238,7 @@ export function buildPeteTurnPriorityGuidance(state: ConversationState): string 
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const priority: string[] = [];
 
-  const explicitNoQuestions =
-    /\bkeine\s+(?:(?:weiteren?|zusatzlichen?|neuen?)\s+)?(?:fragen|nachfragen)\b/i.test(current) ||
-    /\bohne\s+(?:weitere\s+)?nachfragen\b/i.test(current) ||
-    /\b(?:nicht|kein(?:e|en)?|ohne)\s+(?:dauernd\s+|stand(?:ig|ig)\s+|weiter\s+)?ausgefragt\b/i.test(current) ||
-    /\b(?:nicht\s+.{0,35}|weniger\s+)ausfragen\b/i.test(current) ||
-    /\b(?:will|mochte|bitte)\s+(?:\w+\s+){0,5}nicht\s+(?:weiter\s+|dauernd\s+)?(?:gefragt|ausgefragt)\b/i.test(current);
+  const explicitNoQuestions = hasPeteActiveNoQuestionBoundary(state);
   if (explicitNoQuestions) {
     priority.push("Explizite Grenze: NULL Fragen. Kein Fragezeichen, keine indirekte Bitte um weitere Erklärung, keine Verkaufsfrage. Nur kurze respektvolle Bestätigung ohne CTA.");
   }
@@ -344,7 +340,7 @@ export function evaluatePeteLlmContinuity(
   // text before it can reach the lead. Do not confuse with an actual STOP:
   // silence here is about questions, not all future contact.
   const noQuestionsBoundary = /\b(?:keine|keinerlei)\s+(?:weiteren?\s+|neuen?\s+|mehr\s+)?(?:fragen|nachfragen)\b|\b(?:will|mochte|brauche?)\s+(?:jetzt\s+)?(?:keine|nicht\s+noch)\s+(?:weiteren?\s+)?(?:fragen|nachfragen)\b|\b(?:will|mochte)\s+nicht\s+(?:dauernd|standig|weiter)\s+ausgefragt\b|\b(?:frag|frage)\s+(?:bitte\s+)?nicht\s+(?:mehr|weiter)\b|\b(?:hor|hort)\s+auf\s+(?:mit\s+)?(?:den\s+)?(?:fragen|nachfragen)\b/.test(complaint);
-  if (noQuestionsBoundary && reply.includes("?")) return "question_after_explicit_boundary";
+  if ((noQuestionsBoundary || hasPeteActiveNoQuestionBoundary(state)) && reply.includes("?")) return "question_after_explicit_boundary";
   const complaintsAboutQuestions = /(?:du fragst|fragst du|schon gesagt|bereits gesagt|doch gesagt|wieder dieselbe|wieder die gleiche|beantwortest (?:meine|mir) (?:frage|fragen) nicht|nur fragen|standig fragen|dauernd fragen)/.test(complaint);
   if (!complaintsAboutQuestions) return null;
 
