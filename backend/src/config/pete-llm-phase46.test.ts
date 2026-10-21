@@ -259,6 +259,34 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.match(instructions, /kein(?:e|en)? (?:weiteren?|neuen?) Fragen|keine weiteren Fragen/i);
   });
 
+  await t.test("assertive setter: real runtime permits one honest hesitation question in a buyer dialogue", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    const receivedInstructions: string[] = [];
+    let calls = 0;
+    globalThis.fetch = async (_url, options) => {
+      const request = JSON.parse(String(options?.body));
+      receivedInstructions.push(String(request.instructions));
+      const message = calls++ === 0
+        ? "Du willst etwas ändern, doch Job und Kinder machen es schwer. Was müsste für dich zuerst leichter werden?"
+        : "Klar, eine Nacht drüber schlafen ist okay. Was genau möchtest du noch abwägen?";
+      return mockResponse(message);
+    };
+    const first = await send("phase46-proactive-buyer",
+      "Ich interessiere mich für Coaching, damit ich trotz Job und Kindern wieder fitter werde.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+    const hesitant = await send("phase46-proactive-buyer",
+      "Ich muss erst noch eine Nacht drüber schlafen.");
+    assert.equal(hesitant.state.answers.peteReplySource, "llm");
+    assert.equal(hesitant.state.owner, "ai");
+    assert.match(hesitant.text ?? "", /Was genau möchtest du noch abwägen/);
+    assert.equal(calls, 2);
+    assert.match(receivedInstructions[1], /Kaufgespraech mit erstem offenen Bedenkzeit-Einwand/);
+    assert.match(receivedInstructions[1], /YODA-MODUS/);
+    assert.match(receivedInstructions[1], /GRENZEN SIND KEINE CHALLENGE/);
+    assert.match(receivedInstructions[1], /Nenne NIE Preise/);
+  });
+
   await t.test("real QA follow-up: current lead facts steer model without exposing rules", () => {
     const scenarios = [
       {
