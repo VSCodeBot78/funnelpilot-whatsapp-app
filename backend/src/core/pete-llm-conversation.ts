@@ -258,6 +258,21 @@ export function buildPeteTurnPriorityGuidance(state: ConversationState): string 
     priority.push("Explizite Grenze: NULL Fragen. Kein Fragezeichen, keine indirekte Bitte um weitere Erklärung, keine Verkaufsfrage. Nur kurze respektvolle Bestätigung ohne CTA.");
   }
 
+  // Objections are a legitimate stage of an active buying dialogue.
+  // A generic "I need to think" is not proof that someone wants to buy.
+  // Give the language model a fact-free sales hint only with visible context
+  // and never when the lead has refused questions or sales contact.
+  const buyerConversation = /\b(?:selbststarter|coaching|begleitung|angebot|kaufen|kaufe|buchung|buchen|preis|preise|bezahlen|zahlung|startphase|strategiegesprach|investition)\b/.test(previousAndCurrent);
+  const decline = /\b(?:kein interesse|nein danke|lass mich in ruhe|kein verkauf|keine verkaufsnachrichten|nicht weiter fragen)\b/.test(current);
+  if (buyerConversation && !decline && !explicitNoQuestions &&
+      /\b(?:druber schlafen|daruber schlafen|eine nacht schlafen|noch uberlegen|daruber nachdenken|erst mal nachdenken)\b/.test(current)) {
+    priority.push("Kaufgespraech mit erstem offenen Bedenkzeit-Einwand: nicht reflexhaft verabschieden oder Druck machen. Genau EINE kurze Frage nach dem noch unklaren Entscheidungspunkt ist erlaubt. Wenn die Person dabei bleibt, Bedenkzeit ohne weitere Verkaufsschleife respektieren.");
+  }
+  if (buyerConversation && !decline && !explicitNoQuestions &&
+      /\b(?:partner|partnerin|mann|frau|ehemann|ehefrau)\b.{0,55}\b(?:fragen|sprechen|reden|abklaren|entscheiden)\b/.test(current)) {
+    priority.push("Legitime Partnerentscheidung: keine Umgehung oder Abwertung der mitentscheidenden Person. Darf einmal ruhig fragen, welche sachliche Frage fuer die gemeinsame Entscheidung noch offen ist.");
+  }
+
   const hasPackedFood =
     /\b(?:essen|mahlzeit(?:en)?|snacks?)\b.{0,70}\b(?:mit|dabei|vorbereit(?:et|en)?)\b/i.test(previousAndCurrent) ||
     /\b(?:nehme|nehm|hab|habe|hatt)\w*\b.{0,40}\b(?:essen|mahlzeit(?:en)?|snacks?)\b.{0,30}\b(?:mit|dabei)\b/i.test(previousAndCurrent);
