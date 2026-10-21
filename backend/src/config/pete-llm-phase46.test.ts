@@ -19,7 +19,7 @@ const { processIncomingMessage } = await import("../core/conversation-engine.js"
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
 const { writeSettings } = await import("../services/settings-store.js");
-const { buildPeteContext, validatePeteLlmReply, isTrustedPeteTransactionRequest,
+const { buildPeteContext, buildPeteTurnPriorityGuidance, buildPeteEffectiveInstructions, validatePeteLlmReply, isTrustedPeteTransactionRequest,
   isExplicitPeteHumanTakeoverRequest, isPeteLlmReadyForProvider, evaluatePeteLlmContinuity } =
   await import("../core/pete-llm-conversation.js");
 
@@ -245,6 +245,58 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(evaluatePeteLlmContinuity(state,
       "Stimmt, ich habe dich zweimal gefragt. Deine Schichten sind der Engpass beim Essen, nicht die Trainingshäufigkeit."),
       null);
+  });
+
+  await t.test("real QA follow-up: current lead facts steer model without exposing rules", () => {
+    const scenarios = [
+      {
+        id: "F03: packed food with canceled breaks",
+        lead: [
+          "Ich bin 42, trainiere viermal pro Woche und arbeite Schicht.",
+          "Ich nehme Essen mit, aber meine Pausen fallen aus. Dann stopfe ich abends irgendwas in mich rein.",
+        ],
+        required: /Snackboxen|mitgenommenes Essen/,
+      },
+      {
+        id: "F04: sick child breaks training, no re-asking why",
+        lead: [
+          "Ich hatte mir drei Trainingstage vorgenommen.",
+          "Mein Kind war krank. Deshalb ist das Training diese Woche ausgefallen.",
+        ],
+        required: /krankes Kind/,
+      },
+      {
+        id: "F08: direct question about offering",
+        lead: ["Was genau machst du denn?"],
+        required: /kostenlosen Coachingservice/,
+      },
+      {
+        id: "F12: already tried many things",
+        lead: ["Ich habe schon so viel probiert. Irgendwann glaubt man nicht mehr dran."],
+        required: /bisher ausprobiert/,
+      },
+      {
+        id: "F02: no more questions",
+        lead: ["Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden."],
+        required: /NULL Fragen/,
+      },
+    ];
+    for (const scenario of scenarios) {
+      const state = { messages: scenario.lead.map(text => ({ role: "user", text })) } as any;
+      const guidance = buildPeteTurnPriorityGuidance(state);
+      assert.match(guidance, scenario.required, scenario.id);
+      assert.doesNotMatch(guidance, /\n.*(?:Verlauf|leadText)=/i, scenario.id);
+    }
+    const base = buildPeteEffectiveInstructions();
+    assert.match(base, /INTERNE REGELN SIND KEIN KUNDENTEXT/);
+    assert.match(base, /FRAGE-ENTSCHEIDUNG STATT FRAGEBOGEN/);
+  });
+
+  await t.test("real QA follow-up: avoid spurious priority hints for normal small talk", () => {
+    const state = { messages: [
+      { role: "user", text: "Hi! Ich folge seit heute und schaue mich erst mal um." },
+    ] } as any;
+    assert.equal(buildPeteTurnPriorityGuidance(state), "");
   });
 
   await t.test("real QA P0: no more questions must be honored even if model asks", async () => {
