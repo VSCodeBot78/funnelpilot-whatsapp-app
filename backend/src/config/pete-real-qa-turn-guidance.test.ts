@@ -120,3 +120,30 @@ test("QA: output guard allows questions after invitation and rejects renewed sto
   assert.equal(evaluatePeteLlmContinuity(state,
     "Was wäre dir aktuell besonders wichtig?"), "question_after_explicit_boundary");
 });
+
+test("QA: after a substantive answer, Pete must not reflexively ask another question", () => {
+  const state = { messages: [
+    { role: "user", text: "Ich schaffe meine Mahlzeiten auf Arbeit kaum." },
+    { role: "assistant", text: "Was passiert denn während der Schicht?" },
+    { role: "user", text: "Ich nehme mir Essen mit, aber die Pausen fallen oft aus. Am Abend habe ich großen Hunger." },
+  ] } as any;
+  assert.match(buildPeteTurnPriorityGuidance(state), /zweite automatische Bedarfserhebung/);
+});
+
+test("QA: answering a buyer's new direct question is not blocked", () => {
+  const state = { messages: [
+    { role: "assistant", text: "Was möchtest du verändern?" },
+    { role: "user", text: "Was unterscheidet euer Konzept von einem klassischen Ernährungsplan?" },
+  ] } as any;
+  const guidance = buildPeteTurnPriorityGuidance(state);
+  assert.doesNotMatch(guidance, /zweite automatische Bedarfserhebung/);
+  assert.match(guidance, /ZUERST sachlich beantworten/);
+});
+
+test("QA: short leads are not forced into a fixed response", () => {
+  const state = { messages: [
+    { role: "assistant", text: "Was beschäftigt dich?" },
+    { role: "user", text: "Stress." },
+  ] } as any;
+  assert.doesNotMatch(buildPeteTurnPriorityGuidance(state), /zweite automatische Bedarfserhebung/);
+});
