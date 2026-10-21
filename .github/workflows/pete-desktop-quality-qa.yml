@@ -1,0 +1,53 @@
+name: Pete desktop QA - offline only
+
+on:
+  push:
+    branches:
+      - fix/pete-qa-stop-and-appointments-20261021
+  pull_request:
+    branches:
+      - feat/pete-desktop-flow-builder-draft-20261017
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend build and mocked QA
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      PETE_LLM_CONVERSATION_ENABLED: "false"
+      PETE_LLM_API_CALLS_APPROVED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  dashboard:
+    name: Dashboard build and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build
