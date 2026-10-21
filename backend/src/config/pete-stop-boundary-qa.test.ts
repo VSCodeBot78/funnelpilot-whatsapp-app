@@ -36,6 +36,20 @@ test("QA: read-only OpenAI authentication must pass before durable paid reservat
   assert.doesNotMatch(yaml, /workflow_dispatch:/);
 });
 
+test("QA resume: no paid calls until auth check and same original money remains capped", () => {
+  const yaml = fs.readFileSync(path.resolve(import.meta.dirname,
+    "../../../.github/workflows/pete-quality-real-resume.yml"), "utf8");
+  const auth = yaml.indexOf("name: Verify OpenAI credentials without generating tokens");
+  const reserve = yaml.indexOf("node scripts/pete-quality-resume-budget.mjs reserve");
+  const run = yaml.indexOf("npx tsx src/config/pete-quality-real-runner.ts");
+  assert.ok(auth > 0 && reserve > auth && run > reserve);
+  assert.match(yaml, /api\\.openai\\.com\\/v1\\/models\\/gpt-4\\.1-mini/);
+  assert.match(yaml, /pete-quality-real-resume-20261021/);
+  assert.match(yaml, /PETE_QUALITY_QA_RESUME_20261021/);
+  assert.match(yaml, /PETE_QA_RESUME_APPROVED_20261021/);
+  assert.doesNotMatch(yaml, /workflow_dispatch:/);
+});
+
 test("P0: no accidental opt-out from 'stopfe', 'Stoppuhr' and ordinary lead language", () => {
   for (const input of [
     "Ich nehme mir Essen mit, aber meine Pausen fallen oft aus. Dann komme ich erst abends zum Essen und stopfe irgendwas in mich rein. Trainieren ist wirklich nicht mein Problem.",
