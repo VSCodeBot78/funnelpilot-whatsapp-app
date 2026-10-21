@@ -305,19 +305,22 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     let calls = 0;
     globalThis.fetch = async () => {
       calls++;
-      return mockResponse("Verstanden, keine weiteren Nachfragen. Was raubt dir gerade besonders viel Energie?");
+      return mockResponse(calls === 1
+        ? "Verstanden, keine weiteren Nachfragen. Was raubt dir gerade besonders viel Energie?"
+        : "Ich bin da, wenn du von dir aus weiterschreiben möchtest.");
     };
     const out = await send("phase46-no-more-questions-qa",
       "Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden.");
     assert.equal(calls, 1);
-    assert.equal(out.state.answers.peteReplySource, "llm_handoff");
-    assert.equal(out.state.answers.peteLlmFailureDetail, "question_after_explicit_boundary");
-    assert.equal(out.state.owner, "human");
-    assert.equal(out.state.aiPaused, true);
+    assert.equal(out.state.answers.peteReplySource, "safe_noncritical");
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.match(out.text ?? "", /keine weiteren Fragen/);
     assert.doesNotMatch(out.text ?? "", /Was raubt dir/);
     const noRetry = await send("phase46-no-more-questions-qa", "Hallo?");
-    assert.equal(noRetry.text, null);
-    assert.equal(calls, 1);
+    assert.equal(noRetry.state.answers.peteReplySource, "llm");
+    assert.equal(noRetry.state.owner, "ai");
+    assert.equal(calls, 2);
   });
 
   await t.test("real QA P0: answer without question survives explicit boundary", async () => {
@@ -376,11 +379,10 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     const second = await send(leadId,
       "Die Schichtarbeit und die Kinder sind gerade ziemlich viel.");
     assert.equal(modelCalls, 2);
-    assert.equal(second.state.answers.peteReplySource, "llm_handoff");
-    assert.equal(second.state.answers.peteLlmFailureDetail,
-      "question_after_explicit_boundary");
-    assert.equal(second.state.owner, "human");
-    assert.equal(second.state.aiPaused, true);
+    assert.equal(second.state.answers.peteReplySource, "safe_noncritical");
+    assert.equal(second.state.owner, "ai");
+    assert.equal(second.state.aiPaused, false);
+    assert.match(second.text ?? "", /keine weiteren Fragen/);
     assert.doesNotMatch(second.text ?? "", /Schichtalltag wünschen/);
   });
 
