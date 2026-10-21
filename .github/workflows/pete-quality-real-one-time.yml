@@ -82,9 +82,9 @@ jobs:
         run: |
           set -euo pipefail
           # No reservation, paid request, lead data or model output before auth.
-          status=$(curl --silent --show-error --max-time 20 \\
-            --output /dev/null --write-out '%{http_code}' \\
-            -H "Authorization: Bearer $OPENAI_API_KEY" \\
+          status=$(curl --silent --show-error --max-time 20 \
+            --output /dev/null --write-out '%{http_code}' \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
             "https://api.openai.com/v1/models/gpt-4.1-mini")
           echo "OpenAI model access HTTP: $status"
           if [ "$status" != "200" ]; then
