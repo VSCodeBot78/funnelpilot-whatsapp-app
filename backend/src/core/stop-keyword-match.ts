@@ -22,6 +22,12 @@ export function matchExplicitStopPhrase(
   const inputWithBoundaries = ` ${normalized} `;
   return keywords.find((keyword) => {
     const phrase = normalizedWords(keyword);
-    return Boolean(phrase && inputWithBoundaries.includes(` ${phrase} `));
+    if (!phrase) return false;
+    // A standalone STOP command can have punctuation/spaces, but must not
+    // match "stopfe", "Stoppuhr" or compound terms such as "Stop-Loss".
+    if (phrase === "stop" || phrase === "stopp") {
+      return /(?:^|[^\p{L}\p{N}-])stopp?(?=$|[^\p{L}\p{N}-])/iu.test(inputText);
+    }
+    return inputWithBoundaries.includes(` \${phrase} `);
   });
 }
