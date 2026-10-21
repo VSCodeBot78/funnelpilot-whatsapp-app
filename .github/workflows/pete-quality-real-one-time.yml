@@ -75,6 +75,23 @@ jobs:
           git -C budget-ledger config user.name "Funnel Pilot QA budget bot"
           git -C budget-ledger config user.email "actions@users.noreply.github.com"
 
+      - name: Verify OpenAI credentials without generating tokens
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No reservation, paid request, lead data or model output before auth.
+          status=$(curl --silent --show-error --max-time 20 \\
+            --output /dev/null --write-out '%{http_code}' \\
+            -H "Authorization: Bearer $OPENAI_API_KEY" \\
+            "https://api.openai.com/v1/models/gpt-4.1-mini")
+          echo "OpenAI model access HTTP: $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::OpenAI credentials/model unavailable. Zero paid QA calls authorized."
+            exit 1
+          fi
+
       - name: Reserve, run fictional chats, then settle budget
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
