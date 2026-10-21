@@ -5,14 +5,6 @@ export default function AppointmentsShell({
   colors,
   contacts,
   inboxContacts,
-  availabilityForm,
-  availabilityLoading,
-  availabilitySaving,
-  availabilityMessage,
-  onAvailabilityFormChange,
-  onReloadAvailability,
-  onSaveAvailability,
-  onResetAvailability,
   onOpenLead,
   renderPlaceholder,
 }) {
@@ -21,14 +13,6 @@ export default function AppointmentsShell({
       colors={colors}
       contacts={contacts}
       inboxContacts={inboxContacts}
-      availabilityForm={availabilityForm}
-      availabilityLoading={availabilityLoading}
-      availabilitySaving={availabilitySaving}
-      availabilityMessage={availabilityMessage}
-      onAvailabilityFormChange={onAvailabilityFormChange}
-      onReload={onReloadAvailability}
-      onSave={onSaveAvailability}
-      onReset={onResetAvailability}
       onOpenLead={onOpenLead}
       renderPlaceholder={renderPlaceholder}
     />
