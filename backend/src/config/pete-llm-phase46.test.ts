@@ -247,6 +247,64 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
       null);
   });
 
+  await t.test("real QA P0: no more questions must be honored even if model asks", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return mockResponse("Verstanden, keine weiteren Nachfragen. Was raubt dir gerade besonders viel Energie?");
+    };
+    const out = await send("phase46-no-more-questions-qa",
+      "Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden.");
+    assert.equal(calls, 1);
+    assert.equal(out.state.answers.peteReplySource, "llm_handoff");
+    assert.equal(out.state.answers.peteLlmFailureDetail, "question_after_explicit_boundary");
+    assert.equal(out.state.owner, "human");
+    assert.equal(out.state.aiPaused, true);
+    assert.doesNotMatch(out.text ?? "", /Was raubt dir/);
+    const noRetry = await send("phase46-no-more-questions-qa", "Hallo?");
+    assert.equal(noRetry.text, null);
+    assert.equal(calls, 1);
+  });
+
+  await t.test("real QA P0: answer without question survives explicit boundary", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    globalThis.fetch = async () => mockResponse(
+      "Das klingt nach mehr Belastung, als gerade Platz hat. Ich halte mich mit Nachfragen zurück."
+    );
+    const out = await send("phase46-no-more-questions-valid",
+      "Ich schaffe keinen zusätzlichen Plan und will nicht dauernd ausgefragt werden.");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(out.state.owner, "ai");
+    assert.doesNotMatch(out.text ?? "", /\?/);
+  });
+
+  await t.test("real QA P0: false question ban must not block ordinary qualification", () => {
+    for (const lead of [
+      "Ich habe keine Ahnung, was ich ändern will.",
+      "Ich möchte eine Frage zum Ablauf stellen.",
+      "Du darfst ruhig eine Frage stellen.",
+    ]) {
+      const state = { messages: [{ role: "user", text: lead }] } as any;
+      assert.equal(evaluatePeteLlmContinuity(state, "Was wäre dir am wichtigsten?"), null);
+    }
+    for (const lead of [
+      "Ich möchte keine weiteren Fragen.",
+      "Frag bitte nicht weiter.",
+      "Ich will nicht dauernd ausgefragt werden.",
+      "Ich will jetzt keine Fragen.",
+    ]) {
+      const state = { messages: [{ role: "user", text: lead }] } as any;
+      assert.equal(evaluatePeteLlmContinuity(state,
+        "Okay, das respektiere ich. Darf ich nur noch eine Sache fragen?"),
+        "question_after_explicit_boundary", lead);
+      assert.equal(evaluatePeteLlmContinuity(state,
+        "Verstanden. Das reicht fürs Erste. Melde dich jederzeit, wenn du magst."), null, lead);
+    }
+  });
+
   await t.test("mocked duplicate model pitch hands off without sending it to the lead", async () => {
     clearConversationStore();
     enableMockProvider();
