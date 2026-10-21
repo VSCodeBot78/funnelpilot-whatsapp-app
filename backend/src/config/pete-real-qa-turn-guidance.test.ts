@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPeteTurnPriorityGuidance } from "../core/pete-llm-conversation.js";
+import { buildPeteTurnPriorityGuidance, evaluatePeteLlmContinuity } from "../core/pete-llm-conversation.js";
 
 function guide(...turns: string[]): string {
   const conversation = {
@@ -93,4 +93,30 @@ test("lead text and private details are not copied into priority instructions", 
   assert.match(result, /NULL Fragen/);
   assert.doesNotMatch(result, /XYZ-SENSITIVE-STRING/);
   assert.doesNotMatch(result, /Passwort/);
+});
+
+test("QA: output guard enforces earlier no-question instruction", () => {
+  const state = { messages: [
+    { role: "user", text: "Ich möchte keine weiteren Fragen." },
+    { role: "assistant", text: "Okay, ich frage nicht weiter." },
+    { role: "user", text: "Die Arbeit und Kinder kosten mich viel Energie." },
+  ] } as any;
+  assert.equal(evaluatePeteLlmContinuity(state,
+    "Was würdest du denn am liebsten ändern?"), "question_after_explicit_boundary");
+  assert.equal(evaluatePeteLlmContinuity(state,
+    "Da kommt bei dir gerade sehr viel zusammen."), null);
+});
+
+test("QA: output guard allows questions after invitation and rejects renewed stop", () => {
+  const base = [
+    { role: "user", text: "Keine weiteren Fragen bitte." },
+    { role: "assistant", text: "Alles klar." },
+    { role: "user", text: "Du darfst mich jetzt wieder fragen." },
+  ];
+  const state = { messages: base } as any;
+  assert.equal(evaluatePeteLlmContinuity(state,
+    "Was wäre dir aktuell besonders wichtig?"), null);
+  state.messages.push({ role: "user", text: "Frag bitte nicht mehr weiter." });
+  assert.equal(evaluatePeteLlmContinuity(state,
+    "Was wäre dir aktuell besonders wichtig?"), "question_after_explicit_boundary");
 });
