@@ -24,6 +24,18 @@ const { clearConversationStore } = await import("../data/store.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { getPeteBudgetStatus } = await import("../services/pete-api-budget.service.js");
 
+test("QA: read-only OpenAI authentication must pass before durable paid reservation", () => {
+  const yaml = fs.readFileSync(path.resolve(import.meta.dirname,
+    "../../../.github/workflows/pete-quality-real-one-time.yml"), "utf8");
+  const auth = yaml.indexOf("name: Verify OpenAI credentials without generating tokens");
+  const reserve = yaml.indexOf("node scripts/pete-quality-one-time-budget.mjs reserve");
+  const runner = yaml.indexOf("npx tsx src/config/pete-quality-real-runner.ts");
+  assert.ok(auth > 0 && reserve > auth && runner > reserve);
+  assert.match(yaml, /api\.openai\.com\/v1\/models\/gpt-4\.1-mini/);
+  assert.match(yaml, /status.*!=.*200/);
+  assert.doesNotMatch(yaml, /workflow_dispatch:/);
+});
+
 test("P0: no accidental opt-out from 'stopfe', 'Stoppuhr' and ordinary lead language", () => {
   for (const input of [
     "Ich nehme mir Essen mit, aber meine Pausen fallen oft aus. Dann komme ich erst abends zum Essen und stopfe irgendwas in mich rein. Trainieren ist wirklich nicht mein Problem.",
