@@ -123,6 +123,7 @@ export function buildPeteContext(state: ConversationState) {
 }
 
 const PETE_SYSTEM_INSTRUCTIONS = [
+  "FRAGESTOPP HAT VORRANG: Sagt ein Lead 'keine weiteren Fragen', 'nicht mehr nachfragen', 'ich will nicht dauernd ausgefragt werden' oder 'bitte nicht weiter fragen', stelle ab sofort KEINE Gegenfrage, auch nicht mit 'nur kurz' oder 'eine einzige Sache'. Respektiere die Grenze mit einer knappen, natürlichen Aussage ohne Fragezeichen, versteckte Rückfrage, Aufforderung zur Rechtfertigung, Pitch oder Handlungsliste. Eine Antwort ohne Frage und ohne CTA ist vollständig. Keine automatische Übergabe an Jochen allein wegen dieser Grenze.",
   "Du bist Pete, Jochens KI-DM-Setter für Eltern fit & vital und bei klarer Kaufabsicht auch ein vorsichtiger Closer, KEIN kostenloser Fitness- oder Ernährungscoach. Du bist nicht Jochen; auf Nachfrage sagst du offen, dass du ein KI-Assistent bist.",
   "DEIN ZIEL IM CHAT: interessierte Eltern verstehen, ihren konkreten Engpass und Wunsch nach Veränderung erkennen, bisherige Versuche und Unterstützungsbedarf nur soweit nötig klären. Wenn es passt und erwünscht ist, natürlich in ein Strategiegespräch oder ein nachweislich passendes Einstiegsangebot überleiten. Kein Fragebogen und keine Abfolge von Pflichtfragen.",
   "KEIN DM-COACHING: Wenn ein Lead seinen Engpass beschreibt, fasse ihn in einem Satz auf den Punkt. Schicke NICHT ungefragt einen Ernährungsplan, Meal-Prep-Ablauf, Snackliste, Trainingsplan, Zeitplan oder mehrere Lösungsschritte. Der individuelle größte Hebel wird in Jochens Begleitung erarbeitet, nicht im kostenlosen Chat. Bei ausdrücklich erbetener allgemeiner Auskunft darfst du kurz sachlich antworten, ohne eine persönliche Betreuung vorzutäuschen.",
@@ -218,7 +219,7 @@ export function buildPeteEffectiveInstructions(): string {
  * the same question again immediately after the lead calls that out.
  * This does not assess whether a novel answer is factually good.
  */
-export type PeteContinuityIssue = "repeated_reply" | "repeated_advice_theme" | "repeated_question_after_feedback" | "question_only_after_feedback";
+export type PeteContinuityIssue = "repeated_reply" | "repeated_advice_theme" | "repeated_question_after_feedback" | "question_only_after_feedback" | "question_after_explicit_boundary";
 
 const continuityNorm = (text: string) => text.toLocaleLowerCase("de-DE")
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -272,6 +273,12 @@ export function evaluatePeteLlmContinuity(
   const latestLead = [...messages].reverse().find(message => message.role === "user");
   if (!latestLead) return null;
   const complaint = continuityNorm(latestLead.text);
+  // Real 20-case OpenAI QA: the model acknowledged "I don't want to be
+  // interrogated" and then immediately asked another question. Reject such
+  // text before it can reach the lead. Do not confuse with an actual STOP:
+  // silence here is about questions, not all future contact.
+  const noQuestionsBoundary = /\b(?:keine|keinerlei)\s+(?:weiteren?\s+|neuen?\s+|mehr\s+)?(?:fragen|nachfragen)\b|\b(?:will|mochte|brauche?)\s+(?:jetzt\s+)?(?:keine|nicht\s+noch)\s+(?:weiteren?\s+)?(?:fragen|nachfragen)\b|\b(?:will|mochte)\s+nicht\s+(?:dauernd|standig|weiter)\s+ausgefragt\b|\b(?:frag|frage)\s+(?:bitte\s+)?nicht\s+(?:mehr|weiter)\b|\b(?:hor|hort)\s+auf\s+(?:mit\s+)?(?:den\s+)?(?:fragen|nachfragen)\b/.test(complaint);
+  if (noQuestionsBoundary && reply.includes("?")) return "question_after_explicit_boundary";
   const complaintsAboutQuestions = /(?:du fragst|fragst du|schon gesagt|bereits gesagt|doch gesagt|wieder dieselbe|wieder die gleiche|beantwortest (?:meine|mir) (?:frage|fragen) nicht|nur fragen|standig fragen|dauernd fragen)/.test(complaint);
   if (!complaintsAboutQuestions) return null;
 
