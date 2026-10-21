@@ -21,6 +21,19 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  if (process.env.PETE_YODA3_QA_20261021 === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/pete-yoda3-real-qa-20261021" ||
+        process.env.PETE_YODA3_APPROVAL !== "single-run-20261021-usd5" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-4.1-mini" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_QUALITY_QA_20261021 === "true") throw new PeteBudgetStop("unavailable");
+    return 2_000_000; // One new USD 2 hold, inside owner-approved USD 5 and remaining USD 8 lifetime cap.
+  }
   if (process.env.PETE_QUALITY_QA_20261021 !== "true") return null;
   if (process.env.GITHUB_ACTIONS !== "true" ||
       process.env.PETE_QUALITY_QA_APPROVAL !== "single-run-20261021" ||
