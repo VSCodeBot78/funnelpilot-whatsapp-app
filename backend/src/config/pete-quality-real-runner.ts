@@ -8,11 +8,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 const initialRun = process.env.GITHUB_REF === "refs/heads/pete-quality-real-approved-20261021" &&
-  process.env.PETE_QUALITY_QA_RESUME_20261021 !== "true";
+  process.env.PETE_QUALITY_QA_RESUME_20261021 !== "true" &&
+  process.env.PETE_QUALITY_QA_ROUND2_20261021 !== "true";
 const authorizedResume = process.env.GITHUB_REF === "refs/heads/pete-quality-real-resume-20261021" &&
-  process.env.PETE_QUALITY_QA_RESUME_20261021 === "true";
+  process.env.PETE_QUALITY_QA_RESUME_20261021 === "true" &&
+  process.env.PETE_QUALITY_QA_ROUND2_20261021 !== "true";
+const authorizedRound2 = process.env.GITHUB_REF === "refs/heads/pete-quality-real-round2-20261021" &&
+  process.env.PETE_QUALITY_QA_ROUND2_20261021 === "true" &&
+  process.env.PETE_QUALITY_QA_RESUME_20261021 !== "true";
 if (process.env.GITHUB_ACTIONS !== "true" ||
-    !(initialRun || authorizedResume) ||
+    !(initialRun || authorizedResume || authorizedRound2) ||
     process.env.PETE_QUALITY_QA_20261021 !== "true" ||
     process.env.PETE_QUALITY_QA_APPROVAL !== "single-run-20261021" ||
     process.env.NODE_ENV !== "test" ||
@@ -27,6 +32,7 @@ if (process.env.GITHUB_ACTIONS !== "true" ||
 const dataDir = path.resolve(process.env.DATA_DIR || "");
 const workDir = path.resolve(process.cwd());
 const expectedDataDir = path.join(workDir,
+  authorizedRound2 ? ".pete-quality-20261021-round2" :
   authorizedResume ? ".pete-quality-20261021-resume" : ".pete-quality-20261021");
 if (dataDir !== expectedDataDir) {
   throw new Error("QA data directory is not isolated");
@@ -168,22 +174,26 @@ for (const entry of safetyCases) {
   console.log("SAFETY " + entry.id + " | source=" + source + " | reply=" + JSON.stringify(out.text));
 }
 const budget = getPeteBudgetStatusSafe();
-const allowedCap = authorizedResume ? 1.754212 : 2;
+const allowedCap = authorizedRound2 ? 0.4 : authorizedResume ? 1.754212 : 2;
 if (!budget.ok || budget.committedUsd > allowedCap ||
     budget.labAuthorizedUsd !== allowedCap) {
   throw new Error("QA budget status inconsistent");
 }
 const output = {
   version: 1, kind: "synthetic_real_openai_qa_20261021",
-  model: "gpt-4.1-mini", runMode: authorizedResume ? "remaining-budget-resume" : "original",
-  totalAuthorizedUsd: 2, previouslyChargedUsd: authorizedResume ? 0.245788 : 0,
+  model: "gpt-4.1-mini",
+  runMode: authorizedRound2 ? "final-approved-0.40-bounded-round2" :
+    authorizedResume ? "remaining-budget-resume" : "original",
+  totalAuthorizedUsd: 2,
+  previouslyChargedUsd: authorizedRound2 ? 0.325067 : authorizedResume ? 0.245788 : 0,
   modelCallsCapUsd: allowedCap, totalCases: cases.length, modelResponses,
   nonModelResponses, budget, cases: results,
 };
 const reportsDir = path.join(workDir, "qa-reports");
 fs.mkdirSync(reportsDir, { recursive: true });
 fs.writeFileSync(path.join(reportsDir,
-  authorizedResume ? "pete-quality-20261021-resume.json" : "pete-quality-20261021.json"),
+  authorizedRound2 ? "pete-quality-20261021-round2.json" :
+    authorizedResume ? "pete-quality-20261021-resume.json" : "pete-quality-20261021.json"),
   JSON.stringify(output, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
 console.log("SUMMARY: " + JSON.stringify({
   cases: cases.length, modelResponses, nonModelResponses, committedUsd: budget.committedUsd,
