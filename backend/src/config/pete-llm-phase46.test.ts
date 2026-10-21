@@ -357,6 +357,56 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     }
   });
 
+  await t.test("real QA: a later ordinary message does not cancel a no-questions boundary", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let modelCalls = 0;
+    globalThis.fetch = async () => {
+      modelCalls++;
+      return mockResponse(modelCalls === 1
+        ? "Das hört sich nach einer ziemlich vollen Woche an. Ich lasse dir erst einmal Raum."
+        : "Was würdest du dir für den Schichtalltag wünschen?");
+    };
+    const leadId = "phase46-boundary-sticks";
+    const first = await send(leadId,
+      "Ich bin gerade erschöpft. Bitte keine weiteren Fragen.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+    assert.equal(first.state.owner, "ai");
+
+    const second = await send(leadId,
+      "Die Schichtarbeit und die Kinder sind gerade ziemlich viel.");
+    assert.equal(modelCalls, 2);
+    assert.equal(second.state.answers.peteReplySource, "llm_handoff");
+    assert.equal(second.state.answers.peteLlmFailureDetail,
+      "question_after_explicit_boundary");
+    assert.equal(second.state.owner, "human");
+    assert.equal(second.state.aiPaused, true);
+    assert.doesNotMatch(second.text ?? "", /Schichtalltag wünschen/);
+  });
+
+  await t.test("real QA: explicit permission permits questions again, not a silent reset", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let modelCalls = 0;
+    globalThis.fetch = async () => {
+      modelCalls++;
+      return mockResponse(modelCalls === 1
+        ? "Du hast gerade viel auf einmal. Ich bleibe ohne weitere Rückfragen."
+        : "Was wäre dir in deinem Alltag als Erstes wichtig?");
+    };
+    const leadId = "phase46-boundary-reopened";
+    const first = await send(leadId,
+      "Bitte keine weiteren Fragen. Ich bin gerade überfordert.");
+    assert.equal(first.state.answers.peteReplySource, "llm");
+
+    const second = await send(leadId,
+      "Du darfst mich jetzt wieder fragen. Ich möchte mehr Energie.");
+    assert.equal(modelCalls, 2);
+    assert.equal(second.state.answers.peteReplySource, "llm");
+    assert.equal(second.state.owner, "ai");
+    assert.match(second.text ?? "", /Was wäre dir/);
+  });
+
   await t.test("mocked duplicate model pitch hands off without sending it to the lead", async () => {
     clearConversationStore();
     enableMockProvider();
