@@ -1,0 +1,39 @@
+name: Pete OpenAI authentication diagnostic (no paid calls)
+
+on:
+  push:
+    branches:
+      - pete-quality-auth-diagnostic-20261021
+
+permissions:
+  contents: read
+
+jobs:
+  api-auth-only:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/pete-quality-auth-diagnostic-20261021' &&
+      startsWith(github.event.head_commit.message, 'PETE_AUTH_CHECK_ONLY_20261021')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Test existing GitHub secret using read-only model metadata GET
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo "AUTH_RESULT=missing_key_secret"
+            exit 1
+          fi
+          status=$(curl --silent --show-error --max-time 15 \
+            --output /dev/null --write-out '%{http_code}' \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            "https://api.openai.com/v1/models/gpt-4.1-mini")
+          echo "OPENAI_MODEL_METADATA_HTTP_STATUS=$status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Read-only OpenAI model metadata check did not return 200. No model-generation requests attempted."
+            exit 1
+          fi
+          echo "AUTH_RESULT=valid_github_secret_model_visible"
