@@ -1,8 +1,8 @@
 {
   "version": 1,
   "capMicroUsd": 8000000,
-  "spentMicroUsd": 5118712,
-  "reservedMicroUsd": 1000000,
+  "spentMicroUsd": 5228146,
+  "reservedMicroUsd": 0,
   "completedBatches": [
     {
       "id": "38093371914-1-batch-0",
@@ -213,14 +213,14 @@
       "id": "approved-yoda3-20261021-usd2-from-new-usd5",
       "costMicroUsd": 108898,
       "completedAt": "2026-10-21T20:02:19.245Z"
+    },
+    {
+      "id": "approved-yoda3-retest-20261021-usd1-from-new-usd5",
+      "costMicroUsd": 109434,
+      "completedAt": "2026-10-21T20:40:18.065Z"
     }
   ],
-  "activeReservations": {
-    "approved-yoda3-retest-20261021-usd1-from-new-usd5": {
-      "heldMicroUsd": 1000000,
-      "createdAt": "2026-10-21T20:39:31.474Z"
-    }
-  },
+  "activeReservations": {},
   "createdAt": "2026-10-11",
   "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset.",
   "qualityRun20261021": {
@@ -253,6 +253,7 @@
   "yoda3Retest_20261021": {
     "runId": "39672157025",
     "reserveMicroUsd": 1000000,
-    "status": "reserved"
+    "status": "settled",
+    "chargedMicroUsd": 109434
   }
 }
