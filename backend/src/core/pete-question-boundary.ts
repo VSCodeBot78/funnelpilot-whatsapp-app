@@ -1,4 +1,4 @@
-import type { ConversationState } from "../types/conversation.js";
+import type { ConversationState } from "../types/types.js";
 
 /** Lead language only, never model output. A question limit is not an opt-out. */
 function normalize(value: string): string {
