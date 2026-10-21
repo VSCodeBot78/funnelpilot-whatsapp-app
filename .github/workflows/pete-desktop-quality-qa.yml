@@ -37,7 +37,7 @@ jobs:
       - run: npm test
       - name: Verify one-use residual dollar cap without network
         working-directory: .
-        run: node --test scripts/pete-quality-resume-budget.test.mjs
+        run: node --test scripts/pete-quality-resume-budget.test.mjs scripts/pete-quality-round2-budget.test.mjs
 
   dashboard:
     name: Dashboard build and tests
