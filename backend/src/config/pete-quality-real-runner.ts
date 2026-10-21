@@ -7,8 +7,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
+const initialRun = process.env.GITHUB_REF === "refs/heads/pete-quality-real-approved-20261021" &&
+  process.env.PETE_QUALITY_QA_RESUME_20261021 !== "true";
+const authorizedResume = process.env.GITHUB_REF === "refs/heads/pete-quality-real-resume-20261021" &&
+  process.env.PETE_QUALITY_QA_RESUME_20261021 === "true";
 if (process.env.GITHUB_ACTIONS !== "true" ||
-    process.env.GITHUB_REF !== "refs/heads/pete-quality-real-approved-20261021" ||
+    !(initialRun || authorizedResume) ||
     process.env.PETE_QUALITY_QA_20261021 !== "true" ||
     process.env.PETE_QUALITY_QA_APPROVAL !== "single-run-20261021" ||
     process.env.NODE_ENV !== "test" ||
@@ -22,7 +26,9 @@ if (process.env.GITHUB_ACTIONS !== "true" ||
 }
 const dataDir = path.resolve(process.env.DATA_DIR || "");
 const workDir = path.resolve(process.cwd());
-if (!dataDir.startsWith(workDir + path.sep) || !dataDir.includes(".pete-quality-20261021")) {
+const expectedDataDir = path.join(workDir,
+  authorizedResume ? ".pete-quality-20261021-resume" : ".pete-quality-20261021");
+if (dataDir !== expectedDataDir) {
   throw new Error("QA data directory is not isolated");
 }
 
@@ -162,17 +168,22 @@ for (const entry of safetyCases) {
   console.log("SAFETY " + entry.id + " | source=" + source + " | reply=" + JSON.stringify(out.text));
 }
 const budget = getPeteBudgetStatusSafe();
-if (!budget.ok || budget.committedUsd > 2 || budget.labAuthorizedUsd !== 2) {
+const allowedCap = authorizedResume ? 1.754212 : 2;
+if (!budget.ok || budget.committedUsd > allowedCap ||
+    budget.labAuthorizedUsd !== allowedCap) {
   throw new Error("QA budget status inconsistent");
 }
 const output = {
   version: 1, kind: "synthetic_real_openai_qa_20261021",
-  model: "gpt-4.1-mini", totalCases: cases.length, modelResponses,
+  model: "gpt-4.1-mini", runMode: authorizedResume ? "remaining-budget-resume" : "original",
+  totalAuthorizedUsd: 2, previouslyChargedUsd: authorizedResume ? 0.245788 : 0,
+  modelCallsCapUsd: allowedCap, totalCases: cases.length, modelResponses,
   nonModelResponses, budget, cases: results,
 };
 const reportsDir = path.join(workDir, "qa-reports");
 fs.mkdirSync(reportsDir, { recursive: true });
-fs.writeFileSync(path.join(reportsDir, "pete-quality-20261021.json"),
+fs.writeFileSync(path.join(reportsDir,
+  authorizedResume ? "pete-quality-20261021-resume.json" : "pete-quality-20261021.json"),
   JSON.stringify(output, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
 console.log("SUMMARY: " + JSON.stringify({
   cases: cases.length, modelResponses, nonModelResponses, committedUsd: budget.committedUsd,
