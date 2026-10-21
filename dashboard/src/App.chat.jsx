@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { buildApiUrl } from "./services/apiBase";
+import { describePeteReplySource } from "./utils/peteReplySource";
 
 function makeTestLeadId() {
   const rand = Math.floor(100000 + Math.random() * 900000);
@@ -307,6 +308,24 @@ export default function ChatTest() {
             {refreshing ? "Lädt..." : "Chat neu laden"}
           </button>
         </div>
+
+        {debug?.replySource ? (
+          <div
+            role="status"
+            style={{
+              marginBottom: 12,
+              background: "#111827",
+              border: "1px solid #2a3348",
+              padding: "10px 14px",
+              borderRadius: 10,
+              fontSize: 13,
+              color: "#e2e8f0",
+            }}
+          >
+            <strong>Antwortquelle der letzten Nachricht:</strong>{" "}
+            {describePeteReplySource(debug.replySource)}
+          </div>
+        ) : null}
 
         <div
           style={{
