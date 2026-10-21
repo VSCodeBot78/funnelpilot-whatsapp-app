@@ -91,14 +91,14 @@ test("P0: free-text explanation reaches mocked LLM, not canned STOP", async t =>
     messageText: "Ich trainiere viermal die Woche. Mit dem Essen auf Schicht klappt es nicht.",
     conversationMode: "natural",
   });
-  assert.equal(first.state.answers.peteReplySource, "llm");
+  assert.equal(first.state.answers.peteReplySource, "llm", JSON.stringify({ reason: first.state.answers.peteLlmFailureReason, detail: first.state.answers.peteLlmFailureDetail, calls }));
   const second = await processIncomingMessage({
     leadId, campaignId: DEFAULT_CAMPAIGN_ID,
     messageText: "Ich nehme mir Essen mit, aber meine Pausen fallen oft aus. Dann stopfe ich abends irgendwas rein. Trainieren ist wirklich nicht mein Problem.",
     conversationMode: "natural",
   });
   assert.equal(second.state.flags.stopped, false);
-  assert.equal(second.state.answers.peteReplySource, "llm");
+  assert.equal(second.state.answers.peteReplySource, "llm", JSON.stringify({ reason: second.state.answers.peteLlmFailureReason, detail: second.state.answers.peteLlmFailureDetail, calls }));
   assert.equal(calls, 2);
   assert.notEqual(second.text, "Alles klar, danke für die Rückmeldung. Dann schreibe ich dir dazu nicht weiter.");
   assert.equal(getPeteBudgetStatus().requestsMetered, 2);
