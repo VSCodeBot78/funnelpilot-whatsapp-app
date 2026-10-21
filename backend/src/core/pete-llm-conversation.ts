@@ -502,6 +502,12 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     if (!validated) return { kind: "handoff", reason: "invalid_output", detail: classifyPeteOutputRejection(parsed) };
     if (!validated.needsHuman) {
       const continuityIssue = evaluatePeteLlmContinuity(state, validated.reply);
+      if (continuityIssue === "question_after_explicit_boundary") {
+        // A question boundary is not a request for Jochen to take over.
+        // Never forward the violating model text. A short, explicitly labeled
+        // non-model safety reply lets the lead continue on their own terms.
+        return { kind: "safe_reply", text: "Verstanden, ich stelle dir keine weiteren Fragen." };
+      }
       if (continuityIssue) return { kind: "handoff", reason: "invalid_output", detail: continuityIssue };
     }
     if (validated.needsHuman) {
