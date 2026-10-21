@@ -78,7 +78,9 @@ test("P0: free-text explanation reaches mocked LLM, not canned STOP", async t =>
     assert.equal((init as RequestInit).method, "POST");
     return new Response(JSON.stringify({
       output: [{ content: [{ type: "output_text", text: JSON.stringify({
-        reply: "Du hast das Essen sogar dabei, kommst in der Schicht aber nicht dazu. Was passiert meistens, wenn die Pause ganz ausfällt?",
+        reply: calls === 1
+          ? "Training ist bei dir schon regelmäßig drin. Beim Essen ist die Schicht der Knackpunkt. Was wirft deine Planung am häufigsten um?"
+          : "Du nimmst bereits Essen mit, aber die Pausen fallen aus. Was passiert an Tagen, an denen du erst abends essen kannst?",
         needsHuman: false,
       }) }] }],
       usage: { input_tokens: 400, output_tokens: 65 },
