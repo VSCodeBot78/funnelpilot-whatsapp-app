@@ -1,0 +1,1 @@
+One-time Yoda3 QA execution marker. Owner approved USD 5 total for new QA. This execution holds at most USD 2 because the pre-existing USD 8 project-wide cap has USD 2.990186 remaining. Synthetic cases only. No Meta or WhatsApp sends. No deployment. The shared ledger prevents replay.
