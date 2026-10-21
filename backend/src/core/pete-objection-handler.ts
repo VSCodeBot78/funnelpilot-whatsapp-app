@@ -1,3 +1,5 @@
+import { matchExplicitStopPhrase } from "./stop-keyword-match.js";
+
 export type ObjectionIntent =
   | "price"
   | "time"
@@ -310,7 +312,7 @@ export function classifyPeteObjection(
     return { intent: "none" };
   }
 
-  const hardStopMatch = includesAnyKeyword(normalized, HARD_STOP_KEYWORDS);
+  const hardStopMatch = matchExplicitStopPhrase(inputText ?? "", HARD_STOP_KEYWORDS);
   if (hardStopMatch) {
     return { intent: "hard_stop", matchedKeyword: hardStopMatch };
   }
