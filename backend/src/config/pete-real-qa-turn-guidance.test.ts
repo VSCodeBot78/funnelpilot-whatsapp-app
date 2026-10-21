@@ -54,6 +54,22 @@ test("QA: neutral messages about questions are not treated as a no-question orde
   assert.doesNotMatch(text, /NULL Fragen/);
 });
 
+test("QA: colloquial no-more-questions requests remain respected across turns", () => {
+  for (const lead of [
+    "Bitte keine Fragen mehr.",
+    "Keine Fragen mehr bitte.",
+    "Hör bitte auf mich auszufragen.",
+  ]) {
+    assert.match(guide(lead, "Ich arbeite Vollzeit und die Kinder sind krank."),
+      /NULL Fragen/, lead);
+  }
+});
+
+test("QA: a person with no questions of their own did not prohibit Pete's questions", () => {
+  assert.doesNotMatch(guide("Ich habe keine Fragen mehr.",
+    "Mich beschäftigt aber mein Schlafrhythmus."), /NULL Fragen/);
+});
+
 test("real QA F03: the food is ALREADY packed; breaks are the problem", () => {
   const result = guide(
     "Ich trainiere viermal die Woche und nehme Essen mit. Meine Schicht ist chaotisch.",
