@@ -50,6 +50,30 @@ test("QA resume: no paid calls until auth check and same original money remains 
   assert.doesNotMatch(yaml, /workflow_dispatch:/);
 });
 
+test("QA round2: one-time USD0.40 inside original grant, free auth before paid reserve", () => {
+  const yaml = fs.readFileSync(path.resolve(import.meta.dirname,
+    "../../../.github/workflows/pete-quality-real-round2.yml"), "utf8");
+  const preflight = yaml.indexOf("name: Verify OpenAI credentials without generating tokens");
+  const reserve = yaml.indexOf("node scripts/pete-quality-round2-budget.mjs reserve");
+  const model = yaml.indexOf("npx tsx src/config/pete-quality-real-runner.ts");
+  const settle = yaml.indexOf("node scripts/pete-quality-round2-budget.mjs settle");
+  assert.ok(preflight > 0 && reserve > preflight && model > reserve && settle > model);
+  assert.match(yaml, /PETE_QA_ROUND2_APPROVED_20261021/);
+  assert.match(yaml, /PETE_QUALITY_QA_ROUND2_20261021/);
+  assert.match(yaml, /pete-quality-real-round2-20261021/);
+  assert.match(yaml, /api\.openai\.com\/v1\/models\/gpt-4\.1-mini/);
+  for (const flag of ["INSTAGRAM_ENGINE_ENABLED", "INSTAGRAM_SEND_ENABLED",
+    "WHATSAPP_SEND_ENABLED", "ENABLE_GENERIC_WEBHOOKS"]) {
+    assert.match(yaml, new RegExp(flag + ': "false"'));
+  }
+  assert.doesNotMatch(yaml, /workflow_dispatch:/);
+  const budget = fs.readFileSync(path.resolve(import.meta.dirname,
+    "../../../scripts/pete-quality-round2-budget.mjs"), "utf8");
+  assert.match(budget, /heldAmount = 400_000/);
+  assert.match(budget, /firstCharge \+ secondCharge \+ heldAmount > originalCap/);
+  assert.match(budget, /qualityRound2_20261021/);
+});
+
 test("P0: no accidental opt-out from 'stopfe', 'Stoppuhr' and ordinary lead language", () => {
   for (const input of [
     "Ich nehme mir Essen mit, aber meine Pausen fallen oft aus. Dann komme ich erst abends zum Essen und stopfe irgendwas in mich rein. Trainieren ist wirklich nicht mein Problem.",
