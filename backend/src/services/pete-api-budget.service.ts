@@ -32,6 +32,14 @@ function qualityQaCapMicros(): number | null {
       process.env.ENABLE_GENERIC_WEBHOOKS !== "false") {
     throw new PeteBudgetStop("unavailable");
   }
+  if (process.env.PETE_QUALITY_QA_ROUND2_20261021 === "true") {
+    // Only the preauthorized third batch, never an additional $2.
+    if (process.env.GITHUB_REF !== "refs/heads/pete-quality-real-round2-20261021" ||
+        process.env.PETE_QUALITY_QA_RESUME_20261021 === "true") {
+      throw new PeteBudgetStop("unavailable");
+    }
+    return 400_000; // USD 0.40 for this one run only.
+  }
   if (process.env.PETE_QUALITY_QA_RESUME_20261021 === "true") {
     if (process.env.GITHUB_REF !== "refs/heads/pete-quality-real-resume-20261021") {
       throw new PeteBudgetStop("unavailable");
