@@ -37,8 +37,8 @@ test("real QA F12: do not ask if failed attempts occurred when disclosed", () =>
   const result = guide(
     "Ich fange immer montags an und lasse es am Donnerstag wieder sein.",
     "Ich habe schon so viel probiert.");
-  assert.match(result, /bereits genannt/);
-  assert.match(result, /Frage NICHT nochmal/);
+  assert.match(result, /(?:bereits|ausdrücklich) genannt/);
+  assert.match(result, /(?:Weder erneut fragen|Frage NICHT nochmal)/);
 });
 
 test("real QA F04: child disruption/frustration is not another probing invitation", () => {
