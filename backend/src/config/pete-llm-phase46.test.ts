@@ -85,8 +85,10 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     let calls = 0;
     globalThis.fetch = async () => { calls++; throw Error("must not fetch"); };
     assert.equal(isExplicitPeteHumanTakeoverRequest("Jochen soll bitte hier übernehmen"), true);
+    assert.equal(isExplicitPeteHumanTakeoverRequest("Bitte lass Jochen persönlich hier übernehmen."), true);
+    assert.equal(isExplicitPeteHumanTakeoverRequest("Bitte lass Jochen NICHT hier übernehmen."), false);
     assert.equal(isExplicitPeteHumanTakeoverRequest("Ich brauche jemanden an meiner Seite beim Coaching"), false);
-    const out = await send("phase46-human-request", "Jochen soll bitte hier übernehmen");
+    const out = await send("phase46-human-request", "Bitte lass Jochen persönlich hier übernehmen.");
     assert.equal(out.state.owner, "human");
     assert.equal(out.state.aiPaused, true);
     assert.equal(out.state.flags.peteRuntimeHandoffActive, true);
