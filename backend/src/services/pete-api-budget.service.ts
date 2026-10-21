@@ -32,6 +32,14 @@ function qualityQaCapMicros(): number | null {
       process.env.ENABLE_GENERIC_WEBHOOKS !== "false") {
     throw new PeteBudgetStop("unavailable");
   }
+  if (process.env.PETE_QUALITY_QA_RESUME_20261021 === "true") {
+    if (process.env.GITHUB_REF !== "refs/heads/pete-quality-real-resume-20261021") {
+      throw new PeteBudgetStop("unavailable");
+    }
+    // Existing immutable QA reservation consumed $0.245788 on 21 Oct.
+    // Remaining authorization is $1.754212, NEVER another $2.
+    return PETE_QA_20261021_CAP_MICROS - 245_788;
+  }
   return PETE_QA_20261021_CAP_MICROS;
 }
 /**
