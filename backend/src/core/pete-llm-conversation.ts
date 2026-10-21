@@ -257,7 +257,7 @@ export function buildPeteTurnPriorityGuidance(state: ConversationState): string 
     priority.push("Kontextfakt: Essen ist bereits mitgenommen, aber Arbeits-/Schichtpausen fallen aus. Empfiehl NICHT nochmal mitgenommenes Essen, Meal-Prep, Snackboxen oder feste Pausen. Antworte auf das wirkliche Problem und keine erneute Grundlagenfrage.");
   }
   if (/\b(?:schon|bereits|viel(?:es)?|mehrfach|mehrmals)\b.{0,75}\b(?:probiert|versucht|getestet|coaches?|aufgehort|aufgegeben)\b/i.test(current)) {
-    priority.push("Die Person hat bisherige Versuche ausdrücklich genannt. Weder erneut fragen, OB sie etwas versucht hat, noch reflexhaft 'Was hast du bisher ausprobiert?'. Greife die neue Enttäuschung auf und biete keinen weiteren Aufgabenberg.");
+    priority.push("Die Person hat bisherige Versuche bereits genannt. Frage NICHT nochmal, OB sie etwas versucht hat, und nicht reflexhaft 'Was hast du bisher ausprobiert?'. Greife die neue Enttäuschung auf und biete keinen weiteren Aufgabenberg.");
   }
   if (/\b(?:kind|kinder|tochter|sohn)\b.{0,65}\b(?:krank|fieber|erkrankt)\b/i.test(previousAndCurrent) &&
       /\b(?:training|sport|workout|einheiten?)\b/i.test(previousAndCurrent)) {
