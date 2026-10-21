@@ -1,8 +1,8 @@
 {
   "version": 1,
   "capMicroUsd": 8000000,
-  "spentMicroUsd": 4841397,
-  "reservedMicroUsd": 1754212,
+  "spentMicroUsd": 4920676,
+  "reservedMicroUsd": 0,
   "completedBatches": [
     {
       "id": "38093371914-1-batch-0",
@@ -198,14 +198,14 @@
       "id": "approved-real-pete-quality-20261021-usd2",
       "costMicroUsd": 245788,
       "completedAt": "2026-10-21T05:07:24.783Z"
+    },
+    {
+      "id": "approved-pete-qa-20261021-resume-remaining",
+      "costMicroUsd": 79279,
+      "completedAt": "2026-10-21T11:03:37.358Z"
     }
   ],
-  "activeReservations": {
-    "approved-pete-qa-20261021-resume-remaining": {
-      "heldMicroUsd": 1754212,
-      "createdAt": "2026-10-21T11:02:35.388Z"
-    }
-  },
+  "activeReservations": {},
   "createdAt": "2026-10-11",
   "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset.",
   "qualityRun20261021": {
@@ -219,6 +219,7 @@
     "originalAuthorizationMicroUsd": 2000000,
     "previouslyChargedMicroUsd": 245788,
     "heldMicroUsd": 1754212,
-    "status": "reserved"
+    "status": "settled",
+    "chargedMicroUsd": 79279
   }
 }
