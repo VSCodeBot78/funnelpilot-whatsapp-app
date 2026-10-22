@@ -210,3 +210,37 @@ test("Policy v4.3: packed food and known training should trigger contextual sett
   assert.equal(p.alreadyHasPackedFood, true);
   assert.match(explainPeteTurnV4(p), /NICHT nochmal Essen mitnehmen/);
 });
+
+
+test("Founder-verified 5-week services are explained without inventing a guarantee", async () => {
+  const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
+  const { OFFER_TRUTH } = await import("../config/offer-truth.js");
+  const answer = (text: string) => getPeteVerifiedTransactionAnswer(text,
+    { messages: [{ role: "user", text }] } as any)?.text ?? "";
+  for (const question of [
+    "Was bekomme ich konkret in der 5-Wochen-Startphase für 499 €?",
+    "Was ist in der 5-Wochen-Startphase alles enthalten?",
+    "Welche Leistungen bekomme ich für 499 Euro?",
+  ]) {
+    const reply = answer(question);
+    assert.match(reply, /499 €/);
+    assert.match(reply, /wöchentlich 45 Minuten 1:1-Coaching per Zoom/i);
+    assert.match(reply, /Chat-Support/i);
+    assert.match(reply, /Power Walk & Call/i);
+    assert.match(reply, /nicht garantiert/i);
+    assert.doesNotMatch(reply, /unbekannt|nicht hinterlegt/i);
+  }
+  const calls = answer("Wie viele Videoanrufe pro Woche sind in der 5-Wochen-Startphase enthalten?");
+  assert.match(calls, /wöchentlich 45 Minuten 1:1-Coaching per Zoom/i);
+  assert.match(calls, /einmal pro Woche den Power Walk & Call/i);
+  assert.doesNotMatch(calls, /nicht hinterlegt/i);
+  const zoom = answer("Wie oft Zoom-Call pro Woche in der Startphase?");
+  assert.match(zoom, /wöchentlich 45 Minuten/i);
+  const time = answer("Wie viel Zeit muss ich für die 5-Wochen-Startphase einplanen?");
+  assert.match(time, /wöchentlich 45 Minuten/i);
+  assert.match(time, /verbindlichen Gesamtzeitaufwand/i);
+  assert.doesNotMatch(answer("Was bekomme ich beim Selbststarter?"), /45 Minuten 1:1-Coaching/);
+  assert.doesNotMatch(answer("Was kostet die 6-Monats-Begleitung?"), /45 Minuten 1:1-Coaching/);
+  assert.equal(OFFER_TRUTH.coachingEntry.startSelectableWithinDays, 14);
+  assert.equal(OFFER_TRUTH.coachingEntry.includedServices.length, 5);
+});
