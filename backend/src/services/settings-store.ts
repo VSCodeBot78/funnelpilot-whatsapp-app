@@ -220,6 +220,9 @@ export function readSettings(): SettingsConfig {
         ? (parseCoachOnboardingDraft(parsed.coachOnboardingDraft) as { ok: true; value: CoachOnboardingDraft }).value
         : DEFAULT_COACH_ONBOARDING_DRAFT,
       aiModel: normalizePeteProductModel(parsed.aiModel),
+      offerValueMap: typeof parsed.offerValueMap === "string"
+        ? parsed.offerValueMap.slice(0, 5000)
+        : DEFAULT_SETTINGS.offerValueMap,
     };
   } catch (error) {
     if (env.NODE_ENV === "production") throw new Error("settings_store_invalid_stop_restore", { cause: error });
