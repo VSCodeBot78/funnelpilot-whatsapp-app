@@ -31,9 +31,9 @@ const send = async (leadId: string, messageText: string) =>
   processIncomingMessage({ leadId, campaignId: DEFAULT_CAMPAIGN_ID,
     messageText, conversationMode: "natural" });
 
-const mock = () => new Response(JSON.stringify({
+const mock = (needsHuman = true) => new Response(JSON.stringify({
   output: [{ content: [{ type: "output_text", text: JSON.stringify({
-    reply: "Da sollte besser ein Mensch übernehmen.", needsHuman: true,
+    reply: "Das ist eine allgemeine Frage zum Elternalltag.", needsHuman,
   }) }] }],
   usage: { input_tokens: 1100, output_tokens: 65, total_tokens: 1165 },
 }), { status: 200 });
@@ -80,7 +80,7 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
   await t.test("H06 ordinary coaching entry question does not transfer chat", async () => {
     clearConversationStore();
     let calls = 0;
-    globalThis.fetch = async () => { calls++; return mock(); };
+    globalThis.fetch = async () => { calls++; return mock(calls > 1); };
     await send("v41-entry", "Ich bin Vater mit zwei Kindern und will persönliche Begleitung.");
     const out = await send("v41-entry", "Wie ist der Einstieg strukturiert? Ich will nicht einfach einen Pflicht-Call.");
     assert.equal(out.state.owner, "ai");
@@ -93,7 +93,8 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
 
   await t.test("H07 previous coaches and family interruptions receive real method answer", async () => {
     clearConversationStore();
-    globalThis.fetch = async () => mock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return mock(calls > 1); };
     await send("v41-trust", "Vier Online-Coaches haben nur schöne Pläne verkauft. Ich bin skeptisch.");
     const out = await send("v41-trust", "Wie geht ihr mit Unterbrechungen durch Familie und Überstunden um?");
     assert.equal(out.state.owner, "ai");
