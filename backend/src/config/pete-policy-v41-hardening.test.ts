@@ -122,4 +122,33 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(out.state.owner, "human");
     assert.equal(calls, 0);
   });
+
+  await t.test("N03: unknown weekly video-call count has a verified noncommittal response", async () => {
+    clearConversationStore();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("No paid model needed"); };
+    const out = await send("v41-unknown-calls", "Wie viele persönliche Videoanrufe pro Woche sind genau im Preis enthalten?");
+    assert.equal(calls, 0);
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+    assert.match(out.text ?? "", /nicht hinterlegt/i);
+    assert.doesNotMatch(out.text ?? "", /garantiert|sicher.*[1-9].*Calls/i);
+    assert.equal(out.state.flags.peteRuntimeHandoffActive === true, false);
+  });
+
+  await t.test("N07: selfstarter checkout is independently possible without appointment", async () => {
+    clearConversationStore();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("No paid model needed"); };
+    const first = await send("v41-no-call", "Ich möchte den Selbststarter selbst kaufen, ohne Strategiegespräch.");
+    assert.match(first.text ?? "", /https:\/\//);
+    const second = await send("v41-no-call", "Kann ich über den Link direkt kaufen, ohne Pflichttermin?");
+    assert.equal(calls, 0);
+    assert.equal(second.state.owner, "ai");
+    assert.equal(second.state.answers.peteReplySource, "verified_transaction");
+    assert.match(second.text ?? "", /ohne vorheriges Strategiegespräch/i);
+    assert.match(second.text ?? "", /https:\/\//);
+    assert.equal(second.state.flags.peteRuntimeHandoffActive === true, false);
+  });
+
 });
