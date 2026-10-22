@@ -6,6 +6,7 @@ import {
   isGeneralNonMedicalKnowledgeRequest,
   isPeteChestBreathingEmergency,
   isPeteNonMedicalPostPregnancyBodyImage,
+  peteSafeRoutineRepairReply,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
@@ -1427,6 +1428,24 @@ export async function processIncomingMessage(
         persistConversationState(latest);
         return { text: result.text, nextStep: latest.currentStep,
           detectedIntent: "flow_answer", state: latest };
+      }
+      // Policy-v4: a narrow, verified non-medical answer can repair a
+      // needless escalation for a routine interruption by a sick child.
+      // Never override STOP, human ownership, actual emergencies, failed
+      // provider authorization or budget exhaustion. All such guards ran above.
+      if ((result.reason === "model_handoff" || result.reason === "invalid_output")) {
+        const routine = peteSafeRoutineRepairReply(latest);
+        if (routine) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_family_routine_repair",
+          });
+          appendAssistantMessage(latest, routine);
+          persistConversationState(latest);
+          return { text: routine, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
       }
       // Fail closed: never silently continue the old broken question loop.
       patchAnswers(latest, {
