@@ -6,6 +6,7 @@ import {
   type SettingsConfig,
 } from "../services/settings-store.js";
 import { env } from "../config/env.js";
+import { isPeteProductModel } from "../config/pete-model-policy.js";
 import { parseCoachOnboardingDraft } from "../services/coach-onboarding-draft.js";
 
 const router = Router();
@@ -50,6 +51,10 @@ router.get("/settings-config", (_req: Request, res: Response) => {
 router.post("/settings-config", (req: Request, res: Response) => {
   try {
     const payload = (req.body ?? {}) as Partial<SettingsConfig>;
+    // Only published product models are accepted. Archived QA models cannot be re-enabled via API.
+    if (Object.hasOwn(payload, "aiModel") && !isPeteProductModel(payload.aiModel)) {
+      return res.status(400).json({ ok: false, error: "unsupported_ai_model", message: "Bitte GPT-6.1 Sol auswählen." });
+    }
     const validationError = validateLegalSettings(payload);
 
     if (validationError) {
