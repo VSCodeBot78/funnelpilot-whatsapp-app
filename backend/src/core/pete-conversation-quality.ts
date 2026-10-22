@@ -146,6 +146,12 @@ export function getPeteVerifiedTransactionAnswer(
   if (explicitlyDeclinesPaidOffers) {
     return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
   }
+  // When someone explicitly has *no* money, do not pitch an allegedly
+  // affordable product. The person can request a self-directed offer later.
+  if (/\b(?:gar kein geld|kein budget|kein geld|uberhaupt kein geld)\b/.test(input) &&
+      /\b(?:coaching|begleitung|startphase)\b/.test(input)) {
+    return { text: "Dann ist eine kostenpflichtige Begleitung gerade nicht passend. Du musst dafür keine Schulden machen oder dich jetzt entscheiden." };
+  }
   // A price boundary is not an emergency or a reason for compulsory handover.
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
       /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
@@ -459,6 +465,24 @@ export function isSalesFollowUpOptOut(text: string): boolean {
     /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
   ].some(pattern => pattern.test(refusalText));
+}
+
+/**
+ * Narrow, fact-checked reply for a false model escalation after a parent
+ * asks how the *coaching routine* handles a sick child. Never advises on
+ * a child's symptoms, diagnosis or treatment, and cannot authorize a send.
+ * This function runs only after the engine has checked owner/STOP/safety.
+ */
+export function peteSafeRoutineRepairReply(state: ConversationState): string | null {
+  const leadTexts = (state.messages ?? [])
+    .filter(message => message.role === "user")
+    .slice(-2).map(message => String(message.text ?? ""));
+  const context = norm(leadTexts.join(" "));
+  if (!/\b(?:wie funktioniert|wie geht|wie kann)\b.{0,100}\b(?:eure|die|unsere)?\s*(?:methode|training|alltagsroutine|plan)\b/.test(context) ||
+      !/\bkrank(?:em|en|es|e)?\s+kind\b/.test(context)) return null;
+  if (/\b(?:atemnot|brustschmerz|fieber|schmerz|insulin|medikament|arzt|medizin|diagnose|therapie|behandlung|notfall|dosierung|selbstverletzung|suizid|krise|widerruf|datenschutz)\b/.test(context) ||
+      /\b(?:jochen|ein mensch)\b.{0,40}\b(?:ubernimm|ubernehmen|personlich|antworten)\b/.test(context)) return null;
+  return "Wenn dein Kind krank ist, darf das Training pausieren. Sobald wieder Luft ist, steigst du mit einer kurzen Einheit ein, statt verpasste Einheiten nachzuholen. So bleibt die Routine auch in unruhigen Familienwochen machbar.";
 }
 
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
