@@ -1,6 +1,6 @@
-name: Pete Policy v4.2 - 20 real Sol dialogs - new owner EUR5 QA approval
+name: Pete Policy v4.2 - 12 new Sol holdout chats - extra owner EUR5 QA
 
-# Synthetic-only twenty-case QA, held at USD1 inside a separately recorded EUR5 owner approval.
+# Synthetic-only NEW twelve-case holdout, held at USD0.75 inside separately recorded EUR5 owner approval.
 # Historical USD8 ledger remains immutable; extra QA tracked separately in same shared file. No live sends.
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
-      startsWith(github.event.head_commit.message, 'PETE_V42_SOL_APPROVED_20261022')
+      startsWith(github.event.head_commit.message, 'PETE_V42_HOLDOUT_APPROVED_20261022')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -27,9 +27,9 @@ jobs:
       OPENAI_MODEL: gpt-6.1-sol
       PETE_LLM_CONVERSATION_ENABLED: "true"
       PETE_LLM_API_CALLS_APPROVED: "true"
-      PETE_V42_SOL_QA_ENABLED: "true"
+      PETE_V42_HOLDOUT_QA_ENABLED: "true"
 
-      PETE_V42_SOL_QA_APPROVAL: once-20261022-eur5-usd1-batch
+      PETE_V42_HOLDOUT_QA_APPROVAL: once-20261022-eur5-usd0p75-holdout
       INSTAGRAM_ENGINE_ENABLED: "false"
       INSTAGRAM_SEND_ENABLED: "false"
       WHATSAPP_SEND_ENABLED: "false"
@@ -110,22 +110,22 @@ jobs:
             echo "::error::Budget write not confirmed; stop."
             return 1
           }
-          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-policy-v42-sol-20261022"
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-v42-fresh-holdout-20261022"
           mkdir -p "$DATA_DIR"
 
-          node scripts/pete-v42-extra-five-eur-budget.mjs reserve
+          node scripts/pete-v42-fresh-holdout-budget.mjs reserve
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Reserve one-time USD1 from owner EUR5 QA 20261022 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Reserve one-time USD0.75 from owner EUR5 QA holdout $GITHUB_RUN_ID"
           push_confirmed
 
           set +e
-          (cd backend && npx tsx src/config/pete-v42-sol-20-real-runner.ts)
+          (cd backend && npx tsx src/config/pete-v42-fresh-holdout-runner.ts)
           run_code=$?
           set -e
 
-          node scripts/pete-v42-extra-five-eur-budget.mjs settle
+          node scripts/pete-v42-fresh-holdout-budget.mjs settle
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Settle one-time USD1 from owner EUR5 QA 20261022 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Settle one-time USD0.75 from owner EUR5 QA holdout $GITHUB_RUN_ID"
           push_confirmed
           exit "$run_code"
 
@@ -133,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-v42-sol-20-real-synthetic-20261022
-          path: backend/qa-reports/pete-policy-v42-sol-20261022.json
+          name: pete-v42-sol-12-fresh-holdout-20261022
+          path: backend/qa-reports/pete-v42-fresh-holdout-20261022.json
           if-no-files-found: warn
           retention-days: 30
