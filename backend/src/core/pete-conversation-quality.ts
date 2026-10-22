@@ -191,6 +191,38 @@ export function getPeteVerifiedTransactionAnswer(
       ". Die verbindliche Gesamtsumme und Bedingungen stehen vor dem Kauf im Checkout.",
       nextPhase: "selfstarter_offered" };
   }
+  // A repeat link request uses ONLY a checkout URL already delivered in this
+  // conversation AND still approved in offer-truth. No model-generated link,
+  // no guessed product and no unverified payment/booking confirmation.
+  const asksToResendCheckout =
+    /\b(?:schick\w*|sende\w*|gib|zeig\w*)\b.{0,70}\b(?:link|kaufweg|checkout)\b/.test(input) &&
+    /\b(?:noch\s*mal|nochmal|erneut|wieder|verloren|nicht mehr)\b/.test(input) &&
+    !/\b(?:nicht|kein(?:e|en|es)?)\b.{0,30}\b(?:schick\w*|sende\w*|gib|link|kaufweg|checkout)\b/.test(input) &&
+    !/\b(?:link|kaufweg|checkout)\b.{0,25}\bnicht\s+(?:mehr\s+)?(?:noch\s*mal|nochmal|schicken|senden)\b/.test(input);
+  if (asksToResendCheckout && !explicitlyDeclinesPaidOffers &&
+      !/\b(?:keto|elterncheck|fitnesscheck)\b/.test(input)) {
+    const previousCheckout = (state.messages ?? []).slice(0, -1).slice(-30).reverse().find(message =>
+      message.role === "assistant" &&
+      (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
+       message.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl)));
+    if (previousCheckout) {
+      const hasSelfstarter = previousCheckout.text.includes(OFFER_TRUTH.selfstarter.productUrl);
+      const hasCoaching = previousCheckout.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl);
+      const namedSelfstarter = /\bselbststarter\b/.test(input);
+      const namedCoaching = /\b(?:coaching|startphase|5[\s-]*wochen)\b/.test(input);
+      if (hasSelfstarter !== hasCoaching &&
+          (!namedSelfstarter || hasSelfstarter) &&
+          (!namedCoaching || hasCoaching)) {
+        return hasSelfstarter
+          ? { text: "Klar, hier ist der verifizierte Selbststarter-Link noch einmal: " +
+              OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" }
+          : { text: "Klar, hier ist der verifizierte Link zur 5-Wochen-Startphase noch einmal: " +
+              OFFER_TRUTH.coachingEntry.checkoutUrl +
+              ". Die verbindlichen Bedingungen siehst du vor dem Kauf im Checkout.", nextPhase: "info" };
+      }
+    }
+  }
+
   if (wantsBundleLink && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
