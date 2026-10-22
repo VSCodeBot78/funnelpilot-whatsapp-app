@@ -397,7 +397,7 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isPeteChestBreathingEmergency(text: string): boolean {
   const input = norm(text);
-  const breath = /\b(?:atemnot|luftnot|kaum\s+luft|keine\s+luft|nicht\s+atmen|bekomme\s+(?:kaum|keine)\s+luft)\b/.test(input);
+  const breath = /\b(?:atemnot|luftnot|kurzatmig(?:keit)?|kaum\s+luft|keine\s+luft|schlecht\s+luft|schwer\s+luft|nicht\s+atmen|(?:bekomme|krieg(?:e)?)\s+(?:kaum|keine|schlecht|schwer|nur\s+schwer|nicht\s+richtig|zu\s+wenig)\s+luft|(?:kann|konnte)\s+(?:kaum|nicht\s+richtig|nicht)\s+(?:atmen|durchatmen))\b/.test(input);
   const chest = /\b(?:brustschmerz\w*|brustenge|enge\s+(?:auf|in)\s+der\s+brust|druck\s+(?:auf|in)\s+der\s+brust|schmerzen?\s+(?:auf|in)\s+der\s+brust)\b/.test(input);
   return breath && chest;
 }
