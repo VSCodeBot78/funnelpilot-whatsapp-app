@@ -10,6 +10,7 @@ import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
 import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
+import { getPeteEffectiveRuntimeModel } from "../config/pete-model-policy.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
@@ -456,7 +457,7 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
   }
 
   // The same normalized model selected in Dashboard settings is used by Pete at runtime.
-  const model = readSettings().aiModel;
+  const model = getPeteEffectiveRuntimeModel(readSettings().aiModel);
   const maxOutputTokens = model === "gpt-5.4" ? 800 : model === "gpt-6.1-sol" ? 1200 : 400;
   const context = buildPeteContext(state);
   // Reserve a conservative worst-case charge BEFORE an external call.
