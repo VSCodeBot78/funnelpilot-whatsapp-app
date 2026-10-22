@@ -84,6 +84,15 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  // Scope is not proof: do not invent a number of coaching/video calls.
+  // Answer an exact benefits question without assigning ownership to Jochen.
+  const asksExactPersonalCalls =
+    /\b(?:wie viele|wieviele|anzahl|wie oft)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*)\b/.test(input) &&
+    /\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung)\b/.test(input);
+  if (asksExactPersonalCalls) {
+    return { text: "Eine verbindliche Anzahl persönlicher Videoanrufe pro Woche ist in den geprüften Angebotsdaten nicht hinterlegt. Ich möchte dir nichts zusagen, was nicht bestätigt ist. Den genauen Umfang kannst du vor einer Entscheidung mit Jochen klären.", nextPhase: "info" };
+  }
+
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
@@ -170,6 +179,18 @@ export function getPeteVerifiedTransactionAnswer(
         (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
           /no bullshit elternfitness selbststarter/i.test(message.text)));
   });
+  // The verified selfstarter product page allows independent checkout.
+  // A follow-up about a compulsory call is NOT a human-handover request.
+  // Require the VERIFIED selfstarter link in this same conversation first.
+  const asksBuyWithoutAppointment =
+    /\b(?:kaufen|bestellen|direkt|link|checkout)\b/.test(input) &&
+    /\b(?:ohne|kein(?:en|e)?|pflicht)\b.{0,30}\b(?:pflichttermin|pflichtcall|strategiegesprach|termin|call|gesprach)\b/.test(input);
+  if (asksBuyWithoutAppointment && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
+    return { text: "Ja, den Selbststarter kannst du eigenständig über die Produktseite kaufen, ohne vorheriges Strategiegespräch. Hier ist der verifizierte Link: " +
+      OFFER_TRUTH.selfstarter.productUrl +
+      ". Die verbindliche Gesamtsumme und Bedingungen stehen vor dem Kauf im Checkout.",
+      nextPhase: "selfstarter_offered" };
+  }
   if (wantsBundleLink && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
