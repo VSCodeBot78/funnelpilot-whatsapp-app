@@ -54,10 +54,18 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     return { ...base, action: "direct_answer", reason: "offer_scope", noNewQuestion: false };
   }
   if (/\b(?:wie lauft der einstieg|wie startet|wie beginnt|wie melde ich mich|wie lauft das starten)\b/.test(latest)) {
-    return { ...base, action: "direct_answer", reason: "coaching_entry", noNewQuestion: true };
+    return { ...base, action: "direct_answer", reason: "coaching_entry", noNewQuestion: false };
   }
   if (/\b(?:anders als ein ernahrungsplan|unterschied.*ernahrungsplan|bei euch anders)\b/.test(latest)) {
     return { ...base, action: "direct_answer", reason: "practical_difference", noNewQuestion: true };
+  }
+
+  // Schichtarbeit is a discovery opportunity, not an invitation to provide
+  // unpaid meal/training plans. Acknowledge any direct question briefly, then
+  // discover the one missing part of the parent's day. A real work break
+  // cannot simply be replaced by a made-up food trick.
+  if (breakFailure && /\b(?:schicht\w*|pausen?|essen|training)\b/.test(context)) {
+    return { ...base, action: "clarify", reason: "shift_day_discovery", noNewQuestion: false };
   }
 
   // Questions about the method, implementation, value or what to do have
@@ -67,11 +75,8 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     return { ...base, action: "direct_answer", reason: "explicit_request",
       noNewQuestion: /\b(?:keine frage|ohne fragen|bitte konkret und kurz|nur die antwort)\b/.test(latest) };
   }
-  if ((breakFailure && /\b(?:schicht|pausen|essen|training)\b/.test(context)) ||
-      /\b(?:noch ein pflichtplan|abends komplett erledigt|total erschopft|nicht noch einen plan)\b/.test(context)) {
-    return { ...base, action: "concrete_help",
-      reason: breakFailure ? "irregular_breaks" : "exhaustion",
-      noNewQuestion: true };
+  if (/\b(?:noch ein pflichtplan|abends komplett erledigt|total erschopft|nicht noch einen plan)\b/.test(context)) {
+    return { ...base, action: "concrete_help", reason: "exhaustion", noNewQuestion: true };
   }
   if (/\b(?:ich will direkt kaufen|schick.*(?:link|kaufweg)|angebot|mehrwert|was kostet)\b/.test(latest)) {
     return { ...base, action: "offer_navigation", reason: "purchase_topic", noNewQuestion: true };
@@ -96,14 +101,15 @@ export function explainPeteTurnV4(plan: PeteTurnPlan): string {
     "Aktion=" + plan.action + ". " + goals[plan.action] +
     (plan.noNewQuestion ? " NULL Rueckfragen in dieser Nachricht." : " Maximal EINE sinnvolle Frage, nur falls wirklich erforderlich.") +
     (plan.avoidTraining ? " Bekannter Kontext: Training ist NICHT der Engpass; KEINE Workout-Empfehlung." : "") +
-    (plan.alreadyHasPackedFood ? " Essen wurde bereits vorbereitet/mitgenommen: NICHT nochmal Essen mitnehmen oder Meal-Prep als Neuigkeit empfehlen." :
-      plan.reason === "irregular_breaks" ? " Ausfallende Pausen: falls noch nicht mitgenommen, EINE praktisch transportable Essensidee; ansonsten den tatsächlichen Engpass erklären." : "") +
+    (plan.alreadyHasPackedFood ? " Essen wurde bereits vorbereitet/mitgenommen: NICHT nochmal Essen mitnehmen oder Meal-Prep als Neuigkeit empfehlen." : "") +
+    (plan.reason === "shift_day_discovery" ?
+      " SETTER-FOKUS SCHICHT: Kein kostenloser Trainings- oder Ernährungsplan. Fehlende Arbeitspausen sind der bekannte Engpass. Frage, wenn noch nicht bekannt, genau EINEN Aspekt des restlichen Tages (z.B. Wie sieht dein Alltag als Papa/Mama nach der Schicht aus?). Anschliessend bei Bedarf Schlaf, freie Zeit, vorhandenes Essen ODER Training kontextbezogen klaeren, nicht alles in einer Nachricht. Sind Ziel und Alltag hinreichend bekannt UND will die Person Unterstützung, freiwilliges Telefongespraech mit Jochen anbieten. Niemals behaupten, eine echte Pause lasse sich einfach durch Essen ohne Pause ersetzen." : "") +
     (plan.reason === "value_proposition" ?
       " Antwort auf Mehrwert: Unterschied von Informationen zu persoenlicher Umsetzung anhand eines realistischen Elternalltagsbeispiels erklaeren (z.B. Wiedereinstieg bei krankem Kind). Der Lead kann zahlen: NICHT erneut das Budget abfragen und KEIN Preis-/Leistungsversprechen erfinden." : "") +
     (plan.reason === "offer_scope" ?
-      " Antwort zum Umfang: zuerst die bekannten Unterschiede nennen: Selbststarter zum eigenstaendigen Start; persoenliche 5-Wochen-Startphase mit Bewegung, Ernaehrung, Schlaf und Alltagsstress. Exakt unbekannte Details offenlassen; erst DANN hoechstens eine Frage, welches Angebot gemeint ist." : "") +
+      " SETTER-FOKUS ZIELBILD: Die konkrete Frage zuerst mit verifizierten Fakten beantworten: Selbststarter eigenstaendig; 5-Wochen-Startphase persoenliche Umsetzung der Saeulen Bewegung, Ernaehrung, Schlaf und Stress. Keine unbekannten Betreuungsdetails erfinden. Danach, falls noch kein Ziel bekannt und der Interessent offen ist, genau EINE Frage wie 'Was moechtest du in sechs Monaten im Spiegel oder im Alltag merken?' Seine eigene Antwort zu einem anschaulichen moeglichen Zukunftsbild verbinden (z.B. mehr Energie oder lockere Hose NUR wenn sein Ziel dazu passt), NICHT als Garantie. Kein erzwungenes Zukunftsbild statt Leistungsantwort." : "") +
     (plan.reason === "coaching_entry" ?
-      " Einstieg in persoenliche Begleitung: bekannte Startphase und Ausrichtung direkt nennen. Keinen verpflichtenden Call erfinden. Falls konkrete Anmeldung/Starttermin unbekannt, das sachlich benennen, aber NICHT allein deswegen Jochen im Chat uebernehmen lassen. needsHuman=false bei reiner Einstiegserklaerung." : "") +
+      " SETTER/CLOSER EINSTIEG: Frage nach der konkreten Frage zuerst bekannte 5-Wochen-Startphase und Ausrichtung nennen, keine Vertragsdetails erfinden. Ist der persoenliche Unterstuetzungsbedarf und das Ziel noch unbekannt, hoechstens EINE passende Bedarf- oder Ziel-Frage. Nach Bestaetigung von Bedarf und Gespraechsbereitschaft EIN freiwilliges Telefonat/Strategiegespraech mit Jochen anbieten. Will die Person DIREKT starten, nicht mit Pflicht-Telefonat bremsen; klaere bei echter Unklarheit Selbststarter eigenstaendig vs. persoenliche Startphase. Kauf- und Kalenderlinks duerfen nur aus verifizierter Systemlogik kommen. needsHuman=false bei normaler Information." : "") +
     (plan.reason === "practical_difference" ?
       " Bei stressbedingtem Abendessen nicht nur die Saeulen aufzählen: greifbares allgemeines Beispiel fuer Umsetzungsentlastung statt einer neuen Diaet, ohne persoenliche Betreuung oder Leistungsbestandteile zu erfinden." : "") +
     " Bedürfnisse, Sicherheit und Verifizierbarkeit haben Vorrang. needsHuman=true NUR bei wirklicher notwendiger menschlicher Freigabe, ausdruecklicher Uebernahme oder ungeklärtem sensiblen Vorgang. Ein skeptischer Einwand oder die Frage nach der Methode ist ALLEIN kein Handoff-Grund.";
