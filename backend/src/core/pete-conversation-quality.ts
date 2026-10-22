@@ -84,6 +84,25 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  // A short follow-up may omit the offer name. Use only the latest earlier
+  // customer message naming an offer, never an old campaign or guess.
+  const lastOfferMention = (state.messages ?? []).slice(0, -1).slice(-8).reverse()
+    .find(message => message.role === "user" &&
+      /\b(?:selbststarter|5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(norm(message.text)));
+  const lastOfferText = norm(lastOfferMention?.text ?? "");
+  const previousFiveWeekSelected =
+    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(lastOfferText) &&
+    (!/\bselbststarter\b/.test(lastOfferText) ||
+      /\b(?:nicht|kein(?:en)?)\s+(?:den\s+)?selbststarter\b/.test(lastOfferText));
+  const previousSelfstarterSelected =
+    /\bselbststarter\b/.test(lastOfferText) &&
+    !/\b(?:5[\s-]*wochen|startphase|499)\b/.test(lastOfferText);
+  if (!explicitlyDeclinesPaidOffers &&
+      (/\bselbststarter\b/.test(input) || previousSelfstarterSelected) &&
+      /\b(?:zoom|video(?:-termin|-call)?|1:1|einzelcoaching)\b/.test(input) &&
+      /\b(?:enthalten|dabei|inklusive|inbegriffen|auch)\b/.test(input)) {
+    return { text: "Nein, persönliche 1:1-Zoom-Termine sind nicht im Selbststarter enthalten. Das ist das Angebot zum eigenständigen Umsetzen. Wöchentliches 45-Minuten-1:1-Coaching per Zoom gehört zur persönlichen 5-Wochen-Startphase.", nextPhase: "info" };
+  }
   // Scope is not proof: do not invent a number of coaching/video calls.
   // Answer an exact benefits question without assigning ownership to Jochen.
   const asksExactPersonalCalls =
