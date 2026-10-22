@@ -7,6 +7,7 @@ import {
   isPeteChestBreathingEmergency,
   isPeteNonMedicalPostPregnancyBodyImage,
   peteSafeRoutineRepairReply,
+  peteSafeNoncriticalExplanationReply,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
@@ -1285,6 +1286,20 @@ export async function processIncomingMessage(
       detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
   }
 
+  // Critical safety gate before ANY natural-flow classifier or model call.
+  // "Brustschmerz und bekomme schlecht Luft" was under-triaged in holdout H12.
+  // The first answer must direct emergency help and no sales/fitness questions.
+  if (isPeteChestBreathingEmergency(input.messageText)) {
+    patchAnswers(state, { peteReplySource: "guarded_safety" });
+    patchFlags(state, { peteRuntimeHandoffRequested: true, peteRuntimeHandoffActive: true });
+    takeOverByHuman(state);
+    const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Trainiere nicht weiter und fahre nicht selbst.";
+    appendAssistantMessage(state, urgent);
+    persistConversationState(state);
+    return { text: urgent, nextStep: state.currentStep,
+      detectedIntent: "unknown", state };
+  }
+
   if (input.conversationMode === "natural") {
     const bookingUrl = getRuntimeBookingUrl({ state });
     let decision = decidePeteNextAction(input.messageText, {
@@ -1444,6 +1459,21 @@ export async function processIncomingMessage(
           appendAssistantMessage(latest, routine);
           persistConversationState(latest);
           return { text: routine, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
+        // Only a model-initiated handoff (not unsafe/invalid model output) may
+        // use a narrowly verified explanation. Medical/sales/privacy excluded.
+        const noncritical = result.reason === "model_handoff"
+          ? peteSafeNoncriticalExplanationReply(latest) : null;
+        if (noncritical) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_method_or_entry_answer",
+          });
+          appendAssistantMessage(latest, noncritical);
+          persistConversationState(latest);
+          return { text: noncritical, nextStep: latest.currentStep,
             detectedIntent: "flow_answer", state: latest };
         }
       }
