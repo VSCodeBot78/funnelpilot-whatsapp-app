@@ -1,0 +1,1 @@
+Fixed branch spelling across registered workflow, synthetic runner, and one-time shared USD1.50 ledger guard. User-approved stronger-model test. No live sends, no deployment, no automated refill.
