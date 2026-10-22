@@ -87,7 +87,9 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(out.state.flags.peteRuntimeHandoffActive === true, false);
     assert.equal(out.state.answers.peteReplySource, "safe_noncritical");
     assert.match(out.text ?? "", /5-Wochen-Startphase/);
-    assert.match(out.text ?? "", /nicht verbindlich|nicht behaupten/);
+    assert.match(out.text ?? "", /wöchentlich 45 Minuten 1:1-Coaching/i);
+    assert.match(out.text ?? "", /innerhalb von 14 Tagen wählbar/i);
+    assert.doesNotMatch(out.text ?? "", /Pflicht-Call vor dem Kauf erforderlich/i);
     assert.equal(calls, 2);
   });
 
@@ -154,7 +156,7 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(calls, 0);
   });
 
-  await t.test("N03: unknown weekly video-call count has a verified noncommittal response", async () => {
+  await t.test("N03: founder-verified weekly Zoom coaching is answered without paid LLM", async () => {
     clearConversationStore();
     let calls = 0;
     globalThis.fetch = async () => { calls++; throw Error("No paid model needed"); };
@@ -162,7 +164,7 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(calls, 0);
     assert.equal(out.state.owner, "ai");
     assert.equal(out.state.answers.peteReplySource, "verified_transaction");
-    assert.match(out.text ?? "", /nicht hinterlegt/i);
+    assert.match(out.text ?? "", /wöchentlich 45 Minuten 1:1-Coaching per Zoom/i);
     assert.doesNotMatch(out.text ?? "", /garantiert|sicher.*[1-9].*Calls/i);
     assert.equal(out.state.flags.peteRuntimeHandoffActive === true, false);
   });
