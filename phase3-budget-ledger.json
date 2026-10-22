@@ -321,5 +321,22 @@
     "reserveMicroUsd": 450000,
     "status": "settled",
     "chargedMicroUsd": 295224
+  },
+  "extraOwnerQa20261022": {
+    "reason": "explicit owner authorization of EUR 5 on 2026-10-22",
+    "authorizedEur": 5,
+    "conservativeUsdCapMicro": 5000000,
+    "oldProjectCapMicroUsd": 8000000,
+    "oldProjectSpendAtApprovalMicroUsd": 7817830,
+    "usedMicroUsd": 0,
+    "reservedMicroUsd": 1000000,
+    "reservations": {
+      "pete-v42-sol-20-cases-20261022-usd1": {
+        "runId": "39768222168",
+        "holdMicroUsd": 1000000,
+        "createdAt": "2026-10-22T11:07:45.555Z"
+      }
+    },
+    "batches": []
   }
 }
