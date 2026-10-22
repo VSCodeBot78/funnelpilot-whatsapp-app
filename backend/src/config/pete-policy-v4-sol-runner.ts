@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 if (process.env.GITHUB_ACTIONS !== "true" ||
-    process.env.GITHUB_REF !== "refs/heads/pete-policy-v4-sol-20261022" ||
+    process.env.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
     process.env.PETE_POLICY_V4_QA_20261022 !== "true" ||
     process.env.PETE_POLICY_V4_APPROVAL !== "once-sol-20261022-usd1p5" ||
     process.env.PETE_QUALITY_QA_20261021 === "true" ||
@@ -230,7 +230,7 @@ if (!budget.ok || budget.committedUsd > allowedCap ||
   throw new Error("QA budget status inconsistent");
 }
 const output = {
-  version: 1, kind: "synthetic_real_openai_qa_20261021",
+  version: 1, kind: "synthetic_real_openai_qa_policy_v4_20261022",
   model: "gpt-6.1-sol",
   runMode: "policy-v4-sol-20-cases-within-usd1p5-and-global-usd8",
   totalAuthorizedUsd: 5,
