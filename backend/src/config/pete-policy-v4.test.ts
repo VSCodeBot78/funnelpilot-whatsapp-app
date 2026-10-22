@@ -244,3 +244,33 @@ test("Founder-verified 5-week services are explained without inventing a guarant
   assert.equal(OFFER_TRUTH.coachingEntry.startSelectableWithinDays, 14);
   assert.equal(OFFER_TRUTH.coachingEntry.includedServices.length, 5);
 });
+
+
+test("Verified multi-turn founder service boundary regression", async () => {
+  const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
+  const reply = (previous: string, current: string) =>
+    getPeteVerifiedTransactionAnswer(current, {
+      messages: [{ role: "user", text: previous }, { role: "user", text: current }],
+    } as any)?.text ?? "";
+
+  const zoom = reply("Mich interessiert die persönliche Startphase.",
+    "Wie oft telefoniere ich mit dir über Zoom und ist ein Walk-Call dabei?");
+  assert.match(zoom, /wöchentlich 45 Minuten 1:1-Coaching/i);
+  assert.match(zoom, /Power Walk & Call/i);
+  assert.doesNotMatch(zoom, /insgesamt fünf|genau fünf/i);
+
+  const starter = reply("Vielleicht reicht mir der Selbststarter.",
+    "Sind da die persönlichen Zoom-Termine auch enthalten?");
+  assert.match(starter, /nicht im Selbststarter/i);
+  assert.match(starter, /persönlichen 5-Wochen-Startphase/i);
+
+  const start = reply("Ich interessiere mich für die 499-Euro-Begleitung.",
+    "Kann ich garantiert morgen anfangen?");
+  assert.match(start, /innerhalb von 14 Tagen wählen/i);
+  assert.match(start, /morgen kann ich dir hier nicht garantieren/i);
+
+  const credit = reply("Nach den fünf Wochen könnte ich sechs Monate weitermachen.",
+    "Werden die 499 Euro dann garantiert komplett angerechnet?");
+  assert.match(credit, /verbindlichen Upgrade- und Anrechnungsbedingungen/i);
+  assert.doesNotMatch(credit, /werden garantiert|vollständig gutgeschrieben/i);
+});
