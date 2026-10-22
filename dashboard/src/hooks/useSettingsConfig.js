@@ -43,6 +43,7 @@ export const defaultSettings = {
   companyNiche: "Fitness & Vitalität für Eltern",
   companyAudience: "Berufstätige Eltern 35–55",
   companyOfferSummary: "No Bullshit Elternfitness, Selbststarter und Coaching",
+  offerValueMap: "",
   coachOnboardingDraft: { version: 1, preferredContact: "", welcomeLine: "", offers: [], faqs: [] },
   setupVideoUrl: "",
   topbarSubtitle: "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
