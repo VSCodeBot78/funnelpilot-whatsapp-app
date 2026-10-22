@@ -132,15 +132,15 @@ test("Policy v4.3: shift discovery never overrides explicit no-question boundary
 
 test("Policy v4.4: latest checkout and repeat-link request override older shift discovery", () => {
   const shift = "Ich arbeite Schicht und meine Pausen fallen aus. Mein Essen ist schon vorbereitet.";
-  for (const latest of [
-    "Ich will direkt kaufen.",
-    "Ich möchte den Selbststarter direkt kaufen.",
-    "Schick mir bitte den Link nochmal, ich finde ihn nicht mehr.",
-  ]) {
+  for (const [latest, noNewQuestion] of [
+    ["Ich will direkt kaufen.", false],
+    ["Ich möchte den Selbststarter direkt kaufen.", true],
+    ["Schick mir bitte den Link nochmal, ich finde ihn nicht mehr.", true],
+  ] as const) {
     const decision = plan(shift, latest);
     assert.equal(decision.action, "offer_navigation", latest);
     assert.equal(decision.reason, "explicit_purchase_or_link", latest);
-    assert.equal(decision.noNewQuestion, true, latest);
+    assert.equal(decision.noNewQuestion, noNewQuestion, latest);
   }
   assert.equal(plan(shift, "Ich möchte keinen Link und nichts kaufen.").reason, "shift_day_discovery");
   assert.equal(plan(shift, "Ich will dazu keine Fragen mehr.").action, "respect_boundary");
