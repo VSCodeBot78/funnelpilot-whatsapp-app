@@ -7,7 +7,7 @@ import type { ConversationState } from "../types/types.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export type PeteTurnAction = "respect_boundary" | "direct_answer" |
-  "concrete_help" | "setter_discovery" | "clarify" | "acknowledge" | "offer_navigation";
+  "concrete_help" | "clarify" | "acknowledge" | "offer_navigation";
 
 export type PeteTurnPlan = {
   action: PeteTurnAction;
@@ -68,10 +68,6 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     return { ...base, action: "clarify", reason: "shift_day_discovery", noNewQuestion: false };
   }
 
-  if (breakFailure && /\\b(?:schicht|pausen|essen|arbeit)\\b/.test(context)) {
-    return { ...base, action: "setter_discovery", reason: "irregular_breaks", noNewQuestion: false };
-  }
-
   // Questions about the method, implementation, value or what to do have
   // priority over qualification. Unverified offer facts remain off limits.
   if (isDirectQuestion(latest) ||
@@ -97,7 +93,6 @@ export function explainPeteTurnV4(plan: PeteTurnPlan): string {
     respect_boundary: "Grenze respektieren. Keine Fragen, kein Angebot, kein CTA.",
     direct_answer: "Erst die konkrete Kundenfrage sachlich beantworten. Nicht mit einer Bedarfserhebung, Gegenfrage oder bloßer Paraphrase ausweichen.",
     concrete_help: "Kurz und allgemein auf eine ausdrückliche Frage reagieren. Kein individueller Ernährungs-/Trainingsplan.",
-    setter_discovery: "Qualifiziere den echten Alltag nach der Schicht mit höchstens EINER offenen Frage zu Familie, Essen oder Schlaf, statt eine persönliche Lösung im Chat vorzugeben. Bekannten Kontext nicht erneut abfragen. Erst bei erkennbar gewünschter Hilfe freiwilliges Strategiegespräch anbieten.",
     clarify: "Nur wenn entscheidende Information wirklich fehlt, EINE kurze neue Frage. Keine bereits beantwortete Frage wiederholen.",
     acknowledge: "Grenze oder fehlendes Kaufinteresse kurz anerkennen, ohne neuen Pitch.",
     offer_navigation: "Nur nach echtem Interesse zum verifizierten Angebot verweisen. Niemals Preise, Links, Verfügbarkeit oder Vertragsdetails erfinden.",
