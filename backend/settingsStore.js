@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS = {
   aiEnabled: false,
   testMode: true,
   aiProvider: "OpenAI",
-  aiModel: String(process.env.OPENAI_MODEL || "").trim() || "gpt-4.1-mini",
+  aiModel: "gpt-6.1-sol",
   aiFallback: "Wenn die KI ausf\u00e4llt, \u00fcbernimmt der Regel-Flow ohne Eskalation.",
   assistantName: "Pete",
   assistantRole: "",
@@ -96,8 +96,7 @@ function readSettings() {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
-      aiModel: String(parsed.aiModel || DEFAULT_SETTINGS.aiModel).trim()
-        || DEFAULT_SETTINGS.aiModel,
+      aiModel: "gpt-6.1-sol",
     };
   } catch (error) {
     console.error("settings read error:", error);

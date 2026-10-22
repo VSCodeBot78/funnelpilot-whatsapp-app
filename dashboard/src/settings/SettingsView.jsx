@@ -52,7 +52,7 @@ export default function SettingsView({
     noGos:
       "- kein Druckverkauf\n- keine Diagnose\n- keine medizinischen Versprechen\n- keine Heilversprechen\n- keine unrealistischen Ergebnisse versprechen\n- keine aggressiven Closing-Techniken",
     aiProvider: "OpenAI",
-    aiModel: "gpt-4.1-mini",
+    aiModel: "gpt-6.1-sol",
     openAiApiKeyConfigured: false,
     openAiModelConfigured: true,
     apiBaseUrl: "",

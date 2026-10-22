@@ -50,7 +50,7 @@ export const defaultSettings = {
   aiEnabled: false,
   testMode: true,
   aiProvider: "OpenAI",
-  aiModel: "gpt-4.1-mini",
+  aiModel: "gpt-6.1-sol",
   aiFallback: "Wenn die KI ausf\u00e4llt, \u00fcbernimmt der Regel-Flow ohne Eskalation.",
   assistantName: "Pete",
   assistantRole: "",
@@ -117,6 +117,8 @@ export function useSettingsConfig({
       const mergedSettings = {
         ...defaultSettings,
         ...nextSettings,
+        // Never surface an older persisted mini model as a product option.
+        aiModel: "gpt-6.1-sol",
       };
 
       setSettings(mergedSettings);

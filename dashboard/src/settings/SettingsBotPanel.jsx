@@ -47,7 +47,7 @@ export default function SettingsBotPanel({
     noGos: DEFAULT_NO_GOS,
     aiEnabled: false,
     aiProvider: "OpenAI",
-    aiModel: "gpt-4.1-mini",
+    aiModel: "gpt-6.1-sol",
     openAiApiKeyConfigured: false,
     ...settings,
   };
@@ -312,14 +312,22 @@ export default function SettingsBotPanel({
               <FieldLabelWithInfo
                 label="OpenAI Modell"
                 title="OpenAI Modell"
-                text="Das verwendete OpenAI-Modell f\u00fcr sp\u00e4tere Bot-Antworten. Dieses Feld ist nicht geheim. F\u00fcr den ersten Eigenbetrieb wird das Modell bevorzugt serverseitig \u00fcber OPENAI_MODEL gesetzt."
+                text="GPT-6.1 Sol ist das einzige Produktmodell. Die aktive Backend-Konfiguration muss damit übereinstimmen. GPT-4.1 mini ist im Produkt nicht verfügbar."
                 placement="right"
               />
-              <input
+              <select
                 style={inputStyle(colors)}
-                value={safeSettings.aiModel}
+                value="gpt-6.1-sol"
                 onChange={(event) => updateField("aiModel", event.target.value)}
-              />
+                aria-label="Pete KI-Modell"
+              >
+                <option value="gpt-6.1-sol">GPT-6.1 Sol</option>
+              </select>
+              {!safeSettings.openAiModelConfigured ? (
+                <div role="status" style={{ fontSize: 12, marginTop: 6, color: colors.warning }}>
+                  Backend-Modell stimmt noch nicht mit Sol überein. Pete sendet bis zur Korrektur keine KI-Antworten.
+                </div>
+              ) : null}
             </div>
 
             <div>

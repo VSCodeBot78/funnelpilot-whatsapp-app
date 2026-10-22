@@ -340,7 +340,7 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
     ] };
     const reply = await getPeteLlmConversationReply(state);
     assert.equal(reply.kind, "handoff");
-    assert.equal((reply as any).reason, "budget_unavailable");
+    assert.equal((reply as any).reason, "not_authorized");
     assert.equal(calls, 0);
     delete process.env.OPENAI_MODEL;
   });
