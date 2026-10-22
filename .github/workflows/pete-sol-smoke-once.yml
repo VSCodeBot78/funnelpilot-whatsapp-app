@@ -5,7 +5,7 @@ name: Pete GPT-6.1 Sol real-model smoke - one-time USD1.50 within USD8 lifetime
 on:
   push:
     branches:
-      - pete-sol-smoke-20261022
+      - disabled-pete-sol-smoke-never-trigger
 
 permissions:
   contents: write
