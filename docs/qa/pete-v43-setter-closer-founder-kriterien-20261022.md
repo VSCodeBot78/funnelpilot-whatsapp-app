@@ -28,6 +28,13 @@ Pete klärt das vorhandene Ziel und den wirklichen Wunsch nach Unterstützung. I
 
 **Bestanden:** handlungsfähiger passender Setter- oder Kaufabschluss ohne Druck und ohne Pflichtcall. **Nicht bestanden:** immer neue Ziel-/Bedarfsfragen trotz vorhandener Zustimmung oder gewöhnliche Kauf-/Ablauffrage als unnötige Human-Übergabe.
 
+## Owner-Folgebeschluss 22.10.2026: wirtschaftliche Priorität
+
+- Ein bereits zugestellter Link bleibt im Chatverlauf sichtbar. Seltene Sonderformulierungen zur Link-Wiederholung werden **nicht weiter als aktuelle P0-Korrekturschleife verfolgt**. Der bestehende Soll-Anspruch, auf eine ausdrückliche Bitte einen verifizierten Link zu senden, bleibt bestehen. Erst im separat freigegebenen kontrollierten Pilot beobachten, ob ein relevantes Häufigkeitsproblem entsteht. Owner-Faustregel: etwa 1 von 100 Gesprächen kein sofortiger Fix, etwa 20 von 100 Gesprächen vorrangig untersuchen. Das ist eine Priorisierung, keine gemessene Fehlerquote oder Autorisierung für Live-Sends.
+- **P0 sind normale Abschlussfälle**: ein Interessent versteht den belegbaren Nutzen, kann zwischen Selbststarter und persönlicher 5-Wochen-Startphase wählen und gelangt bei klarer Kaufabsicht ohne Pflichttermin zum geprüften Kaufweg. Preis-/Budgetgrenzen, Partnerentscheidung, Einwandklärung und nachweisbare Leistungen haben Vorrang vor seltenen Randformulierungen.
+- Technische Ergänzung in bestehendem PR #191 am 22.10.: Der verifizierte Antwortpfad für **ausdrückliche 5-Wochen-Direktkäufer** nutzt die vorhandene `OFFER_TRUTH.coachingEntry.checkoutUrl` (kein neu erfundener Link). Ausschluss bei unklarer Produktauswahl, bloßem Überlegen, Ablehnung und finanzieller Unmöglichkeit. Gesonderte kostenlose Testfälle hinzugefügt; die isolierte Funktionsprüfung ergab 8/8 erwartete Entscheidungen. **Keine vollständige CI-/Real-Sol-Abnahme daraus ableiten.**
+- Der derzeitige 5-Wochen-Produktdatensatz belegt Preis, Kaufweg und grobe Säulen, aber nicht konkret zugesagte persönliche Kontaktfrequenz oder einzelne Lieferbestandteile. Pete darf solche Leistungen nicht erfinden. Prüfung anhand bestätigter Produktangaben bleibt Kernziel.
+
 ## QA-Einsatz / historischer Vergleich
 
 Diese Foundervorgaben **ersetzen die alten inhaltlichen Fehlschluss-Kriterien**, nach denen eine ausgearbeitete Essenslösung bei Schichtarbeit und ein automatisch wiederholter Link Voraussetzung für Bestehen waren. Das frühere historische Urteil „16/20“ bleibt als reproduzierbare Bewertung unter dem alten Maßstab in `docs/qa/pete-v42-qualitaetsnachweis-20261022.md` erhalten, ist **nicht** die Neubewertung nach v4.3.
