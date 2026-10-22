@@ -238,7 +238,7 @@ test("Founder-verified 5-week services are explained without inventing a guarant
   assert.match(zoom, /wöchentlich 45 Minuten/i);
   const time = answer("Wie viel Zeit muss ich für die 5-Wochen-Startphase einplanen?");
   assert.match(time, /wöchentlich 45 Minuten/i);
-  assert.match(time, /verbindlichen Gesamtzeitaufwand/i);
+  assert.match(time, /Gesamtzeitaufwand.*nicht verbindlich/i);
   assert.doesNotMatch(answer("Was bekomme ich beim Selbststarter?"), /45 Minuten 1:1-Coaching/);
   assert.doesNotMatch(answer("Was kostet die 6-Monats-Begleitung?"), /45 Minuten 1:1-Coaching/);
   assert.equal(OFFER_TRUTH.coachingEntry.startSelectableWithinDays, 14);
