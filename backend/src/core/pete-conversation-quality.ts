@@ -105,6 +105,27 @@ export function getPeteVerifiedTransactionAnswer(
       OFFER_TRUTH.selfstarter.productUrl + ". Die verbindliche Gesamtsumme und Bedingungen siehst du vor dem Kauf im Checkout.",
       nextPhase:"selfstarter_offered"};
   }
+  // An explicit buyer of the VERIFIED five-week entry may receive its stored
+  // checkout directly. A vague interest or price objection is NOT consent.
+  // Avoid guessing which offer the lead means if several are mentioned.
+  const namesFiveWeek = /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input);
+  const explicitlyBuysFiveWeek =
+    /\bich (?:will|mochte|nehme)\b.{0,110}\b(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:wo|wie)\s+(?:kann|konnt)\w*\b.{0,90}\b(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:schick|sende|gib|zeig)\w*\b.{0,90}\b(?:link|checkout|kaufweg)\b/.test(input);
+  const asksFiveWeekDetails =
+    /\b(?:was bekomme|was beinhaltet|welche leistungen|wie viele|wie oft)\b/.test(input);
+  if (namesFiveWeek && explicitlyBuysFiveWeek &&
+      !asksFiveWeekDetails && !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input) &&
+      !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
+    return {
+      text: "Hier ist der hinterlegte Kaufweg für die persönliche 5-Wochen-Startphase: " +
+        OFFER_TRUTH.coachingEntry.checkoutUrl +
+        ". Bitte prüfe die verbindlichen Angaben im Checkout vor einer Bestellung.",
+      nextPhase: "info",
+    };
+  }
+
   // Verified offer facts win over a generic LLM answer when a parent asks
   // about the concrete time commitment or DIY scope. We have no approved
   // minute-per-day promises or detailed module inventory in offer-truth.
