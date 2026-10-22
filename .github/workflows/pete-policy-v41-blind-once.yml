@@ -1,7 +1,7 @@
 name: Pete Policy v4.1 - 12 fresh Sol holdout dialogues - one-time USD0.45
 
 # Synthetic-only fresh holdout QA, capped at USD0.45 and subject to existing USD8 lifetime spend cap.
-# One-time reservation persisted on shared ledger. No live sends.
+# Separate queue from skipped historic QA workflows; the shared ledger still enforces global USD8 atomically via committed reservation BEFORE API calls. No live sends.
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: funnelpilot-pete-phase3-global-budget
+  group: funnelpilot-pete-phase3-budget-v41-blind-isolated
   cancel-in-progress: false
 
 jobs:
