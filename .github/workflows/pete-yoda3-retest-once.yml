@@ -18,7 +18,7 @@ jobs:
   pete-yoda3-real-qa:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
-      github.ref == 'refs/heads/pete-sol-smoke-20261022' &&
+      github.ref == 'refs/heads/pete-sol-model-smoke-20261022' &&
       startsWith(github.event.head_commit.message, 'PETE_SOL_SMOKE_APPROVED_20261022')
     runs-on: ubuntu-latest
     timeout-minutes: 45
