@@ -1,11 +1,11 @@
-name: Pete Yoda3 real-model QA - single use USD1 of new USD5 approval
+name: Pete Policy v4 - 20 real Sol synthetic chats - one-time USD1.50
 
 # Owner approved new USD5 Yoda3 QA; this batch uses at most USD1 under existing USD8 lifetime cap.
 # One-time reservation persisted on shared ledger. No live sends.
 on:
   push:
     branches:
-      - pete-yoda3-retest-20261021
+      - feat/pete-policy-v4-20261022
 
 permissions:
   contents: write
@@ -18,18 +18,18 @@ jobs:
   pete-yoda3-real-qa:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
-      github.ref == 'refs/heads/pete-yoda3-retest-20261021' &&
-      startsWith(github.event.head_commit.message, 'PETE_YODA3_RETEST_APPROVED_20261021')
+      github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
+      startsWith(github.event.head_commit.message, 'PETE_POLICY_V4_SOL_APPROVED_20261022')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       NODE_ENV: test
-      OPENAI_MODEL: gpt-4.1-mini
+      OPENAI_MODEL: gpt-6.1-sol
       PETE_LLM_CONVERSATION_ENABLED: "true"
       PETE_LLM_API_CALLS_APPROVED: "true"
-      PETE_YODA3_QA_20261021: "true"
+      PETE_POLICY_V4_QA_20261022: "true"
 
-      PETE_YODA3_APPROVAL: single-retest-20261021-usd5
+      PETE_POLICY_V4_APPROVAL: once-sol-20261022-usd1p5
       INSTAGRAM_ENGINE_ENABLED: "false"
       INSTAGRAM_SEND_ENABLED: "false"
       WHATSAPP_SEND_ENABLED: "false"
@@ -86,7 +86,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 20 \
             --output /dev/null --write-out '%{http_code}' \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            "https://api.openai.com/v1/models/gpt-4.1-mini")
+            "https://api.openai.com/v1/models/gpt-6.1-sol")
           echo "OpenAI model access HTTP: $status"
           if [ "$status" != "200" ]; then
             echo "::error::OpenAI credentials/model unavailable. Zero paid QA calls authorized."
@@ -110,22 +110,22 @@ jobs:
             echo "::error::Budget write not confirmed; stop."
             return 1
           }
-          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-yoda3-retest-20261021"
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-policy-v4-sol-20261022"
           mkdir -p "$DATA_DIR"
 
-          node scripts/pete-yoda3-retest-budget.mjs reserve
+          node scripts/pete-policy-v4-sol-budget.mjs reserve
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Reserve once USD1 Pete Yoda3 20261021 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Reserve once USD1.50 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
           push_confirmed
 
           set +e
-          (cd backend && npx tsx src/config/pete-yoda3-retest-runner.ts)
+          (cd backend && npx tsx src/config/pete-policy-v4-sol-runner.ts)
           run_code=$?
           set -e
 
-          node scripts/pete-yoda3-retest-budget.mjs settle
+          node scripts/pete-policy-v4-sol-budget.mjs settle
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Settle once USD1 Pete Yoda3 20261021 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Settle once USD1.50 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
           push_confirmed
           exit "$run_code"
 
@@ -133,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-yoda3-retest-20-real-synthetic-20261021
-          path: backend/qa-reports/pete-yoda3-retest-20261021.json
+          name: pete-policy-v4-sol-20-real-synthetic-20261022
+          path: backend/qa-reports/pete-policy-v4-sol-20261022.json
           if-no-files-found: warn
           retention-days: 30
