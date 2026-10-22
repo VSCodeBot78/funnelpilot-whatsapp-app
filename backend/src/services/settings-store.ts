@@ -16,6 +16,7 @@ export type SettingsConfig = {
   companyNiche: string;
   companyAudience: string;
   companyOfferSummary: string;
+  offerValueMap: string;
   coachOnboardingDraft: CoachOnboardingDraft;
   setupVideoUrl: string;
   topbarSubtitle: string;
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   companyNiche: "Fitness & Vitalität für Eltern",
   companyAudience: "Berufstätige Eltern 35–55",
   companyOfferSummary: "No Bullshit Elternfitness, Selbststarter und Coaching",
+  offerValueMap: "",
   coachOnboardingDraft: DEFAULT_COACH_ONBOARDING_DRAFT,
   setupVideoUrl: "",
   topbarSubtitle: "Produktstruktur mit Sidebar, Topbar und getrennten Modulen",
@@ -161,6 +163,10 @@ function sanitizeSettings(
     if (typeof rawValue !== typeof defaultValue) continue;
     if (key === "aiModel") {
       sanitized[key] = normalizePeteProductModel(rawValue);
+      continue;
+    }
+    if (key === "offerValueMap") {
+      sanitized[key] = String(rawValue).slice(0, 5000);
       continue;
     }
     if (key === "customerTopObjections") {
