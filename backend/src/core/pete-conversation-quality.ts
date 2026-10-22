@@ -100,8 +100,9 @@ export function getPeteVerifiedTransactionAnswer(
   // be answered with the founder-verified deliverables before any sales pitch.
   // This applies only to the personal five-week offer, never the DIY starter.
   const asksFiveWeekScope =
-    /\b(?:was bekomme|was beinhaltet|was ist (?:alles )?(?:enthalten|dabei|drin)|welche leistungen|leistungsumfang|was umfasst)\b/.test(input) &&
-    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(input) &&
+    /\b(?:was(?: genau)? bekomme|was beinhaltet|was ist.{0,85}(?:enthalten|dabei|drin)|welche leistungen|leistungsumfang|was umfasst)\b/.test(input) &&
+    (/\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input) ||
+     /\b499\s*(?:euro\b|€)/.test(input)) &&
     !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input);
   if (asksFiveWeekScope && !explicitlyDeclinesPaidOffers) {
     return {
