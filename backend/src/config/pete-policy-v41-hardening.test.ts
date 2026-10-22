@@ -103,6 +103,21 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.doesNotMatch(out.text ?? "", /Jochen muss persönlich/);
   });
 
+  await t.test("B04: disrupted childcare is a method question, not a human handoff", async () => {
+    clearConversationStore();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return mock(calls > 1); };
+    await send("v42-family-disruption", "Zwei Fitnessprogramme haben große Veränderungen versprochen. Ich bin vorsichtig.");
+    const out = await send("v42-family-disruption",
+      "Was passiert bei euch, wenn die Kinderbetreuung ausfällt und meine Woche durcheinandergeht?");
+    assert.equal(calls, 2);
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.flags.peteRuntimeHandoffActive === true, false);
+    assert.equal(out.state.answers.peteReplySource, "safe_noncritical");
+    assert.match(out.text ?? "", /Wiedereinstieg/);
+    assert.doesNotMatch(out.text ?? "", /Jochen muss|persönlich übernehmen/);
+  });
+
   await t.test("noncritical fallback is narrow, no financial/medical/explicit human bypass", () => {
     assert.equal(peteSafeNoncriticalExplanationReply(state(
       "Ich nehme Medikamente und habe Atemnot. Wie ist der Einstieg strukturiert?")), null);
