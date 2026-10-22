@@ -81,3 +81,29 @@ test("Policy v4: harmless skepticism alone cannot justify automatic handover", (
   assert.equal(p.action, "direct_answer");
   assert.match(explainPeteTurnV4(p), /skeptischer Einwand/);
 });
+
+test("Policy v4 prioritizes four proven business-case fixes", () => {
+  const checks = [
+    ["value_proposition", ["499 Euro ist teuer.", "Ich könnte es bezahlen, aber den Mehrwert sehe ich nicht."]],
+    ["offer_scope", ["Ich muss darüber schlafen.", "Mir fehlt Klarheit, was ich konkret bekomme."]],
+    ["coaching_entry", ["Ich will persönliche Begleitung statt PDF.", "Wie läuft der Einstieg bei euch ab?"]],
+    ["practical_difference", ["Training läuft, beim Essen gibt es Abendstress.", "Was wäre bei euch anders als ein Ernährungsplan?"]],
+  ] as const;
+  for (const [expected, lead] of checks) {
+    const result = plan(...lead);
+    assert.equal(result.action, "direct_answer");
+    assert.equal(result.reason, expected);
+    assert.match(explainPeteTurnV4(result), /Antwort|Einstieg|Bei stressbedingtem Abendessen/);
+  }
+});
+
+test("Policy v4 value and entry cases cannot silently become a fresh budget or sales quiz", () => {
+  for (const latest of [
+    "Ich könnte es bezahlen, aber den Mehrwert sehe ich nicht.",
+    "Wie läuft der Einstieg bei euch ab?",
+  ]) {
+    const result = plan("Ich interessiere mich für Begleitung.", latest);
+    assert.equal(result.noNewQuestion, true);
+    assert.match(explainPeteTurnV4(result), /NULL Rueckfragen/);
+  }
+});
