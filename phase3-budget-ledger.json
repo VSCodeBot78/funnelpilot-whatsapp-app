@@ -2,7 +2,7 @@
   "version": 1,
   "capMicroUsd": 8000000,
   "spentMicroUsd": 7522606,
-  "reservedMicroUsd": 0,
+  "reservedMicroUsd": 450000,
   "completedBatches": [
     {
       "id": "38093371914-1-batch-0",
@@ -245,7 +245,12 @@
       "completedAt": "2026-10-22T10:34:25.053Z"
     }
   ],
-  "activeReservations": {},
+  "activeReservations": {
+    "pete-policy-v41-blind-sol-20261022-usd0p45": {
+      "heldMicroUsd": 450000,
+      "createdAt": "2026-10-22T10:42:59.452Z"
+    }
+  },
   "createdAt": "2026-10-11",
   "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset.",
   "qualityRun20261021": {
@@ -310,5 +315,10 @@
     "reserveMicroUsd": 850000,
     "status": "settled",
     "chargedMicroUsd": 586530
+  },
+  "policyV41BlindSol_20261022": {
+    "runId": "39765140336",
+    "reserveMicroUsd": 450000,
+    "status": "reserved"
   }
 }
