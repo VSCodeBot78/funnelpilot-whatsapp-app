@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { PETE_PRODUCT_MODEL, normalizePersistedPeteModel } from "../config/pete-model-policy.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 import { DEFAULT_COACH_ONBOARDING_DRAFT, parseCoachOnboardingDraft, type CoachOnboardingDraft } from "./coach-onboarding-draft.js";
 
@@ -108,7 +109,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   aiEnabled: false,
   testMode: true,
   aiProvider: "OpenAI",
-  aiModel: env.OPENAI_MODEL || "gpt-4.1-mini",
+  aiModel: PETE_PRODUCT_MODEL,
   aiFallback: "Wenn die KI ausf\u00e4llt, \u00fcbernimmt der Regel-Flow ohne Eskalation.",
   assistantName: "Pete",
   assistantRole: "",
@@ -154,6 +155,10 @@ function sanitizeSettings(
     if (key === "coachOnboardingDraft") {
       const result = parseCoachOnboardingDraft(rawValue);
       if (result.ok) sanitized[key] = result.value;
+      continue;
+    }
+    if (key === "aiModel") {
+      sanitized[key] = normalizePersistedPeteModel(rawValue);
       continue;
     }
     const defaultValue = DEFAULT_SETTINGS[key as keyof SettingsConfig];
@@ -208,9 +213,7 @@ export function readSettings(): SettingsConfig {
       coachOnboardingDraft: parseCoachOnboardingDraft(parsed.coachOnboardingDraft).ok
         ? (parseCoachOnboardingDraft(parsed.coachOnboardingDraft) as { ok: true; value: CoachOnboardingDraft }).value
         : DEFAULT_COACH_ONBOARDING_DRAFT,
-      aiModel:
-        String(parsed.aiModel ?? DEFAULT_SETTINGS.aiModel).trim() ||
-        DEFAULT_SETTINGS.aiModel,
+      aiModel: normalizePersistedPeteModel(parsed.aiModel),
     };
   } catch (error) {
     if (env.NODE_ENV === "production") throw new Error("settings_store_invalid_stop_restore", { cause: error });
