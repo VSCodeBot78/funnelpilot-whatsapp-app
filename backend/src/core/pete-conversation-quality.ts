@@ -480,7 +480,7 @@ export function peteSafeRoutineRepairReply(state: ConversationState): string | n
   const context = norm(leadTexts.join(" "));
   if (!/\b(?:wie funktioniert|wie geht|wie kann)\b.{0,100}\b(?:eure|die|unsere)?\s*(?:methode|training|alltagsroutine|plan)\b/.test(context) ||
       !/\bkrank(?:em|en|es|e)?\s+kind\b/.test(context)) return null;
-  if (/\b(?:atemnot|brustschmerz|fieber|schmerz|insulin|medikament|arzt|medizin|diagnose|therapie|behandlung|notfall|dosierung|selbstverletzung|suizid|krise|widerruf|datenschutz)\b/.test(context) ||
+  if (/\b(?:atemnot|brustschmerz|fieber|schmerz|insulin|medikament|arzt|medizin|diagnose|therapie|behandlung|notfall|dosierung|selbstverletzung|suizid|krise|widerruf|datenschutz|stop|nicht mehr schreiben|lass mich in ruhe)\b/.test(context) ||
       /\b(?:jochen|ein mensch)\b.{0,40}\b(?:ubernimm|ubernehmen|personlich|antworten)\b/.test(context)) return null;
   return "Wenn dein Kind krank ist, darf das Training pausieren. Sobald wieder Luft ist, steigst du mit einer kurzen Einheit ein, statt verpasste Einheiten nachzuholen. So bleibt die Routine auch in unruhigen Familienwochen machbar.";
 }
