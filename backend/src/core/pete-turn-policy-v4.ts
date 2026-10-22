@@ -27,6 +27,8 @@ const hasReliablePrep = (text: string) =>
   /\b(?:nehme|nehme|habe|hab)\w*\b.{0,45}\b(?:essen|mahlzeit|snack)\b.{0,30}\b(?:mit|dabei)\b/.test(text);
 const hasFailedBreaks = (text: string) =>
   /\bpausen?\b.{0,45}\b(?:ausfall|fallen aus|fallt aus|fallen|aus|unplanbar|weg|keine|nicht)\b/.test(text) ||
+  /\b(?:fallen|fallt|faellt)\b.{0,30}\bpausen?\b.{0,15}\baus\b/.test(text) ||
+  /\bpausen?\b.{0,25}\b(?:ausfallen|fallen)\b/.test(text) ||
   /\b(?:ohne|keine)\s+(?:richtige\s+|feste\s+)?pausen?\b/.test(text);
 
 export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
@@ -35,7 +37,7 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
   const context = norm(turns.slice(-6).map(m => m.text).join(" "));
   const packed = hasReliablePrep(context);
   const breakFailure = hasFailedBreaks(context);
-  const avoidTraining = /(?:training|sport|workouts?)\s+(?:lauft|klappt|ist nicht das problem)|(?:kein|nicht noch|ohne)\s+(?:mehr\s+)?(?:training|sport|workouts?)|(?:training|sport)\s+(?:bitte\s+)?(?:nicht|raus|aussen vor)/.test(context);
+  const avoidTraining = /(?:training|sport|workouts?)\s+(?:lauft|klappt|ist nicht das problem)|(?:kein|nicht noch|ohne)\s+(?:mehr\s+)?(?:training|sport|workouts?)|(?:training|sport)\s+(?:bitte\s+)?(?:nicht|raus|aussen vor)|\bnicht\s+(?:wieder\s+|nochmal\s+)?training\s+empfehlen/.test(context);
   const base = { avoidTraining, alreadyHasPackedFood: packed };
   if (hasPeteActiveNoQuestionBoundary(state)) return {
     ...base, action: "respect_boundary", reason: "no_questions", noNewQuestion: true,
