@@ -181,7 +181,7 @@ test("Verified five-week buyer gets checkout directly without forced strategy ca
   ]) {
     const result = answer(lead);
     assert.ok(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), lead);
-    assert.doesNotMatch(result.text, /Pflichttermin|Pflichtcall|zuerst ein Gespräch/i);
+    assert.doesNotMatch(result?.text ?? "", /Pflichttermin|Pflichtcall|zuerst ein Gespräch/i);
   }
   for (const lead of [
     "Ich überlege, die 5-Wochen-Startphase zu kaufen.",
