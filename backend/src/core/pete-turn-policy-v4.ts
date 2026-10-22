@@ -43,6 +43,23 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     ...base, action: "respect_boundary", reason: "no_questions", noNewQuestion: true,
   };
 
+  // Explicit needs: value, scope, entry process and evening-eating tactics.
+  // These four case-sensitive decisions prevent generic sales questions from
+  // outranking an already stated information need. Never infer service terms.
+  if (/\bmehrwert\b/.test(latest) &&
+      /\b(?:bezahl|konnte|konnten|kann|nutzen|nicht klar|sehe|verstehe)\b/.test(latest)) {
+    return { ...base, action: "direct_answer", reason: "value_proposition", noNewQuestion: true };
+  }
+  if (/\b(?:was ich konkret bekomme|was bekomme ich|was genau bekomme ich|welche leistungen|umfang|fehlt.*klarheit)\b/.test(latest)) {
+    return { ...base, action: "direct_answer", reason: "offer_scope", noNewQuestion: false };
+  }
+  if (/\b(?:wie lauft der einstieg|wie startet|wie beginnt|wie melde ich mich|wie lauft das starten)\b/.test(latest)) {
+    return { ...base, action: "direct_answer", reason: "coaching_entry", noNewQuestion: true };
+  }
+  if (/\b(?:anders als ein ernahrungsplan|unterschied.*ernahrungsplan|bei euch anders)\b/.test(latest)) {
+    return { ...base, action: "direct_answer", reason: "practical_difference", noNewQuestion: true };
+  }
+
   // Questions about the method, implementation, value or what to do have
   // priority over qualification. Unverified offer facts remain off limits.
   if (isDirectQuestion(latest) ||
@@ -81,5 +98,13 @@ export function explainPeteTurnV4(plan: PeteTurnPlan): string {
     (plan.avoidTraining ? " Bekannter Kontext: Training ist NICHT der Engpass; KEINE Workout-Empfehlung." : "") +
     (plan.alreadyHasPackedFood ? " Essen wurde bereits vorbereitet/mitgenommen: NICHT nochmal Essen mitnehmen oder Meal-Prep als Neuigkeit empfehlen." :
       plan.reason === "irregular_breaks" ? " Ausfallende Pausen: falls noch nicht mitgenommen, EINE praktisch transportable Essensidee; ansonsten den tatsächlichen Engpass erklären." : "") +
+    (plan.reason === "value_proposition" ?
+      " Antwort auf Mehrwert: Unterschied von Informationen zu persoenlicher Umsetzung anhand eines realistischen Elternalltagsbeispiels erklaeren (z.B. Wiedereinstieg bei krankem Kind). Der Lead kann zahlen: NICHT erneut das Budget abfragen und KEIN Preis-/Leistungsversprechen erfinden." : "") +
+    (plan.reason === "offer_scope" ?
+      " Antwort zum Umfang: zuerst die bekannten Unterschiede nennen: Selbststarter zum eigenstaendigen Start; persoenliche 5-Wochen-Startphase mit Bewegung, Ernaehrung, Schlaf und Alltagsstress. Exakt unbekannte Details offenlassen; erst DANN hoechstens eine Frage, welches Angebot gemeint ist." : "") +
+    (plan.reason === "coaching_entry" ?
+      " Einstieg in persoenliche Begleitung: bekannte Startphase und Ausrichtung direkt nennen. Keinen verpflichtenden Call erfinden. Falls konkrete Anmeldung/Starttermin unbekannt, das sachlich benennen, aber NICHT allein deswegen Jochen im Chat uebernehmen lassen. needsHuman=false bei reiner Einstiegserklaerung." : "") +
+    (plan.reason === "practical_difference" ?
+      " Bei stressbedingtem Abendessen nicht nur die Saeulen aufzählen: greifbares allgemeines Beispiel fuer Umsetzungsentlastung statt einer neuen Diaet, ohne persoenliche Betreuung oder Leistungsbestandteile zu erfinden." : "") +
     " Bedürfnisse, Sicherheit und Verifizierbarkeit haben Vorrang. needsHuman=true NUR bei wirklicher notwendiger menschlicher Freigabe, ausdruecklicher Uebernahme oder ungeklärtem sensiblen Vorgang. Ein skeptischer Einwand oder die Frage nach der Methode ist ALLEIN kein Handoff-Grund.";
 }
