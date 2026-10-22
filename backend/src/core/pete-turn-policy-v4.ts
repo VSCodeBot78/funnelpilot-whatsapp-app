@@ -19,15 +19,15 @@ export type PeteTurnPlan = {
 
 const norm = (v: string) => v.toLocaleLowerCase("de-DE")
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  .replace(/\\s+/g, " ").trim();
+  .replace(/\s+/g, " ").trim();
 const isDirectQuestion = (text: string) =>
-  text.includes("?") && /(?:\\bwie\\b|\\bwas\\b|\\bwarum\\b|\\bwomit\\b|\\bworan\\b|\\bwelche\\b|\\bwodurch\\b|\\bwieviel\\b|\\bwof[ua]r\\b|\\bfur wen\\b)/.test(text);
+  text.includes("?") && /(?:\bwie\b|\bwas\b|\bwarum\b|\bwomit\b|\bworan\b|\bwelche\b|\bwodurch\b|\bwieviel\b|\bwof[ua]r\b|\bfur wen\b)/.test(text);
 const hasReliablePrep = (text: string) =>
-  /\\b(?:essen|mahlzeiten?|snack|snacks?)\\b.{0,65}\\b(?:mit|dabei|vorbereit|eingepackt)\\w*/.test(text) ||
-  /\\b(?:nehme|nehme|habe|hab)\\w*\\b.{0,45}\\b(?:essen|mahlzeit|snack)\\b.{0,30}\\b(?:mit|dabei)\\b/.test(text);
+  /\b(?:essen|mahlzeiten?|snack|snacks?)\b.{0,65}\b(?:mit|dabei|vorbereit|eingepackt)\w*/.test(text) ||
+  /\b(?:nehme|nehme|habe|hab)\w*\b.{0,45}\b(?:essen|mahlzeit|snack)\b.{0,30}\b(?:mit|dabei)\b/.test(text);
 const hasFailedBreaks = (text: string) =>
-  /\\bpausen?\\b.{0,45}\\b(?:ausfall|fallen aus|fallt aus|fallen|aus|unplanbar|weg|keine|nicht)\\b/.test(text) ||
-  /\\b(?:ohne|keine)\\s+(?:richtige\\s+|feste\\s+)?pausen?\\b/.test(text);
+  /\bpausen?\b.{0,45}\b(?:ausfall|fallen aus|fallt aus|fallen|aus|unplanbar|weg|keine|nicht)\b/.test(text) ||
+  /\b(?:ohne|keine)\s+(?:richtige\s+|feste\s+)?pausen?\b/.test(text);
 
 export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
   const turns = (state.messages ?? []).filter(m => m.role === "user");
@@ -35,7 +35,7 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
   const context = norm(turns.slice(-6).map(m => m.text).join(" "));
   const packed = hasReliablePrep(context);
   const breakFailure = hasFailedBreaks(context);
-  const avoidTraining = /(?:training|sport|workouts?)\\s+(?:lauft|klappt|ist nicht das problem)|(?:kein|nicht noch|ohne)\\s+(?:mehr\\s+)?(?:training|sport|workouts?)|(?:training|sport)\\s+(?:bitte\\s+)?(?:nicht|raus|aussen vor)/.test(context);
+  const avoidTraining = /(?:training|sport|workouts?)\s+(?:lauft|klappt|ist nicht das problem)|(?:kein|nicht noch|ohne)\s+(?:mehr\s+)?(?:training|sport|workouts?)|(?:training|sport)\s+(?:bitte\s+)?(?:nicht|raus|aussen vor)/.test(context);
   const base = { avoidTraining, alreadyHasPackedFood: packed };
   if (hasPeteActiveNoQuestionBoundary(state)) return {
     ...base, action: "respect_boundary", reason: "no_questions", noNewQuestion: true,
@@ -44,20 +44,20 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
   // Questions about the method, implementation, value or what to do have
   // priority over qualification. Unverified offer facts remain off limits.
   if (isDirectQuestion(latest) ||
-      /\\b(?:sag mir konkret|bitte konkret|erklare mir|beantworte meine frage|was ware realistisch)\\b/.test(latest)) {
+      /\b(?:sag mir konkret|bitte konkret|erklare mir|beantworte meine frage|was ware realistisch)\b/.test(latest)) {
     return { ...base, action: "direct_answer", reason: "explicit_request",
-      noNewQuestion: /\\b(?:keine frage|ohne fragen|bitte konkret und kurz|nur die antwort)\\b/.test(latest) };
+      noNewQuestion: /\b(?:keine frage|ohne fragen|bitte konkret und kurz|nur die antwort)\b/.test(latest) };
   }
-  if ((breakFailure && /\\b(?:schicht|pausen|essen|training)\\b/.test(context)) ||
-      /\\b(?:noch ein pflichtplan|abends komplett erledigt|total erschopft|nicht noch einen plan)\\b/.test(context)) {
+  if ((breakFailure && /\b(?:schicht|pausen|essen|training)\b/.test(context)) ||
+      /\b(?:noch ein pflichtplan|abends komplett erledigt|total erschopft|nicht noch einen plan)\b/.test(context)) {
     return { ...base, action: "concrete_help",
       reason: breakFailure ? "irregular_breaks" : "exhaustion",
       noNewQuestion: true };
   }
-  if (/\\b(?:ich will direkt kaufen|schick.*(?:link|kaufweg)|angebot|mehrwert|was kostet)\\b/.test(latest)) {
+  if (/\b(?:ich will direkt kaufen|schick.*(?:link|kaufweg)|angebot|mehrwert|was kostet)\b/.test(latest)) {
     return { ...base, action: "offer_navigation", reason: "purchase_topic", noNewQuestion: true };
   }
-  if (/\\b(?:nein danke|kein interesse|nur umschauen|in ruhe lesen|kein verkauf)\\b/.test(latest)) {
+  if (/\b(?:nein danke|kein interesse|nur umschauen|in ruhe lesen|kein verkauf)\b/.test(latest)) {
     return { ...base, action: "acknowledge", reason: "respect_decline", noNewQuestion: true };
   }
   return { ...base, action: "clarify", reason: "open_conversation", noNewQuestion: false };
@@ -73,7 +73,7 @@ export function explainPeteTurnV4(plan: PeteTurnPlan): string {
     acknowledge: "Grenze oder fehlendes Kaufinteresse kurz anerkennen, ohne neuen Pitch.",
     offer_navigation: "Nur nach echtem Interesse zum verifizierten Angebot verweisen. Niemals Preise, Links, Verfügbarkeit oder Vertragsdetails erfinden.",
   };
-  return "\\nPETE POLICY V4 (entscheidet diesen Turn; nachrangige generische Fragenregeln gelten hier NICHT): " +
+  return "\nPETE POLICY V4 (entscheidet diesen Turn; nachrangige generische Fragenregeln gelten hier NICHT): " +
     "Aktion=" + plan.action + ". " + goals[plan.action] +
     (plan.noNewQuestion ? " NULL Rueckfragen in dieser Nachricht." : " Maximal EINE sinnvolle Frage, nur falls wirklich erforderlich.") +
     (plan.avoidTraining ? " Bekannter Kontext: Training ist NICHT der Engpass; KEINE Workout-Empfehlung." : "") +
