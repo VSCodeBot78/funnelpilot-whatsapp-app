@@ -6,9 +6,14 @@ import {
   type SettingsConfig,
 } from "../services/settings-store.js";
 import { env } from "../config/env.js";
+import { PETE_PRODUCT_MODEL, resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { parseCoachOnboardingDraft } from "../services/coach-onboarding-draft.js";
 
 const router = Router();
+
+function isPeteProductModelConfigured(): boolean {
+  return resolvePeteRuntimeModel({ envModel: env.OPENAI_MODEL, nodeEnv: env.NODE_ENV }) === PETE_PRODUCT_MODEL;
+}
 
 function isValidOptionalUrl(value: unknown): boolean {
   const url = String(value ?? "").trim();
@@ -35,7 +40,7 @@ router.get("/settings-config", (_req: Request, res: Response) => {
       ok: true,
       settings,
       openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
-      openAiModelConfigured: Boolean(settings.aiModel?.trim()),
+      openAiModelConfigured: isPeteProductModelConfigured(),
     });
   } catch (error) {
     console.error("settings GET error:", error);
@@ -50,6 +55,10 @@ router.get("/settings-config", (_req: Request, res: Response) => {
 router.post("/settings-config", (req: Request, res: Response) => {
   try {
     const payload = (req.body ?? {}) as Partial<SettingsConfig>;
+    if (Object.hasOwn(payload, "aiModel") && payload.aiModel !== PETE_PRODUCT_MODEL) {
+      return res.status(400).json({ ok: false, error: "ai_model_not_supported",
+        message: "Für Pete ist nur GPT-6.1 Sol als Produktmodell verfügbar." });
+    }
     const validationError = validateLegalSettings(payload);
 
     if (validationError) {
@@ -78,7 +87,7 @@ router.post("/settings-config", (req: Request, res: Response) => {
       ok: true,
       settings: nextSettings,
       openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
-      openAiModelConfigured: Boolean(nextSettings.aiModel?.trim()),
+      openAiModelConfigured: isPeteProductModelConfigured(),
     });
   } catch (error) {
     console.error("settings POST error:", error);
@@ -98,7 +107,7 @@ router.post("/settings-config/reset", (_req: Request, res: Response) => {
       ok: true,
       settings: reset,
       openAiApiKeyConfigured: env.OPENAI_API_KEY_CONFIGURED,
-      openAiModelConfigured: Boolean(reset.aiModel?.trim()),
+      openAiModelConfigured: isPeteProductModelConfigured(),
     });
   } catch (error) {
     console.error("settings RESET error:", error);
