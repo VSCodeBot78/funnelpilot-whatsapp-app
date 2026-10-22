@@ -80,6 +80,8 @@ const MODEL = "gpt-4.1-mini"; // backward compatible default
 const MODEL_PRICES = {
   "gpt-4.1-mini": { input: 0.4, output: 1.6 },
   "gpt-5.4": { input: 2.5, output: 15.0 },
+  // Official Standard tier USD / 1M tokens; excludes optional regional / fast multipliers.
+  "gpt-6.1-sol": { input: 2.0, output: 10.0 },
 } as const;
 type PricedModel = keyof typeof MODEL_PRICES;
 function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
@@ -89,6 +91,7 @@ function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
 const MAX_OUTPUT_BY_MODEL: Record<PricedModel, number> = {
   "gpt-4.1-mini": 400,
   "gpt-5.4": 800,
+  "gpt-6.1-sol": 1200,
 };
 const LEDGER_FILE = path.join(env.DATA_DIR, "pete-api-budget.json");
 const LOCK_FILE = path.join(env.DATA_DIR, "pete-api-budget.lock");
@@ -217,7 +220,7 @@ export function getPeteBudgetStatus() {
   const qaRemaining = qaCap === null ? globalRemaining : Math.max(0, qaCap - data.committedMicroUsd);
   const remaining = Math.min(approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining, qaRemaining);
   return {
-    model: approval.active ? "gpt-5.4" : MODEL,
+    model: approval.active ? "gpt-5.4" : (process.env.OPENAI_MODEL?.trim() || MODEL),
     hardCapUsd: USD_MICROS_CAP / 1_000_000,
     priorConfirmedUsd: prior / 1_000_000,
     committedUsd: (prior + data.committedMicroUsd) / 1_000_000,
