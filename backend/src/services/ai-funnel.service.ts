@@ -2,6 +2,8 @@ import { containsGeneratedPrice, isUnverifiedLongTermPriceQuestion } from "../co
 import { AI_OBJECTION_FRAMEWORK } from "../config/ai-objection-framework.js";
 import type { AiFunnelReply, AiObjectionCategory } from "../types/ai-funnel.types.js";
 import { readSettings } from "./settings-store.js";
+import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
+import { reservePeteBudget, settlePeteBudget } from "./pete-api-budget.service.js";
 
 type AiReplyParams = {
   category: AiObjectionCategory;
@@ -43,8 +45,13 @@ function getApiKey(): string | undefined {
   return process.env.OPENAI_API_KEY?.trim();
 }
 
-function getModel(): string {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
+function getModel(): "gpt-6.1-sol" | "gpt-4.1-mini" | null {
+  // This legacy bridge may not silently use an obsolete paid production model.
+  const model = resolvePeteRuntimeModel({
+    envModel: process.env.OPENAI_MODEL,
+    nodeEnv: process.env.NODE_ENV,
+  });
+  return model === "gpt-5.4" ? null : model;
 }
 
 function isAiEnabled(): boolean {
@@ -209,10 +216,38 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
   if (!isAiEnabled() || isUnverifiedLongTermPriceQuestion(params.userMessage)) {
     return null;
   }
+  const model = getModel();
+  if (!model) return null;
+  const maxOutputTokens = model === "gpt-6.1-sol" ? 1200 : 400;
+  const requestBody = JSON.stringify({
+    model,
+    store: false,
+    max_output_tokens: maxOutputTokens,
+    ...(model === "gpt-6.1-sol" ? { reasoning: { effort: "low" } } : {}),
+    input: [
+      { role: "system", content: buildSystemPrompt(params) },
+      { role: "user", content: buildUserPrompt(params) },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "ai_funnel_reply",
+        strict: true,
+        schema: buildSchema(),
+      },
+    },
+  });
 
+  // Even the retired ABC bridge must never bypass Pete's local paid-call cap.
+  // A failed call retains its conservative preauthorization (fail-closed).
+  let reservation: string;
+  try {
+    reservation = reservePeteBudget({ model, requestBody, maxOutputTokens });
+  } catch {
+    return null;
+  }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-
+  const timeout = setTimeout(() => controller.abort(), model === "gpt-6.1-sol" ? 30000 : 12000);
   try {
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
@@ -221,46 +256,15 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
         "Content-Type": "application/json",
         Authorization: `Bearer ${getApiKey()}`,
       },
-      body: JSON.stringify({
-        model: getModel(),
-        input: [
-          {
-            role: "system",
-            content: buildSystemPrompt(params),
-          },
-          {
-            role: "user",
-            content: buildUserPrompt(params),
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "ai_funnel_reply",
-            strict: true,
-            schema: buildSchema(),
-          },
-        },
-      }),
+      body: requestBody,
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
+    if (!response.ok) return null;
     const json = await response.json();
+    settlePeteBudget(reservation, json?.usage);
     const text = extractOutputText(json);
-
-    if (!text) {
-      return null;
-    }
-
+    if (!text) return null;
     const parsed = JSON.parse(text) as AiFunnelReply;
-
-    if (!parsed.replyText?.trim() || containsGeneratedPrice(parsed.replyText)) {
-      return null;
-    }
-
+    if (!parsed.replyText?.trim() || containsGeneratedPrice(parsed.replyText)) return null;
     return parsed;
   } catch {
     return null;
