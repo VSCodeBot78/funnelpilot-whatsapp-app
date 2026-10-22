@@ -22,6 +22,59 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  // Reusable QA requires a persisted reservation from an owner-approved
+  // GitHub test manifest. Unlike the historical date-coded batches, the
+  // per-run cap is read from the held ledger, never a self-selected env value.
+  if (process.env.PETE_REPEATABLE_QA_ENABLED === "true") {
+    const e = process.env;
+    if (e.GITHUB_ACTIONS !== "true" ||
+        e.GITHUB_EVENT_NAME !== "push" ||
+        e.GITHUB_REPOSITORY !== "VSCodeBot78/funnelpilot-whatsapp-app" ||
+        e.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
+        e.GITHUB_RUN_ATTEMPT !== "1" ||
+        !/^[0-9]{5,}$/.test(e.GITHUB_RUN_ID ?? "") ||
+        e.NODE_ENV !== "test" || e.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        e.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        e.INSTAGRAM_SEND_ENABLED !== "false" ||
+        e.WHATSAPP_SEND_ENABLED !== "false" ||
+        e.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        e.PETE_MOBILE_LAB_ENABLED !== "false" ||
+        e.PETE_LLM_CONVERSATION_ENABLED !== "true" ||
+        e.PETE_LLM_API_CALLS_APPROVED !== "true" ||
+        !e.GITHUB_WORKSPACE) throw new PeteBudgetStop("unavailable");
+    let request: Record<string, unknown>, ledger: Record<string, unknown>;
+    try {
+      const workspace = path.resolve(e.GITHUB_WORKSPACE);
+      if (path.resolve(process.cwd()) !== path.join(workspace, "backend"))
+        throw Error("qa_wrong_workdir");
+      request = JSON.parse(fs.readFileSync(path.join(workspace, "qa", "pete-approved-test.json"), "utf8"));
+      ledger = JSON.parse(fs.readFileSync(path.join(workspace, "budget-ledger", "phase3-budget-ledger.json"), "utf8"));
+    } catch { throw new PeteBudgetStop("unavailable"); }
+    const dollars = request.budgetUsd;
+    if (request.version !== 1 || !["sales20", "sales32"].includes(String(request.testSet)) ||
+        typeof dollars !== "string" ||
+        !/^(?:0\.[0-9]{2}|1\.[0-9]{2}|2\.00)$/.test(dollars) ||
+        !/^owner:[a-z0-9-]{8,80}$/.test(String(request.ownerApprovalRef ?? "")))
+      throw new PeteBudgetStop("unavailable");
+    const amount = Math.round(Number(dollars) * 1_000_000);
+    if (!Number.isSafeInteger(amount) || amount < 10_000 || amount > 2_000_000)
+      throw new PeteBudgetStop("unavailable");
+    const extra = ledger.extraOwnerQa20261022 as Record<string, unknown> | undefined;
+    const hold = (extra?.reservations as Record<string, unknown> | undefined)?.["pete-qa-" + e.GITHUB_RUN_ID] as Record<string, unknown> | undefined;
+    if (ledger.version !== 1 || ledger.spentMicroUsd !== 7_817_830 ||
+        ledger.capMicroUsd !== 8_000_000 || ledger.reservedMicroUsd !== 0 ||
+        extra?.conservativeUsdCapMicro !== 5_000_000 ||
+        !Number.isSafeInteger(extra.usedMicroUsd) ||
+        !Number.isSafeInteger(extra.reservedMicroUsd) ||
+        Number(extra.usedMicroUsd) + Number(extra.reservedMicroUsd) > 5_000_000 ||
+        hold?.runId !== e.GITHUB_RUN_ID ||
+        hold?.holdMicroUsd !== amount ||
+        hold?.ownerApprovalRef !== request.ownerApprovalRef ||
+        hold?.testSet !== request.testSet ||
+        extra.reservedMicroUsd !== amount)
+      throw new PeteBudgetStop("unavailable");
+    return amount;
+  }
   // Final historical-vs-current-pregnancy smoke, no production cap change.
   if (process.env.PETE_V42_PREGNANCY_QA_ENABLED === "true") {
     if (process.env.GITHUB_ACTIONS !== "true" ||
