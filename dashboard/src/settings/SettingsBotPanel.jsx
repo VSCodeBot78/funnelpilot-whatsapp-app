@@ -324,7 +324,8 @@ export default function SettingsBotPanel({
                 {PETE_MODEL_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
-              </select>            </div>
+              </select>
+            </div>
 
             <div>
               <FieldLabelWithInfo
