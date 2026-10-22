@@ -236,9 +236,10 @@ if (!budget.ok || budget.committedUsd > allowedCap ||
 const output = {
   version: 1, kind: "synthetic_real_openai_qa_policy_v42_20261022",
   model: "gpt-6.1-sol",
-  runMode: "policy-v42-sol-20-cases-within-usd1-and-owner-eur5-and-global-usd8",
-  totalAuthorizedUsd: 5,
-  previouslyChargedUsd: 0.802732,
+  runMode: "policy-v42-sol-20-cases-within-separate-owner-eur5",
+  additionalOwnerAuthorizedEur: 5,
+  conservativeAdditionalUsdCap: 5,
+  projectOriginalUsd8LedgerUnchanged: true,
   modelCallsCapUsd: allowedCap, totalCases: cases.length, modelResponses,
   nonModelResponses, budget, cases: results,
 };
