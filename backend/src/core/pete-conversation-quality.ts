@@ -136,6 +136,19 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // Starting inside a selectable 14-day window does NOT guarantee that
+  // the very next day is available. Do not escalate an ordinary date question.
+  if (/\b(?:garantiert|sicher|verbindlich)\b.{0,55}\b(?:morgen|heute|sofort|anfangen|starten)\b/.test(input) &&
+      (previousFiveWeekSelected || /\b(?:startphase|5[\s-]*wochen|499[\s-]*(?:euro|€))\b/.test(input))) {
+    return { text: "Den Start der persönlichen 5-Wochen-Begleitung kannst du laut Angebot innerhalb von 14 Tagen wählen. Einen konkreten Start morgen kann ich dir hier nicht garantieren. Prüfe die verfügbaren Angaben vor einer Buchung im Checkout.", nextPhase: "info" };
+  }
+
+  // A mention of a possible credit is not verified contractual consent.
+  if ((/\b499\b.{0,80}\b(?:anrechn\\w*|gutschreib\\w*)\b/.test(input) ||
+       /\b(?:anrechn\\w*|gutschreib\\w*)\b.{0,85}\b499\b/.test(input)) &&
+      /\b(?:garantiert|komplett|voll|sicher|sechs|6[\s-]*monat)\b/.test(input)) {
+    return { text: "Eine mögliche Anrechnung der 499 Euro bei einer späteren 6-Monats-Begleitung ist erwähnt. Die aktuell verbindlichen Upgrade- und Anrechnungsbedingungen sind hier aber nicht ausreichend bestätigt. Bitte kläre diese vor einer Entscheidung direkt mit Jochen, damit ich dir keine falsche Vertragszusage mache.", nextPhase: "info" };
+  }
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
