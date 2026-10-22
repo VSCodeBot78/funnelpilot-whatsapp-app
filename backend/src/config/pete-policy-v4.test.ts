@@ -177,6 +177,7 @@ test("Verified five-week buyer gets checkout directly without forced strategy ca
     "Ich möchte die 5-Wochen-Startphase direkt kaufen.",
     "Wo kann ich das 5-Wochen-Coaching kaufen?",
     "Schick mir den Kauf-Link zur 5-Wochen-Begleitung.",
+    "Mein Mann ist einverstanden, ich will die 5-Wochen-Startphase kaufen.",
   ]) {
     const result = answer(lead);
     assert.ok(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), lead);
@@ -188,6 +189,11 @@ test("Verified five-week buyer gets checkout directly without forced strategy ca
     "Ich möchte das 6-Monats-Coaching kaufen.",
     "Ich möchte das Coaching kaufen.",
     "Ich möchte die 5-Wochen-Startphase kaufen, aber kann sie mir nicht leisten.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, aber das Geld reicht nicht.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, aber ich muss erst meine Frau fragen.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, aber erst mit meinem Mann besprechen.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, aber ich muss noch drüber schlafen.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, ohne meine Frau zu fragen.",
   ]) {
     const result = answer(lead);
     assert.equal(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl) ?? false, false, lead);
