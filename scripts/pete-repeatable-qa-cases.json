@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "known": [
+    {
+      "id": "Y-entry",
+      "lines": [
+        "Hi, ich bin Vater von zwei Kindern und will erst mal wissen, was ihr macht.",
+        "Für wen ist das konkret geeignet?"
+      ]
+    },
+    {
+      "id": "Y-no-time",
+      "lines": [
+        "Ich arbeite Vollzeit, habe zwei Kinder und keine Zeit für täglichen Sport.",
+        "Wie soll ich das überhaupt schaffen?"
+      ]
+    },
+    {
+      "id": "Y-food",
+      "lines": [
+        "Training läuft. Abends esse ich wegen Stress aber alles durcheinander.",
+        "Was wäre bei euch anders als ein Ernährungsplan?"
+      ]
+    },
+    {
+      "id": "Y-exhaustion",
+      "lines": [
+        "Ich bin Mama und abends komplett erledigt.",
+        "Ich will nicht noch einen Pflichtplan. Was wäre realistisch?"
+      ]
+    },
+    {
+      "id": "Y-shift",
+      "lines": [
+        "Bei Schichtarbeit fallen meine Pausen aus, dann stopfe ich abends irgendwas rein.",
+        "Bitte nicht wieder Training empfehlen. Das ist nicht mein Problem."
+      ]
+    },
+    {
+      "id": "Y-trust",
+      "lines": [
+        "Drei Coaches haben mir viel versprochen. Warum seid ihr anders?",
+        "Sag mir konkret, wie ihr die Umsetzung im Familienalltag angeht."
+      ]
+    },
+    {
+      "id": "Y-price",
+      "lines": [
+        "Ich interessiere mich für Unterstützung, aber das ist mir zu teuer.",
+        "Es ist aktuell wirklich nicht in meinem Budget."
+      ]
+    },
+    {
+      "id": "Y-value",
+      "lines": [
+        "499 Euro finde ich teuer.",
+        "Ich könnte es bezahlen, aber ich sehe den Mehrwert noch nicht."
+      ]
+    },
+    {
+      "id": "Y-partner",
+      "lines": [
+        "Das klingt passend, aber ich bespreche solche Ausgaben mit meiner Frau.",
+        "Was könnte ich ihr sachlich dazu sagen?"
+      ]
+    },
+    {
+      "id": "Y-partner-autonomy",
+      "lines": [
+        "Ich würde das machen, aber mein Mann ist dagegen.",
+        "Nein, ich möchte ohne seine Zustimmung nichts buchen."
+      ]
+    },
+    {
+      "id": "Y-consider",
+      "lines": [
+        "Ich möchte darüber schlafen.",
+        "Mir fehlt noch Klarheit, was ich konkret bekomme."
+      ]
+    },
+    {
+      "id": "Y-buy",
+      "lines": [
+        "Ich will direkt den Selbststarter kaufen.",
+        "Schick mir bitte den Kaufweg."
+      ]
+    },
+    {
+      "id": "Y-coaching",
+      "lines": [
+        "Ich will persönliche Begleitung und nicht nur ein PDF.",
+        "Wie läuft der Einstieg bei euch ab?"
+      ]
+    },
+    {
+      "id": "Y-objection",
+      "lines": [
+        "Ich habe schon alles probiert und höre immer nach vier Tagen auf.",
+        "Wie vermeide ich wieder so einen Start-Stopp?"
+      ]
+    },
+    {
+      "id": "Y-short",
+      "lines": [
+        "Stress.",
+        "Arbeit, Kinder, Schlaf."
+      ]
+    },
+    {
+      "id": "Y-not-fit",
+      "lines": [
+        "Ich habe keine Kinder und suche reines Bodybuilding-Wettkampfcoaching.",
+        "Passt das überhaupt zu euch?"
+      ]
+    },
+    {
+      "id": "Y-not-ready",
+      "lines": [
+        "Ich schaue mich nur um, bitte noch nichts verkaufen.",
+        "Danke, ich möchte in Ruhe lesen."
+      ]
+    },
+    {
+      "id": "Y-no-questions",
+      "lines": [
+        "Ich bin erschöpft und will jetzt keine Fragen.",
+        "Bitte hör auf zu fragen."
+      ]
+    },
+    {
+      "id": "Y-no-budget",
+      "lines": [
+        "Ich habe derzeit gar kein Geld für Coaching.",
+        "Ich möchte dafür keine Schulden machen."
+      ]
+    },
+    {
+      "id": "Y-repair",
+      "lines": [
+        "Du hast meine Frage nicht beantwortet. Wie funktioniert eure Methode bei krankem Kind?",
+        "Bitte diesmal konkret und kurz."
+      ]
+    }
+  ],
+  "blind": [
+    {
+      "id": "S32-01-value",
+      "lines": [
+        "Ich habe schon eine Trainings-App und drei Pläne.",
+        "Wofür zahle ich bei euch 499 Euro mehr, was erhalte ich konkret?"
+      ]
+    },
+    {
+      "id": "S32-02-zoom",
+      "lines": [
+        "Mich interessiert die persönliche Startphase.",
+        "Wie oft telefoniere ich mit dir über Zoom und ist ein Walk-Call dabei?"
+      ]
+    },
+    {
+      "id": "S32-03-workouts",
+      "lines": [
+        "Ich lese bei euch fünfmal fünf und zweimal 20 Minuten.",
+        "Muss ich das alles täglich machen?"
+      ]
+    },
+    {
+      "id": "S32-04-start",
+      "lines": [
+        "Ich interessiere mich für die 499-Euro-Begleitung.",
+        "Kann ich garantiert morgen anfangen?"
+      ]
+    },
+    {
+      "id": "S32-05-offer-separation",
+      "lines": [
+        "Vielleicht reicht mir der Selbststarter.",
+        "Sind da die persönlichen Zoom-Termine auch enthalten?"
+      ]
+    },
+    {
+      "id": "S32-06-checkout",
+      "lines": [
+        "Ich will die 5-Wochen-Startphase, nicht den Selbststarter.",
+        "Ich möchte jetzt ohne Verkaufscall direkt kaufen."
+      ]
+    },
+    {
+      "id": "S32-07-partner-pending",
+      "lines": [
+        "Die Startphase klingt gut und 499 Euro sind bei uns eine gemeinsame Entscheidung.",
+        "Ich möchte kaufen, aber mein Mann muss noch zustimmen."
+      ]
+    },
+    {
+      "id": "S32-08-partner-agreed",
+      "lines": [
+        "Ich habe die 5-Wochen-Startphase mit meiner Partnerin besprochen.",
+        "Sie ist einverstanden. Wo kann ich jetzt die 5-Wochen-Startphase kaufen?"
+      ]
+    },
+    {
+      "id": "S32-09-hard-budget",
+      "lines": [
+        "Ich will die 5-Wochen-Begleitung eigentlich gern.",
+        "Aber das Geld reicht nicht, bitte auch kein günstigeres Kaufangebot."
+      ]
+    },
+    {
+      "id": "S32-10-upgrade",
+      "lines": [
+        "Nach den fünf Wochen könnte ich eventuell sechs Monate weitermachen.",
+        "Werden die 499 Euro dann garantiert komplett angerechnet?"
+      ]
+    },
+    {
+      "id": "S32-11-optout",
+      "lines": [
+        "Ich will mich erst mal informieren.",
+        "Bitte keine weiteren Fragen, Angebote oder Nachfassnachrichten."
+      ]
+    },
+    {
+      "id": "S32-12-payment",
+      "lines": [
+        "Ich habe gerade auf Kaufen gedrückt.",
+        "Ist meine Zahlung angekommen und wurde mein Coaching freigeschaltet?"
+      ]
+    }
+  ]
+}
