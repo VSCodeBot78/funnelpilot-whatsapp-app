@@ -431,8 +431,11 @@ export function isPeteChestBreathingEmergency(text: string): boolean {
 export function isPeteNonMedicalPostPregnancyBodyImage(text: string): boolean {
   const input = norm(text);
   const history = /\b(?:seit|nach)\s+(?:(?:den|der|meiner|meinen)\s+)?schwangerschaft\w*\b/.test(input) ||
-    /\b(?:seit|nach)\s+(?:der|den)\s+geburt\w*\b/.test(input);
-  const bodyImage = /\b(?:scham\w*|unsicher|unwohl|korperbild|selbstbild|bauch|figur)\b/.test(input);
+    /\b(?:seit|nach)\s+(?:der|den)\s+geburt\w*\b/.test(input) ||
+    // Historical pregnancy phrasing, not present pregnancy.
+    /\b(?:meine|die)?\s*(?:letzte|fruhere|vorige)\s+schwangerschaft\s+(?:liegt|ist)(?:\s+schon)?\s+(?:\d+|ein|zwei|drei|vier|funf)\s+jahre?\s+(?:zuruck|her)\b/.test(input);
+  const bodyImage = /\b(?:scham\w*|unsicher|unwohl|korperbild|selbstbild|bauch|figur)\b/.test(input) ||
+    /\bfuhle\s+mich\s+(?:in\s+(?:meinem|dem)\s+korper\s+)?nicht\s+wohl\b/.test(input);
   const redFlag = /\b(?:schwanger|atemnot|luftnot|kaum\s+luft|brustschmerz\w*|brustenge|herzschmerz\w*|blutung\w*|schmerz\w*|suizid\w*|selbstverletz\w*|medikament\w*|krankheit\w*|therapie|diagnose|akut\w*|fieber)\b/.test(input);
   return history && bodyImage && !redFlag;
 }
