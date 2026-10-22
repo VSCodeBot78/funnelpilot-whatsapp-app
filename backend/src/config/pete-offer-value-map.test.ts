@@ -33,6 +33,10 @@ test("coach offer-value mapping persists and informs Pete while claims stay nonb
   assert.match(prompt, /Weniger Start-Stopp/);
   assert.match(prompt, /Leistung, ihren praktischen Vorteil/);
   assert.match(prompt, /KEIN Beleg fuer eine Erfolgsgarantie/);
+  assert.match(prompt, /BESTÄTIGTER 5-WOCHEN-ANGEBOTSUMFANG/);
+  assert.match(prompt, /Wöchentlich 45 Minuten 1:1-Coaching per Zoom/i);
+  assert.match(prompt, /Power Walk & Call/);
+  assert.match(prompt, /keine Erfolgsgarantie/i);
   const maxed = writeSettings({ offerValueMap: "X".repeat(6000) });
   assert.equal(maxed.offerValueMap.length, 5000);
   assert.equal(readSettings().offerValueMap.length, 5000);
