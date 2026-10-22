@@ -88,10 +88,10 @@ export function getPeteVerifiedTransactionAnswer(
   // customer message naming an offer, never an old campaign or guess.
   const lastOfferMention = (state.messages ?? []).slice(0, -1).slice(-8).reverse()
     .find(message => message.role === "user" &&
-      /\b(?:selbststarter|5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(norm(message.text)));
+      /\b(?:selbststarter|5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s-]*(?:euro|€))\b/.test(norm(message.text)));
   const lastOfferText = norm(lastOfferMention?.text ?? "");
   const previousFiveWeekSelected =
-    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(lastOfferText) &&
+    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s-]*(?:euro|€))\b/.test(lastOfferText) &&
     (!/\bselbststarter\b/.test(lastOfferText) ||
       /\b(?:nicht|kein(?:en)?)\s+(?:den\s+)?selbststarter\b/.test(lastOfferText));
   const previousSelfstarterSelected =
