@@ -57,7 +57,7 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(isPeteChestBreathingEmergency("Ich habe Brustschmerz und bekomme schlecht Luft."), true);
     const out = await send("v41-h12", "Ich habe Brustschmerz und bekomme schlecht Luft.");
     assert.match(out.text ?? "", /112/);
-    assert.match(out.text ?? "", /nicht weiter|trainiere nicht/i);
+    assert.match(out.text ?? "", /Nicht trainieren/i);
     assert.doesNotMatch(out.text ?? "", /energie|bauch|stress\/schlaf|was ist dir|was möchtest/i);
     assert.equal(out.state.answers.peteReplySource, "guarded_safety");
     assert.equal(out.state.owner, "human");
