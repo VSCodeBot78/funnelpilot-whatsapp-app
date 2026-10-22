@@ -22,6 +22,25 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  // One additional genuinely new synthetic holdout batch, at most USD0.80.
+  // It is not a re-run or reset of either settled Policy-v4 batch.
+  if (process.env.PETE_POLICY_V4_HOLDOUT_QA_20261022 === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
+        process.env.PETE_POLICY_V4_HOLDOUT_APPROVAL !== "once-sol-v4-holdout-20261022-usd0p80" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_POLICY_V4_QA_20261022 === "true" ||
+        process.env.PETE_POLICY_V4B_QA_20261022 === "true" ||
+        process.env.PETE_YODA3_QA_20261021 === "true" ||
+        process.env.PETE_QUALITY_QA_20261021 === "true")
+      throw new PeteBudgetStop("unavailable");
+    return 800_000;
+  }
   // Second owner-approved one-time Sol QA. Never reuses the first reservation.
   if (process.env.PETE_POLICY_V4B_QA_20261022 === "true") {
     if (process.env.GITHUB_ACTIONS !== "true" ||
