@@ -21,6 +21,22 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  // One-off GPT-6.1 Sol synthetic smoke run. No live sends and no widened global cap.
+  if (process.env.PETE_SOL_SMOKE_QA_20261022 === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/pete-sol-model-smoke-20261022" ||
+        process.env.PETE_SOL_SMOKE_APPROVAL !== "one-off-20261022-usd1p5" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_YODA3_QA_20261021 === "true" ||
+        process.env.PETE_QUALITY_QA_20261021 === "true")
+      throw new PeteBudgetStop("unavailable");
+    return 1_500_000;
+  }
   if (process.env.PETE_YODA3_QA_20261021 === "true") {
     if (process.env.GITHUB_ACTIONS !== "true" ||
         process.env.GITHUB_REF !== "refs/heads/pete-yoda3-retest-20261021" ||
@@ -80,6 +96,7 @@ const MODEL = "gpt-4.1-mini"; // backward compatible default
 const MODEL_PRICES = {
   "gpt-4.1-mini": { input: 0.4, output: 1.6 },
   "gpt-5.4": { input: 2.5, output: 15.0 },
+  "gpt-6.1-sol": { input: 2.0, output: 10.0 },
 } as const;
 type PricedModel = keyof typeof MODEL_PRICES;
 function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
@@ -89,6 +106,7 @@ function priceFor(name: string): typeof MODEL_PRICES[PricedModel] | null {
 const MAX_OUTPUT_BY_MODEL: Record<PricedModel, number> = {
   "gpt-4.1-mini": 400,
   "gpt-5.4": 800,
+  "gpt-6.1-sol": 1200,
 };
 const LEDGER_FILE = path.join(env.DATA_DIR, "pete-api-budget.json");
 const LOCK_FILE = path.join(env.DATA_DIR, "pete-api-budget.lock");
