@@ -3,7 +3,7 @@ import path from "node:path";
 // Owner approved up to USD5 new SolSmoke QA. This one-time batch holds only USD2
 // because the existing project-wide USD8 ledger has USD2.990186 remaining.
 // Never lift or reset the project-wide ceiling without separate approval.
-const operation=process.argv[2], ref="refs/heads/pete-sol-smoke-20261022";
+const operation=process.argv[2], ref="refs/heads/pete-sol-model-smoke-20261022";
 const key="approved-sol-smoke-20261022-usd1p5-under-usd8";
 const hold=1_500_000, file=path.resolve("budget-ledger/phase3-budget-ledger.json");
 if (process.argv.length!==3 || !["reserve","settle"].includes(operation) ||
