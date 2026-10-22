@@ -1293,7 +1293,7 @@ export async function processIncomingMessage(
     patchAnswers(state, { peteReplySource: "guarded_safety" });
     patchFlags(state, { peteRuntimeHandoffRequested: true, peteRuntimeHandoffActive: true });
     takeOverByHuman(state);
-    const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Trainiere nicht weiter und fahre nicht selbst.";
+    const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Nicht trainieren und nicht selbst fahren.";
     appendAssistantMessage(state, urgent);
     persistConversationState(state);
     return { text: urgent, nextStep: state.currentStep,
