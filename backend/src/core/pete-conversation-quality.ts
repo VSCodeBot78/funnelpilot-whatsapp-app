@@ -485,6 +485,39 @@ export function peteSafeRoutineRepairReply(state: ConversationState): string | n
   return "Wenn dein Kind krank ist, darf das Training pausieren. Sobald wieder Luft ist, steigst du mit einer kurzen Einheit ein, statt verpasste Einheiten nachzuholen. So bleibt die Routine auch in unruhigen Familienwochen machbar.";
 }
 
+/**
+ * Policy v4.1. The model sometimes sets needsHuman=true for ordinary
+ * method/scope questions. Respond with ONLY independently verified high-level
+ * facts, instead of permanently assigning the chat to Jochen. Never use the
+ * model's untrusted answer to form this fallback, and never guess package
+ * terms or claim a guaranteed coaching outcome.
+ *
+ * Scope is deliberately narrow: a person who explicitly requests human
+ * ownership, a sensitive transaction, or medical advice still requires the
+ * normal engine's guarded route.
+ */
+export function peteSafeNoncriticalExplanationReply(state: ConversationState): string | null {
+  const turns = (state.messages ?? []).filter(message => message.role === "user");
+  const latest = norm(String(turns.at(-1)?.text ?? ""));
+  if (!latest || latest.length > 600) return null;
+  const context = norm(turns.slice(-2).map(message => String(message.text ?? "")).join(" "));
+  if (/\b(?:brust|atemnot|luftnot|schlecht luft|kaum luft|schmerz\w*|fieber|krankheit|medikament\w*|insulin|diagnos\w*|therapie|behandlung|arzt|notfall|suizid|selbstverletz\w*|schwanger|krise|akut|dosierung|blutdruck|medizin\w*|rezept\w*|widerruf|datenschutz|losch\w*|rechnung|zahlung|bezahlt|zugang fehlt|ratenzahlung|stop|nicht mehr schreiben|lass mich in ruhe)\b/.test(context)) return null;
+  if (/\b(?:jochen|mensch|personlich)\b.{0,50}\b(?:ubernimm\w*|ubernehmen|antworten|schreiben|hier im chat|direkt sprechen)\b/.test(latest) ||
+      /\b(?:bitte|mochte|will)\s+(?:mit\s+)?(?:jochen|einem menschen)\b/.test(latest)) return null;
+
+  // We know the offer orientation, NOT required intake calls or exact timings.
+  if (/\b(?:wie|was)\b.{0,42}\b(?:einstieg|start|anmeldung|anfang)\b.{0,45}\b(?:strukturiert|lauft|beginnt|funktioniert|organisiert|ablauf)\b/.test(latest) ||
+      /\b(?:wie ist der einstieg strukturiert|wie lauft der einstieg|wie beginnt die begleitung|wie starte ich mit euch)\b/.test(latest)) {
+    return "Für die persönliche Begleitung gibt es die 5-Wochen-Startphase. Dabei geht es um Bewegung, Ernährung sowie Schlaf und Stress im Elternalltag. Wie die Anmeldung oder der genaue Start organisiert ist, kann ich dir hier nicht verbindlich sagen. Einen Pflicht-Call möchte ich dir nicht behaupten.";
+  }
+  // Skepticism is not a request to transfer chat ownership.
+  if (/\b(?:wie|warum)\b.{0,85}\b(?:unterbrechungen|uberstunden|familie|alltag|dranbleiben|wiedereinstieg)\b.{0,60}\b(?:um|funktioniert|geht|anders)\b/.test(latest) ||
+      /\b(?:wie geht ihr mit unterbrechungen|wie hilft eure methode bei familienchaos|was ist bei euch anders)\b/.test(latest)) {
+    return "Unser Ansatz berücksichtigt, dass bei Eltern durch Kinder oder Überstunden immer wieder etwas ausfällt. Entscheidend ist ein machbarer Wiedereinstieg statt alles nachholen zu wollen. Fitness, Ernährung, Schlaf und Stress betrachten wir gemeinsam. Wie das in einer persönlichen Begleitung konkret umgesetzt wird, müsste vor einer Entscheidung geklärt werden.";
+  }
+  return null;
+}
+
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {
   const input = norm(latestText);
   if (!/\b(?:geld|budget|finanziell|leisten|verkaufsshow|verkaufsgespr[a-z]*|verkaufsdruck|aufgedrangt|gedrangt)\b/.test(input))
