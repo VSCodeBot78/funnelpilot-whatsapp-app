@@ -211,7 +211,7 @@ export function buildPeteEffectiveInstructions(): string {
     ["marke", settings.companyName, 100],
     ["zielgruppe", settings.companyAudience, 180],
     ["angebot_als_orientierung_keine_verifizierten_preise", settings.companyOfferSummary, 220],
-    ["angebot_leistung_vorteil_kundennutzen_als_coach_angabe", settings.offerValueMap, 3200],
+    ["angebot_leistung_vorteil_kundennutzen_als_coach_angabe", settings.offerValueMap, 5000],
     ["sprachstil", settings.brandVoice, 150],
     ["haeufige_einwaende_als_hinweis_keine_diagnose", settings.customerTopObjections, 360],
     ["qualifikation_als_hinweis_keine_pflichtfragen", settings.qualificationPrompt, 450],
