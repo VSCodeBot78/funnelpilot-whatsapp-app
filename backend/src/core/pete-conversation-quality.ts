@@ -116,8 +116,16 @@ export function getPeteVerifiedTransactionAnswer(
   const asksFiveWeekDetails =
     /\b(?:was bekomme|was beinhaltet|welche leistungen|wie viele|wie oft)\b/.test(input);
   const hasFiveWeekBudgetBarrier =
-    /\b(?:kein(?:e|en)?\s+(?:geld|budget)|nicht\s+leisten|zu\s+teuer|sprengt\s+(?:mein|das)\s+budget)\b/.test(input);
-  if (namesFiveWeek && explicitlyBuysFiveWeek && !hasFiveWeekBudgetBarrier &&
+    /\b(?:kein(?:e|en)?\s+(?:geld|budget)|nicht\s+leisten|zu\s+teuer|sprengt\s+(?:mein|das)\s+budget|geld\s+reicht\s+nicht|nicht\s+bezahlbar|nicht\s+finanzierbar)\b/.test(input);
+  // A conditional "I want to buy, but first..." is not a finalized purchase
+  // decision. Leave an unresolved joint decision or reflection to the
+  // regular respectful conversation path, never force a checkout link.
+  const hasPendingFiveWeekDecision =
+    /\b(?:erst|noch|vorher|zuerst|muss)\b.{0,75}\b(?:frau|mann|partner(?:in)?|ehepartner(?:in)?)\b.{0,35}\b(?:fragen|besprechen|sprechen|absprechen|zustimm\w*)\b/.test(input) ||
+    /\bohne\b.{0,55}\b(?:frau|mann|partner(?:in)?)\b.{0,35}\b(?:fragen|einverstandnis|zustimmung)\b/.test(input) ||
+    /\b(?:erst|noch|muss)\b.{0,35}\b(?:daruber|druber)\b.{0,20}\bschlafen\b/.test(input);
+  if (namesFiveWeek && explicitlyBuysFiveWeek &&
+      !hasFiveWeekBudgetBarrier && !hasPendingFiveWeekDecision &&
       !asksFiveWeekDetails && !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input) &&
       !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
     return {
