@@ -90,7 +90,28 @@ export function getPeteVerifiedTransactionAnswer(
     /\b(?:wie viele|wieviele|anzahl|wie oft)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*)\b/.test(input) &&
     /\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung)\b/.test(input);
   if (asksExactPersonalCalls) {
-    return { text: "Eine verbindliche Anzahl persönlicher Videoanrufe pro Woche ist in den geprüften Angebotsdaten nicht hinterlegt. Ich möchte dir nichts zusagen, was nicht bestätigt ist. Den genauen Umfang kannst du vor einer Entscheidung mit Jochen klären.", nextPhase: "info" };
+    // The current Nutrilize 5-week checkout explicitly verifies the cadence.
+    // Do not infer other contract terms or a particular number of completed calls.
+    return { text: "Bei der persönlichen 5-Wochen-Startphase sind wöchentlich 45 Minuten 1:1-Coaching per Zoom enthalten. Dazu gibt es einmal pro Woche den Power Walk & Call für kurze Fragen und Motivation.", nextPhase: "info" };
+  }
+
+  // A direct question about what the 499 EUR coaching actually includes must
+  // be answered with the founder-verified deliverables before any sales pitch.
+  // This applies only to the personal five-week offer, never the DIY starter.
+  const asksFiveWeekScope =
+    /\b(?:was bekomme|was beinhaltet|was ist (?:alles )?(?:enthalten|dabei|drin)|welche leistungen|leistungsumfang|was umfasst)\b/.test(input) &&
+    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s]*(?:euro|€))\b/.test(input) &&
+    !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input);
+  if (asksFiveWeekScope && !explicitlyDeclinesPaidOffers) {
+    return {
+      text: "Die persönliche 5-Wochen-Startphase für " +
+        OFFER_TRUTH.coachingEntry.priceText + " beinhaltet " +
+        OFFER_TRUTH.coachingEntry.includedServices.join(", ") +
+        ". Der Start ist innerhalb von " +
+        OFFER_TRUTH.coachingEntry.startSelectableWithinDays +
+        " Tagen wählbar. Ergebnisse sind nicht garantiert.",
+      nextPhase: "info",
+    };
   }
 
   // A concrete purchase request must lead to the VERIFIED product URL now.
@@ -600,7 +621,7 @@ export function peteSafeNoncriticalExplanationReply(state: ConversationState): s
   // We know the offer orientation, NOT required intake calls or exact timings.
   if (/\b(?:wie|was)\b.{0,42}\b(?:einstieg|start|anmeldung|anfang)\b.{0,45}\b(?:strukturiert|lauft|beginnt|funktioniert|organisiert|ablauf)\b/.test(latest) ||
       /\b(?:wie ist der einstieg strukturiert|wie lauft der einstieg|wie beginnt die begleitung|wie starte ich mit euch)\b/.test(latest)) {
-    return "Für die persönliche Begleitung gibt es die 5-Wochen-Startphase. Dabei geht es um Bewegung, Ernährung sowie Schlaf und Stress im Elternalltag. Wie die Anmeldung oder der genaue Start organisiert ist, kann ich dir hier nicht verbindlich sagen. Einen Pflicht-Call möchte ich dir nicht behaupten.";
+    return "Die 5-Wochen-Startphase startet mit einer persönlichen Analyse. Dazu gehören wöchentlich 45 Minuten 1:1-Coaching via Zoom, individuelle Pläne über die App und erweiterter Chat-Support. Der Start ist innerhalb von 14 Tagen wählbar. Einen Pflicht-Call vor dem Kauf gibt es im bestätigten Kaufweg nicht.";
   }
   // Skepticism is not a request to transfer chat ownership.
   if (/\b(?:wie|warum)\b.{0,85}\b(?:unterbrechungen|uberstunden|familie|alltag|dranbleiben|wiedereinstieg)\b.{0,60}\b(?:um|funktioniert|geht|anders)\b/.test(latest) ||
@@ -610,7 +631,7 @@ export function peteSafeNoncriticalExplanationReply(state: ConversationState): s
       (/\b(?:was passiert|was macht ihr|wie reagiert ihr|wie geht ihr|wie funktioniert)\b/.test(latest) &&
        /\b(?:kinderbetreuung|betreuung|familienalltag|familie|kinder|woche|zeitplan)\b/.test(latest) &&
        /\b(?:ausfall\w*|fallt aus|unterbrech\w*|durcheinander\w*|spontan|chaos)\b/.test(latest))) {
-    return "Unser Ansatz berücksichtigt, dass bei Eltern durch Kinder oder Überstunden immer wieder etwas ausfällt. Entscheidend ist ein machbarer Wiedereinstieg statt alles nachholen zu wollen. Fitness, Ernährung, Schlaf und Stress betrachten wir gemeinsam. Wie das in einer persönlichen Begleitung konkret umgesetzt wird, müsste vor einer Entscheidung geklärt werden.";
+    return "Wenn durch Kinder oder Überstunden etwas ausfällt, ist ein machbarer Wiedereinstieg wichtig. In der 5-Wochen-Startphase gibt es dafür individuelle Trainings- und Ernährungspläne, wöchentlich 45 Minuten 1:1-Coaching per Zoom und erweiterten Chat-Support. Das ist Begleitung bei der Umsetzung, keine Ergebnisgarantie.";
   }
   return null;
 }
