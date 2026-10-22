@@ -4,7 +4,7 @@
  * No API traffic without BOTH the env deployment gate and persisted consent.
  * All hard safety/ownership checks stay in conversation-engine before this call.
  */
-import { containsGeneratedPrice } from "../config/offer-truth.js";
+import { OFFER_TRUTH, containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.js";
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
@@ -220,7 +220,13 @@ export function buildPeteEffectiveInstructions(): string {
   const configured = Object.fromEntries(dashboardHints
     .map(([key, value, limit]) => [key, String(value ?? "").trim().slice(0, limit)] as const)
     .filter(([, value]) => Boolean(value)));
-  const coreRules = PETE_SYSTEM_INSTRUCTIONS + "\n" + PETE_SETTER_MENTOR_PLAYBOOK;
+  const verifiedFiveWeekFacts =
+    "\nBESTÄTIGTER 5-WOCHEN-ANGEBOTSUMFANG (aus aktuellem Coach-Checkout, keine Erfolgsgarantie): " +
+    OFFER_TRUTH.coachingEntry.includedServices.join("; ") +
+    "; Start innerhalb von " + OFFER_TRUTH.coachingEntry.startSelectableWithinDays +
+    " Tagen wählbar. Diese Fakten auf konkrete Leistungsfragen direkt erklären und mit dem vom Lead genannten Alltag verknüpfen. Ein einzelner Vorteil ist kein versprochener Erfolg. Garantien, Zahlungsbedingungen, Rabatte und Upgrades niemals ohne bestätigte Bedingungen behaupten.";
+  const coreRules = PETE_SYSTEM_INSTRUCTIONS + "\n" + PETE_SETTER_MENTOR_PLAYBOOK +
+    verifiedFiveWeekFacts;
   if (!Object.keys(configured).length) return coreRules;
   return coreRules +
     "\nDASHBOARD-KONTEXT (interne Coach-Konfiguration, keine Kundenaussagen): " +
