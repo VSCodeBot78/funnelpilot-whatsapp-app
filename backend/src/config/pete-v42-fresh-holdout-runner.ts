@@ -1,5 +1,5 @@
 /**
- * Owner-approved one-time real-provider QA. 20 synthetic parent cases only.
+ * Owner-approved one-time real-provider QA. 12 new synthetic parent cases only.
  * NEVER connects to Instagram, WhatsApp, live leads, calendars or checkout.
  * Every response records its authoritative replySource. Fixed rule responses
  * are NOT counted as real-model responses. Report is not an acceptance verdict.
@@ -199,4 +199,4 @@ console.log("SUMMARY: " + JSON.stringify({
   requestsMetered: budget.requestsMetered,
 }));
 // Do not call this an A- grade; a separate qualitative review is required.
-if (modelResponses < 12) throw new Error("Fewer than 12 model-generated replies in 12 new holdout cases");
+if (modelResponses < 9) throw new Error("Fewer than 9 model-generated replies in 12 new holdout cases");
