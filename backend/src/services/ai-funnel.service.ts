@@ -2,6 +2,7 @@ import { containsGeneratedPrice, isUnverifiedLongTermPriceQuestion } from "../co
 import { AI_OBJECTION_FRAMEWORK } from "../config/ai-objection-framework.js";
 import type { AiFunnelReply, AiObjectionCategory } from "../types/ai-funnel.types.js";
 import { readSettings } from "./settings-store.js";
+import { reservePeteBudget, settlePeteBudget } from "./pete-api-budget.service.js";
 
 type AiReplyParams = {
   category: AiObjectionCategory;
@@ -49,7 +50,10 @@ function getModel(): string {
 
 function isAiEnabled(): boolean {
   // A configured API key alone must never activate paid AI requests.
-  return Boolean(getApiKey()) && readSettings().aiEnabled === true;
+  // Legacy ABC funnel is not Pete's normal chat. Explicit opt-in plus shared spend guard only.
+  return Boolean(getApiKey()) && readSettings().aiEnabled === true &&
+    process.env.PETE_LLM_API_CALLS_APPROVED === "true" &&
+    process.env.PETE_LEGACY_STRUCTURED_AI_ENABLED === "true";
 }
 
 function extractOutputText(responseJson: any): string | null {
@@ -210,9 +214,36 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
     return null;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const model = getModel();
+  const maxOutputTokens = 1200;
+  const requestBody = JSON.stringify({
+    model,
+    store: false,
+    max_output_tokens: maxOutputTokens,
+    reasoning: { effort: "low" },
+    input: [
+      { role: "system", content: buildSystemPrompt(params) },
+      { role: "user", content: buildUserPrompt(params) },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "ai_funnel_reply",
+        strict: true,
+        schema: buildSchema(),
+      },
+    },
+  });
+  // No historical funnel path may bypass the same metered authorization as natural Pete.
+  let reservation: string;
+  try {
+    reservation = reservePeteBudget({ model, requestBody, maxOutputTokens });
+  } catch {
+    return null;
+  }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
@@ -221,27 +252,7 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
         "Content-Type": "application/json",
         Authorization: `Bearer ${getApiKey()}`,
       },
-      body: JSON.stringify({
-        model: getModel(),
-        input: [
-          {
-            role: "system",
-            content: buildSystemPrompt(params),
-          },
-          {
-            role: "user",
-            content: buildUserPrompt(params),
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "ai_funnel_reply",
-            strict: true,
-            schema: buildSchema(),
-          },
-        },
-      }),
+      body: requestBody,
     });
 
     if (!response.ok) {
@@ -249,6 +260,7 @@ async function callStructuredAi(params: AiReplyParams): Promise<AiFunnelReply | 
     }
 
     const json = await response.json();
+    settlePeteBudget(reservation, json?.usage);
     const text = extractOutputText(json);
 
     if (!text) {
