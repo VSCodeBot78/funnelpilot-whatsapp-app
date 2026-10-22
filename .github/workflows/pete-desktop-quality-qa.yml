@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/pete-qa-stop-and-appointments-20261021
+      - feat/pete-sol-dashboard-policy-20261022
   pull_request:
     branches:
       - feat/pete-desktop-flow-builder-draft-20261017
