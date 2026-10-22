@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { env } from "../config/env.js";
+import { readSettings } from "./settings-store.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
 
 const USD_MICROS_CAP = 8_000_000; // Existing project-wide internal cap.
@@ -220,7 +221,7 @@ export function getPeteBudgetStatus() {
   const qaRemaining = qaCap === null ? globalRemaining : Math.max(0, qaCap - data.committedMicroUsd);
   const remaining = Math.min(approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining, qaRemaining);
   return {
-    model: approval.active ? "gpt-5.4" : (process.env.OPENAI_MODEL?.trim() || MODEL),
+    model: approval.active ? "gpt-5.4" : readSettings().aiModel,
     hardCapUsd: USD_MICROS_CAP / 1_000_000,
     priorConfirmedUsd: prior / 1_000_000,
     committedUsd: (prior + data.committedMicroUsd) / 1_000_000,
