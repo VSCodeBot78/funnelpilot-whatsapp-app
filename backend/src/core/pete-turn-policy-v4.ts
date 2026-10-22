@@ -71,7 +71,11 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     /\b(?:nicht|kein(?:e|en|es)?|nie|niemals)\b.{0,35}\b(?:kaufen|bestellen|link|kaufweg|checkout)\b/.test(latest) ||
     /\b(?:link|kaufweg|checkout)\b.{0,25}\b(?:nicht|kein(?:e|en|es)?)\s+(?:noch\s*mal|nochmal|mehr\s+(?:senden|schicken)|schicken|senden)\b/.test(latest);
   if (explicitlyWantsCheckout && !negatedCheckout) {
-    return { ...base, action: "offer_navigation", reason: "explicit_purchase_or_link", noNewQuestion: true };
+    // A product choice may still be missing. Allow at most ONE clarifying
+    // question in that case; an identified offer or explicit link needs none.
+    const hasOfferOrLink = /\b(?:selbststarter|startphase|coaching|5[\s-]*wochen|link|kaufweg|checkout)\b/.test(latest);
+    return { ...base, action: "offer_navigation", reason: "explicit_purchase_or_link",
+      noNewQuestion: hasOfferOrLink };
   }
 
   // Schichtarbeit is a discovery opportunity, not an invitation to provide
