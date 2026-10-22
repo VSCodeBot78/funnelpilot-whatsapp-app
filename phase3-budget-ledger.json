@@ -1,8 +1,8 @@
 {
   "version": 1,
   "capMicroUsd": 8000000,
-  "spentMicroUsd": 6040678,
-  "reservedMicroUsd": 1250000,
+  "spentMicroUsd": 6610480,
+  "reservedMicroUsd": 0,
   "completedBatches": [
     {
       "id": "38093371914-1-batch-0",
@@ -228,14 +228,14 @@
       "id": "pete-policy-v4-sol-20261022-usd1p5",
       "costMicroUsd": 584400,
       "completedAt": "2026-10-22T08:47:37.059Z"
+    },
+    {
+      "id": "pete-policy-v4b-sol-20261022-usd1p25",
+      "costMicroUsd": 569802,
+      "completedAt": "2026-10-22T08:58:19.138Z"
     }
   ],
-  "activeReservations": {
-    "pete-policy-v4b-sol-20261022-usd1p25": {
-      "heldMicroUsd": 1250000,
-      "createdAt": "2026-10-22T08:55:44.291Z"
-    }
-  },
+  "activeReservations": {},
   "createdAt": "2026-10-11",
   "note": "Phase 3 synthetic GPT-4.1 mini tests; budget is cumulative across GitHub Actions runs; do not reset.",
   "qualityRun20261021": {
@@ -286,6 +286,7 @@
   "policyV4bSol_20261022": {
     "runId": "39751415417",
     "reserveMicroUsd": 1250000,
-    "status": "reserved"
+    "status": "settled",
+    "chargedMicroUsd": 569802
   }
 }
