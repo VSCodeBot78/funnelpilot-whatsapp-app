@@ -533,7 +533,12 @@ export function peteSafeNoncriticalExplanationReply(state: ConversationState): s
   }
   // Skepticism is not a request to transfer chat ownership.
   if (/\b(?:wie|warum)\b.{0,85}\b(?:unterbrechungen|uberstunden|familie|alltag|dranbleiben|wiedereinstieg)\b.{0,60}\b(?:um|funktioniert|geht|anders)\b/.test(latest) ||
-      /\b(?:wie geht ihr mit unterbrechungen|wie hilft eure methode bei familienchaos|was ist bei euch anders)\b/.test(latest)) {
+      /\b(?:wie geht ihr mit unterbrechungen|wie hilft eure methode bei familienchaos|was ist bei euch anders)\b/.test(latest) ||
+      // The user asks how the approach handles a disrupted family schedule.
+      // This is ordinary method information, not a medical or transaction case.
+      (/\b(?:was passiert|was macht ihr|wie reagiert ihr|wie geht ihr|wie funktioniert)\b/.test(latest) &&
+       /\b(?:kinderbetreuung|betreuung|familienalltag|familie|kinder|woche|zeitplan)\b/.test(latest) &&
+       /\b(?:ausfall\w*|fallt aus|unterbrech\w*|durcheinander\w*|spontan|chaos)\b/.test(latest))) {
     return "Unser Ansatz berücksichtigt, dass bei Eltern durch Kinder oder Überstunden immer wieder etwas ausfällt. Entscheidend ist ein machbarer Wiedereinstieg statt alles nachholen zu wollen. Fitness, Ernährung, Schlaf und Stress betrachten wir gemeinsam. Wie das in einer persönlichen Begleitung konkret umgesetzt wird, müsste vor einer Entscheidung geklärt werden.";
   }
   return null;
