@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 if (process.env.GITHUB_ACTIONS !== "true" ||
-    process.env.GITHUB_REF !== "refs/heads/pete-sol-smoke-20261022" ||
+    process.env.GITHUB_REF !== "refs/heads/pete-sol-model-smoke-20261022" ||
     process.env.PETE_SOL_SMOKE_QA_20261022 !== "true" ||
     process.env.PETE_SOL_SMOKE_APPROVAL !== "one-off-20261022-usd1p5" ||
     process.env.PETE_QUALITY_QA_20261021 === "true" ||
