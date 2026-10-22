@@ -149,10 +149,11 @@ export function useSettingsConfig({
         return null;
       }
 
-      const savedSettings = await saveSettingsToApi(settings);
+      const savedSettings = await saveSettingsToApi({ ...settings, aiModel: normalizePeteDashboardModel(settings.aiModel) });
       const mergedSettings = {
         ...defaultSettings,
         ...savedSettings,
+        aiModel: normalizePeteDashboardModel(savedSettings?.aiModel),
       };
 
       setSettings(mergedSettings);
@@ -191,6 +192,7 @@ export function useSettingsConfig({
       const mergedSettings = {
         ...defaultSettings,
         ...resetData,
+        aiModel: normalizePeteDashboardModel(resetData?.aiModel),
       };
 
       setSettings(mergedSettings);
