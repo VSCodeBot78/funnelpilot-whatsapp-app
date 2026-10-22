@@ -329,8 +329,14 @@
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
     "usedMicroUsd": 800946,
-    "reservedMicroUsd": 0,
-    "reservations": {},
+    "reservedMicroUsd": 250000,
+    "reservations": {
+      "pete-v42-pregnancy-smoke-20261022-usd0p25": {
+        "runId": "39772071324",
+        "holdMicroUsd": 250000,
+        "createdAt": "2026-10-22T11:38:26.784Z"
+      }
+    },
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
