@@ -9,7 +9,7 @@ function refusesQuestions(value: string): boolean {
   return /\bkeine\s+(?:(?:weiteren?|zusatzlichen?|neuen?|mehr)\s+)?nachfragen\b/.test(value) ||
     /\bkeine\s+(?:weiteren?|neuen?|zusatzlichen?|mehr)\s+fragen\b/.test(value) ||
     /\b(?:bitte\s+keine\s+fragen\s+mehr|keine\s+fragen\s+mehr\s+bitte)\b/.test(value) ||
-    /\bkeine\s+fragen\s+mehr\b/.test(value) ||
+    /\b(?:will|mochte)\b.{0,40}\bkeine\s+fragen\s+mehr\b/.test(value) ||
     /\b(?:hor|hort)\s+(?:bitte\s+)?auf[,\s]+(?:mich\s+)?auszufragen\b/.test(value) ||
     /\b(?:ich\s+)?(?:will|mochte|brauche)\s+(?:jetzt\s+)?keine\s+fragen\b/.test(value) ||
     /\b(?:nicht|ohne)\s+(?:dauernd\s+|standig\s+|weiter\s+)?ausgefragt\b/.test(value) ||
