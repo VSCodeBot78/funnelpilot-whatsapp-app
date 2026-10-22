@@ -39,7 +39,8 @@ test("Policy v4.3: no unpaid shift nutrition plan, qualify the parent-day instea
 test("Policy v4: never prescribe packed snacks twice if breaks are the issue", () => {
   const p = plan("Mein Essen habe ich schon vorbereitet und dabei, aber meine Pausen fallen aus.",
     "Training ist nicht mein Problem.");
-  assert.equal(p.action, "concrete_help");
+  assert.equal(p.action, "clarify");
+  assert.equal(p.reason, "shift_day_discovery");
   assert.equal(p.alreadyHasPackedFood, true);
   assert.match(explainPeteTurnV4(p), /NICHT nochmal Essen mitnehmen/);
 });
@@ -95,7 +96,7 @@ test("Policy v4 prioritizes four proven business-case fixes", () => {
     const result = plan(...lead);
     assert.equal(result.action, "direct_answer");
     assert.equal(result.reason, expected);
-    assert.match(explainPeteTurnV4(result), /Antwort|Einstieg|Bei stressbedingtem Abendessen/);
+    assert.match(explainPeteTurnV4(result), /Antwort|Einstieg|Bei stressbedingtem Abendessen/i);
   }
 });
 
