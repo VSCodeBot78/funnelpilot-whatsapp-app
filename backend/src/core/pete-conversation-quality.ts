@@ -180,7 +180,7 @@ export function getPeteVerifiedTransactionAnswer(
   }
   if (asksTimeCommitment && fiveWeekMentioned && !selfstarterMentioned) {
     return {
-      text: "Die Startphase dauert fünf Wochen. Enthalten sind wöchentlich 45 Minuten 1:1-Coaching per Zoom und ein Power Walk & Call pro Woche. Zusätzlich gibt es Workouts, App und Chat-Support. Einen verbindlichen Gesamtzeitaufwand pro Woche kann ich dir nicht nennen, weil er vom individuellen Alltag abhängt.",
+      text: "Die Startphase dauert fünf Wochen. Enthalten sind wöchentlich 45 Minuten 1:1-Coaching per Zoom und ein Power Walk & Call pro Woche. Zusätzlich gibt es Workouts, App und Chat-Support. Ein Gesamtzeitaufwand pro Woche ist nicht verbindlich angegeben, weil er vom individuellen Alltag abhängt.",
       nextPhase: "info",
     };
   }
