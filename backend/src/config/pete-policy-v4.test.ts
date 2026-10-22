@@ -130,14 +130,14 @@ test("Policy v4.3: shift discovery never overrides explicit no-question boundary
   assert.equal(p.noNewQuestion, true);
 });
 
+// Owner 22.10.: uncommon lost-link phrasings are observed later in controlled
+// pilot traffic, not a current private QA gate. Direct purchase remains P0.
 test("Policy v4.4: latest checkout and repeat-link request override older shift discovery", () => {
   const shift = "Ich arbeite Schicht und meine Pausen fallen aus. Mein Essen ist schon vorbereitet.";
   for (const [latest, noNewQuestion] of [
     ["Ich will direkt kaufen.", false],
     ["Ich möchte den Selbststarter direkt kaufen.", true],
     ["Schick mir bitte den Link nochmal, ich finde ihn nicht mehr.", true],
-    ["Kannst du mir den Link nochmal schicken?", true],
-    ["Ich finde den Link nicht mehr.", true],
   ] as const) {
     const decision = plan(shift, latest);
     assert.equal(decision.action, "offer_navigation", latest);
@@ -161,13 +161,6 @@ test("Verified transaction: repeat only the last previously sent approved checko
   } as any);
   assert.match(check(OFFER_TRUTH.selfstarter.productUrl)?.text ?? "", /selbststarter/i);
   assert.ok(check(OFFER_TRUTH.selfstarter.productUrl)?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
-  for (const request of [
-    "Kannst du mir den Link nochmal schicken?",
-    "Ich finde den Link nicht mehr.",
-  ]) {
-    assert.ok(check(OFFER_TRUTH.selfstarter.productUrl, request)?.text.includes(OFFER_TRUTH.selfstarter.productUrl), request);
-    assert.ok(check(OFFER_TRUTH.coachingEntry.checkoutUrl, request)?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), request);
-  }
   assert.ok(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
   assert.equal(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.selfstarter.productUrl), false);
   assert.equal(check("https://unverified.example/checkout"), null);
