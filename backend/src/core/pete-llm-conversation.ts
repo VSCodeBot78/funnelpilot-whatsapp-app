@@ -455,7 +455,8 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     return { kind: "handoff", reason: "not_authorized" };
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
+  // The same normalized model selected in Dashboard settings is used by Pete at runtime.
+  const model = readSettings().aiModel;
   const maxOutputTokens = model === "gpt-5.4" ? 800 : model === "gpt-6.1-sol" ? 1200 : 400;
   const context = buildPeteContext(state);
   // Reserve a conservative worst-case charge BEFORE an external call.
