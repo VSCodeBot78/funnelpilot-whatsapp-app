@@ -70,7 +70,9 @@ export function checkPeteQaAdmission(env, ledger, request) {
   if (extra.reservedMicroUsd !== 0 ||
       extra.usedMicroUsd + micro > extra.conservativeUsdCapMicro ||
       extra.reservations[id] ||
-      extra.batches.some(b => b?.id === id || b?.runId === env.GITHUB_RUN_ID))
+      Object.values(extra.reservations).some(r => r?.ownerApprovalRef === request.ownerApprovalRef) ||
+      extra.batches.some(b => b?.id === id || b?.runId === env.GITHUB_RUN_ID ||
+        b?.ownerApprovalRef === request.ownerApprovalRef))
     throw Error("qa_spending_or_duplicate_denied");
   return { id, micro, runId: env.GITHUB_RUN_ID, testSet: request.testSet };
 }
