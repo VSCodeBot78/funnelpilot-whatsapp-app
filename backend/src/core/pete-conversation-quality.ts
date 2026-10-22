@@ -144,8 +144,8 @@ export function getPeteVerifiedTransactionAnswer(
   }
 
   // A mention of a possible credit is not verified contractual consent.
-  if ((/\b499\b.{0,80}\b(?:anrechn\\w*|gutschreib\\w*)\b/.test(input) ||
-       /\b(?:anrechn\\w*|gutschreib\\w*)\b.{0,85}\b499\b/.test(input)) &&
+  if ((/\b499\b.{0,80}\b(?:anrechn\w*|angerechn\w*|gutschreib\w*)\b/.test(input) ||
+       /\b(?:anrechn\w*|angerechn\w*|gutschreib\w*)\b.{0,85}\b499\b/.test(input)) &&
       /\b(?:garantiert|komplett|voll|sicher|sechs|6[\s-]*monat)\b/.test(input)) {
     return { text: "Eine mögliche Anrechnung der 499 Euro bei einer späteren 6-Monats-Begleitung ist erwähnt. Die aktuell verbindlichen Upgrade- und Anrechnungsbedingungen sind hier aber nicht ausreichend bestätigt. Bitte kläre diese vor einer Entscheidung direkt mit Jochen, damit ich dir keine falsche Vertragszusage mache.", nextPhase: "info" };
   }
