@@ -22,6 +22,22 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  if (process.env.PETE_POLICY_V41_BLIND_QA_20261022 === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
+        process.env.PETE_POLICY_V41_BLIND_APPROVAL !== "once-sol-v41-blind-20261022-usd0p45" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_MOBILE_LAB_ENABLED === "true" ||
+        process.env.PETE_POLICY_V41_FINAL_QA_20261022 === "true" ||
+        process.env.PETE_POLICY_V4_HOLDOUT_QA_20261022 === "true")
+      throw new PeteBudgetStop("unavailable");
+    return 450_000;
+  }
   // Final v4.1 synthetic-only Sol QA; shared persistent USD 8 ledger controls
   // one-time authorization before this local budget cap can be used.
   if (process.env.PETE_POLICY_V41_FINAL_QA_20261022 === "true") {
