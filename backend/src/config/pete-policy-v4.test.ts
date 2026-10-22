@@ -168,6 +168,32 @@ test("Verified transaction: repeat only the last previously sent approved checko
   assert.equal(check(OFFER_TRUTH.coachingEntry.checkoutUrl, "Schick mir den Selbststarter-Link nochmal."), null);
 });
 
+test("Verified five-week buyer gets checkout directly without forced strategy call", async () => {
+  const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
+  const { OFFER_TRUTH } = await import("../config/offer-truth.js");
+  const answer = (text: string) => getPeteVerifiedTransactionAnswer(text,
+    { messages: [{ role: "user", text }] } as any);
+  for (const lead of [
+    "Ich möchte die 5-Wochen-Startphase direkt kaufen.",
+    "Wo kann ich das 5-Wochen-Coaching kaufen?",
+    "Schick mir den Kauf-Link zur 5-Wochen-Begleitung.",
+  ]) {
+    const result = answer(lead);
+    assert.ok(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), lead);
+    assert.doesNotMatch(result.text, /Pflichttermin|Pflichtcall|zuerst ein Gespräch/i);
+  }
+  for (const lead of [
+    "Ich überlege, die 5-Wochen-Startphase zu kaufen.",
+    "Ich möchte die 5-Wochen-Startphase nicht kaufen.",
+    "Ich möchte das 6-Monats-Coaching kaufen.",
+    "Ich möchte das Coaching kaufen.",
+    "Ich möchte die 5-Wochen-Startphase kaufen, aber kann sie mir nicht leisten.",
+  ]) {
+    const result = answer(lead);
+    assert.equal(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl) ?? false, false, lead);
+  }
+});
+
 // The current lead explicitly says training is not the bottleneck. The next
 // step is a single contextual question, never an unsolicited full workout plan.
 test("Policy v4.3: packed food and known training should trigger contextual setting", () => {
