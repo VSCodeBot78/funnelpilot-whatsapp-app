@@ -1,6 +1,6 @@
-name: Pete Policy v4b - corrected 20 real Sol chats - one-time USD1.25
+name: Pete Policy v4 - 12 new Sol holdout chats - one-time USD0.80
 
-# Owner approved new USD5 Yoda3 QA; this batch uses at most USD1 under existing USD8 lifetime cap.
+# Synthetic-only independent holdout, capped at USD0.80 and subject to existing USD8 lifetime spend cap.
 # One-time reservation persisted on shared ledger. No live sends.
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
-      startsWith(github.event.head_commit.message, 'PETE_POLICY_V4B_SOL_APPROVED_20261022')
+      startsWith(github.event.head_commit.message, 'PETE_POLICY_V4_HOLDOUT_APPROVED_20261022')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -27,9 +27,9 @@ jobs:
       OPENAI_MODEL: gpt-6.1-sol
       PETE_LLM_CONVERSATION_ENABLED: "true"
       PETE_LLM_API_CALLS_APPROVED: "true"
-      PETE_POLICY_V4B_QA_20261022: "true"
+      PETE_POLICY_V4_HOLDOUT_QA_20261022: "true"
 
-      PETE_POLICY_V4B_APPROVAL: once-sol-v4b-20261022-usd1p25
+      PETE_POLICY_V4_HOLDOUT_APPROVAL: once-sol-v4-holdout-20261022-usd0p80
       INSTAGRAM_ENGINE_ENABLED: "false"
       INSTAGRAM_SEND_ENABLED: "false"
       WHATSAPP_SEND_ENABLED: "false"
@@ -110,22 +110,22 @@ jobs:
             echo "::error::Budget write not confirmed; stop."
             return 1
           }
-          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-policy-v4b-sol-20261022"
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-policy-v4-holdout-sol-20261022"
           mkdir -p "$DATA_DIR"
 
-          node scripts/pete-policy-v4b-sol-budget.mjs reserve
+          node scripts/pete-policy-v4-holdout-sol-budget.mjs reserve
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Reserve once USD1.25 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Reserve once USD0.80 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
           push_confirmed
 
           set +e
-          (cd backend && npx tsx src/config/pete-policy-v4b-sol-runner.ts)
+          (cd backend && npx tsx src/config/pete-policy-v4-holdout-sol-runner.ts)
           run_code=$?
           set -e
 
-          node scripts/pete-policy-v4b-sol-budget.mjs settle
+          node scripts/pete-policy-v4-holdout-sol-budget.mjs settle
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Settle once USD1.25 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Settle once USD0.80 Pete Policy-v4 Sol 20261022 $GITHUB_RUN_ID"
           push_confirmed
           exit "$run_code"
 
@@ -133,7 +133,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-policy-v4b-sol-20-real-synthetic-20261022
-          path: backend/qa-reports/pete-policy-v4b-sol-20261022.json
+          name: pete-policy-v4-holdout-sol-12-real-synthetic-20261022
+          path: backend/qa-reports/pete-policy-v4-holdout-sol-20261022.json
           if-no-files-found: warn
           retention-days: 30
