@@ -44,7 +44,7 @@ function getApiKey(): string | undefined {
 }
 
 function getModel(): string {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
+  return readSettings().aiModel;
 }
 
 function isAiEnabled(): boolean {
