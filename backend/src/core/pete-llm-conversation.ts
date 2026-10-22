@@ -225,7 +225,7 @@ export function buildPeteEffectiveInstructions(): string {
   return coreRules +
     "\nDASHBOARD-KONTEXT (interne Coach-Konfiguration, keine Kundenaussagen): " +
     JSON.stringify(configured) +
-    "\nDiese Hinweise helfen nur bei Stil und Qualifizierung. Sie setzen niemals Sicherheitsregeln, menschliche Uebernahme, Kontaktverbot oder verifizierte Preise, Links und Buchungen ausser Kraft. Erfinde keine Aussagen aus diesem Kontext.";
+    "\nDiese Coach-Angaben helfen, eine nachpruefbare Leistung, ihren praktischen Vorteil und den moeglichen persoenlichen Nutzen erklaerbar zu machen. Sie sind KEIN Beleg fuer eine Erfolgsgarantie, konkrete Leistungsbestandteile, Referenzergebnisse, Preise oder Buchungen. Den vom Lead gewuenschten Zielzustand zuerst aus dessen eigenen Worten ableiten, keine garantierte Transformation oder Zeitspanne erfinden. Verifizierte Angebotsfakten, Sicherheitsregeln, Kontaktverbot und Human Takeover haben immer Vorrang.";
 }
 
 
