@@ -21,7 +21,7 @@ const norm = (v: string) => v.toLocaleLowerCase("de-DE")
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .replace(/\s+/g, " ").trim();
 const isDirectQuestion = (text: string) =>
-  text.includes("?") && /(?:\bwie\b|\bwas\b|\bwarum\b|\bwomit\b|\bworan\b|\bwelche\b|\bwodurch\b|\bwieviel\b|\bwof[ua]r\b|\bfur wen\b)/.test(text);
+  text.includes("?") && /(?:\bwie\b|\bwas\b|\bwarum\b|\bwomit\b|\bworan\b|\bwelche\b|\bwodurch\b|\bwieviel\b|\bwof[ua]r\b|\bfur wen\b|\bpasst\b|\bgeeignet\b|\bkann\b)/.test(text);
 const hasReliablePrep = (text: string) =>
   /\b(?:essen|mahlzeiten?|snack|snacks?)\b.{0,65}\b(?:mit|dabei|vorbereit|eingepackt)\w*/.test(text) ||
   /\b(?:nehme|nehme|habe|hab)\w*\b.{0,45}\b(?:essen|mahlzeit|snack)\b.{0,30}\b(?:mit|dabei)\b/.test(text);
