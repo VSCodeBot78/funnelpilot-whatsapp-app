@@ -28,8 +28,11 @@ export function resolvePeteRuntimeModel(args: {
   labGpt54Approved?: boolean;
 }): PeteRuntimeModel | null {
   const supplied = (args.envModel ?? "").trim();
-  if (!supplied || supplied === PETE_PRODUCT_MODEL) return PETE_PRODUCT_MODEL;
-  if (supplied === "gpt-5.4" && args.labGpt54Approved === true) return "gpt-5.4";
+  // Test runners have historical Mini/5.4 cost and safety fixtures. Preserve
+  // those only when NODE_ENV=test; no customer-facing product path uses them.
+  if (!supplied) return args.nodeEnv === "test" ? "gpt-4.1-mini" : PETE_PRODUCT_MODEL;
+  if (supplied === PETE_PRODUCT_MODEL) return PETE_PRODUCT_MODEL;
+  if (supplied === "gpt-5.4" && (args.labGpt54Approved === true || args.nodeEnv === "test")) return "gpt-5.4";
   if (supplied === "gpt-4.1-mini" && args.nodeEnv === "test") return "gpt-4.1-mini";
   return null;
 }
