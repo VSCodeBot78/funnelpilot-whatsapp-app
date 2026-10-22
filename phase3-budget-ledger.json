@@ -329,8 +329,14 @@
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
     "usedMicroUsd": 585326,
-    "reservedMicroUsd": 0,
-    "reservations": {},
+    "reservedMicroUsd": 750000,
+    "reservations": {
+      "pete-v42-fresh-holdout-20261022-usd0p75": {
+        "runId": "39769626385",
+        "holdMicroUsd": 750000,
+        "createdAt": "2026-10-22T11:19:08.042Z"
+      }
+    },
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
