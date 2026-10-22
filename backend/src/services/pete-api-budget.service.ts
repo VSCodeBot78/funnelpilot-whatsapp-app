@@ -22,6 +22,23 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  // Second independent holdout under the same extra EUR5 owner authorization.
+  if (process.env.PETE_V42_HOLDOUT_QA_ENABLED === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
+        process.env.PETE_V42_HOLDOUT_QA_APPROVAL !== "once-20261022-eur5-usd0p75-holdout" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_MOBILE_LAB_ENABLED !== "false" ||
+        process.env.PETE_V42_SOL_QA_ENABLED === "true" ||
+        process.env.PETE_POLICY_V41_FINAL_QA_20261022 === "true")
+      throw new PeteBudgetStop("unavailable");
+    return 750_000;
+  }
   // Extra owner authorization: EUR 5, conservatively at most USD 5 in
   // synthetic QA only. External shared budget script reserves BEFORE calls.
   // This does not change original USD 8 cap for normal Pete or live sends.
