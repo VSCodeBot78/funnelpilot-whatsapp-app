@@ -8,6 +8,8 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fp-master-prompt-"));
 process.env.DATA_DIR = dir;
 process.env.NODE_ENV = "test";
 process.env.OPENAI_API_KEY = "synthetic-ci-only-not-real";
+process.env.PETE_LLM_API_CALLS_APPROVED = "true";
+process.env.PETE_LEGACY_STRUCTURED_AI_ENABLED = "true";
 const { readSettings, writeSettings } = await import("../services/settings-store.js");
 const { generateAlreadyTriedBridgeReply } = await import("../services/ai-funnel.service.js");
 
@@ -16,6 +18,8 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
   t.after(() => {
     globalThis.fetch = originalFetch;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.PETE_LLM_API_CALLS_APPROVED;
+    delete process.env.PETE_LEGACY_STRUCTURED_AI_ENABLED;
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -41,7 +45,7 @@ test("customer-editable master prompt survives storage and reaches actual OpenAI
     body = JSON.parse(String(init?.body));
     return {
       ok: true,
-      json: async () => ({ output: [
+      json: async () => ({ usage: { input_tokens: 1000, output_tokens: 150 }, output: [
         { content: [ { type: "output_text", text: JSON.stringify({
           category: "already_tried",
           mode: "mirror",
