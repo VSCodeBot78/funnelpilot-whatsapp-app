@@ -115,7 +115,9 @@ export function getPeteVerifiedTransactionAnswer(
     /\b(?:schick|sende|gib|zeig)\w*\b.{0,90}\b(?:link|checkout|kaufweg)\b/.test(input);
   const asksFiveWeekDetails =
     /\b(?:was bekomme|was beinhaltet|welche leistungen|wie viele|wie oft)\b/.test(input);
-  if (namesFiveWeek && explicitlyBuysFiveWeek &&
+  const hasFiveWeekBudgetBarrier =
+    /\b(?:kein(?:e|en)?\s+(?:geld|budget)|nicht\s+leisten|zu\s+teuer|sprengt\s+(?:mein|das)\s+budget)\b/.test(input);
+  if (namesFiveWeek && explicitlyBuysFiveWeek && !hasFiveWeekBudgetBarrier &&
       !asksFiveWeekDetails && !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input) &&
       !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
     return {
