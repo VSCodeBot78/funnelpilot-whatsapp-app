@@ -1,0 +1,139 @@
+name: Pete GPT-6.1 Sol real-model smoke - one-time USD1.50 within USD8 lifetime
+
+# Owner authorized improvement tests; one-time smoke holds USD1.50 under unchanged USD8 lifetime cap.
+# One-time reservation persisted on shared ledger. No live sends.
+on:
+  push:
+    branches:
+      - pete-sol-smoke-20261022
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  pete-yoda3-real-qa:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/pete-sol-smoke-20261022' &&
+      startsWith(github.event.head_commit.message, 'PETE_SOL_SMOKE_APPROVED_20261022')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NODE_ENV: test
+      OPENAI_MODEL: gpt-6.1-sol
+      PETE_LLM_CONVERSATION_ENABLED: "true"
+      PETE_LLM_API_CALLS_APPROVED: "true"
+      PETE_SOL_SMOKE_QA_20261022: "true"
+
+      PETE_SOL_SMOKE_APPROVAL: one-off-20261022-usd1p5
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      ENABLE_GENERIC_WEBHOOKS: "false"
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false"
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: "false"
+      INSTAGRAM_ALLOW_ALL_SENDERS: "false"
+      PETE_MOBILE_LAB_ENABLED: "false"
+      DISABLE_DESTRUCTIVE_ROUTES: "true"
+
+    steps:
+      - name: Checkout exact authorized source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout shared cumulative spend ledger
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Build backend and require secret presence
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${#OPENAI_API_KEY}" -lt 15 ]; then
+            echo "::error::GitHub Actions OPENAI_API_KEY is not configured. No API calls."
+            exit 1
+          fi
+          test -f budget-ledger/phase3-budget-ledger.json
+          (cd backend && npm ci && npm run build)
+          git -C budget-ledger config user.name "Funnel Pilot QA budget bot"
+          git -C budget-ledger config user.email "actions@users.noreply.github.com"
+
+      - name: Verify OpenAI credentials without generating tokens
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No reservation, paid request, lead data or model output before auth.
+          status=$(curl --silent --show-error --max-time 20 \
+            --output /dev/null --write-out '%{http_code}' \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            "https://api.openai.com/v1/models/gpt-6.1-sol")
+          echo "OpenAI model access HTTP: $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::OpenAI credentials/model unavailable. Zero paid QA calls authorized."
+            exit 1
+          fi
+
+      - name: Reserve, run fictional chats, then settle budget
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          push_confirmed() {
+            for attempt in 1 2 3; do
+              if git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger; then
+                return 0
+              fi
+              echo "::warning::Remote ledger push failed ($attempt/3), no more spending."
+              if [ "$attempt" -lt 3 ]; then sleep 4; fi
+            done
+            echo "::error::Budget write not confirmed; stop."
+            return 1
+          }
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-sol-smoke-20261022"
+          mkdir -p "$DATA_DIR"
+
+          node scripts/pete-sol-smoke-budget.mjs reserve
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Reserve once USD1.50 Pete Sol smoke 20261022 $GITHUB_RUN_ID"
+          push_confirmed
+
+          set +e
+          (cd backend && npx tsx src/config/pete-sol-smoke-runner.ts)
+          run_code=$?
+          set -e
+
+          node scripts/pete-sol-smoke-budget.mjs settle
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Settle once USD1.50 Pete Sol smoke 20261022 $GITHUB_RUN_ID"
+          push_confirmed
+          exit "$run_code"
+
+      - name: Archive only fictional dialogue evidence, never secrets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-sol-smoke-8-real-synthetic-20261022
+          path: backend/qa-reports/pete-sol-smoke-20261022.json
+          if-no-files-found: warn
+          retention-days: 30
