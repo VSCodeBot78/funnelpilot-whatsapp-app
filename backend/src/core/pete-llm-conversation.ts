@@ -10,6 +10,7 @@ import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
 import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
+import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
@@ -455,7 +456,12 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     return { kind: "handoff", reason: "not_authorized" };
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini";
+  const model = resolvePeteRuntimeModel({
+    envModel: process.env.OPENAI_MODEL,
+    nodeEnv: process.env.NODE_ENV,
+    labGpt54Approved: isPeteLabGpt54Approved(),
+  });
+  if (!model) return { kind: "handoff", reason: "not_authorized", detail: "unsupported_model_configuration" };
   const maxOutputTokens = model === "gpt-5.4" ? 800 : model === "gpt-6.1-sol" ? 1200 : 400;
   const context = buildPeteContext(state);
   // Reserve a conservative worst-case charge BEFORE an external call.
