@@ -3,6 +3,7 @@ import { AI_OBJECTION_FRAMEWORK } from "../config/ai-objection-framework.js";
 import type { AiFunnelReply, AiObjectionCategory } from "../types/ai-funnel.types.js";
 import { readSettings } from "./settings-store.js";
 import { reservePeteBudget, settlePeteBudget } from "./pete-api-budget.service.js";
+import { getPeteEffectiveRuntimeModel } from "../config/pete-model-policy.js";
 
 type AiReplyParams = {
   category: AiObjectionCategory;
@@ -45,7 +46,7 @@ function getApiKey(): string | undefined {
 }
 
 function getModel(): string {
-  return readSettings().aiModel;
+  return getPeteEffectiveRuntimeModel(readSettings().aiModel);
 }
 
 function isAiEnabled(): boolean {
