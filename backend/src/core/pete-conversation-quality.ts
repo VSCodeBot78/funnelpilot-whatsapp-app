@@ -107,7 +107,8 @@ export function getPeteVerifiedTransactionAnswer(
   // Answer an exact benefits question without assigning ownership to Jochen.
   const asksExactPersonalCalls =
     /\b(?:wie viele|wieviele|anzahl|wie oft|wie haufig)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*|zoom(?:-call|-termin)?\w*)\b/.test(input) &&
-    /\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung|5[\s-]*wochen)\b/.test(input) &&
+    (/\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung|5[\s-]*wochen)\b/.test(input) ||
+      previousFiveWeekSelected) &&
     !/\bselbststarter\b/.test(input);
   if (asksExactPersonalCalls) {
     // The current Nutrilize 5-week checkout explicitly verifies the cadence.
