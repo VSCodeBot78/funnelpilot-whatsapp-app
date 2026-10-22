@@ -60,6 +60,20 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     return { ...base, action: "direct_answer", reason: "practical_difference", noNewQuestion: true };
   }
 
+  // A fresh, explicit purchase or repeated purchase-link request wins over
+  // stale qualification context (such as missed breaks on earlier shifts).
+  // Actual checkout URLs still come ONLY from verified transaction logic.
+  const explicitlyWantsCheckout =
+    /\bich (?:will|mochte) (?:(?:mir|jetzt|sofort|direkt|den|die|das|ein|einen|eine|selbststarter|coaching|startphase|produkt|5[\s-]*wochen(?:-coaching)?)\s+){0,8}(?:kaufen|bestellen)\b/.test(latest) ||
+    /\b(?:kann ich|wie kann ich|wo kann ich)\b.{0,65}\b(?:kaufen|bestellen)\b/.test(latest) ||
+    /\b(?:schick|sende|gib|zeige)\w*\b.{0,70}\b(?:link|kaufweg|checkout)\b/.test(latest);
+  const negatedCheckout =
+    /\b(?:nicht|kein(?:e|en|es)?|nie|niemals)\b.{0,35}\b(?:kaufen|bestellen|link|kaufweg|checkout)\b/.test(latest) ||
+    /\b(?:link|kaufweg|checkout)\b.{0,25}\b(?:nicht|kein(?:e|en|es)?)\b/.test(latest);
+  if (explicitlyWantsCheckout && !negatedCheckout) {
+    return { ...base, action: "offer_navigation", reason: "explicit_purchase_or_link", noNewQuestion: true };
+  }
+
   // Schichtarbeit is a discovery opportunity, not an invitation to provide
   // unpaid meal/training plans. Acknowledge any direct question briefly, then
   // discover the one missing part of the parent's day. A real work break
