@@ -301,6 +301,8 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
   await t.test("full Pete LLM flow bills actual tokens from mocked provider JSON", async () => {
     resetLedger();
     process.env.OPENAI_API_KEY = "offline-fake-key";
+    // Archived Mini-price assertion is synthetic QA only, never a product choice.
+    process.env.OPENAI_MODEL = "gpt-4.1-mini";
     process.env.PETE_LLM_CONVERSATION_ENABLED = "true";
     process.env.PETE_LLM_API_CALLS_APPROVED = "true";
     writeSettings({ aiEnabled: true });
@@ -328,6 +330,7 @@ test("Phase 47: persistent fail-closed 8 USD internal spend cap", async t => {
     assert.equal(snap.outputTokens, 150);
     assert.equal(snap.committedUsd, 0.00064);
     assert.equal(snap.reservedUsd, 0);
+    delete process.env.OPENAI_MODEL;
   });
 
   await t.test("unsupported model cannot incur unknown API tariffs", async () => {

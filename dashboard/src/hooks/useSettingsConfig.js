@@ -5,6 +5,7 @@ import {
   saveCoachDraftOnly as saveCoachDraftOnlyToApi,
   resetSettings as resetSettingsFromApi,
 } from "../services/settingsApi";
+import { normalizePeteDashboardModel, PETE_PRODUCT_MODEL } from "../settings/peteModelOptions";
 
 function getResolvedDarkMode(themeValue) {
   if (themeValue === "light") return false;
@@ -50,7 +51,7 @@ export const defaultSettings = {
   aiEnabled: false,
   testMode: true,
   aiProvider: "OpenAI",
-  aiModel: "gpt-4.1-mini",
+  aiModel: PETE_PRODUCT_MODEL,
   aiFallback: "Wenn die KI ausf\u00e4llt, \u00fcbernimmt der Regel-Flow ohne Eskalation.",
   assistantName: "Pete",
   assistantRole: "",
@@ -117,6 +118,7 @@ export function useSettingsConfig({
       const mergedSettings = {
         ...defaultSettings,
         ...nextSettings,
+        aiModel: normalizePeteDashboardModel(nextSettings?.aiModel),
       };
 
       setSettings(mergedSettings);
@@ -147,10 +149,11 @@ export function useSettingsConfig({
         return null;
       }
 
-      const savedSettings = await saveSettingsToApi(settings);
+      const savedSettings = await saveSettingsToApi({ ...settings, aiModel: normalizePeteDashboardModel(settings.aiModel) });
       const mergedSettings = {
         ...defaultSettings,
         ...savedSettings,
+        aiModel: normalizePeteDashboardModel(savedSettings?.aiModel),
       };
 
       setSettings(mergedSettings);
@@ -189,6 +192,7 @@ export function useSettingsConfig({
       const mergedSettings = {
         ...defaultSettings,
         ...resetData,
+        aiModel: normalizePeteDashboardModel(resetData?.aiModel),
       };
 
       setSettings(mergedSettings);

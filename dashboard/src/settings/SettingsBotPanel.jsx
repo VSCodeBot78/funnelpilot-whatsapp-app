@@ -1,6 +1,7 @@
 import React from "react";
 import { inputStyle } from "../theme/dashboardTheme";
 import FieldLabelWithInfo from "../components/layout/common/FieldLabelWithInfo";
+import { PETE_MODEL_OPTIONS, PETE_PRODUCT_MODEL, normalizePeteDashboardModel } from "./peteModelOptions";
 
 const baseTextareaStyle = (colors, minHeight) => ({
   ...inputStyle(colors),
@@ -47,7 +48,7 @@ export default function SettingsBotPanel({
     noGos: DEFAULT_NO_GOS,
     aiEnabled: false,
     aiProvider: "OpenAI",
-    aiModel: "gpt-4.1-mini",
+    aiModel: PETE_PRODUCT_MODEL,
     openAiApiKeyConfigured: false,
     ...settings,
   };
@@ -310,16 +311,20 @@ export default function SettingsBotPanel({
 
             <div>
               <FieldLabelWithInfo
-                label="OpenAI Modell"
-                title="OpenAI Modell"
-                text="Das verwendete OpenAI-Modell f\u00fcr sp\u00e4tere Bot-Antworten. Dieses Feld ist nicht geheim. F\u00fcr den ersten Eigenbetrieb wird das Modell bevorzugt serverseitig \u00fcber OPENAI_MODEL gesetzt."
+                label="Pete KI-Modell"
+                title="Pete KI-Modell"
+                text="Sol ist das einzige freigegebene Produktmodell. Ältere Mini-Modelle sind nicht auswählbar. Das Backend nutzt die hier gespeicherte Modellauswahl, sobald KI-Aufrufe separat freigegeben sind."
                 placement="right"
               />
-              <input
+              <select
                 style={inputStyle(colors)}
-                value={safeSettings.aiModel}
+                value={normalizePeteDashboardModel(safeSettings.aiModel)}
                 onChange={(event) => updateField("aiModel", event.target.value)}
-              />
+              >
+                {PETE_MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
 
             <div>
