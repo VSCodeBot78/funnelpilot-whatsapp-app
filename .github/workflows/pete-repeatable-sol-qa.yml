@@ -1,0 +1,110 @@
+name: Pete repeatable owner-approved Sol QA (no live sends)
+
+# Permanent workflow: only a NEW budget approval and its normal trigger commit
+# are needed on subsequent runs. Historical one-use runs stay immutable.
+on:
+  push:
+    branches:
+      - feat/pete-policy-v4-20261022
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funnelpilot-pete-phase3-global-budget
+  cancel-in-progress: false
+
+jobs:
+  founder-qa:
+    if: >-
+      github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
+      github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
+      startsWith(github.event.head_commit.message, 'PETE_QA_APPROVED_RUN:') &&
+      github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NODE_ENV: test
+      OPENAI_MODEL: gpt-6.1-sol
+      PETE_REPEATABLE_QA_ENABLED: "true"
+      PETE_LLM_CONVERSATION_ENABLED: "true"
+      PETE_LLM_API_CALLS_APPROVED: "true"
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      ENABLE_GENERIC_WEBHOOKS: "false"
+      INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false"
+      WHATSAPP_ALLOW_ALL_RECIPIENTS: "false"
+      INSTAGRAM_ALLOW_ALL_SENDERS: "false"
+      PETE_MOBILE_LAB_ENABLED: "false"
+      DISABLE_DESTRUCTIVE_ROUTES: "true"
+
+    steps:
+      - name: Checkout tested Pete source
+        uses: actions/checkout@v4
+      - name: Checkout shared historical cost ledger
+        uses: actions/checkout@v4
+        with:
+          ref: pete-phase3-budget-ledger
+          path: budget-ledger
+          persist-credentials: true
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Verify existing backend tests, no paid calls
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          npm test
+      - name: Preflight shared ledger and check model credential without tokens
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#OPENAI_API_KEY}" -ge 15
+          node scripts/pete-repeatable-qa-ledger.mjs preflight
+          status=$(curl --silent --show-error --max-time 20 \
+            --output /dev/null --write-out '%{http_code}' \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            "https://api.openai.com/v1/models/gpt-6.1-sol")
+          test "$status" = "200"
+          git -C budget-ledger config user.name "Funnel Pilot QA budget bot"
+          git -C budget-ledger config user.email "actions@users.noreply.github.com"
+      - name: Reserve, confirm persisted budget, run, and settle
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-repeatable-qa-$GITHUB_RUN_ID"
+          mkdir -p "$DATA_DIR"
+          node scripts/pete-repeatable-qa-ledger.mjs reserve
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Hold owner-approved Pete QA $GITHUB_RUN_ID"
+          # A failed remote push stops BEFORE any billable model call.
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          set +e
+          (cd backend && npx tsx src/config/pete-repeatable-sol-runner.ts)
+          run_code=$?
+          set -e
+          # Missing receipt burns the full hold; never issue a free retry.
+          node scripts/pete-repeatable-qa-ledger.mjs settle
+          git -C budget-ledger add phase3-budget-ledger.json
+          git -C budget-ledger commit -m "Settle owner-approved Pete QA $GITHUB_RUN_ID"
+          git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger
+          exit "$run_code"
+      - name: Archive fictional test evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pete-repeatable-sol-evidence-${{ github.run_id }}
+          path: backend/qa-reports/pete-repeatable-sol-*.json
+          if-no-files-found: warn
+          retention-days: 30
