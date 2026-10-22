@@ -87,8 +87,9 @@ export function getPeteVerifiedTransactionAnswer(
   // Scope is not proof: do not invent a number of coaching/video calls.
   // Answer an exact benefits question without assigning ownership to Jochen.
   const asksExactPersonalCalls =
-    /\b(?:wie viele|wieviele|anzahl|wie oft)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*)\b/.test(input) &&
-    /\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung)\b/.test(input);
+    /\b(?:wie viele|wieviele|anzahl|wie oft|wie haufig)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*|zoom(?:-call|-termin)?\w*)\b/.test(input) &&
+    /\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung|5[\s-]*wochen)\b/.test(input) &&
+    !/\bselbststarter\b/.test(input);
   if (asksExactPersonalCalls) {
     // The current Nutrilize 5-week checkout explicitly verifies the cadence.
     // Do not infer other contract terms or a particular number of completed calls.
@@ -178,7 +179,7 @@ export function getPeteVerifiedTransactionAnswer(
   }
   if (asksTimeCommitment && fiveWeekMentioned && !selfstarterMentioned) {
     return {
-      text: "Die persönliche Startphase dauert fünf Wochen. Wie viele Minuten oder Stunden pro Woche du dafür einplanen musst, ist hier nicht verbindlich hinterlegt. Den genauen Aufwand kann Jochen mit dir klären.",
+      text: "Die Startphase dauert fünf Wochen. Enthalten sind wöchentlich 45 Minuten 1:1-Coaching per Zoom und ein Power Walk & Call pro Woche. Zusätzlich gibt es Workouts, App und Chat-Support. Einen verbindlichen Gesamtzeitaufwand pro Woche kann ich dir nicht nennen, weil er vom individuellen Alltag abhängt.",
       nextPhase: "info",
     };
   }
