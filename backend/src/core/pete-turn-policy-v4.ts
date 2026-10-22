@@ -69,7 +69,7 @@ export function decidePeteTurnV4(state: ConversationState): PeteTurnPlan {
     /\b(?:schick|sende|gib|zeige)\w*\b.{0,70}\b(?:link|kaufweg|checkout)\b/.test(latest);
   const negatedCheckout =
     /\b(?:nicht|kein(?:e|en|es)?|nie|niemals)\b.{0,35}\b(?:kaufen|bestellen|link|kaufweg|checkout)\b/.test(latest) ||
-    /\b(?:link|kaufweg|checkout)\b.{0,25}\b(?:nicht|kein(?:e|en|es)?)\b/.test(latest);
+    /\b(?:link|kaufweg|checkout)\b.{0,25}\b(?:nicht|kein(?:e|en|es)?)\s+(?:noch\s*mal|nochmal|mehr\s+(?:senden|schicken)|schicken|senden)\b/.test(latest);
   if (explicitlyWantsCheckout && !negatedCheckout) {
     return { ...base, action: "offer_navigation", reason: "explicit_purchase_or_link", noNewQuestion: true };
   }
