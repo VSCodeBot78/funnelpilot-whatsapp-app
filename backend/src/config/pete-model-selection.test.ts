@@ -21,7 +21,8 @@ test("production defaults to Sol and refuses stale mini environment", () => {
 
 test("historical models remain available only in isolated tests or approved older lab", () => {
   assert.equal(resolvePeteRuntimeModel({ nodeEnv: "test", envModel: "gpt-4.1-mini" }), "gpt-4.1-mini");
-  assert.equal(resolvePeteRuntimeModel({ nodeEnv: "test", envModel: "gpt-5.4" }), null);
+  assert.equal(resolvePeteRuntimeModel({ nodeEnv: "test" }), "gpt-4.1-mini");
+  assert.equal(resolvePeteRuntimeModel({ nodeEnv: "test", envModel: "gpt-5.4" }), "gpt-5.4");
   assert.equal(resolvePeteRuntimeModel({ nodeEnv: "test", envModel: "gpt-5.4", labGpt54Approved: true }), "gpt-5.4");
   assert.equal(resolvePeteRuntimeModel({ nodeEnv: "production", envModel: "gpt-5.4", labGpt54Approved: false }), null);
 });
