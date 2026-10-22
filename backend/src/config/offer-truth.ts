@@ -12,6 +12,8 @@ export type OfferTruthItem = {
   productUrl?: string;
   checkoutUrl?: string;
   infoUrl?: string;
+  includedServices?: readonly string[];
+  startSelectableWithinDays?: number;
   requiresHumanDecision: boolean;
   postPurchaseOnly?: boolean;
   creditedEntryAmountEur?: number;
@@ -73,6 +75,16 @@ export const OFFER_TRUTH = {
     checkoutUrl:
       "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
     infoUrl: "https://jochen-kammerer.de/die-eltern-vital-methode/",
+    // Current founder-provided Nutrilize checkout screenshot (Oct 2026).
+    // These are services, not an outcome promise or a payment confirmation.
+    includedServices: [
+      "Wöchentlich 45 Minuten 1:1-Coaching per Zoom",
+      "Voller App-Zugang mit individualisierten Trainings- und Ernährungsplänen",
+      "5 x 5-Minuten- und 2 x 20-Minuten-Workouts",
+      "Erweiterter Chat-Support für Fragen und Updates",
+      "Power Walk & Call einmal pro Woche",
+    ],
+    startSelectableWithinDays: 14,
     requiresHumanDecision: false,
   },
   longTerm: {
