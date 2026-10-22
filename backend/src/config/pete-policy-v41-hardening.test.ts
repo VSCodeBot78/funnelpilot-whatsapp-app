@@ -20,7 +20,7 @@ const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
 const { clearConversationStore } = await import("../data/store.js");
 const { writeSettings } = await import("../services/settings-store.js");
-const { peteSafeNoncriticalExplanationReply, isPeteChestBreathingEmergency } =
+const { peteSafeNoncriticalExplanationReply, isPeteChestBreathingEmergency, isPeteNonMedicalPostPregnancyBodyImage } =
   await import("../core/pete-conversation-quality.js");
 
 function state(...texts: string[]) {
@@ -116,6 +116,22 @@ test("Policy v4.1: true danger and narrow noncritical responses", async t => {
     assert.equal(out.state.answers.peteReplySource, "safe_noncritical");
     assert.match(out.text ?? "", /Wiedereinstieg/);
     assert.doesNotMatch(out.text ?? "", /Jochen muss|persönlich übernehmen/);
+  });
+
+  await t.test("B08: historical pregnancy and body discomfort are not acute medical cases", async () => {
+    const statement = "Meine letzte Schwangerschaft liegt drei Jahre zurück. Ich fühle mich in meinem Körper nicht wohl.";
+    assert.equal(isPeteNonMedicalPostPregnancyBodyImage(statement), true);
+    assert.equal(isPeteNonMedicalPostPregnancyBodyImage(
+      "Ich bin gerade schwanger und habe starke Schmerzen."), false);
+    clearConversationStore();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return mock(false); };
+    const out = await send("v42-historical-pregnancy", statement);
+    assert.equal(calls, 1);
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(out.state.flags.peteRuntimeHandoffActive === true, false);
+    assert.doesNotMatch(out.text ?? "", /ärztlich|medizinisch|Diagnose|Jochen weiter/i);
   });
 
   await t.test("noncritical fallback is narrow, no financial/medical/explicit human bypass", () => {
