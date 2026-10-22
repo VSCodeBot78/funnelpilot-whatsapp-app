@@ -22,6 +22,23 @@ const PETE_QA_20261021_CAP_MICROS = 2_000_000; // Additional, strictly narrower 
  * Never allow a self-selected amount or a missing guard to raise this cap.
  */
 function qualityQaCapMicros(): number | null {
+  // Policy-v4 approved synthetic QA only. The shared project ledger still
+  // enforces the old USD 8 lifetime ceiling before a single paid model call.
+  if (process.env.PETE_POLICY_V4_QA_20261022 === "true") {
+    if (process.env.GITHUB_ACTIONS !== "true" ||
+        process.env.GITHUB_REF !== "refs/heads/feat/pete-policy-v4-20261022" ||
+        process.env.PETE_POLICY_V4_APPROVAL !== "once-sol-20261022-usd1p5" ||
+        process.env.NODE_ENV !== "test" ||
+        process.env.OPENAI_MODEL !== "gpt-6.1-sol" ||
+        process.env.INSTAGRAM_ENGINE_ENABLED !== "false" ||
+        process.env.INSTAGRAM_SEND_ENABLED !== "false" ||
+        process.env.WHATSAPP_SEND_ENABLED !== "false" ||
+        process.env.ENABLE_GENERIC_WEBHOOKS !== "false" ||
+        process.env.PETE_YODA3_QA_20261021 === "true" ||
+        process.env.PETE_QUALITY_QA_20261021 === "true")
+      throw new PeteBudgetStop("unavailable");
+    return 1_500_000;
+  }
   if (process.env.PETE_YODA3_QA_20261021 === "true") {
     if (process.env.GITHUB_ACTIONS !== "true" ||
         process.env.GITHUB_REF !== "refs/heads/pete-yoda3-retest-20261021" ||
