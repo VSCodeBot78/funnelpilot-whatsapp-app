@@ -57,6 +57,10 @@ jobs:
       - name: Verify existing backend tests, no paid calls
         working-directory: backend
         shell: bash
+        env:
+          PETE_REPEATABLE_QA_ENABLED: "false"
+          PETE_LLM_CONVERSATION_ENABLED: "false"
+          PETE_LLM_API_CALLS_APPROVED: "false"
         run: |
           set -euo pipefail
           npm ci
