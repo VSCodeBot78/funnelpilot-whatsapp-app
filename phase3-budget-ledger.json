@@ -328,15 +328,9 @@
     "conservativeUsdCapMicro": 5000000,
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
-    "usedMicroUsd": 662840,
-    "reservedMicroUsd": 700000,
-    "reservations": {
-      "pete-v42-remainder-holdout-20261022-usd0p70": {
-        "runId": "39770672140",
-        "holdMicroUsd": 700000,
-        "createdAt": "2026-10-22T11:27:18.888Z"
-      }
-    },
+    "usedMicroUsd": 800946,
+    "reservedMicroUsd": 0,
+    "reservations": {},
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
@@ -349,6 +343,12 @@
         "runId": "39769626385",
         "chargeMicroUsd": 77514,
         "completedAt": "2026-10-22T11:19:29.700Z"
+      },
+      {
+        "id": "pete-v42-remainder-holdout-20261022-usd0p70",
+        "runId": "39770672140",
+        "chargeMicroUsd": 138106,
+        "completedAt": "2026-10-22T11:27:52.490Z"
       }
     ]
   }
