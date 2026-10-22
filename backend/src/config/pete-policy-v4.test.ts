@@ -21,17 +21,19 @@ test("Policy v4: direct questions get answers before another qualification", () 
   }
 });
 
-test("Policy v4: shift with dropped breaks needs concrete help, not a new question", () => {
+test("Policy v4.3: no unpaid shift nutrition plan, qualify the parent-day instead", () => {
   const p = plan("Bei Schichtarbeit fallen meine Pausen aus, abends esse ich irgendwas.",
     "Bitte nicht wieder Training empfehlen. Das ist nicht mein Problem.");
-  assert.equal(p.action, "concrete_help");
-  assert.equal(p.reason, "irregular_breaks");
-  assert.equal(p.noNewQuestion, true);
+  assert.equal(p.action, "clarify");
+  assert.equal(p.reason, "shift_day_discovery");
+  assert.equal(p.noNewQuestion, false);
   assert.equal(p.avoidTraining, true);
   const prompt = explainPeteTurnV4(p);
-  assert.match(prompt, /konkreten|greifbaren/i);
+  assert.match(prompt, /SETTER-FOKUS SCHICHT/);
+  assert.match(prompt, /nach der Schicht/);
   assert.match(prompt, /KEINE Workout-Empfehlung/);
-  assert.match(prompt, /NULL Rueckfragen/);
+  assert.match(prompt, /Maximal EINE/);
+  assert.doesNotMatch(prompt, /transportable Essensidee|Snackliste/);
 });
 
 test("Policy v4: never prescribe packed snacks twice if breaks are the issue", () => {
@@ -97,13 +99,43 @@ test("Policy v4 prioritizes four proven business-case fixes", () => {
   }
 });
 
-test("Policy v4 value and entry cases cannot silently become a fresh budget or sales quiz", () => {
-  for (const latest of [
-    "Ich könnte es bezahlen, aber den Mehrwert sehe ich nicht.",
-    "Wie läuft der Einstieg bei euch ab?",
-  ]) {
-    const result = plan("Ich interessiere mich für Begleitung.", latest);
-    assert.equal(result.noNewQuestion, true);
-    assert.match(explainPeteTurnV4(result), /NULL Rueckfragen/);
-  }
+test("Policy v4.3: value stays direct, coaching entry may clarify once and set a call", () => {
+  const value = plan("Ich interessiere mich für Begleitung.",
+    "Ich könnte es bezahlen, aber den Mehrwert sehe ich nicht.");
+  assert.equal(value.reason, "value_proposition");
+  assert.equal(value.noNewQuestion, true);
+  const entry = plan("Ich interessiere mich für Begleitung.",
+    "Wie läuft der Einstieg bei euch ab?");
+  assert.equal(entry.reason, "coaching_entry");
+  assert.equal(entry.noNewQuestion, false);
+  assert.match(explainPeteTurnV4(entry), /Telefonat/);
+  assert.match(explainPeteTurnV4(entry), /Pflicht/);
+});
+
+test("Policy v4.3: concrete scope requires factual answer plus non-guaranteed customer goal", () => {
+  const p = plan("Ich bin interessiert, aber ich muss darüber schlafen.",
+    "Was bekomme ich konkret?");
+  assert.equal(p.reason, "offer_scope");
+  assert.equal(p.noNewQuestion, false);
+  assert.match(explainPeteTurnV4(p), /ZIELBILD/);
+  assert.match(explainPeteTurnV4(p), /sechs Monaten/);
+  assert.match(explainPeteTurnV4(p), /NICHT als Garantie/);
+});
+
+test("Policy v4.3: shift discovery never overrides explicit no-question boundary", () => {
+  const p = plan("Bei Schichtarbeit fallen meine Pausen aus.",
+    "Ich will dazu jetzt keine Fragen mehr.");
+  assert.equal(p.action, "respect_boundary");
+  assert.equal(p.noNewQuestion, true);
+});
+
+// The current lead explicitly says training is not the bottleneck. The next
+// step is a single contextual question, never an unsolicited full workout plan.
+test("Policy v4.3: packed food and known training should trigger contextual setting", () => {
+  const p = plan("Ich trainiere drei Mal pro Woche und mein Essen ist schon dabei, aber die Pausen fallen aus.",
+    "Ich brauche keine weiteren Trainingspläne.");
+  assert.equal(p.action, "clarify");
+  assert.equal(p.reason, "shift_day_discovery");
+  assert.equal(p.alreadyHasPackedFood, true);
+  assert.match(explainPeteTurnV4(p), /NICHT nochmal Essen mitnehmen/);
 });
