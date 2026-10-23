@@ -211,3 +211,14 @@ test("Calendly: dated slots survive, closed days never fallback to fake hours", 
     resetAvailabilityConfig();
   }
 });
+
+test("Default booking copy never promises old unverified weekday times", async () => {
+  const { getSchedulingTextsConfig } = await import("./scheduling-providers.js");
+  const real = getSchedulingTextsConfig("eltern-vital-fit").bookingPrompt ?? "";
+  const fallback = getSchedulingTextsConfig("unknown-campaign").bookingPrompt ?? "";
+  for (const value of [real, fallback]) {
+    assert.doesNotMatch(value, /unter der Woche um 19:00|19:45|vormittags oder nachmittags/i);
+    assert.match(value, /Buchungskalender/i);
+    assert.match(value, /bestätigt/i);
+  }
+});
