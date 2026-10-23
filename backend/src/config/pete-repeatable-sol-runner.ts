@@ -37,14 +37,18 @@ const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 const request = readJson(path.join(workspace, "qa", "pete-approved-test.json"));
 const catalog = readJson(path.join(workspace, "scripts", "pete-repeatable-qa-cases.json"));
 if (request.version !== 1 ||
-    !["sales20", "sales32"].includes(request.testSet) ||
+    !["sales20", "sales32", "focus15"].includes(request.testSet) ||
     catalog.version !== 1 ||
     !Array.isArray(catalog.known) || catalog.known.length !== 20 ||
-    !Array.isArray(catalog.blind) || catalog.blind.length !== 12)
+    !Array.isArray(catalog.blind) || catalog.blind.length !== 12 ||
+    !Array.isArray(catalog.focus) || catalog.focus.length !== 5 ||
+    !Array.isArray(catalog.fresh) || catalog.fresh.length !== 10)
   throw Error("qa_catalog_or_approval_invalid");
-const cases = request.testSet === "sales32"
-  ? [...catalog.known, ...catalog.blind]
-  : [...catalog.known];
+const cases = request.testSet === "focus15"
+  ? [...catalog.focus, ...catalog.fresh]
+  : request.testSet === "sales32"
+    ? [...catalog.known, ...catalog.blind]
+    : [...catalog.known];
 if (cases.some((c: { id?: unknown; lines?: unknown }) =>
   typeof c.id !== "string" ||
   !Array.isArray(c.lines) || c.lines.length !== 2 ||
