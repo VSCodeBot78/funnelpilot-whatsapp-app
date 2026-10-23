@@ -3,8 +3,7 @@ import { buildApiUrl } from "./services/apiBase";
 import { describePeteReplySource } from "./utils/peteReplySource";
 
 function makeTestLeadId() {
-  const rand = Math.floor(100000 + Math.random() * 900000);
-  return `lead_${rand}`;
+  return `lab_desktop_${Date.now()}_${Math.floor(Math.random() * 1000000000).toString(36)}`;
 }
 
 function getCurrentTime() {
@@ -65,6 +64,7 @@ function mapStateMessagesToUi(stateMessages = []) {
     id: msg.id || `${msg.role}_${index}_${msg.createdAt || Date.now()}`,
     role: msg.role === "assistant" ? "bot" : msg.role,
     text: msg.text || "",
+    syntheticAutomation: msg.syntheticAutomation === true || msg.transport === "lab_scripted_automation",
     time: msg.createdAt
       ? new Date(msg.createdAt).toLocaleTimeString("de-DE", {
           hour: "2-digit",
@@ -83,10 +83,40 @@ export default function ChatTest() {
   const [debug, setDebug] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [entrySource, setEntrySource] = useState("instagram_dm");
+  const [entryNotice, setEntryNotice] = useState("");
 
   const campaignId = "eltern-vital-fit";
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+
+  async function startCampaignSimulation(keyword) {
+    if (loading || refreshing) return;
+    const nextLeadId = makeTestLeadId();
+    setLeadId(nextLeadId);
+    setMessages([]);
+    setInput("");
+    setEntryNotice("");
+    setLoading(true);
+    try {
+      const res = await fetch(buildApiUrl("/test-chat/simulate-entry"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: nextLeadId, keyword, source: entrySource }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Kampagnenstart fehlgeschlagen");
+      setDebug(data);
+      setMessages(mapStateMessagesToUi(data.state?.messages || []));
+      setEntryNotice(`${entrySource === "instagram_reel_comment" ? "Reel-Kommentar" :
+        entrySource === "instagram_story_reply" ? "Story-Antwort" : "Instagram-DM"} · ${keyword}: ${data.note}`);
+    } catch (error) {
+      setDebug({ error: error instanceof Error ? error.message : "Kampagnenstart fehlgeschlagen" });
+      setEntryNotice("Simulation nicht gestartet. Prüfe lokalen Desktop-Modus und deaktivierte Meta-Sendeflags.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function sendMessage() {
     const text = input.trim();
@@ -199,6 +229,7 @@ export default function ChatTest() {
     setLeadId(newLeadId);
     setMessages([]);
     setInput("");
+    setEntryNotice("");
     setDebug({
       info: "Neuer Testkontakt erstellt",
       leadId: newLeadId,
@@ -309,6 +340,47 @@ export default function ChatTest() {
           </button>
         </div>
 
+        <div style={{ background: "#111827", border: "1px solid #2a3348",
+          borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+            Kampagnenstart simulieren (nur Testdaten)
+          </div>
+          <div style={{ color: "#cbd5e1", fontSize: 13, marginBottom: 12 }}>
+            CHECK, KETO oder BULLSHIT starten einen eigenen Testkontakt.
+            Die erste Bot-Nachricht ist eine simulierte Kampagnen-Automatik, keine Pete-KI.
+            Danach schreibst du frei mit Pete. Kein Meta-Versand.
+          </div>
+          <label htmlFor="pete-entry-source" style={{ fontSize: 13, marginRight: 8 }}>
+            Herkunft:
+          </label>
+          <select id="pete-entry-source" value={entrySource}
+            onChange={e => setEntrySource(e.target.value)}
+            disabled={loading || refreshing}
+            style={{ padding: 8, background: "#fff", color: "#111827", borderRadius: 6 }}>
+            <option value="instagram_dm">Instagram-DM</option>
+            <option value="instagram_story_reply">Story-Antwort</option>
+            <option value="instagram_reel_comment">Reel-Kommentar (private Erstantwort)</option>
+          </select>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            {["CHECK", "KETO", "BULLSHIT"].map(keyword => (
+              <button key={keyword} type="button" onClick={() => startCampaignSimulation(keyword)}
+                disabled={loading || refreshing}
+                style={{ padding: "10px 16px", borderRadius: 8, border: "none",
+                  background: "#ff914d", color: "#111827", fontWeight: 700,
+                  cursor: loading ? "wait" : "pointer" }}>
+                {keyword}
+              </button>
+            ))}
+          </div>
+          {entryNotice && <p role="status" style={{ color: "#f8fafc", fontSize: 13,
+            marginTop: 10, marginBottom: 0 }}>{entryNotice}</p>}
+          {entrySource === "instagram_reel_comment" &&
+            <p style={{ color: "#cbd5e1", fontSize: 12, marginTop: 8 }}>
+              Ein Kommentar eröffnet noch kein reguläres DM-Nachrichtenfenster.
+              Erst deine anschließende Antwort an Pete zählt als eingehende DM.
+            </p>}
+        </div>
+
         {debug?.replySource ? (
           <div
             role="status"
@@ -375,7 +447,7 @@ export default function ChatTest() {
                       fontSize: 16,
                     }}
                   >
-                    <strong>{isUser ? "Du" : "Bot"}:</strong>{" "}
+                    <strong>{isUser ? "Du" : msg.syntheticAutomation ? "Kampagnen-Automatik (Simulation)" : "Pete"}:</strong>{" "}
                     {isUser ? msg.text : renderTextWithLinks(msg.text)}
                     <div
                       style={{
