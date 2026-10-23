@@ -62,16 +62,6 @@ function getSlotsForCycle(cycle: GhostingCycle): GhostingMessageSlot[] {
 }
 
 function hasLeadRepliedAfterOutbound(state: ConversationState): boolean {
-  // No inbound timestamp, no automated proactive sale. 24h is measured from
-  // the last USER message, not the last bot message or first campaign trigger.
-  const inboundAt = getReferenceInboundAt(state);
-  if (!inboundAt || inboundAt.getTime() > now.getTime()) {
-    return buildInactiveResult("Kein gültiger letzter Kundeneingang: Nachfassen gesperrt.");
-  }
-  if (now.getTime() >= inboundAt.getTime() + AUTOMATED_REPLY_WINDOW_MS) {
-    return buildInactiveResult("24-Stunden-Nachrichtenfenster abgelaufen: normales automatisches Nachfassen gesperrt.");
-  }
-
   const outboundAt = getReferenceOutboundAt(state);
   const inboundAt = getReferenceInboundAt(state);
 
@@ -239,6 +229,16 @@ export function evaluateGhostingState(
 
   if (state.flags?.salesFollowUpsOptedOut) {
     return buildInactiveResult("Lead lehnt Verkaufsnachfassnachrichten ab. Ghosting pausiert.");
+  }
+
+  // The 24h window starts with the last verified inbound user message.
+  // Never extend it because Pete sent an outbound message.
+  const inboundAt = getReferenceInboundAt(state);
+  if (!inboundAt || inboundAt.getTime() > now.getTime()) {
+    return buildInactiveResult("Kein gültiger letzter Kundeneingang: Nachfassen gesperrt.");
+  }
+  if (now.getTime() >= inboundAt.getTime() + AUTOMATED_REPLY_WINDOW_MS) {
+    return buildInactiveResult("24-Stunden-Nachrichtenfenster abgelaufen: normales automatisches Nachfassen gesperrt.");
   }
 
   const outboundAt = getReferenceOutboundAt(state);
