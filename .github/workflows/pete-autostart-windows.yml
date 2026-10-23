@@ -76,3 +76,29 @@ jobs:
             throw "Dirty owner worktree was modified or clean release was contaminated"
           }
           Write-Host "PASS: edited source retained, clean detached release created"
+
+      - name: Actual CMD passes project root without illegal path characters
+        shell: powershell
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "Folder With Spaces\FunnelPilot-Desktop-Test"
+          New-Item -ItemType Directory -Path (Join-Path $source "backend") -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $source "backend\package.json") -Value "{}"
+          Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.cmd") -Destination (Join-Path $source "FunnelPilot-AutoStart.cmd")
+          $probe = @'
+          param([Parameter(Mandatory=$true)][string]$SourceRoot)
+          $ErrorActionPreference = "Stop"
+          $actual = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd([char[]]@('\','/'))
+          $expected = $PSScriptRoot.TrimEnd([char[]]@('\','/'))
+          if ($actual -ne $expected) {
+            throw ("PATH_MISMATCH actual=" + $actual + " expected=" + $expected)
+          }
+          Set-Content -LiteralPath (Join-Path $PSScriptRoot "path-ok.txt") -Value $actual
+          '@
+          Set-Content -LiteralPath (Join-Path $source "FunnelPilot-AutoStart.bootstrap.ps1") -Value $probe -Encoding UTF8
+          $actualCmd = Join-Path $source "FunnelPilot-AutoStart.cmd"
+          & cmd.exe /d /c ('"' + $actualCmd + '"')
+          if ($LASTEXITCODE -ne 0) { throw "Actual launcher CMD failed SourceRoot argument integration" }
+          if (-not (Test-Path -LiteralPath (Join-Path $source "path-ok.txt"))) {
+            throw "Actual launcher CMD did not hand a valid root to the bootstrap"
+          }
+          Write-Host "PASS: actual CMD hands Windows folder root to PowerShell without quotes/backslash corruption"
