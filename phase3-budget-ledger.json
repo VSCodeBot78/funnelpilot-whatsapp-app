@@ -329,8 +329,15 @@
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
     "usedMicroUsd": 1902500,
-    "reservedMicroUsd": 0,
-    "reservations": {},
+    "reservedMicroUsd": 750000,
+    "reservations": {
+      "pete-qa-39915281770": {
+        "runId": "39915281770",
+        "holdMicroUsd": 750000,
+        "testSet": "focus15",
+        "ownerApprovalRef": "owner:2026-10-23-chat-075usd-focus15"
+      }
+    },
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
