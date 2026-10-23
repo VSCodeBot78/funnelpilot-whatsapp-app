@@ -51,3 +51,28 @@ jobs:
           if (-not ($bootstrap -match "hash-object" -and $bootstrap -match "expectedGitBlob" -and
               $shortcut -match "AutoStart.bootstrap.ps1")) { throw "Unverified bootstrap shortcut" }
           Write-Host "PASS: WinPS5.1 parses both scripts; detached releases and safe guards present"
+      - name: Windows dirty source checkout does not block isolated worktree
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "fp-dirty-fixture"
+          $source = Join-Path $root "FunnelPilot-Desktop-Test"
+          $release = Join-Path $root "CleanRelease"
+          New-Item -ItemType Directory -Path $source -Force | Out-Null
+          & git.exe -C $source init --quiet
+          & git.exe -C $source config user.email "ci@example.invalid"
+          & git.exe -C $source config user.name "Funnel Pilot QA"
+          Set-Content -LiteralPath (Join-Path $source "tracked.txt") -Value "original"
+          & git.exe -C $source add tracked.txt
+          & git.exe -C $source commit -m "Fixture initial" --quiet
+          if ($LASTEXITCODE -ne 0) { throw "Fixture commit failed" }
+          Set-Content -LiteralPath (Join-Path $source "tracked.txt") -Value "locally-edited"
+          Set-Content -LiteralPath (Join-Path $source "untracked.txt") -Value "private-work"
+          & git.exe -C $source worktree add --quiet --detach $release HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Clean release worktree creation failed" }
+          $existing = (Get-Content -LiteralPath (Join-Path $source "tracked.txt") -Raw).Trim()
+          $new = (Get-Content -LiteralPath (Join-Path $release "tracked.txt") -Raw).Trim()
+          if ($existing -ne "locally-edited" -or $new -ne "original" -or
+            -not (Test-Path -LiteralPath (Join-Path $source "untracked.txt"))) {
+            throw "Dirty owner worktree was modified or clean release was contaminated"
+          }
+          Write-Host "PASS: edited source retained, clean detached release created"
