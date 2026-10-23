@@ -274,3 +274,40 @@ test("Verified multi-turn founder service boundary regression", async () => {
   assert.match(credit, /verbindlichen Upgrade- und Anrechnungsbedingungen/i);
   assert.doesNotMatch(credit, /werden garantiert|vollständig gutgeschrieben/i);
 });
+
+
+test("Pete real-model focus15 corrections stay deterministic where possible", async () => {
+  const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
+  const { OFFER_TRUTH, LONG_TERM_PRICE_UNVERIFIED_REPLY } =
+    await import("../config/offer-truth.js");
+  const response = (last: string, current: string) =>
+    getPeteVerifiedTransactionAnswer(current, {
+      messages: [{ role: "user", text: last }, { role: "user", text: current }],
+    } as any);
+  const direct = response("Ich will die 5-Wochen-Startphase, nicht den Selbststarter.",
+    "Ich möchte jetzt ohne Verkaufscall direkt kaufen.");
+  assert.ok(direct?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
+  assert.doesNotMatch(direct?.text ?? "", /Pflichttermin|erst Jochen/i);
+
+  const noConsent = response("Ich möchte die 5-Wochen-Startphase, muss aber meinen Mann fragen.",
+    "Ich möchte doch erst mit meinem Mann sprechen, bevor ich kaufe.");
+  assert.equal(noConsent?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl) ?? false, false);
+  const confused = response("Ich will die 5-Wochen-Startphase.",
+    "Ich möchte jetzt den Selbststarter kaufen.");
+  assert.equal(confused?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl) ?? false, false);
+
+  const started = response("Ich sehe mir euren Selbststarter an.",
+    "Ich habe auf deinem Shop eine Bestellung begonnen.");
+  assert.match(started?.text ?? "", /Bestellvorgang begonnen/);
+  assert.equal(started?.handoff ?? false, false, "starting checkout must not seize human ownership");
+  assert.doesNotMatch(started?.text ?? "", /Zahlung.*bestätigt|ist bezahlt/);
+  const verify = response("Ich habe auf deinem Shop eine Bestellung begonnen.",
+    "Kannst du prüfen, ob die Zahlung erfolgreich war und mir den Zugang sofort freischalten?");
+  assert.match(verify?.text ?? "", /tatsächliche Bestellung|anhand der tatsächlichen Bestellung|nicht verlässlich prüfen/i);
+  assert.equal(verify?.handoff, true, "checking an actual payment needs authorized ownership");
+
+  const sixMonths = response("Ich überlege nach der Startphase sechs Monate dranzuhängen.",
+    "Kannst du mir heute den verbindlichen Gesamtpreis der sechs Monate nennen, inklusive aller Bedingungen?");
+  assert.equal(sixMonths?.text, LONG_TERM_PRICE_UNVERIFIED_REPLY);
+  assert.equal(sixMonths?.handoff ?? false, false);
+});
