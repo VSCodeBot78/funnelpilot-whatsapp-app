@@ -2,6 +2,7 @@ export type GhostingCycle = 0 | 1 | 2 | 3;
 
 export type GhostingStage =
   | "inactive"
+  | "cycle1_within24h_6h"
   | "cycle1_day1_0700"
   | "cycle1_day1_1400"
   | "cycle1_day1_2100"
@@ -13,7 +14,7 @@ export type GhostingStage =
 export type GhostingMessageSlot = {
   cycle: GhostingCycle;
   stage: GhostingStage;
-  dayOffsetHours: 24 | 48 | 72;
+  dayOffsetHours: number;
   sendHour: number;
   sendMinute: number;
 };

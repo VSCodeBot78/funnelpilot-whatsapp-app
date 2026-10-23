@@ -20,7 +20,10 @@ export default defineConfig({
       "/leads": "http://localhost:3001",
       "/scheduling-config": "http://localhost:3001",
       "/settings-config": "http://localhost:3001",
-      "/test-chat": "http://localhost:3001",
+      // Vite's string shorthand enables changeOrigin and rewrites Host to
+      // localhost, breaking the desktop guard for a 127.0.0.1 browser origin.
+      // Preserve the real browser Host; never synthesize auth/forwarded headers.
+      "/test-chat": { target: "http://localhost:3001", changeOrigin: false },
     },
   },
 })

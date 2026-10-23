@@ -3,6 +3,7 @@ import { buildApiUrl } from "../services/apiBase";
 import { getSetupDiagnostics } from "./onboardingReadiness";
 import CoachDraftEditor from "./CoachDraftEditor";
 import CoachProfilePreview from "./CoachProfilePreview";
+import ProviderBrandIcon from "./ProviderBrandIcon";
 
 const STAGES = ["Willkommen", "Marke & Pete", "Angebote", "Verbindungen", "Test", "Fertig"];
 const PROVIDERS = [
@@ -35,6 +36,8 @@ export default function SetupWizardModal({
   const [savedSetupSteps, setSavedSetupSteps] = useState({ brand: false, offers: false });
   const [checkout, setCheckout] = useState(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [demoConnections, setDemoConnections] = useState({});
+  const [demoCampaign, setDemoCampaign] = useState({ keyword: "CHECK", source: "instagram_dm", openingText: "Hier kommt dein Elterncheck. Wenn du Fragen hast, antworte einfach." });
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -166,7 +169,9 @@ export default function SetupWizardModal({
   }
 
   function providerStatus(provider) {
-    if (dryRun) return { label: "Offline-Test: keine Anmeldung, keine echten Kontodaten.", status: "dry_run" };
+    if (dryRun) return demoConnections[provider]
+      ? { label: "Nur Demo: verbunden simuliert. Keine echte API-Verbindung.", status: "demo_connected" }
+      : { label: "Offline-Demo: noch nicht simuliert verbunden.", status: "dry_run" };
     if (["instagram", "facebook", "whatsapp"].includes(provider)) {
       return { label: "Meta-Freigabe / Embedded Signup ausstehend", status: "external" };
     }
@@ -260,11 +265,14 @@ export default function SetupWizardModal({
     const active = ["ready_to_connect", "reauthorization_required", "authorized_not_synced", "api_verified_no_sync"].includes(current.status);
     return <div key={p.id} style={{ ...box, background: "#ffffff" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <span aria-hidden style={{ fontSize: 23, width: 30, color: "#1261ed" }}>{p.symbol}</span>
+        <span aria-hidden style={{ width: 30, display: "inline-flex", alignItems: "center" }}><ProviderBrandIcon provider={p.id} /></span>
         <strong style={{ fontSize: 14 }}>{p.name}</strong>
       </div>
       <div style={{ ...small, margin: "9px 0", minHeight: 37 }}>{current.label}</div>
-      {active ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {dryRun ? <button type="button" style={btn}
+        onClick={() => setDemoConnections(current => ({ ...current, [p.id]: !current[p.id] }))}>
+          {demoConnections[p.id] ? "Demo-Verbindung zurücksetzen" : "Verbindung simulieren"}
+        </button> : active ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button type="button" style={btn} onClick={() => authStart(p.id)}>
           {["authorized_not_synced", "api_verified_no_sync"].includes(current.status) ? "Neu autorisieren" : "Konto verbinden"}
         </button>
@@ -473,7 +481,36 @@ export default function SetupWizardModal({
                 ? "Zusätzliche Kampagnen und Produktlinks sind in diesem Offline-Trockenlauf bewusst nicht mit dem echten Backend verknüpft."
                 : "Zusätzliche Produktlinks und Kampagnenregeln kannst du im Kampagneneditor pflegen. Diese Wizard-Felder werden im Backend gespeichert."}</p>
               {dryRun
-                ? <p style={small}>Kampagneneditor im Trockenlauf nicht öffnen. Später separat mit einem Dummy testen.</p>
+                ? <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    <strong>Demo-Kampagne (nicht gespeichert)</strong>
+                    <label style={small}>Keyword
+                      <select value={demoCampaign.keyword}
+                        onChange={e => setDemoCampaign(d => ({ ...d, keyword: e.target.value }))}
+                        style={{ ...btn, marginLeft: 8 }}>
+                        {["CHECK", "KETO", "BULLSHIT"].map(k => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                    </label>
+                    <label style={small}>Kampagnenquelle
+                      <select value={demoCampaign.source}
+                        onChange={e => setDemoCampaign(d => ({ ...d, source: e.target.value }))}
+                        style={{ ...btn, marginLeft: 8 }}>
+                        <option value="instagram_dm">Instagram-DM</option>
+                        <option value="instagram_story_reply">Story-Antwort</option>
+                        <option value="instagram_reel_comment">Reel-Kommentar</option>
+                      </select>
+                    </label>
+                    <label style={small}>Erste automatische Nachricht (Demo)
+                      <textarea style={{ width: "100%", minHeight: 60, marginTop: 5,
+                        border: "1px solid #94a3b8", borderRadius: 8, padding: 8 }}
+                        value={demoCampaign.openingText}
+                        onChange={e => setDemoCampaign(d => ({ ...d, openingText: e.target.value }))} />
+                    </label>
+                    <div style={{ ...box, background: "#eff6ff" }}>
+                      <strong>Vorschau: {demoCampaign.keyword}</strong>
+                      <p style={{ marginBottom: 4, whiteSpace: "pre-wrap" }}>{demoCampaign.openingText || "Keine Startnachricht"}</p>
+                      <small>Simulierte Erstnachricht. Keine Meta-Zustellung, kein Pete-Modellaufruf und keine gespeicherte Kampagne.</small>
+                    </div>
+                  </div>
                 : <button type="button" style={btn} onClick={() => onOpenSection("campaigns")}>
                     Kampagneneditor öffnen
                   </button>}
@@ -486,9 +523,8 @@ export default function SetupWizardModal({
               Anmeldung. Funnel Pilot speichert keine Anbieter-Passwörter. „Autorisierung vorhanden“
               bedeutet noch nicht, dass Leads oder Kalendertermine synchronisiert werden.</p>
             {dryRun
-              ? <p style={{ ...small, fontWeight: 700 }}>Instagram, WhatsApp, Calendly und HubSpot:
-                  Verbindung ausschließlich im regulären Einrichtungsmodus möglich.
-                  Dieser Schritt zeigt absichtlich keine echten Zugänge.</p>
+              ? <p style={{ ...small, fontWeight: 700 }}>Tippe auf „Verbindung simulieren“ und spiele den Einstieg durch.
+                  Es findet keine echte Anmeldung, keine Synchronisation und keine Meta-Nachricht statt.</p>
               : <button type="button" style={{ ...btn, margin: "0 0 12px" }} onClick={reload}
                   disabled={loading}>{loading ? "Prüfe…" : "Status aktualisieren"}</button>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(235px, 1fr))", gap: 12 }}>

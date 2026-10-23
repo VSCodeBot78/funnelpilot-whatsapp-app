@@ -82,6 +82,7 @@ async function calendlyGet<T>(path: string): Promise<T> {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(8000), // bounded read-only slot diagnostic
   });
 
   if (!response.ok) {
@@ -139,20 +140,25 @@ function isoToAvailabilitySlot(iso: string): AvailabilitySlot | null {
     timeZone: CALENDLY_TIMEZONE,
   }).format(date);
 
-  return {
-    day: mappedDay,
-    time,
-  };
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: CALENDLY_TIMEZONE,
+  }).formatToParts(date);
+  const datePart = (type: string) => dateParts.find((part) => part.type === type)?.value || "";
+  const dateLabel = [datePart("year"), datePart("month"), datePart("day")].join("-");
+  // Preserve the actual calendar day; a weekday recurring rule is not a slot.
+  return { day: mappedDay, time, date: dateLabel, startAt: iso };
 }
 
 function uniqueSortedSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   const uniqueMap = new Map<string, AvailabilitySlot>();
 
   for (const slot of slots) {
-    uniqueMap.set(`${slot.day}-${slot.time}`, slot);
+    uniqueMap.set(`${slot.date ?? slot.day}-${slot.time}`, slot);
   }
 
   return [...uniqueMap.values()].sort((a, b) => {
+    if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
     if (a.day !== b.day) {
       const dayOrder: AvailabilityDayKey[] = [
         "monday",
@@ -213,7 +219,7 @@ export async function getCalendlyAvailableSlots(params?: {
   daysAhead?: number;
 }): Promise<AvailabilitySlot[]> {
   const campaignId = params?.campaignId ?? DEFAULT_CAMPAIGN_ID;
-  const daysAhead = Math.min(Math.max(params?.daysAhead ?? 7, 1), 7);
+  const daysAhead = Math.min(Math.max(params?.daysAhead ?? 14, 1), 30);
 
   const eventTypeUri = await resolveCalendlyEventTypeUri(campaignId);
   if (!eventTypeUri) {
@@ -233,6 +239,7 @@ export async function getCalendlyAvailableSlots(params?: {
   );
 
   const mappedSlots = availability.collection
+    .filter((entry) => !entry.status || entry.status === "available")
     .map((entry) => isoToAvailabilitySlot(entry.start_time))
     .filter((slot): slot is AvailabilitySlot => Boolean(slot));
 

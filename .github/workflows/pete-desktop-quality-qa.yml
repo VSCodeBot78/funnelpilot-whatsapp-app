@@ -5,6 +5,7 @@ on:
     branches:
       - fix/pete-qa-stop-and-appointments-20261021
       - feat/pete-sol-model-support-20261022
+      - feat/pete-policy-v4-20261022
   pull_request:
     branches:
       - feat/pete-desktop-flow-builder-draft-20261017
@@ -15,7 +16,8 @@ permissions:
 jobs:
   backend:
     name: Backend build and mocked QA
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
@@ -36,6 +38,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: Install existing dashboard dependencies for real Vite proxy regression
+        run: npm --prefix ../dashboard ci --no-audit --no-fund
+      - name: Real desktop session through Vite, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
+      - name: Real browser desktop reads, no provider network
+        env:
+          PETE_DESKTOP_TEST_BROWSER: chrome
+        run: node --import tsx --test ../scripts/pete-desktop-browser.test.mjs
       - name: Verify one-use residual dollar cap without network
         working-directory: .
         run: node --test scripts/pete-quality-resume-budget.test.mjs scripts/pete-quality-round2-budget.test.mjs

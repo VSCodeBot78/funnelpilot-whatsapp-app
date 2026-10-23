@@ -147,3 +147,148 @@ test("Local testchat -> signed Calendly booking -> Google add-to-calendar link -
   assert.equal(afterCancellation?.messages.at(-1)?.outboundStatus, "prepared");
   assert.match(afterCancellation?.messages.at(-1)?.text ?? "", /storniert/i);
 });
+
+test("Calendly: dated slots survive, closed days never fallback to fake hours", async () => {
+  const { updateAvailabilityConfig, resetAvailabilityConfig } =
+    await import("../data/availability-config.store.js");
+  const { getAvailabilitySource } =
+    await import("../services/availability-source.service.js");
+  const { formatAvailabilitySlot } =
+    await import("../services/availability.service.js");
+  const oldFetch = globalThis.fetch;
+  const oldToken = process.env.CALENDLY_PAT;
+  process.env.CALENDLY_PAT = "offline-mocked-token-no-network";
+  updateAvailabilityConfig({
+    sourceMode: "calendar",
+    weeklySlots: { friday: ["09:00", "10:00"] },
+  });
+  const calls: string[] = [];
+  try {
+    globalThis.fetch = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      let body: unknown;
+      if (url.endsWith("/users/me")) {
+        body = { resource: { uri: "https://api.calendly.com/users/fixture" } };
+      } else if (url.includes("/event_types?")) {
+        body = { collection: [{
+          uri: "https://api.calendly.com/event_types/fixture",
+          slug: "strategiegespraech",
+          scheduling_url: "https://calendly.com/eltern-fitundvital/strategiegespraech",
+          active: true,
+        }] };
+      } else if (url.includes("/event_type_available_times?")) {
+        body = { collection: [
+          { start_time: "2026-10-30T17:00:00Z", status: "available" },
+          { start_time: "2026-11-06T17:00:00Z", status: "available" },
+          { start_time: "2026-11-06T18:00:00Z", status: "unavailable" },
+        ] };
+      } else {
+        throw Error("unexpected fake Calendly URL: " + url);
+      }
+      return new Response(JSON.stringify(body), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    };
+    const found = await getAvailabilitySource({ campaignId: "eltern-vital-fit" });
+    assert.equal(found.mode, "calendar");
+    assert.equal(found.slots.length, 2, "different Fridays must not collapse");
+    assert.deepEqual(found.slots.map(s => s.date), ["2026-10-30", "2026-11-06"]);
+    assert.ok(found.slots.every(s => s.day === "friday" && s.time === "18:00"));
+    assert.equal(
+      formatAvailabilitySlot(found.slots[0]),
+      "Freitag, 30.10.2026 um 18:00",
+    );
+    assert.ok(calls.some(url => url.includes("event_type_available_times")));
+    globalThis.fetch = async () => { throw Error("simulated Calendly outage"); };
+    const failed = await getAvailabilitySource({ campaignId: "eltern-vital-fit" });
+    assert.deepEqual(failed.slots, [],
+      "provider outage must NEVER offer locally configured fake Friday morning times");
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldToken === undefined) delete process.env.CALENDLY_PAT;
+    else process.env.CALENDLY_PAT = oldToken;
+    resetAvailabilityConfig();
+  }
+});
+
+test("Default booking copy never promises old unverified weekday times", async () => {
+  const { getSchedulingTextsConfig } = await import("./scheduling-providers.js");
+  const real = getSchedulingTextsConfig("eltern-vital-fit").bookingPrompt ?? "";
+  const fallback = getSchedulingTextsConfig("unknown-campaign").bookingPrompt ?? "";
+  for (const value of [real, fallback]) {
+    assert.doesNotMatch(value, /unter der Woche um 19:00|19:45|vormittags oder nachmittags/i);
+    assert.match(value, /Buchungskalender/i);
+    assert.match(value, /bestätigt/i);
+  }
+});
+
+test("Desktop Calendly diagnostic: credentials absent, dated provider slots, provider error", async (t) => {
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  const addr = server.address();
+  assert.ok(addr && typeof addr !== "string");
+  const base = "http://127.0.0.1:" + addr.port;
+  const realFetch = globalThis.fetch;
+  const previousToken = process.env.CALENDLY_PAT;
+  t.after(async () => {
+    globalThis.fetch = realFetch;
+    if (previousToken === undefined) delete process.env.CALENDLY_PAT;
+    else process.env.CALENDLY_PAT = previousToken;
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+
+  delete process.env.CALENDLY_PAT;
+  const missing = await realFetch(base + "/test-chat/calendly-readiness");
+  assert.equal(missing.status, 200);
+  assert.equal(missing.headers.get("cache-control"), "no-store");
+  const absent = await missing.json() as Record<string, any>;
+  assert.equal(absent.status, "credentials_missing");
+  assert.deepEqual(absent.slots, []);
+  assert.match(absent.bookingUrl, /^https:\/\/calendly\.com\//);
+
+  process.env.CALENDLY_PAT = "synthetic-token-never-sent-over-network";
+  const upstreamCalls: string[] = [];
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.startsWith(base)) return realFetch(input, init);
+    assert.ok(url.startsWith("https://api.calendly.com/"), "only Calendly provider host");
+    assert.equal(init?.method, "GET", "no booking/send calls");
+    upstreamCalls.push(url);
+    const body: unknown = url.endsWith("/users/me")
+      ? { resource: { uri: "https://api.calendly.com/users/synthetic" } }
+      : url.includes("/event_types?")
+        ? { collection: [{ uri: "https://api.calendly.com/event_types/synthetic",
+            scheduling_url: "https://calendly.com/eltern-fitundvital/strategiegespraech",
+            slug: "strategiegespraech" }] }
+        : url.includes("/event_type_available_times?")
+          ? { collection: [
+              { start_time: "2026-10-30T17:00:00Z", status: "available" },
+              { start_time: "2026-11-06T18:00:00Z", status: "available" },
+            ] }
+          : null;
+    if (!body) throw Error("unknown Calendly fixture route " + url);
+    return new Response(JSON.stringify(body), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  };
+  const response = await realFetch(base + "/test-chat/calendly-readiness");
+  const data = await response.json() as Record<string, any>;
+  assert.equal(response.status, 200);
+  assert.equal(data.status, "verified_slots");
+  assert.equal(data.source, "calendly_api");
+  assert.equal(data.slots.length, 2);
+  assert.equal(data.slots[0].label, "Freitag, 30.10.2026 um 18:00");
+  assert.equal(data.slots[1].label, "Freitag, 06.11.2026 um 19:00");
+  assert.ok(upstreamCalls.some(call => call.includes("event_type_available_times")));
+
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).startsWith(base)) return realFetch(input, init);
+    throw Error("Calendly mocked outage");
+  };
+  const failed = await realFetch(base + "/test-chat/calendly-readiness");
+  assert.equal(failed.status, 200);
+  const blocked = await failed.json() as Record<string, any>;
+  assert.equal(blocked.status, "provider_unavailable");
+  assert.deepEqual(blocked.slots, []);
+});

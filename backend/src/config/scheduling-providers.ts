@@ -59,10 +59,8 @@ export const CAMPAIGN_SCHEDULING_CONFIG: Record<string, CampaignSchedulingConfig
     },
     texts: {
       bookingPrompt:
-        "Ein kurzer Austausch ist hier am sinnvollsten.\nWann passt es dir eher?\n" +
-        "a) unter der Woche um 19:00\n" +
-        "b) unter der Woche um 19:45\n" +
-        "c) ich bin flexibel",
+        "Wenn du mit Jochen sprechen möchtest, schau dir bitte im Buchungskalender die aktuell freien Termine an. " +
+        "Eine konkrete Uhrzeit nenne ich dir nur, wenn Calendly sie gerade bestätigt hat.",
       starterCheckoutUrl:
         "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
       onboardingBookingUrl:
@@ -88,10 +86,8 @@ function buildFallbackSchedulingConfig(): CampaignSchedulingConfig {
     },
     texts: {
       bookingPrompt:
-        "Ein kurzer Austausch ist hier am sinnvollsten.\nWann passt es dir eher?\n" +
-        "a) unter der Woche um 19:00\n" +
-        "b) unter der Woche um 19:45\n" +
-        "c) ich bin flexibel",
+        "Wenn du mit Jochen sprechen möchtest, schau dir bitte im Buchungskalender die aktuell freien Termine an. " +
+        "Eine konkrete Uhrzeit nenne ich dir nur, wenn Calendly sie gerade bestätigt hat.",
       starterCheckoutUrl:
         "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
       onboardingBookingUrl:

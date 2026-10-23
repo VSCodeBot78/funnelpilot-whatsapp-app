@@ -22,7 +22,8 @@ const { clearConversationStore } = await import("../data/store.js");
 const entryRoutes = [
   { file: "../routes/meta-instagram.ts", expectedCalls: 1 },
   { file: "../routes/meta-whatsapp.ts", expectedCalls: 1 },
-  { file: "../routes/test-chat.ts", expectedCalls: 3 },
+  // Mobile start/message, ordinary testchat and scoped desktop owner route.
+  { file: "../routes/test-chat.ts", expectedCalls: 4 },
   { file: "../routes/webhook.ts", expectedCalls: 3 },
 ];
 

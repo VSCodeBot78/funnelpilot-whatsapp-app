@@ -138,8 +138,9 @@ router.post("/mark-sent/:campaignId/:leadId", (req, res) => {
 router.post("/send-due/:campaignId/:leadId", async (req, res) => {
   try {
     const { campaignId, leadId } = req.params;
-    const sendAt = typeof req.body?.sendAt === "string" ? req.body.sendAt : undefined;
-    const now = sendAt ? new Date(sendAt) : new Date();
+    // Sending always uses the real server clock. A caller-supplied test time
+    // must never reopen an expired Meta 24h messaging window.
+    const now = new Date();
 
     if (Number.isNaN(now.getTime())) {
       return res.status(400).json({

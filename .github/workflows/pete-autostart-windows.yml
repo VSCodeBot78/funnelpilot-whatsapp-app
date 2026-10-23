@@ -1,0 +1,188 @@
+name: Pete AutoStart Windows safety
+on:
+  push:
+    branches:
+      - feat/pete-policy-v4-20261022
+    paths:
+      - scripts/start-pete-auto-release.ps1
+      - FunnelPilot-AutoStart.bootstrap.ps1
+      - FunnelPilot-AutoStart.cmd
+      - .github/workflows/pete-autostart-windows.yml
+      - backend/src/config/pete-desktop-history.ts
+      - backend/src/config/pete-desktop-lab.test.ts
+      - backend/src/services/pete-api-budget.service.ts
+      - backend/src/services/pete-desktop-lab.service.ts
+      - backend/src/routes/test-chat.ts
+      - backend/src/core/pete-llm-conversation.ts
+      - backend/src/core/conversation-engine.ts
+      - backend/src/types/types.ts
+      - backend/package.json
+      - dashboard/src/App.chat.jsx
+      - dashboard/src/services/peteDesktopLab*
+      - dashboard/vite.config.js
+      - dashboard/package.json
+      - dashboard/package-lock.json
+      - scripts/pete-desktop-session-proxy.test.mjs
+      - scripts/pete-desktop-browser.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop-budget-windows:
+    name: Windows desktop lab scope and persistent budget (mocked)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      PETE_LLM_API_CALLS_APPROVED: "false"
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Install existing dashboard dependencies for real Vite proxy regression
+        run: npm --prefix ../dashboard ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm run test:desktop
+      - name: Real desktop session through Vite, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
+      - name: Install test-only Chromium
+        run: node ../dashboard/node_modules/playwright/cli.js install chromium
+      - name: Real browser desktop reads, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-browser.test.mjs
+
+  powershell51-parse:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows PowerShell 5.1 parse and non-destructive contract
+        shell: powershell
+        run: |
+          $path = Join-Path $env:GITHUB_WORKSPACE "scripts\start-pete-auto-release.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          $bootstrapTokens = $null
+          $bootstrapErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.bootstrap.ps1"), [ref]$bootstrapTokens, [ref]$bootstrapErrors) | Out-Null
+          if ($bootstrapErrors.Count -ne 0) { throw "Bootstrap WinPS5.1 parse failed" }
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw "Windows PowerShell 5.1 parser rejected AutoStart"
+          }
+          $s = Get-Content $path -Raw
+          if ($s -match 'reset\s+--hard|git\s+clean|git\s+pull|git\s+switch|git\s+checkout') {
+            throw "Unsafe destructive source updater command present"
+          }
+          if (-not ($s -match 'worktree","add"' -and $s -match 'last-ready-sha.txt')) {
+            throw "Isolated release and rollback requirements missing"
+          }
+          if (-not ($s -match 'PETE_LLM_API_CALLS_APPROVED = "false"' -and
+              $s -match 'INSTAGRAM_SEND_ENABLED = "false"' -and
+              $s -match 'WHATSAPP_SEND_ENABLED = "false"')) {
+            throw "No-send and no-cost runtime guard missing"
+          }
+          $bootstrap = Get-Content (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.bootstrap.ps1") -Raw
+          $shortcut = Get-Content (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.cmd") -Raw
+          if (-not ($bootstrap -match "hash-object" -and $bootstrap -match "expectedGitBlob" -and
+              $shortcut -match "AutoStart.bootstrap.ps1")) { throw "Unverified bootstrap shortcut" }
+          Write-Host "PASS: WinPS5.1 parses both scripts; detached releases and safe guards present"
+      - name: Windows dirty source checkout does not block isolated worktree
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "fp-dirty-fixture"
+          $source = Join-Path $root "FunnelPilot-Desktop-Test"
+          $release = Join-Path $root "CleanRelease"
+          New-Item -ItemType Directory -Path $source -Force | Out-Null
+          & git.exe -C $source init --quiet
+          & git.exe -C $source config user.email "ci@example.invalid"
+          & git.exe -C $source config user.name "Funnel Pilot QA"
+          Set-Content -LiteralPath (Join-Path $source "tracked.txt") -Value "original"
+          & git.exe -C $source add tracked.txt
+          & git.exe -C $source commit -m "Fixture initial" --quiet
+          if ($LASTEXITCODE -ne 0) { throw "Fixture commit failed" }
+          Set-Content -LiteralPath (Join-Path $source "tracked.txt") -Value "locally-edited"
+          Set-Content -LiteralPath (Join-Path $source "untracked.txt") -Value "private-work"
+          & git.exe -C $source worktree add --quiet --detach $release HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Clean release worktree creation failed" }
+          $existing = (Get-Content -LiteralPath (Join-Path $source "tracked.txt") -Raw).Trim()
+          $new = (Get-Content -LiteralPath (Join-Path $release "tracked.txt") -Raw).Trim()
+          if ($existing -ne "locally-edited" -or $new -ne "original" -or
+            -not (Test-Path -LiteralPath (Join-Path $source "untracked.txt"))) {
+            throw "Dirty owner worktree was modified or clean release was contaminated"
+          }
+          Write-Host "PASS: edited source retained, clean detached release created"
+
+      - name: Actual CMD passes project root without illegal path characters
+        shell: powershell
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "Folder With Spaces\FunnelPilot-Desktop-Test"
+          New-Item -ItemType Directory -Path (Join-Path $source "backend") -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $source "backend\package.json") -Value "{}"
+          Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.cmd") -Destination (Join-Path $source "FunnelPilot-AutoStart.cmd")
+          $probe = @'
+          param([Parameter(Mandatory=$true)][string]$SourceRoot)
+          $ErrorActionPreference = "Stop"
+          $actual = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd([char[]]@('\','/'))
+          $expected = $PSScriptRoot.TrimEnd([char[]]@('\','/'))
+          if ($actual -ne $expected) {
+            throw ("PATH_MISMATCH actual=" + $actual + " expected=" + $expected)
+          }
+          Set-Content -LiteralPath (Join-Path $PSScriptRoot "path-ok.txt") -Value $actual
+          '@
+          Set-Content -LiteralPath (Join-Path $source "FunnelPilot-AutoStart.bootstrap.ps1") -Value $probe -Encoding UTF8
+          $actualCmd = Join-Path $source "FunnelPilot-AutoStart.cmd"
+          & cmd.exe /d /c ('"' + $actualCmd + '"')
+          if ($LASTEXITCODE -ne 0) { throw "Actual launcher CMD failed SourceRoot argument integration" }
+          if (-not (Test-Path -LiteralPath (Join-Path $source "path-ok.txt"))) {
+            throw "Actual launcher CMD did not hand a valid root to the bootstrap"
+          }
+          Write-Host "PASS: actual CMD hands Windows folder root to PowerShell without quotes/backslash corruption"
+
+      - name: Windows release selection retains partial directories and retries safely
+        shell: powershell
+        run: |
+          $scriptFile = Join-Path $env:GITHUB_WORKSPACE "scripts\start-pete-auto-release.ps1"
+          $tokens = $null
+          $errors = $null
+          $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptFile, [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) { throw "Updater parse failed" }
+          $needed = @("Stop-Safe", "Run-Git", "Assert-ReadySnapshot", "Select-ReleaseSlot")
+          foreach ($name in $needed) {
+            $nodes = @($ast.FindAll({
+              param($node)
+              $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name
+            }, $true))
+            if ($nodes.Count -ne 1) { throw ("Missing or duplicate function " + $name) }
+            . ([scriptblock]::Create($nodes[0].Extent.Text))
+          }
+          $releasesDir = Join-Path $env:RUNNER_TEMP "auto-releases-recovery"
+          New-Item -ItemType Directory -Path $releasesDir -Force | Out-Null
+          $sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          $partial = Join-Path $releasesDir $sha
+          New-Item -ItemType Directory -Path (Join-Path $partial "backend") -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $partial "backend\partial-source.txt") -Value "PROTECT-ME"
+          $slot1 = Select-ReleaseSlot $sha
+          if ($slot1.name -ne ($sha + "-retry-1") -or $slot1.ready -ne $false) {
+            throw "First incomplete release was not preserved with new retry directory"
+          }
+          New-Item -ItemType Directory -Path (Join-Path $releasesDir ($sha + "-retry-1")) -Force | Out-Null
+          $slot2 = Select-ReleaseSlot $sha
+          if ($slot2.name -ne ($sha + "-retry-2") -or $slot2.ready -ne $false) {
+            throw "Second interrupted release did not select next safe sibling"
+          }
+          if ((Get-Content -LiteralPath (Join-Path $partial "backend\partial-source.txt") -Raw).Trim() -ne "PROTECT-ME") {
+            throw "Owner partial release was modified"
+          }
+          Write-Host "PASS: interrupted releases preserved, unused retry sibling selected, next retry deterministic"

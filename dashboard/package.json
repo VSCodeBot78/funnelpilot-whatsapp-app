@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "npm run test && vite build && npm run build:lab",
     "preview": "vite preview",
-    "test": "node --test src/settings/peteModelSelection.test.js src/onboarding/onboardingReadiness.test.js src/navigation/dashboardNavigation.test.js src/utils/peteReplySource.test.js src/diagnostics/systemDiagnostics.test.js src/onboarding/coachOnboardingPreview.test.js src/onboarding/xwingOfflineSettings.test.js src/services/coachDraftSave.test.js src/inbox/mobileInboxFilters.test.js src/campaigns/peteCampaignConfig.test.js src/campaigns/reelSelection.test.js src/campaigns/campaignDraftChanges.test.js src/campaigns/campaignPreviewPrefill.test.js src/campaigns/campaignsUX.test.js src/mobile/peteLabBudget.test.js src/mobile/peteLabReview.test.js src/mobile/peteLabSpeech.test.js ../mobile-lab/gateway.test.mjs && node --check ../mobile-lab/launcher.mjs",
+    "test": "node --test src/services/peteDesktopLab.test.js src/settings/peteModelSelection.test.js src/onboarding/onboardingReadiness.test.js src/navigation/dashboardNavigation.test.js src/utils/peteReplySource.test.js src/diagnostics/systemDiagnostics.test.js src/onboarding/coachOnboardingPreview.test.js src/onboarding/xwingOfflineSettings.test.js src/services/coachDraftSave.test.js src/inbox/mobileInboxFilters.test.js src/campaigns/peteCampaignConfig.test.js src/campaigns/reelSelection.test.js src/campaigns/campaignDraftChanges.test.js src/campaigns/campaignPreviewPrefill.test.js src/campaigns/campaignsUX.test.js src/mobile/peteLabBudget.test.js src/mobile/peteLabReview.test.js src/mobile/peteLabSpeech.test.js ../mobile-lab/gateway.test.mjs && node --check ../mobile-lab/launcher.mjs",
     "build:lab": "vite build --config vite.lab.config.js"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
+    "playwright": "1.56.1",
     "vite": "^5.3.1"
   }
 }

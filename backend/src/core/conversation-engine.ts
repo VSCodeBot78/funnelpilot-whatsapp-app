@@ -6,6 +6,8 @@ import {
   isGeneralNonMedicalKnowledgeRequest,
   isPeteChestBreathingEmergency,
   isPeteNonMedicalPostPregnancyBodyImage,
+  peteSafeRoutineRepairReply,
+  peteSafeNoncriticalExplanationReply,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
 import {
@@ -1284,6 +1286,20 @@ export async function processIncomingMessage(
       detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
   }
 
+  // Critical safety gate before ANY natural-flow classifier or model call.
+  // "Brustschmerz und bekomme schlecht Luft" was under-triaged in holdout H12.
+  // The first answer must direct emergency help and no sales/fitness questions.
+  if (isPeteChestBreathingEmergency(input.messageText)) {
+    patchAnswers(state, { peteReplySource: "guarded_safety" });
+    patchFlags(state, { peteRuntimeHandoffRequested: true, peteRuntimeHandoffActive: true });
+    takeOverByHuman(state);
+    const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Nicht trainieren oder selbst zum Arzt fahren.";
+    appendAssistantMessage(state, urgent);
+    persistConversationState(state);
+    return { text: urgent, nextStep: state.currentStep,
+      detectedIntent: "unknown", state };
+  }
+
   if (input.conversationMode === "natural") {
     const bookingUrl = getRuntimeBookingUrl({ state });
     let decision = decidePeteNextAction(input.messageText, {
@@ -1421,12 +1437,58 @@ export async function processIncomingMessage(
           detectedIntent: "unknown", state: latest,
           replySuppressedReason: "superseded" };
       }
+      if (result.kind === "suppressed") {
+        // An owner switching the local test OFF is not a human takeover.
+        // Preserve the conversation so a later explicit ON can resume it.
+        return { text: null, nextStep: latest.currentStep,
+          detectedIntent: "unknown", state: latest,
+          replySuppressedReason: "desktop_switched_off" };
+      }
       if (result.kind === "llm" || result.kind === "safe_reply") {
         updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" : "safe_noncritical");
+        if (result.kind === "llm") patchAnswers(latest, {
+          peteProviderUsageMetered: Boolean(result.usage),
+          peteProviderModel: result.usage?.model,
+          peteProviderInputTokens: result.usage?.inputTokens,
+          peteProviderOutputTokens: result.usage?.outputTokens,
+        });
         appendAssistantMessage(latest, result.text);
         persistConversationState(latest);
         return { text: result.text, nextStep: latest.currentStep,
           detectedIntent: "flow_answer", state: latest };
+      }
+      // Policy-v4: a narrow, verified non-medical answer can repair a
+      // needless escalation for a routine interruption by a sick child.
+      // Never override STOP, human ownership, actual emergencies, failed
+      // provider authorization or budget exhaustion. All such guards ran above.
+      if ((result.reason === "model_handoff" || result.reason === "invalid_output")) {
+        const routine = peteSafeRoutineRepairReply(latest);
+        if (routine) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_family_routine_repair",
+          });
+          appendAssistantMessage(latest, routine);
+          persistConversationState(latest);
+          return { text: routine, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
+        // Only a model-initiated handoff (not unsafe/invalid model output) may
+        // use a narrowly verified explanation. Medical/sales/privacy excluded.
+        const noncritical = result.reason === "model_handoff"
+          ? peteSafeNoncriticalExplanationReply(latest) : null;
+        if (noncritical) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_method_or_entry_answer",
+          });
+          appendAssistantMessage(latest, noncritical);
+          persistConversationState(latest);
+          return { text: noncritical, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
       }
       // Fail closed: never silently continue the old broken question loop.
       patchAnswers(latest, {
