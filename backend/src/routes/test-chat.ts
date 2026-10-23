@@ -10,6 +10,9 @@ import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 import { getAllCampaigns } from "../data/campaigns.store.js";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
 import { OFFER_TRUTH } from "../config/offer-truth.js";
+import { getCalendlyAvailableSlots } from "../services/calendly-availability.service.js";
+import { formatAvailabilitySlot } from "../services/availability.service.js";
+import { getProviderConfig } from "../config/scheduling-providers.js";
 
 const router = Router();
 
@@ -262,6 +265,40 @@ router.post("/simulate-entry", (req, res) => {
       : "Beispiel-Einstieg; keine echte Kampagne oder Meta-Zustellung verifiziert.",
     state: { messages: publicLabMessages(state.messages) },
   });
+});
+
+// OWNER DIAGNOSTIC ONLY: does not mutate leads, book events or send messages.
+// The read-only Calendly API is contacted only after the owner presses the
+// corresponding test-lab button. Never claim ChatGPT OAuth is Funnel Pilot OAuth.
+router.get("/calendly-readiness", async (_req, res) => {
+  if (env.NODE_ENV === "production" || env.INSTAGRAM_SEND_ENABLED ||
+      env.WHATSAPP_SEND_ENABLED || env.INSTAGRAM_ENGINE_ENABLED) {
+    return res.status(403).json({ ok: false, status: "test_mode_required" });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  const url = getProviderConfig(DEFAULT_CAMPAIGN_ID, "calendly").bookingUrl;
+  const bookingUrl = typeof url === "string" && /^https:\/\/(?:www\.)?calendly\.com\//i.test(url) ? url : null;
+  if (!process.env.CALENDLY_PAT?.trim()) {
+    return res.json({ ok: true, status: "credentials_missing",
+      checkedAt: new Date().toISOString(), slots: [], bookingUrl,
+      source: "not_checked", note: "Funnel Pilot hat keinen CALENDLY_PAT. ChatGPT-Verbindungen gelten hier nicht." });
+  }
+  try {
+    const slots = await getCalendlyAvailableSlots({ campaignId: DEFAULT_CAMPAIGN_ID, daysAhead: 14 });
+    return res.json({
+      ok: true, status: slots.length ? "verified_slots" : "no_verified_slots",
+      checkedAt: new Date().toISOString(), bookingUrl, source: "calendly_api",
+      slots: slots.filter(slot => slot.date && slot.startAt).slice(0, 9)
+        .map(slot => ({ date: slot.date, time: slot.time, startAt: slot.startAt,
+          label: formatAvailabilitySlot(slot) })),
+      note: slots.length ? "Echte Provider-Abfrage in Funnel Pilot. Keine Reservierung." :
+        "Calendly hat keine aktuell verifizierbaren Slots für diesen Eventtyp geliefert.",
+    });
+  } catch {
+    return res.json({ ok: true, status: "provider_unavailable",
+      checkedAt: new Date().toISOString(), slots: [], bookingUrl, source: "calendly_api_failed",
+      note: "Calendly-Verfügbarkeit konnte nicht geprüft werden. Keine Zeiten versprechen." });
+  }
 });
 
 router.get("/budget", (_req, res) => res.json(getPeteBudgetStatusSafe()));
