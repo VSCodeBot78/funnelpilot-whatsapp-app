@@ -139,6 +139,7 @@ export default function GhostingView({
             die Konfiguration. Die Vorschau unten verschickt keine Nachrichten.
             Normale automatische Follow-ups werden nach 24 Stunden seit dem letzten Kundeneingang gesperrt.
             Für WhatsApp-Vorlagen außerhalb dieses Fensters existiert hier keine Versandfreigabe.
+            Keine Änderung erlaubt automatisch einen Meta-Versand.
           </p>
           <SettingsGhostingPanel
             colors={colors}
