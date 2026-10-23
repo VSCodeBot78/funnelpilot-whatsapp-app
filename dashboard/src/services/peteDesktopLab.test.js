@@ -24,7 +24,7 @@ test("opening a desktop client only bootstraps a session, reads status and creat
   assert.equal(calls.at(-1).url, "/test-chat/desktop/state/lab_desktop_test");
   assert.ok(!calls.some(c => /budget|message/.test(c.url)));
   await client.setBudget(true, "0.25");
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.25" });
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
   await client.setBudget(false);
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
 });
@@ -46,4 +46,17 @@ test("uncertain historical costs stay blocked and are never formatted as free cr
   assert.equal(formatDesktopUsd(null), "Nicht belegt");
   assert.equal(formatDesktopUsd(undefined), "Nicht belegt");
   assert.equal(formatDesktopUsd(0.2496), "0.249600 USD");
+});
+
+test("explicit owner-managed local authorization does not claim verified history or bypass other blockers", () => {
+  const status = { budget: { ok: true, historyVerified: false, ownerManagedApprovalAvailable: true,
+    blockReason: "historical_spend_unverified" }, providerConfigured: true };
+  assert.equal(desktopBlockReason(status), null);
+  assert.equal(desktopBlockReason({ ...status, budget: { ...status.budget,
+    ownerManagedApprovalAvailable: false, ownerManagedCosts: true, blockReason: null } }), null);
+  assert.match(desktopBlockReason({ ...status, providerConfigured: false }), /fehlen/);
+  assert.match(desktopBlockReason({ ...status, budget: { ...status.budget,
+    blockReason: "accounting_review_required" } }), /gesperrt/);
+  assert.match(desktopBlockReason({ ...status, budget: { ...status.budget,
+    blockReason: "project_budget_exhausted" } }), /Projektbudgetgrenze/);
 });

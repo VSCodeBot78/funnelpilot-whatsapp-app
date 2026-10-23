@@ -38,7 +38,8 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
-    setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled ? { enabled, budgetUsd } : { enabled }),
+    setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled
+      ? { enabled, budgetUsd, ownerManagedCosts: true } : { enabled }),
   };
 }
 
@@ -46,9 +47,12 @@ export function desktopBlockReason(status) {
   if (!status) return "Status noch nicht geprüft.";
   if (status.error) return status.error;
   if (!status.budget?.ok) return "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.";
-  if (!status.budget.historyVerified)
+  if (status.budget.blockReason && status.budget.blockReason !== "historical_spend_unverified")
+    return status.budget.blockReason === "project_budget_exhausted"
+      ? "Die bekannte Projektbudgetgrenze ist erreicht. KI gesperrt."
+      : "Die Verbrauchsabrechnung ist nicht verfügbar. KI gesperrt.";
+  if (!status.budget.historyVerified && !status.budget.ownerManagedCosts && !status.budget.ownerManagedApprovalAvailable)
     return "Frühere Laptop-Ausgaben und Kostenbelege sind nicht vollständig abgeglichen. KI gesperrt.";
-  if (status.budget.blockReason) return "Budget gesperrt. Kostenabgleich erforderlich.";
   if (!status.providerConfigured) return "GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.";
   return null;
 }

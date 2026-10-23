@@ -130,6 +130,12 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal((await c.call("budget", { enabled: true, budgetUsd: amount })).status, 200);
     return c;
   }
+  async function ownerGranted(amount = "0.25") {
+    resetFiles();
+    const c = await client();
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: amount, ownerManagedCosts: true })).status, 200);
+    return c;
+  }
 
   await t.test("missing history displays the known floor and locks paid calls, no implicit provider check", async () => {
     resetFiles();
@@ -158,6 +164,115 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal((await c.call("message", { leadId: await c.lead(), campaignId: "eltern-vital-fit",
       messageText: "Hallo" }, { "X-Pete-CSRF": "" })).status, 403);
     assert.equal(providerCalls, before);
+  });
+  await t.test("explicit owner-managed activation needs no historical file and meters the scoped mocked model path", async () => {
+    resetFiles();
+    const c = await client();
+    const before = providerCalls;
+    assert.equal((await c.call("status")).body.budget.ownerManagedApprovalAvailable, true);
+    for (const ownerManagedCosts of [false, "true", 1, null, {}])
+      assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts })).status, 400);
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true },
+      { "X-Pete-CSRF": "" })).status, 403);
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true },
+      { Origin: "https://evil.invalid" })).status, 403);
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true })).status, 200);
+    assert.equal(providerCalls, before, "activation itself must not call the provider");
+    assert.equal(fs.existsSync(reviewFile), false);
+    const result = await c.message(await c.lead());
+    assert.equal(result.body.replySource, "llm");
+    assert.equal(providerCalls, before + 1);
+    assert.equal(result.body.budget.ownerManagedCosts, true);
+    assert.equal(result.body.budget.historyVerified, false);
+    assert.equal(result.body.budget.historicalBookedUsd, null);
+    assert.equal(result.body.budget.projectRemainingUsd, null);
+    assert.equal(result.body.budget.confirmedUsd, 0.0004);
+    assert.equal(result.body.budget.remainingUsd, 0.2496);
+    assert.equal(process.env.PETE_LLM_API_CALLS_APPROVED, "false");
+    assert.equal(process.env.INSTAGRAM_SEND_ENABLED, "false");
+    assert.equal(process.env.WHATSAPP_SEND_ENABLED, "false");
+  });
+  await t.test("owner approval preserves prior ledger charges, pending amounts and OFF across a real restart", async () => {
+    resetFiles();
+    const c = await client();
+    budgetService.setPeteDesktopBudget({ enabled: false, sessionHash: c.hash });
+    const old = JSON.parse(fs.readFileSync(ledgerFile, "utf8"));
+    old.confirmedMicroUsd = 50_000; old.reservedMicroUsd = 60_000; old.committedMicroUsd = 110_000;
+    old.requestsStarted = 1;
+    old.pending.previous = { microUsd: 60_000, createdAt: new Date().toISOString(), model: "gpt-6.1-sol" };
+    fs.writeFileSync(ledgerFile, JSON.stringify(old));
+    const grant = await c.call("budget", { enabled: true, budgetUsd: "2.00", ownerManagedCosts: true });
+    assert.equal(grant.status, 200);
+    assert.equal(grant.body.budget.remainingUsd, 1.731228, "known booking ceiling remains stricter than selected USD2");
+    const retained = JSON.parse(fs.readFileSync(ledgerFile, "utf8"));
+    assert.deepEqual(retained.pending, old.pending);
+    assert.equal(retained.confirmedMicroUsd, old.confirmedMicroUsd);
+    assert.equal(retained.reservedMicroUsd, old.reservedMicroUsd);
+    responseUsage = undefined;
+    await c.message(await c.lead());
+    responseUsage = { input_tokens: 100, output_tokens: 20 };
+    const before = (await c.call("status")).body.budget;
+    assert.ok(before.reservedUsd > 0);
+    assert.equal(before.enabled, true);
+    const modulePath = fileURLToPath(new URL("../services/pete-api-budget.service.ts", import.meta.url));
+    const probe = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+      "const b=await import(" + JSON.stringify(pathToFileURL(modulePath).href) +
+      ");process.stdout.write(JSON.stringify(b.getPeteDesktopBudgetStatus(" + JSON.stringify(c.hash) + ")));"],
+      { cwd: process.cwd(), env: { ...process.env }, encoding: "utf8" });
+    assert.equal(probe.status, 0, probe.stderr);
+    const after = JSON.parse(probe.stdout.trim().split("\n").at(-1)!);
+    assert.equal(after.enabled, false);
+    assert.equal(after.ownerManagedCosts, true);
+    assert.equal(after.historyVerified, false);
+    assert.equal(after.authorizedUsd, 2);
+    assert.equal(after.reservedUsd, before.reservedUsd);
+    assert.equal(after.remainingUsd, before.remainingUsd);
+    assert.equal((await c.call("budget", { enabled: false })).status, 200);
+    const again = await c.call("budget", { enabled: true, budgetUsd: "2.00", ownerManagedCosts: true });
+    assert.equal(again.status, 200);
+    assert.equal(again.body.budget.reservedUsd, before.reservedUsd);
+  });
+  await t.test("owner-managed parallel requests still reserve under the hard cumulative test cap", async () => {
+    const c = await ownerGranted();
+    holdProvider = true;
+    const leads = await Promise.all(Array.from({ length: 16 }, () => c.lead()));
+    const inFlight = leads.map(id => c.message(id));
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const during = (await c.call("status")).body.budget;
+    assert.ok(waiting.length > 0 && waiting.length < 16);
+    assert.ok(during.reservedUsd > 0 && during.committedUsd <= 0.25);
+    holdProvider = false;
+    const releases = waiting; waiting = []; releases.forEach(resolve => resolve());
+    await Promise.all(inFlight);
+    const after = (await c.call("status")).body.budget;
+    assert.ok(after.committedUsd <= 0.25);
+    const spent = after.confirmedUsd;
+    await c.call("budget", { enabled: false });
+    const again = await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
+    assert.equal(again.body.budget.confirmedUsd, spent);
+  });
+  await t.test("owner-managed activation cannot override a sealed changed review or accounting/corruption blocks", async () => {
+    resetFiles(); fakeReview(PETE_DESKTOP_HISTORY.knownBookedMicroUsd + 150_000);
+    const reviewed = await client();
+    const retainedHistory = await reviewed.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
+    assert.equal(retainedHistory.status, 200);
+    assert.equal(retainedHistory.body.budget.historyVerified, true);
+    assert.equal(retainedHistory.body.budget.historicalBookedUsd, 11.308772);
+    assert.equal(retainedHistory.body.budget.projectRemainingUsd, 1.691228);
+    fs.appendFileSync(path.join(temp, "FAKE-provider-cost-statement.txt"), "changed");
+    assert.equal((await reviewed.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true })).status, 409);
+    const c = await ownerGranted();
+    responseUsage = { input_tokens: 1_000_000, output_tokens: 0 };
+    await c.message(await c.lead());
+    responseUsage = { input_tokens: 100, output_tokens: 20 };
+    const status = (await c.call("status")).body.budget;
+    assert.equal(status.blockReason, "accounting_review_required");
+    assert.equal(status.ownerManagedApprovalAvailable, false);
+    assert.equal(status.enabled, false);
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "2.00", ownerManagedCosts: true })).status, 409);
+    fs.writeFileSync(ledgerFile, "corrupted");
+    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true })).status, 409);
+    assert.equal(fs.readFileSync(ledgerFile, "utf8"), "corrupted");
   });
   await t.test("forged, foreign-session and wrong-campaign test IDs never reach the model", async () => {
     const c = await granted();

@@ -33,15 +33,17 @@ router.route("/desktop/status")
   .get(guardDesktopBrowser, desktopStatus)
   .post(guardDesktopBrowser, desktopStatus);
 router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
-  const { enabled, budgetUsd } = req.body ?? {};
+  const { enabled, budgetUsd, ownerManagedCosts } = req.body ?? {};
   if (typeof enabled !== "boolean" ||
       (enabled && !["0.25", "0.50", "1.00", "2.00"].includes(budgetUsd)) ||
-      Object.keys(req.body).some(key => !["enabled", "budgetUsd"].includes(key)))
+      (ownerManagedCosts !== undefined && (ownerManagedCosts !== true || !enabled)) ||
+      Object.keys(req.body).some(key => !["enabled", "budgetUsd", "ownerManagedCosts"].includes(key)))
     return res.status(400).json({ ok: false, error: "invalid_desktop_budget" });
   if (enabled && !desktopProviderConfigured())
     return res.status(409).json({ ok: false, error: "desktop_provider_not_configured" });
   try {
     setPeteDesktopBudget({ enabled, sessionHash: desktopSessionHash(req),
+      ownerManagedCosts,
       limitMicroUsd: enabled ? Math.round(Number(budgetUsd) * 1_000_000) : undefined });
     return res.json({ ok: true, budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
   } catch {

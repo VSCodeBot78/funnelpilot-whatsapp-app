@@ -1,5 +1,13 @@
 # Lokales Pete-Labor: KI-Schalter und persistentes Testbudget
 
+**Aktualisierung 24.10.2026:** Der Besitzer prüft seine historischen Kosten selbst
+in OpenAI. Der aktuelle [Owner-Testmodus](pete-desktop-owner-managed-costs-20261024.md)
+ermöglicht AN durch ausdrückliche Budgetbestätigung ohne Rechnungsupload.
+Verbrauch, Reservierungen, feste Grenzen und Sicherheitsprüfungen bleiben
+erhalten; Historie wird dabei nicht als geprüft ausgegeben. Die folgenden
+Abschnitte dokumentieren den früheren, weiterhin unterstützten strengen
+Belegabgleich und dessen ursprüngliche Einführung.
+
 Umsetzung auf dem bestehenden PR #191. Kein Merge, Deployment, Live-Send oder
 kostenpflichtiger Modelltest durch diese Änderung.
 

@@ -417,6 +417,8 @@ export default function ChatTest() {
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
             GPT-6.1 Sol. Nur für deine synthetischen Desktop-Testkontakte.
             „KI AN“ erlaubt kostenpflichtige Antworten bis zur gewählten Grenze.
+            Mit dem Klick bestätigst du dieses Testbudget. Deine bisherigen API-Kosten
+            prüfst du direkt in OpenAI. Dafür ist kein Rechnungsupload erforderlich.
             Neue Kontakte, AUS/AN und Neustarts setzen den Verbrauch nicht zurück.
             Nach einem Backend-Neustart bleibt die KI AUS.
           </p>
@@ -450,7 +452,8 @@ export default function ChatTest() {
             <div>Reserviert oder noch ungeklärt: {formatDesktopUsd(budget?.reservedUsd)}</div>
             <div><strong>Für weitere API-Aufrufe verfügbar: {formatDesktopUsd(budget?.remainingUsd)}</strong></div>
             <div>Historisch im Projekt verbucht, mindestens: {formatDesktopUsd(budget?.knownHistoricalBookedUsd)}</div>
-            <div>Rest im Projekt nach vollständigem Abgleich: {formatDesktopUsd(budget?.projectRemainingUsd)}</div>
+            {budget?.historyVerified &&
+              <div>Rest im Projekt nach vollständigem Abgleich: {formatDesktopUsd(budget?.projectRemainingUsd)}</div>}
             <p style={{ color: "#cbd5e1" }}>
               Interne USD-Kostenrechnung, kein OpenAI-Kontoguthaben.
               Ungeklärte Aufrufe bleiben reserviert. Meta- und WhatsApp-Versand bleiben AUS.

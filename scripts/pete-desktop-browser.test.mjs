@@ -22,8 +22,8 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
     INSTAGRAM_ALLOW_ALL_SENDERS: "false", INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false",
     ENABLE_GENERIC_WEBHOOKS: "false", WHATSAPP_ALLOWED_RECIPIENT_IDS: "",
     INSTAGRAM_ALLOWED_SENDER_IDS: "", PETE_MOBILE_LAB_ENABLED: "false",
-    PETE_LLM_CONVERSATION_ENABLED: "false", PETE_LLM_API_CALLS_APPROVED: "false",
-    OPENAI_MODEL: "gpt-6.1-sol", OPENAI_API_KEY: "", CORS_ORIGIN: "",
+    PETE_LLM_CONVERSATION_ENABLED: "true", PETE_LLM_API_CALLS_APPROVED: "false",
+    OPENAI_MODEL: "gpt-6.1-sol", OPENAI_API_KEY: "SYNTHETIC-browser-key-never-network", CORS_ORIGIN: "",
   });
   const nativeFetch = globalThis.fetch;
   const nativeWarn = console.warn;
@@ -149,22 +149,54 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
         assert.deepEqual(statuses, [403, 403, 403, 403, 403, 403]);
       } finally { await invalid.context.close(); }
     });
-    await t.test("actual React test chat displays verified budget data and preserves historical-spend lock", async () => {
+    await t.test("actual React test chat offers explicit bounded owner approval without a historical upload", async () => {
       await page.goto(origin + "/__pete_browser_ui");
       await page.waitForFunction(() => document.body.innerText.includes("11.158772 USD") ||
         document.body.innerText.includes("desktop_local_session_required"), undefined, { timeout: 15000 });
       const text = await page.locator("body").innerText();
       assert.ok(text.includes("11.158772 USD"), "real React mount must receive budget data");
-      assert.ok(text.includes("Frühere Laptop-Ausgaben und Kostenbelege sind nicht vollständig abgeglichen."));
+      assert.ok(text.includes("Deine bisherigen API-Kosten"));
+      assert.ok(text.includes("kein Rechnungsupload erforderlich"));
+      assert.ok(!text.includes("Frühere Laptop-Ausgaben und Kostenbelege sind nicht vollständig abgeglichen."));
       assert.ok(!text.includes("Der lokale Backend-Status ist nicht erreichbar."));
       const toggle = page.getByRole("switch", { name: "KI AN (kostenpflichtig)" });
-      assert.equal(await toggle.isDisabled(), true);
+      assert.equal(await toggle.isDisabled(), false);
       assert.equal(await toggle.getAttribute("aria-checked"), "false");
-    });
-    await context.close();
-    await t.test("read-only regression creates no budget ledger and makes zero paid or external requests", () => {
       assert.equal(fs.existsSync(path.join(dataDir, "pete-api-budget.json")), false);
       assert.equal(observed.filter(r => /\/(budget|message)$/.test(r.route)).length, 0);
+    });
+    await t.test("real KI AN and AUS clicks persist bounded owner consent without a provider request or fake review", async () => {
+      await page.getByRole("switch", { name: "KI AN (kostenpflichtig)" }).click();
+      const on = page.getByRole("switch", { name: "KI AUS" });
+      await on.waitFor();
+      assert.equal(await on.getAttribute("aria-checked"), "true");
+      const ledger = JSON.parse(fs.readFileSync(path.join(dataDir, "pete-api-budget.json"), "utf8"));
+      assert.equal(ledger.desktop.limitMicroUsd, 250_000);
+      assert.ok(Number.isFinite(Date.parse(ledger.desktop.ownerManagedCostsAcknowledgedAt)));
+      assert.equal(ledger.desktop.history, null);
+      assert.equal(ledger.requestsStarted, 0);
+      assert.equal(fs.existsSync(path.join(dataDir, "pete-desktop-history-review.json")), false);
+      await on.click();
+      await page.getByRole("switch", { name: "KI AN (kostenpflichtig)" }).waitFor();
+      const after = JSON.parse(fs.readFileSync(path.join(dataDir, "pete-api-budget.json"), "utf8"));
+      assert.equal(after.desktop.limitMicroUsd, 250_000);
+      assert.equal(after.desktop.enabledBootId, null);
+      assert.equal(after.desktop.confirmedMicroUsd, 0);
+      assert.equal(after.requestsStarted, 0);
+    });
+    await t.test("missing provider configuration still disables real React activation", async () => {
+      const previousKey = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = "";
+      try {
+        await page.reload();
+        await page.getByText("GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("switch", { name: "KI AN (kostenpflichtig)" }).isDisabled(), true);
+      } finally { process.env.OPENAI_API_KEY = previousKey; }
+    });
+    await context.close();
+    await t.test("owner toggle regression makes zero paid/message/external requests", () => {
+      assert.equal(observed.filter(r => /\/budget$/.test(r.route)).length, 2);
+      assert.equal(observed.filter(r => /\/message$/.test(r.route)).length, 0);
       assert.equal(externalCalls, 0);
       assert.equal(blockedBrowserRequests, 0);
     });

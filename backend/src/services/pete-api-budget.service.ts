@@ -318,6 +318,8 @@ type DesktopBudget = {
   enabledBootId: string | null;
   enabledSessionHash: string | null;
   history: { reviewSha256: string; priorMicroUsd: number } | null;
+  // Explicit local owner choice, not a fabricated historical reconciliation.
+  ownerManagedCostsAcknowledgedAt?: string;
   accountingError: boolean;
 };
 type Ledger = {
@@ -504,14 +506,15 @@ export function reservePeteBudget(params: {
     if (params.desktopSessionHash !== undefined) {
       assertDesktopRuntimeSafe();
       const desktop = desktopData(data);
-      const history = readDesktopHistoryReview(data);
-      if (params.model !== "gpt-6.1-sol" || !desktop.history ||
-          desktop.history.reviewSha256 !== history.sha256 || desktop.accountingError ||
+      const basis = readDesktopCostBasis(data);
+      if (params.model !== "gpt-6.1-sol" ||
+          (basis.sha256 !== null && (!desktop.history || desktop.history.reviewSha256 !== basis.sha256)) ||
+          desktop.accountingError ||
           desktop.enabledBootId !== DESKTOP_BOOT_ID ||
           desktop.enabledSessionHash !== params.desktopSessionHash)
         throw new PeteBudgetStop("unavailable");
       if (desktop.confirmedMicroUsd + desktop.reservedMicroUsd + reservedMicros > desktop.limitMicroUsd ||
-          history.priorMicroUsd + data.committedMicroUsd + reservedMicros > PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
+          basis.priorMicroUsd + data.committedMicroUsd + reservedMicros > PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
         throw new PeteBudgetStop("exhausted");
       const id = crypto.randomUUID();
       data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(),
@@ -628,6 +631,10 @@ function validateDesktopBudget(data: Ledger): void {
       d.confirmedMicroUsd > data.confirmedMicroUsd || d.reservedMicroUsd > data.reservedMicroUsd ||
       d.reservedMicroUsd !== Object.values(data.pending).filter(p => p.desktop === true)
         .reduce((sum, p) => sum + p.microUsd, 0) ||
+      (d.ownerManagedCostsAcknowledgedAt !== undefined &&
+        (typeof d.ownerManagedCostsAcknowledgedAt !== "string" ||
+          !Number.isFinite(Date.parse(d.ownerManagedCostsAcknowledgedAt)) ||
+          Date.parse(d.ownerManagedCostsAcknowledgedAt) > Date.now() || d.history !== null)) ||
       (d.history !== null && (!d.history || !/^[a-f0-9]{64}$/.test(d.history.reviewSha256) ||
         !isWhole(d.history.priorMicroUsd) || d.history.priorMicroUsd < PETE_DESKTOP_HISTORY.knownBookedMicroUsd)))
     throw new PeteBudgetStop("unavailable");
@@ -694,26 +701,42 @@ function readDesktopHistoryReview(data: Ledger): { sha256: string; priorMicroUsd
   } catch { throw new PeteBudgetStop("unavailable"); }
 }
 
+/** The owner may manage historical costs directly in OpenAI and explicitly
+ * authorize a bounded local test. Keep the immutable known booking floor and
+ * every current-ledger charge/reservation. Never call this verified history.
+ * A previously sealed review cannot be replaced by this mode.
+ */
+function readDesktopCostBasis(data: Ledger): { sha256: string | null; priorMicroUsd: number } {
+  const d = desktopData(data);
+  if (d.ownerManagedCostsAcknowledgedAt !== undefined && d.history === null)
+    return { sha256: null, priorMicroUsd: PETE_DESKTOP_HISTORY.knownBookedMicroUsd };
+  return readDesktopHistoryReview(data);
+}
+
 export function getPeteDesktopBudgetStatus(sessionHash?: string) {
   try {
     assertDesktopRuntimeSafe();
     if (fs.existsSync(LOCK_FILE)) throw new PeteBudgetStop("unavailable");
     const data = load();
     const d = desktopData(data);
-    let history: ReturnType<typeof readDesktopHistoryReview> | null = null;
-    try { history = readDesktopHistoryReview(data); } catch { /* fail closed below */ }
+    let basis: ReturnType<typeof readDesktopCostBasis> | null = null;
+    try { basis = readDesktopCostBasis(data); } catch { /* no implicit permission */ }
+    const historyVerified = basis !== null && basis.sha256 !== null;
+    const ownerManagedCosts = d.ownerManagedCostsAcknowledgedAt !== undefined;
     const committed = d.confirmedMicroUsd + d.reservedMicroUsd;
-    const projectRemaining = history === null ? null : Math.max(0,
-      PETE_DESKTOP_HISTORY.projectCeilingMicroUsd - history.priorMicroUsd - data.committedMicroUsd);
-    const remaining = projectRemaining === null ? 0 : Math.min(projectRemaining,
+    const bookedRemaining = Math.max(0, PETE_DESKTOP_HISTORY.projectCeilingMicroUsd -
+      (basis?.priorMicroUsd ?? PETE_DESKTOP_HISTORY.knownBookedMicroUsd) - data.committedMicroUsd);
+    const projectRemaining = historyVerified ? bookedRemaining : null;
+    const ownerManagedApprovalAvailable = d.history === null && !d.accountingError && bookedRemaining > 0;
+    const remaining = basis === null ? 0 : Math.min(bookedRemaining,
       Math.max(0, d.limitMicroUsd - committed));
-    const enabled = history !== null && !d.accountingError &&
+    const enabled = basis !== null && !d.accountingError && bookedRemaining > 0 &&
       d.enabledBootId === DESKTOP_BOOT_ID && d.enabledSessionHash === sessionHash;
-    return { ok: true as const, enabled, historyVerified: history !== null,
-      blockReason: d.accountingError ? "accounting_review_required" : history === null
-        ? "historical_spend_unverified" : projectRemaining === 0 ? "project_budget_exhausted" : null,
+    return { ok: true as const, enabled, historyVerified, ownerManagedCosts, ownerManagedApprovalAvailable,
+      blockReason: d.accountingError ? "accounting_review_required" : bookedRemaining === 0
+        ? "project_budget_exhausted" : basis === null ? "historical_spend_unverified" : null,
       knownHistoricalBookedUsd: PETE_DESKTOP_HISTORY.knownBookedMicroUsd / 1_000_000,
-      historicalBookedUsd: history ? history.priorMicroUsd / 1_000_000 : null,
+      historicalBookedUsd: historyVerified ? basis!.priorMicroUsd / 1_000_000 : null,
       projectRemainingUsd: projectRemaining === null ? null : projectRemaining / 1_000_000,
       authorizedUsd: d.limitMicroUsd / 1_000_000,
       confirmedUsd: d.confirmedMicroUsd / 1_000_000,
@@ -729,6 +752,7 @@ export function getPeteDesktopBudgetStatus(sessionHash?: string) {
 /** Cumulative allowance: OFF/ON, new contacts and restarts NEVER reset spend. */
 export function setPeteDesktopBudget(params: {
   enabled: boolean; sessionHash: string; limitMicroUsd?: number;
+  ownerManagedCosts?: true;
 }): void {
   assertDesktopRuntimeSafe();
   if (!/^[a-f0-9]{64}$/.test(params.sessionHash)) throw new PeteBudgetStop("unavailable");
@@ -736,13 +760,22 @@ export function setPeteDesktopBudget(params: {
     const data = load();
     const d = desktopData(data);
     if (params.enabled) {
-      const review = readDesktopHistoryReview(data);
+      let basis: ReturnType<typeof readDesktopCostBasis>;
+      try { basis = readDesktopCostBasis(data); }
+      catch (error) {
+        // Preserve any valid existing review and all its known expenditure.
+        // Only an unsealed missing/invalid history may use the new approval.
+        if (params.ownerManagedCosts !== true || d.history !== null) throw error;
+        basis = { sha256: null, priorMicroUsd: PETE_DESKTOP_HISTORY.knownBookedMicroUsd };
+      }
+      const ownerManaged = basis.sha256 === null;
       if (!PETE_DESKTOP_BUDGET_CHOICES.some(amount => amount === params.limitMicroUsd) || d.accountingError)
         throw new PeteBudgetStop("unavailable");
       if (params.limitMicroUsd! <= d.confirmedMicroUsd + d.reservedMicroUsd ||
-          review.priorMicroUsd + data.committedMicroUsd >= PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
+          basis.priorMicroUsd + data.committedMicroUsd >= PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
         throw new PeteBudgetStop("exhausted");
-      d.history ??= { reviewSha256: review.sha256, priorMicroUsd: review.priorMicroUsd };
+      if (ownerManaged) d.ownerManagedCostsAcknowledgedAt ??= new Date().toISOString();
+      else d.history ??= { reviewSha256: basis.sha256!, priorMicroUsd: basis.priorMicroUsd };
       d.limitMicroUsd = params.limitMicroUsd!;
       d.enabledBootId = DESKTOP_BOOT_ID;
       d.enabledSessionHash = params.sessionHash;
