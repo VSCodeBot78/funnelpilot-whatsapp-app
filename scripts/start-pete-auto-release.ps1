@@ -11,7 +11,8 @@ $readyFile = Join-Path $env:LOCALAPPDATA "FunnelPilot\PeteLab\last-ready-sha.txt
 $windowTitle = "Funnel Pilot | AutoStart"
 function Stop-Safe([string]$why) { throw ("SICHERHEITS-STOP: " + $why) }
 function Run-Git([string[]]$arguments) {
-  $result = & git.exe @arguments 2>&1
+  # Ignore Git progress on STDERR: Windows PowerShell 5.1 can treat it as an error.
+  $result = & git.exe @arguments 2>$null
   if ($LASTEXITCODE -ne 0) { Stop-Safe ("Git: " + ($result -join " ").Substring(0, [Math]::Min(250, ($result -join " ").Length))) }
   return @($result)
 }
@@ -89,10 +90,10 @@ try {
     }
     # A dirty source worktree is ACCEPTED. Git writes the clean snapshot elsewhere.
     Write-Host "Neue Version in separatem Ordner einrichten..." -ForegroundColor Cyan
-    $fetched = @(Run-Git @("-C",$source,"fetch","--no-tags","origin",$branch))
+    $fetched = @(Run-Git @("-C",$source,"fetch","--quiet","--no-tags","origin",$branch))
     $fetchedSha = @(Run-Git @("-C",$source,"rev-parse","FETCH_HEAD")) -join ""
     if ($fetchedSha.Trim() -ne $sha) { Stop-Safe "GitHub-Version hat sich waehrend des Updates geaendert." }
-    $created = @(Run-Git @("-C",$source,"worktree","add","--detach",$candidate,$sha))
+    $created = @(Run-Git @("-C",$source,"worktree","add","--quiet","--detach",$candidate,$sha))
     $releaseSha = @(Run-Git @("-C",$candidate,"rev-parse","HEAD")) -join ""
     if ($releaseSha.Trim() -ne $sha) { Stop-Safe "Release-SHA stimmt nicht." }
     $sourceEnv = Join-Path $source "backend\.env"
