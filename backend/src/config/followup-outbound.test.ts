@@ -55,6 +55,58 @@ test("Phase 12 real follow-up transport truth", async (t) => {
     fs.rmSync(testDataDir, { recursive: true, force: true });
   });
 
+  await t.test("Meta 24h follow-up window uses LAST inbound, never the bot send time", async () => {
+    clearConversationStore();
+    const { evaluateGhostingState } = await import("../services/ghosting.service.js");
+    const state = getOrCreateConversationState("instagram:window-boundary", "eltern-vital-fit");
+    state.source = "Instagram";
+    state.lastAssistantMessageAt = hoursAgo(7);
+    state.lastUserMessageAt = hoursAgo(8);
+    const allowedPreview = evaluateGhostingState(state, state.ghosting);
+    assert.equal(allowedPreview.dueNow, true);
+    assert.equal(allowedPreview.stage, "cycle1_within24h_6h");
+
+    state.lastUserMessageAt = hoursAgo(25);
+    const expired = evaluateGhostingState(state, state.ghosting);
+    assert.equal(expired.dueNow, false);
+    assert.match(expired.reason || "", /24-Stunden/);
+
+    state.lastUserMessageAt = undefined;
+    const noProof = evaluateGhostingState(state, state.ghosting);
+    assert.equal(noProof.dueNow, false);
+    assert.match(noProof.reason || "", /Kundeneingang/);
+  });
+
+  await t.test("desktop keyword starts are scripted, and a Reel comment is not an inbound DM", async () => {
+    clearConversationStore();
+    await withServer(async baseUrl => {
+      for (const [source, keyword] of [
+        ["instagram_dm", "CHECK"],
+        ["instagram_story_reply", "KETO"],
+        ["instagram_reel_comment", "BULLSHIT"],
+      ] as const) {
+        const leadId = "lab_desktop_test_" + source + "_" + keyword.toLowerCase();
+        const response = await fetch(baseUrl + "/test-chat/simulate-entry", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, source, keyword }),
+        });
+        assert.equal(response.status, 200);
+        const data = await response.json() as {
+          ok: boolean; reply: null; replySource: string;
+          state: { messages: Array<{ role: string; syntheticAutomation?: boolean }> };
+        };
+        assert.equal(data.ok, true);
+        assert.equal(data.reply, null); // no LLM or Meta network on entry
+        assert.equal(data.replySource, "scripted_context");
+        assert.equal(data.state.messages.at(-1)?.syntheticAutomation, true);
+        const state = getConversationState(leadId, "eltern-vital-fit");
+        assert.ok(state);
+        assert.equal(Boolean(state.lastUserMessageAt), source !== "instagram_reel_comment");
+        assert.equal(data.state.messages.length, source === "instagram_reel_comment" ? 1 : 2);
+      }
+    });
+  });
+
   await t.test("ghosting dry-run stays due and is not faked into history", async () => {
     clearConversationStore();
 
