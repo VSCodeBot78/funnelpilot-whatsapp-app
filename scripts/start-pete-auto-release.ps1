@@ -20,11 +20,39 @@ function Is-Port-Free([int]$port) {
   $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Parse("127.0.0.1"), $port)
   try { $listener.Start(); return $true } catch { return $false } finally { try { $listener.Stop() } catch {} }
 }
-function Assert-ReadySnapshot([string]$sha) {
-  return ($sha -match '^[a-f0-9]{40}$' -and
-    (Test-Path -LiteralPath (Join-Path $releasesDir $sha) -PathType Container) -and
-    (Test-Path -LiteralPath (Join-Path (Join-Path $releasesDir $sha) "backend\node_modules\.bin\tsx.cmd")) -and
-    (Test-Path -LiteralPath (Join-Path (Join-Path $releasesDir $sha) "dashboard\node_modules\vite\bin\vite.js")))
+# Preserve abandoned incomplete folders, never overwrite them.
+# Release names are restricted to a SHA or a small, bounded retry suffix.
+function Assert-ReadySnapshot([string]$name) {
+  if ($name -notmatch '^([a-f0-9]{40})(?:-retry-[1-5])?$') { return $false }
+  $expectedSha = $matches[1]
+  $folder = Join-Path $releasesDir $name
+  if (-not (Test-Path -LiteralPath $folder -PathType Container) -or
+      -not (Test-Path -LiteralPath (Join-Path $folder "backend\node_modules\.bin\tsx.cmd")) -or
+      -not (Test-Path -LiteralPath (Join-Path $folder "dashboard\node_modules\vite\bin\vite.js")) -or
+      -not (Test-Path -LiteralPath (Join-Path $folder "backend\dist\index.js")) -or
+      -not (Test-Path -LiteralPath (Join-Path $folder "dashboard\dist\index.html"))) {
+    return $false
+  }
+  try {
+    $actualSha = (@(Run-Git @("-C",$folder,"rev-parse","HEAD")) -join "").Trim().ToLowerInvariant()
+    return $actualSha -eq $expectedSha
+  } catch { return $false }
+}
+function Select-ReleaseSlot([string]$sha) {
+  # First reuse any fully prepared candidate: regular, or a prior recovery.
+  foreach ($index in 0..5) {
+    $name = if ($index -eq 0) { $sha } else { $sha + "-retry-" + $index }
+    if (Assert-ReadySnapshot $name) { return @{ name=$name; ready=$true } }
+  }
+  # All existing unready directories are left untouched, even if they contain
+  # partial npm installations or private .env files. Use a new sibling.
+  foreach ($index in 0..5) {
+    $name = if ($index -eq 0) { $sha } else { $sha + "-retry-" + $index }
+    if (-not (Test-Path -LiteralPath (Join-Path $releasesDir $name))) {
+      return @{ name=$name; ready=$false }
+    }
+  }
+  Stop-Safe "Alle sicheren Releaseordner sind belegt. Keine Dateien werden geloescht."
 }
 function Start-LocalService([string]$title, [string]$working, [string[]]$commands) {
   $body = '$Host.UI.RawUI.WindowTitle = "' + $title + '"' + [Environment]::NewLine
@@ -83,10 +111,12 @@ try {
     Stop-Safe "Aktuellster Commit ist noch nicht vollstaendig im kostenlosen QA-Lauf bestanden."
   }
   Write-Host ("Freigegebene QA-Version: " + $sha.Substring(0,8)) -ForegroundColor Green
-  $candidate = Join-Path $releasesDir $sha
-  if (-not (Assert-ReadySnapshot $sha)) {
-    if (Test-Path -LiteralPath $candidate) {
-      Stop-Safe "Unvollstaendiger Updateordner vorhanden. Keine automatische Ueberschreibung."
+  $slot = Select-ReleaseSlot $sha
+  $releaseName = $slot.name
+  $candidate = Join-Path $releasesDir $releaseName
+  if (-not $slot.ready) {
+    if ($releaseName -ne $sha) {
+      Write-Host "Unvollstaendiger alter Updateordner bleibt erhalten. Nutze sicheren neuen Ordner." -ForegroundColor Yellow
     }
     # A dirty source worktree is ACCEPTED. Git writes the clean snapshot elsewhere.
     Write-Host "Neue Version in separatem Ordner einrichten..." -ForegroundColor Cyan
@@ -110,8 +140,8 @@ try {
     & npm.cmd --prefix (Join-Path $candidate "dashboard") run build
     if ($LASTEXITCODE -ne 0) { Stop-Safe "Dashboard-Build fehlgeschlagen." }
   }
-  if (-not (Assert-ReadySnapshot $sha)) { Stop-Safe "Releaseverzeichnis nicht startfaehig." }
-  $targetSha = $sha
+  if (-not (Assert-ReadySnapshot $releaseName)) { Stop-Safe "Releaseverzeichnis nicht startfaehig." }
+  $targetSha = $releaseName
 } catch {
   Write-Host ("Update nicht moeglich: " + $_.Exception.Message) -ForegroundColor Yellow
   # Only fall back to a PREVIOUSLY ready, persistent release. Never start a broken update.
