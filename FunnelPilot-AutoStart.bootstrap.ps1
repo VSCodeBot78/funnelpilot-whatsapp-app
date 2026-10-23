@@ -3,8 +3,8 @@ param([Parameter(Mandatory=$true)][string]$SourceRoot)
 $ErrorActionPreference = "Stop"
 # Trust only this reviewed, immutable launcher revision. It updates APP CODE
 # only after that commit has passed the project's offline GitHub CI.
-$pinnedCommit = "faf743a79924c7fcfc0223f07f4715c35928bdf9"
-$expectedGitBlob = "416181aac1fb3ee4e5c762d619873e0cc07586e4"
+$pinnedCommit = "1017ad05352f92834cb4f32f3837b1a7451b1939"
+$expectedGitBlob = "2b28aed7919aa5761bb1fbfbd70dfa6ddaf04017"
 $dest = Join-Path $env:LOCALAPPDATA "FunnelPilot\Launcher"
 $launcher = Join-Path $dest ("start-pete-auto-release-" + $pinnedCommit + ".ps1")
 $url = "https://raw.githubusercontent.com/VSCodeBot78/funnelpilot-whatsapp-app/" +
