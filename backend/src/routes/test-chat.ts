@@ -13,6 +13,7 @@ import { OFFER_TRUTH } from "../config/offer-truth.js";
 import { getCalendlyAvailableSlots } from "../services/calendly-availability.service.js";
 import { formatAvailabilitySlot } from "../services/availability.service.js";
 import { getProviderConfig } from "../config/scheduling-providers.js";
+import { getAvailabilityConfig } from "../data/availability-config.store.js";
 
 const router = Router();
 
@@ -208,8 +209,10 @@ const DESKTOP_ENTRY_SOURCES = [
   "instagram_dm", "instagram_story_reply", "instagram_reel_comment",
 ] as const;
 router.post("/simulate-entry", (req, res) => {
-  if (env.NODE_ENV === "production" || env.INSTAGRAM_SEND_ENABLED ||
-      env.WHATSAPP_SEND_ENABLED || env.INSTAGRAM_ENGINE_ENABLED) {
+  if (env.NODE_ENV === "production" ||
+      (env.NODE_ENV !== "test" && !env.LOCAL_LAPTOP_TEST_MODE) ||
+      env.INSTAGRAM_SEND_ENABLED || env.WHATSAPP_SEND_ENABLED ||
+      env.INSTAGRAM_ENGINE_ENABLED) {
     return res.status(403).json({ ok: false, error: "desktop_synthetic_lab_only_send_flags_off" });
   }
   const { leadId, keyword, source } = req.body ?? {};
@@ -276,18 +279,20 @@ router.get("/calendly-readiness", async (_req, res) => {
     return res.status(403).json({ ok: false, status: "test_mode_required" });
   }
   res.setHeader("Cache-Control", "no-store");
+  const activeSourceMode = getAvailabilityConfig().sourceMode;
+  const peteUsesCalendar = activeSourceMode === "calendar";
   const url = getProviderConfig(DEFAULT_CAMPAIGN_ID, "calendly").bookingUrl;
   const bookingUrl = typeof url === "string" && /^https:\/\/(?:www\.)?calendly\.com\//i.test(url) ? url : null;
   if (!process.env.CALENDLY_PAT?.trim()) {
     return res.json({ ok: true, status: "credentials_missing",
       checkedAt: new Date().toISOString(), slots: [], bookingUrl,
-      source: "not_checked", note: "Funnel Pilot hat keinen CALENDLY_PAT. ChatGPT-Verbindungen gelten hier nicht." });
+      peteUsesCalendar, source: "not_checked", note: "Funnel Pilot hat keinen CALENDLY_PAT. ChatGPT-Verbindungen gelten hier nicht." });
   }
   try {
     const slots = await getCalendlyAvailableSlots({ campaignId: DEFAULT_CAMPAIGN_ID, daysAhead: 14 });
     return res.json({
       ok: true, status: slots.length ? "verified_slots" : "no_verified_slots",
-      checkedAt: new Date().toISOString(), bookingUrl, source: "calendly_api",
+      checkedAt: new Date().toISOString(), bookingUrl, peteUsesCalendar, source: "calendly_api",
       slots: slots.filter(slot => slot.date && slot.startAt).slice(0, 9)
         .map(slot => ({ date: slot.date, time: slot.time, startAt: slot.startAt,
           label: formatAvailabilitySlot(slot) })),
@@ -296,7 +301,7 @@ router.get("/calendly-readiness", async (_req, res) => {
     });
   } catch {
     return res.json({ ok: true, status: "provider_unavailable",
-      checkedAt: new Date().toISOString(), slots: [], bookingUrl, source: "calendly_api_failed",
+      checkedAt: new Date().toISOString(), slots: [], bookingUrl, peteUsesCalendar, source: "calendly_api_failed",
       note: "Calendly-Verfügbarkeit konnte nicht geprüft werden. Keine Zeiten versprechen." });
   }
 });
