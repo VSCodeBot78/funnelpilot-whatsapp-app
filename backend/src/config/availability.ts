@@ -39,7 +39,10 @@ export const STATIC_AVAILABILITY: Record<AvailabilityDayKey, string[]> = {
   saturday: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
 };
 
-export const DEFAULT_AVAILABILITY_SOURCE_MODE = "static";
+// Interactive/private runs never make claims from old weekly fake data.
+// Existing offline test fixtures keep their explicit static scenario.
+export const DEFAULT_AVAILABILITY_SOURCE_MODE =
+  process.env.NODE_ENV === "test" ? "static" : "calendar";
 
 export function cloneStaticAvailability(): Record<AvailabilityDayKey, string[]> {
   return {
