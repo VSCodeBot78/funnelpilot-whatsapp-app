@@ -1,10 +1,7 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { buildApiUrl } from "./services/apiBase";
 import { describePeteReplySource } from "./utils/peteReplySource";
-
-function makeTestLeadId() {
-  return `lab_desktop_${Date.now()}_${Math.floor(Math.random() * 1000000000).toString(36)}`;
-}
+import { createPeteDesktopClient, desktopBlockReason, formatDesktopUsd } from "./services/peteDesktopLab";
 
 function getCurrentTime() {
   return new Date().toLocaleTimeString("de-DE", {
@@ -75,9 +72,9 @@ function mapStateMessagesToUi(stateMessages = []) {
 }
 
 export default function ChatTest() {
-  const initialLeadRef = useRef(makeTestLeadId());
-
-  const [leadId, setLeadId] = useState(initialLeadRef.current);
+  const desktopClient = useRef(null);
+  desktopClient.current ??= createPeteDesktopClient();
+  const [leadId, setLeadId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [debug, setDebug] = useState(null);
@@ -89,27 +86,35 @@ export default function ChatTest() {
   const [calendlyChecking, setCalendlyChecking] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState(null);
   const [aiChecking, setAiChecking] = useState(false);
+  const [budgetChoice, setBudgetChoice] = useState("0.25");
 
   const campaignId = "eltern-vital-fit";
 
-  const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+  const canSend = useMemo(() => Boolean(leadId) && input.trim().length > 0 && !loading && !aiChecking && !aiDiagnostic?.error,
+    [leadId, input, loading, aiChecking, aiDiagnostic]);
+  const budget = aiDiagnostic?.budget;
+  const aiBlock = desktopBlockReason(aiDiagnostic);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([desktopClient.current.status(), desktopClient.current.newLead()])
+      .then(([status, lead]) => {
+        if (cancelled) return;
+        setAiDiagnostic(status);
+        setLeadId(lead.leadId);
+      }).catch(error => { if (!cancelled) setAiDiagnostic({ error: error.message }); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function startCampaignSimulation(keyword) {
     if (loading || refreshing) return;
-    const nextLeadId = makeTestLeadId();
-    setLeadId(nextLeadId);
     setMessages([]);
     setInput("");
     setEntryNotice("");
     setLoading(true);
     try {
-      const res = await fetch(buildApiUrl("/test-chat/simulate-entry"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: nextLeadId, keyword, source: entrySource }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Kampagnenstart fehlgeschlagen");
+      const data = await desktopClient.current.entry(keyword, entrySource);
+      setLeadId(data.leadId);
       setDebug(data);
       setMessages(mapStateMessagesToUi(data.state?.messages || []));
       setEntryNotice(`${entrySource === "instagram_reel_comment" ? "Reel-Kommentar" :
@@ -124,7 +129,7 @@ export default function ChatTest() {
 
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || !canSend) return;
 
     const userMessage = {
       id: `user_${Date.now()}`,
@@ -138,29 +143,8 @@ export default function ChatTest() {
     setLoading(true);
 
     try {
-      const res = await fetch(buildApiUrl("/test-chat/message"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          leadId,
-          campaignId,
-          messageText: text,
-        }),
-      });
-
-      const contentType = res.headers.get("content-type") || "";
-      let data;
-
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const rawText = await res.text();
-        throw new Error(`Backend liefert kein JSON. Response: ${rawText.slice(0, 200)}`);
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Unbekannter Fehler");
-      }
+      const data = await desktopClient.current.message(leadId, campaignId, text);
+      setAiDiagnostic(previous => ({ ...previous, budget: data.budget }));
 
       setDebug(data);
 
@@ -190,6 +174,7 @@ export default function ChatTest() {
       });
     } finally {
       setLoading(false);
+      checkPeteKiReadOnly();
     }
   }
 
@@ -199,20 +184,8 @@ export default function ChatTest() {
     setRefreshing(true);
 
     try {
-      const res = await fetch(buildApiUrl(`/test-chat/state/${campaignId}/${leadId}`));
-      const contentType = res.headers.get("content-type") || "";
-      let data;
-
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const rawText = await res.text();
-        throw new Error(`Backend liefert kein JSON. Response: ${rawText.slice(0, 200)}`);
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || "State konnte nicht geladen werden.");
-      }
+      if (!leadId) return;
+      const data = await desktopClient.current.state(leadId);
 
       setDebug(data);
 
@@ -253,17 +226,10 @@ export default function ChatTest() {
   }
 
   async function checkPeteKiReadOnly() {
-    if (aiChecking || loading) return;
+    if (aiChecking) return;
     setAiChecking(true);
-    setAiDiagnostic(null);
     try {
-      const [readinessRes, budgetRes] = await Promise.all([
-        fetch(buildApiUrl("/health/readiness"), { headers: { Accept: "application/json" } }),
-        fetch(buildApiUrl("/test-chat/budget"), { headers: { Accept: "application/json" } }),
-      ]);
-      if (!readinessRes.ok || !budgetRes.ok) throw new Error("read_only_unavailable");
-      const [readiness, budget] = await Promise.all([readinessRes.json(), budgetRes.json()]);
-      setAiDiagnostic({ readiness, budget });
+      setAiDiagnostic(await desktopClient.current.status());
     } catch {
       setAiDiagnostic({ error: "Der lokale Backend-Status ist nicht erreichbar. Keine KI-Freigabe." });
     } finally {
@@ -271,17 +237,31 @@ export default function ChatTest() {
     }
   }
 
-  function resetTest() {
-    const newLeadId = makeTestLeadId();
-    setLeadId(newLeadId);
-    setMessages([]);
-    setInput("");
-    setEntryNotice("");
-    setDebug({
-      info: "Neuer Testkontakt erstellt",
-      leadId: newLeadId,
-      campaignId,
-    });
+  async function togglePeteAi() {
+    if (aiChecking) return;
+    setAiChecking(true);
+    try {
+      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice);
+      setAiDiagnostic(previous => ({ ...previous, budget: data.budget }));
+    } catch (error) {
+      setAiDiagnostic(previous => ({ ...previous, ...(error.budget ? { budget: error.budget } : {}),
+        error: budget?.enabled ? "KI-AUS nicht bestätigt. Status erneut prüfen oder lokalen Backenddienst schließen."
+          : "KI-Freigabe nicht bestätigt. Status und Kostenbelege prüfen." }));
+    } finally { setAiChecking(false); }
+  }
+
+  async function resetTest() {
+    if (loading || refreshing) return;
+    setRefreshing(true);
+    try {
+      const lead = await desktopClient.current.newLead();
+      setLeadId(lead.leadId);
+      setMessages([]);
+      setInput("");
+      setEntryNotice("");
+      setDebug({ info: "Neuer serverseitiger Testkontakt. Budget unverändert.", leadId: lead.leadId, campaignId });
+    } catch (error) { setDebug({ error: error.message }); }
+    finally { setRefreshing(false); }
   }
 
   function handleKeyDown(e) {
@@ -428,16 +408,33 @@ export default function ChatTest() {
             </p>}
         </div>
 
-        <section aria-label="Pete-KI-Diagnose (nur lesen)" style={{
+        <section aria-label="Pete-KI und dauerhaftes Testbudget" style={{
           background: "#111827", border: "1px solid #2a3348",
           borderRadius: 12, padding: 14, marginBottom: 14,
         }}>
-          <strong>Pete-KI: Testmodus und API-Status</strong>
+          <strong>Echte Pete-KI im lokalen Labor: {!budget?.ok || aiDiagnostic?.error
+            ? "Status nicht bestätigt" : budget.enabled ? "AN" : "AUS"}</strong>
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
-            Diagnose ohne KI-Aufruf und ohne Kosten. Dieser Bereich gibt keine
-            kostenpflichtigen Tests frei. Der angezeigte interne Ledger ist
-            kein OpenAI-Kontostand und keine bestätigte historische Gesamtsumme.
+            GPT-6.1 Sol. Nur für deine synthetischen Desktop-Testkontakte.
+            „KI AN“ erlaubt kostenpflichtige Antworten bis zur gewählten Grenze.
+            Neue Kontakte, AUS/AN und Neustarts setzen den Verbrauch nicht zurück.
+            Nach einem Backend-Neustart bleibt die KI AUS.
           </p>
+          <label htmlFor="pete-desktop-budget">Gesamtbudget dieser Testfreigabe: </label>
+          <select id="pete-desktop-budget" value={budgetChoice}
+            disabled={budget?.enabled || aiChecking || loading}
+            onChange={event => setBudgetChoice(event.target.value)}
+            style={{ color: "#111827", background: "#fff", padding: 8, borderRadius: 6 }}>
+            {["0.25", "0.50", "1.00", "2.00"].map(amount =>
+              <option key={amount} value={amount}>{amount} USD</option>)}
+          </select>
+          <button type="button" role="switch" aria-checked={budget?.enabled === true}
+            onClick={togglePeteAi}
+            disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
+            style={{ background: budget?.enabled ? "#fbbf24" : "#ff914d", color: "#111827",
+              border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, margin: 8 }}>
+            {budget?.enabled ? "KI AUS" : "KI AN (kostenpflichtig)"}
+          </button>
           <button type="button" onClick={checkPeteKiReadOnly}
             disabled={aiChecking || loading}
             style={{ background: "#ff914d", color: "#111827", border: "none",
@@ -447,28 +444,17 @@ export default function ChatTest() {
           {aiDiagnostic && <div role="status" style={{
             marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
           }}>
-            {aiDiagnostic.error ? <p>{aiDiagnostic.error}</p> : <>
-              <div><strong>Echte KI-Kostenfreigabe:</strong>{" "}
-                {aiDiagnostic.readiness?.peteLlmCostGateApproved === true
-                  ? "Konfiguriert, aber noch kein bestätigter echter Modelltest"
-                  : "AUS"}</div>
-              <div><strong>KI-Provider bereit:</strong>{" "}
-                {aiDiagnostic.readiness?.peteLlmProviderReady === true
-                  ? "Konfiguriert" : "Nein"}</div>
-              <div><strong>Lokaler Safe Mode:</strong>{" "}
-                {aiDiagnostic.readiness?.localLaptopSafeMode === true
-                  ? "Aktiv" : "Nicht bestätigt"}</div>
-              <div><strong>Budget-Ledger:</strong>{" "}
-                {aiDiagnostic.budget?.ok === true
-                  ? "Lesbar, historische Ausgaben nicht abgeglichen"
-                  : "Nicht verfügbar"}</div>
-              <p style={{ color: "#fbbf24" }}>
-                Keine Freigabe für Darth-Vader-KI-Tests, bis ein separater,
-                begrenzter Test-Schalter samt sicherem Altledger-Abgleich
-                implementiert und geprüft wurde. Nur Antwortquelle „llm“
-                beweist einen echten Modellbeitrag in der jeweiligen Nachricht.
-              </p>
-            </>}
+            {aiBlock && <p style={{ color: "#fbbf24" }}>{aiBlock}</p>}
+            <div>Freigegeben: {formatDesktopUsd(budget?.authorizedUsd)}</div>
+            <div>Verbrauch bestätigt: {formatDesktopUsd(budget?.confirmedUsd)}</div>
+            <div>Reserviert oder noch ungeklärt: {formatDesktopUsd(budget?.reservedUsd)}</div>
+            <div><strong>Für weitere API-Aufrufe verfügbar: {formatDesktopUsd(budget?.remainingUsd)}</strong></div>
+            <div>Historisch im Projekt verbucht, mindestens: {formatDesktopUsd(budget?.knownHistoricalBookedUsd)}</div>
+            <div>Rest im Projekt nach vollständigem Abgleich: {formatDesktopUsd(budget?.projectRemainingUsd)}</div>
+            <p style={{ color: "#cbd5e1" }}>
+              Interne USD-Kostenrechnung, kein OpenAI-Kontoguthaben.
+              Ungeklärte Aufrufe bleiben reserviert. Meta- und WhatsApp-Versand bleiben AUS.
+            </p>
           </div>}
         </section>
 
@@ -542,6 +528,9 @@ export default function ChatTest() {
           >
             <strong>Antwortquelle der letzten Nachricht:</strong>{" "}
             {describePeteReplySource(debug.replySource)}
+            {debug.replySource === "llm" && debug.providerUsage &&
+              <div>Provider-Nutzung verbucht: {debug.providerUsage.inputTokens} Eingabe- und{" "}
+                {debug.providerUsage.outputTokens} Ausgabetokens ({debug.providerUsage.model}).</div>}
           </div>
         ) : null}
 

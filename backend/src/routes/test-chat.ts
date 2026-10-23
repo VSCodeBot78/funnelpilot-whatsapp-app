@@ -5,7 +5,9 @@ import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
 import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState, releaseToAi } from "../core/state-manager.js";
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
-import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
+import { getPeteBudgetStatusSafe, getPeteDesktopBudgetStatus, setPeteDesktopBudget } from "../services/pete-api-budget.service.js";
+import { startDesktopBrowserSession, guardDesktopBrowser, issueDesktopLead, assertIssuedDesktopLead,
+  desktopSessionHash, desktopProviderConfigured, runDesktopConversation } from "../services/pete-desktop-lab.service.js";
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 import { getAllCampaigns } from "../data/campaigns.store.js";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
@@ -16,6 +18,73 @@ import { getProviderConfig } from "../config/scheduling-providers.js";
 import { getAvailabilityConfig } from "../data/availability-config.store.js";
 
 const router = Router();
+
+// All paid desktop control stays under this authenticated local namespace.
+// No provider request is made by session/status/budget/lead/entry endpoints.
+router.post("/desktop/session", startDesktopBrowserSession);
+router.get("/desktop/status", guardDesktopBrowser, (req, res) => {
+  const budget = getPeteDesktopBudgetStatus(desktopSessionHash(req));
+  return res.json({ ok: true, budget, providerConfigured: desktopProviderConfigured(),
+    model: "gpt-6.1-sol", globalApiCallsApproved: false, sendsEnabled: false });
+});
+router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
+  const { enabled, budgetUsd } = req.body ?? {};
+  if (typeof enabled !== "boolean" ||
+      (enabled && !["0.25", "0.50", "1.00", "2.00"].includes(budgetUsd)) ||
+      Object.keys(req.body).some(key => !["enabled", "budgetUsd"].includes(key)))
+    return res.status(400).json({ ok: false, error: "invalid_desktop_budget" });
+  if (enabled && !desktopProviderConfigured())
+    return res.status(409).json({ ok: false, error: "desktop_provider_not_configured" });
+  try {
+    setPeteDesktopBudget({ enabled, sessionHash: desktopSessionHash(req),
+      limitMicroUsd: enabled ? Math.round(Number(budgetUsd) * 1_000_000) : undefined });
+    return res.json({ ok: true, budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+  } catch {
+    return res.status(409).json({ ok: false, error: "desktop_budget_locked",
+      budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+  }
+});
+router.post("/desktop/lead", guardDesktopBrowser, (req, res) => {
+  try {
+    const leadId = issueDesktopLead(req);
+    const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+    state.source = "lab_desktop";
+    persistConversationState(state);
+    return res.json({ ok: true, leadId, campaignId: DEFAULT_CAMPAIGN_ID });
+  } catch { return res.status(409).json({ ok: false, error: "desktop_lead_not_created" }); }
+});
+router.get("/desktop/state/:leadId", guardDesktopBrowser, (req, res) => {
+  try {
+    assertIssuedDesktopLead(req, req.params.leadId, DEFAULT_CAMPAIGN_ID);
+    const state = getConversationState(req.params.leadId as string, DEFAULT_CAMPAIGN_ID);
+    return res.json({ ok: true, state: { messages: publicLabMessages(state?.messages ?? []) } });
+  } catch { return res.status(403).json({ ok: false, error: "desktop_server_issued_lead_required" }); }
+});
+router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
+  const { leadId, campaignId, messageText } = req.body ?? {};
+  try { assertIssuedDesktopLead(req, leadId, campaignId); }
+  catch { return res.status(403).json({ ok: false, error: "desktop_server_issued_lead_required" }); }
+  if (typeof messageText !== "string" || !messageText.trim() || messageText.length > 1500 ||
+      Object.keys(req.body).some(key => !["leadId", "campaignId", "messageText"].includes(key)))
+    return res.status(400).json({ ok: false, error: "invalid_desktop_message" });
+  try {
+    const result = await runDesktopConversation(req, leadId, () => processIncomingMessage({
+      leadId, campaignId: DEFAULT_CAMPAIGN_ID, messageText, conversationMode: "natural",
+    }));
+    const a = result.state.answers;
+    return res.json({ ok: true, reply: result.text,
+      replySource: a.peteReplySource ?? "deterministic",
+      providerUsage: a.peteReplySource === "llm" && a.peteProviderUsageMetered === true
+        ? { model: a.peteProviderModel, inputTokens: a.peteProviderInputTokens,
+          outputTokens: a.peteProviderOutputTokens } : null,
+      replySuppressedReason: result.replySuppressedReason ?? null,
+      state: { messages: publicLabMessages(result.state.messages) },
+      budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+  } catch {
+    return res.status(503).json({ ok: false, error: "desktop_test_unavailable",
+      budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+  }
+});
 
 // TEMPORARY mobile laboratory, not a general remote administration API.
 // Production requests also require the existing authenticated reverse proxy.
@@ -208,7 +277,7 @@ const DESKTOP_ENTRY_KEYWORDS = ["CHECK", "KETO", "BULLSHIT"] as const;
 const DESKTOP_ENTRY_SOURCES = [
   "instagram_dm", "instagram_story_reply", "instagram_reel_comment",
 ] as const;
-router.post("/simulate-entry", (req, res) => {
+function simulateDesktopEntry(req: Request, res: Response) {
   if (env.NODE_ENV === "production" ||
       (env.NODE_ENV !== "test" && !env.LOCAL_LAPTOP_TEST_MODE) ||
       env.INSTAGRAM_SEND_ENABLED || env.WHATSAPP_SEND_ENABLED ||
@@ -260,6 +329,7 @@ router.post("/simulate-entry", (req, res) => {
   persistConversationState(state);
   return res.json({
     ok: true, reply: null, replySource: "scripted_context",
+    leadId, campaignId: DEFAULT_CAMPAIGN_ID,
     entryKeyword: keyword, entrySource: source,
     matchedRealCampaign: preview.status === "matched",
     campaignMatchStatus: preview.status,
@@ -268,6 +338,16 @@ router.post("/simulate-entry", (req, res) => {
       : "Beispiel-Einstieg; keine echte Kampagne oder Meta-Zustellung verifiziert.",
     state: { messages: publicLabMessages(state.messages) },
   });
+}
+router.post("/simulate-entry", simulateDesktopEntry);
+router.post("/desktop/entry", guardDesktopBrowser, (req, res) => {
+  if (Object.keys(req.body ?? {}).some(key => !["keyword", "source"].includes(key)))
+    return res.status(400).json({ ok: false, error: "invalid_desktop_entry" });
+  try {
+    const leadId = issueDesktopLead(req);
+    req.body = { ...req.body, leadId };
+    return simulateDesktopEntry(req, res);
+  } catch { return res.status(409).json({ ok: false, error: "desktop_entry_not_created" }); }
 });
 
 // OWNER DIAGNOSTIC ONLY: does not mutate leads, book events or send messages.

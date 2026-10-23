@@ -13,16 +13,20 @@ import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
 import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 import { decidePeteTurnV4, explainPeteTurnV4 } from "./pete-turn-policy-v4.js";
+import { desktopCallMode, desktopCallSessionHash } from "../services/pete-desktop-lab.service.js";
 
 export const PETE_LLM_HANDOFF_REPLY =
   "Ich möchte dir hier keine unpassende Antwort geben. Ich gebe das an Jochen weiter, damit er persönlich draufschauen kann.";
 
 export type PeteLlmResult =
-  | { kind: "llm"; text: string }
+  | { kind: "llm"; text: string; usage?: { model: string; inputTokens: number; outputTokens: number } }
   | { kind: "safe_reply"; text: string }
+  | { kind: "suppressed"; reason: "desktop_switched_off" }
   | { kind: "handoff"; reason: "not_authorized" | "provider_unavailable" | "invalid_output" | "model_handoff" | "budget_exhausted" | "budget_unavailable"; detail?: string };
 
 export function isPeteLlmConversationSelected(): boolean {
+  const desktop = desktopCallMode();
+  if (desktop !== null) return desktop === "paid";
   return process.env.PETE_LLM_CONVERSATION_ENABLED?.trim().toLowerCase() === "true";
 }
 
@@ -457,12 +461,15 @@ function readResponseText(payload: unknown): string | null {
 }
 
 export async function getPeteLlmConversationReply(state: ConversationState): Promise<PeteLlmResult> {
-  if (!isPeteLlmConversationSelected() || !arePeteLlmApiCallsApproved()) {
+  let desktopSessionHash: string | undefined;
+  try { desktopSessionHash = desktopCallSessionHash(state); }
+  catch { return { kind: "handoff", reason: "not_authorized" }; }
+  if (!isPeteLlmConversationSelected() || (!desktopSessionHash && !arePeteLlmApiCallsApproved())) {
     return { kind: "handoff", reason: "not_authorized" };
   }
   // Never activate paid calls solely because a secret was found in an old .env.
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey || !hasPeteLlmConsent()) {
+  if (!apiKey || (!desktopSessionHash && !hasPeteLlmConsent())) {
     return { kind: "handoff", reason: "not_authorized" };
   }
 
@@ -506,7 +513,7 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
       });
   let reservation: string;
   try {
-    reservation = reservePeteBudget({ model, requestBody, maxOutputTokens });
+    reservation = reservePeteBudget({ model, requestBody, maxOutputTokens, desktopSessionHash });
   } catch (error) {
     if (error instanceof PeteBudgetStop && error.reason === "exhausted")
       return { kind: "handoff", reason: "budget_exhausted" };
@@ -526,7 +533,13 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     if (!response.ok) return { kind: "handoff", reason: "provider_unavailable", detail: "http_error" };
     const payload = await response.json();
     // No usage means the entire preauthorized amount remains counted.
-    settlePeteBudget(reservation, payload?.usage);
+    const metered = settlePeteBudget(reservation, payload?.usage);
+    // For a paid desktop test, unmetered output cannot masquerade as a
+    // verified model answer. Unknown usage remains fully reserved.
+    if (desktopSessionHash && !metered)
+      return { kind: "handoff", reason: "budget_unavailable", detail: "provider_usage_unverified" };
+    if (desktopSessionHash && desktopCallMode() !== "paid")
+      return { kind: "suppressed", reason: "desktop_switched_off" };
     const text = readResponseText(payload);
     if (!text) return { kind: "handoff", reason: "invalid_output",
       detail: payload?.status === "incomplete"
@@ -558,7 +571,9 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
       if (safe) return { kind: "safe_reply", text: safe };
       return { kind: "handoff", reason: "model_handoff", detail: "model_requested_human" };
     }
-    return { kind: "llm", text: validated.reply };
+    return { kind: "llm", text: validated.reply, ...(metered ? { usage: {
+      model, inputTokens: payload.usage.input_tokens, outputTokens: payload.usage.output_tokens,
+    } } : {}) };
   } catch {
     // No low-quality question-flow fallback on API errors.
     return { kind: "handoff", reason: "provider_unavailable" };

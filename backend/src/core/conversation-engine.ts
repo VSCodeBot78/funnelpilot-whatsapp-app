@@ -1437,8 +1437,21 @@ export async function processIncomingMessage(
           detectedIntent: "unknown", state: latest,
           replySuppressedReason: "superseded" };
       }
+      if (result.kind === "suppressed") {
+        // An owner switching the local test OFF is not a human takeover.
+        // Preserve the conversation so a later explicit ON can resume it.
+        return { text: null, nextStep: latest.currentStep,
+          detectedIntent: "unknown", state: latest,
+          replySuppressedReason: "desktop_switched_off" };
+      }
       if (result.kind === "llm" || result.kind === "safe_reply") {
         updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" : "safe_noncritical");
+        if (result.kind === "llm") patchAnswers(latest, {
+          peteProviderUsageMetered: Boolean(result.usage),
+          peteProviderModel: result.usage?.model,
+          peteProviderInputTokens: result.usage?.inputTokens,
+          peteProviderOutputTokens: result.usage?.outputTokens,
+        });
         appendAssistantMessage(latest, result.text);
         persistConversationState(latest);
         return { text: result.text, nextStep: latest.currentStep,

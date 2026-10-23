@@ -8,12 +8,46 @@ on:
       - FunnelPilot-AutoStart.bootstrap.ps1
       - FunnelPilot-AutoStart.cmd
       - .github/workflows/pete-autostart-windows.yml
+      - backend/src/config/pete-desktop-history.ts
+      - backend/src/config/pete-desktop-lab.test.ts
+      - backend/src/services/pete-api-budget.service.ts
+      - backend/src/services/pete-desktop-lab.service.ts
+      - backend/src/routes/test-chat.ts
+      - backend/src/core/pete-llm-conversation.ts
+      - backend/src/core/conversation-engine.ts
+      - backend/src/types/types.ts
+      - backend/package.json
+      - dashboard/src/App.chat.jsx
+      - dashboard/src/services/peteDesktopLab*
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  desktop-budget-windows:
+    name: Windows desktop lab scope and persistent budget (mocked)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      PETE_LLM_API_CALLS_APPROVED: "false"
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:desktop
+
   powershell51-parse:
     runs-on: windows-latest
     timeout-minutes: 10
