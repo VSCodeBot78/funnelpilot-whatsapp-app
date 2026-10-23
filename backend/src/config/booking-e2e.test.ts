@@ -147,3 +147,67 @@ test("Local testchat -> signed Calendly booking -> Google add-to-calendar link -
   assert.equal(afterCancellation?.messages.at(-1)?.outboundStatus, "prepared");
   assert.match(afterCancellation?.messages.at(-1)?.text ?? "", /storniert/i);
 });
+
+test("Calendly: dated slots survive, closed days never fallback to fake hours", async () => {
+  const { updateAvailabilityConfig, resetAvailabilityConfig } =
+    await import("../data/availability-config.store.js");
+  const { getAvailabilitySource } =
+    await import("../services/availability-source.service.js");
+  const { formatAvailabilitySlot } =
+    await import("../services/availability.service.js");
+  const oldFetch = globalThis.fetch;
+  const oldToken = process.env.CALENDLY_PAT;
+  process.env.CALENDLY_PAT = "offline-mocked-token-no-network";
+  updateAvailabilityConfig({
+    sourceMode: "calendar",
+    weeklySlots: { friday: ["09:00", "10:00"] },
+  });
+  const calls: string[] = [];
+  try {
+    globalThis.fetch = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      let body: unknown;
+      if (url.endsWith("/users/me")) {
+        body = { resource: { uri: "https://api.calendly.com/users/fixture" } };
+      } else if (url.includes("/event_types?")) {
+        body = { collection: [{
+          uri: "https://api.calendly.com/event_types/fixture",
+          slug: "strategiegespraech",
+          scheduling_url: "https://calendly.com/eltern-fitundvital/strategiegespraech",
+          active: true,
+        }] };
+      } else if (url.includes("/event_type_available_times?")) {
+        body = { collection: [
+          { start_time: "2026-10-30T17:00:00Z", status: "available" },
+          { start_time: "2026-11-06T17:00:00Z", status: "available" },
+          { start_time: "2026-11-06T18:00:00Z", status: "unavailable" },
+        ] };
+      } else {
+        throw Error("unexpected fake Calendly URL: " + url);
+      }
+      return new Response(JSON.stringify(body), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    };
+    const found = await getAvailabilitySource({ campaignId: "eltern-vital-fit" });
+    assert.equal(found.mode, "calendar");
+    assert.equal(found.slots.length, 2, "different Fridays must not collapse");
+    assert.deepEqual(found.slots.map(s => s.date), ["2026-10-30", "2026-11-06"]);
+    assert.ok(found.slots.every(s => s.day === "friday" && s.time === "18:00"));
+    assert.equal(
+      formatAvailabilitySlot(found.slots[0]),
+      "Freitag, 30.10.2026 um 18:00",
+    );
+    assert.ok(calls.some(url => url.includes("event_type_available_times")));
+    globalThis.fetch = async () => { throw Error("simulated Calendly outage"); };
+    const failed = await getAvailabilitySource({ campaignId: "eltern-vital-fit" });
+    assert.deepEqual(failed.slots, [],
+      "provider outage must NEVER offer locally configured fake Friday morning times");
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldToken === undefined) delete process.env.CALENDLY_PAT;
+    else process.env.CALENDLY_PAT = oldToken;
+    resetAvailabilityConfig();
+  }
+});
