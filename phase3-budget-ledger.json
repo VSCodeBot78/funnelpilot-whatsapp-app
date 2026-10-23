@@ -328,16 +328,9 @@
     "conservativeUsdCapMicro": 5000000,
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
-    "usedMicroUsd": 1902500,
-    "reservedMicroUsd": 750000,
-    "reservations": {
-      "pete-qa-39915281770": {
-        "runId": "39915281770",
-        "holdMicroUsd": 750000,
-        "testSet": "focus15",
-        "ownerApprovalRef": "owner:2026-10-23-chat-075usd-focus15"
-      }
-    },
+    "usedMicroUsd": 2304948,
+    "reservedMicroUsd": 0,
+    "reservations": {},
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
@@ -369,6 +362,13 @@
         "chargeMicroUsd": 1040574,
         "ownerApprovalRef": "owner:2026-10-23-chat-go-2usd-sales32",
         "testSet": "sales32"
+      },
+      {
+        "id": "pete-qa-39915281770",
+        "runId": "39915281770",
+        "chargeMicroUsd": 402448,
+        "ownerApprovalRef": "owner:2026-10-23-chat-075usd-focus15",
+        "testSet": "focus15"
       }
     ]
   }
