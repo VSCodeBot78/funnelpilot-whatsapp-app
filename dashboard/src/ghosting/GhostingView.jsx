@@ -23,6 +23,7 @@ function getStageLabel(stage) {
   const map = {
     inactive: "Inaktiv",
     dead: "Lead tot",
+    cycle1_within24h_6h: "Einmalige Nachfrage nach 6 Stunden (nur im 24h-Fenster)",
     cycle1_day1_0700: "Zyklus 1 · Tag 1 · morgens 07:00",
     cycle1_day1_1400: "Zyklus 1 · Tag 1 · mittags 14:00",
     cycle1_day1_2100: "Zyklus 1 · Tag 1 · abends 21:00",
@@ -34,6 +35,7 @@ function getStageLabel(stage) {
 }
 
 function getSlotHumanLabel(slot) {
+  if (slot.stage === "cycle1_within24h_6h") return "6 Stunden nach Bot-Nachricht, nur bei offenem Kundeneingang-Fenster";
   return `Tag ${Math.floor((slot.dayOffsetHours || 0) / 24)} · ${String(
     slot.sendHour,
   ).padStart(2, "0")}:${String(slot.sendMinute).padStart(2, "0")}`;
@@ -135,7 +137,8 @@ export default function GhostingView({
           <p style={{ color: colors.sub, fontSize: 12 }}>
             Zeitpunkt, Texte und Anzahl der Zyklen bearbeiten. Speichern ändert nur
             die Konfiguration. Die Vorschau unten verschickt keine Nachrichten.
-            Vor Live-Nachfassen müssen die Meta-Nachrichtenfenster und Opt-outs geprüft werden.
+            Normale automatische Follow-ups werden nach 24 Stunden seit dem letzten Kundeneingang gesperrt.
+            Für WhatsApp-Vorlagen außerhalb dieses Fensters existiert hier keine Versandfreigabe.
           </p>
           <SettingsGhostingPanel
             colors={colors}
