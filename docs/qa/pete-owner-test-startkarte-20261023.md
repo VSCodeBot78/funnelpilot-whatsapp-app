@@ -50,3 +50,16 @@ Ein „Termin im Kalender speichern“-Button darf nur auf eine nachweislich bes
 - Next Step: gezielter Codefix / Re-Test / ausdrücklich kein Live-Go
 
 **Projektleiter-Definition von Erfolg:** Nutzer erlebt den Workflow und findet reale UX-Probleme, bevor wir eine weitere Designrunde starten. Ein bestandener Offline-Test ist kein echter Modelltest.
+
+## 7. Neuer Calendly-Check im Desktop-Pete-Labor (23.10.)
+
+Unter "Calendly: Verbindung und echte Termine prüfen" einmal **"Calendly jetzt lesen (kein Buchen)"** anklicken. Dieser Betreiber-Button ist strikt separat vom Pete-Dialog und nur im lokalen Safe Mode mit AUSgeschalteten Meta-Sends freigegeben.
+
+- **Kein Calendly-Zugang in Funnel Pilot** = `credentials_missing`: lokal fehlt `CALENDLY_PAT`. Das in ChatGPT autorisierte Calendly-Konto kann hier nicht automatisch genutzt werden. Nie einen Token im Chat, Screenshot oder GitHub posten.
+- **Live-Slots von Calendly bestätigt** = `verified_slots`: lokales Backend hat Calendly mit seinem eigenen Token lesend abgefragt. Gezeigt werden DATUM + Uhrzeit + Zeitpunkt der letzten Abfrage. Keine Reservierung und noch kein Beleg für Petes natürliche KI-Antwort.
+- **Keine verifizierten freien Slots** = `no_verified_slots`: Eventtyp/Zeitraum derzeit ohne geprüfte buchbare Plätze. Keine Ersatzstunden aus dem Dashboard.
+- **Keine bestätigte Verbindung oder Verfügbarkeit** = `provider_unavailable`: Anbieterfehler; nur den existierenden Buchungslink empfehlen.
+- **Gelber Zusatz „Pete ist NICHT auf Kalender als Verfügbarkeitsquelle eingestellt“**: Backend-Verfügbarkeit und aktuelle Pete-Engine-Konfiguration sind noch nicht identisch. Diagnose kann grün sein, während Pete die Termine noch nicht sicher in die Antwort übernimmt.
+- API-Button ist GET und read-only, höchstens 9 Termine, 14 Tage, max. 8 Sekunden pro Calendly-Anfrage; bei Tokenfehler keine Kundendaten ausgeben. Kein Kalender-Ereignis, keine Testbuchung, kein Meta-/WhatsApp-Send.
+
+**Wichtige Abnahmegrenze:** Die ältere Booking-Webhooksimulation und der Google-Kalenderlink sind bereits separat offline getestet. Die komplette reale Calendly-Token-/natürlicher-Sol-Pete-/Providerbestätigungs-Kette darf erst dann mit „bestanden“ bewertet werden, wenn sie zusammen auf dem tatsächlichen Laptop geprüft ist. Eine zentrale Engine-Änderung für natürliche Zeitvorschläge ist momentan noch durch den Sicherheitscheck blockiert, nicht als erledigt ausgeben.
