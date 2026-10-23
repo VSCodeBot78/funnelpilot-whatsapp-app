@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "budgetUsd": "0.75",
-  "testSet": "focus15",
-  "ownerApprovalRef": "owner:2026-10-23-chat-075usd-focus15"
+  "budgetUsd": "1.50",
+  "testSet": "sales32",
+  "ownerApprovalRef": "owner:2026-10-23-vader-final-150usd-sales32"
 }
