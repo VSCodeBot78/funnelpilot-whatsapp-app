@@ -7,6 +7,9 @@ import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCre
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { getPeteBudgetStatusSafe } from "../services/pete-api-budget.service.js";
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
+import { getAllCampaigns } from "../data/campaigns.store.js";
+import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
+import { OFFER_TRUTH } from "../config/offer-truth.js";
 
 const router = Router();
 
@@ -190,6 +193,73 @@ router.get("/lab/state/:leadId", guardMobileLab, (req, res) => {
     ok: true,
     publicReplyPreview: typeof state.answers.labPublicReplyPreview === "string"
       ? state.answers.labPublicReplyPreview : null,
+    state: { messages: publicLabMessages(state.messages) },
+  });
+});
+
+// Desktop-only entry simulation: the opening is ALWAYS scripted, with no
+// LLM call, no Meta event, no outbound transport and no use of real contacts.
+// A later human-typed reply goes through the ordinary test-chat message route.
+const DESKTOP_ENTRY_KEYWORDS = ["CHECK", "KETO", "BULLSHIT"] as const;
+const DESKTOP_ENTRY_SOURCES = [
+  "instagram_dm", "instagram_story_reply", "instagram_reel_comment",
+] as const;
+router.post("/simulate-entry", (req, res) => {
+  if (env.NODE_ENV === "production" || env.INSTAGRAM_SEND_ENABLED ||
+      env.WHATSAPP_SEND_ENABLED || env.INSTAGRAM_ENGINE_ENABLED) {
+    return res.status(403).json({ ok: false, error: "desktop_synthetic_lab_only_send_flags_off" });
+  }
+  const { leadId, keyword, source } = req.body ?? {};
+  if (typeof leadId !== "string" ||
+      !/^lab_desktop_[a-zA-Z0-9_-]{10,70}$/.test(leadId) ||
+      !DESKTOP_ENTRY_KEYWORDS.includes(keyword) ||
+      !DESKTOP_ENTRY_SOURCES.includes(source)) {
+    return res.status(400).json({ ok: false, error: "invalid_synthetic_entry" });
+  }
+  if (getConversationState(leadId, DEFAULT_CAMPAIGN_ID)) {
+    return res.status(409).json({ ok: false, error: "synthetic_entry_already_started" });
+  }
+  const preview = evaluateCampaignEntryPreview(getAllCampaigns(), {
+    source, messageText: keyword,
+  });
+  // For a reel comment without a trustworthy media ID, the existing matcher
+  // will deliberately show manual_review, not pretend a Meta event matched.
+  const safeExamples: Record<string, string> = {
+    CHECK: "Hier findest du den Elterncheck: " + OFFER_TRUTH.resources.elterncheck.url +
+      ". Wenn du Fragen dazu hast, schreib mir einfach.",
+    KETO: "Hier ist der kostenlose Keto Guide: " + OFFER_TRUTH.resources.ketoGuide.url +
+      ". Bei Fragen kannst du mir direkt schreiben.",
+    BULLSHIT: "Hier ist der No Bullshit Elternfitness Selbststarter: " +
+      OFFER_TRUTH.selfstarter.productUrl + ". Schau ihn dir in Ruhe an.",
+  };
+  const storedOpening = preview.status === "matched"
+    ? preview.openingTextPreview : null;
+  const openingText = storedOpening || safeExamples[keyword];
+  const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+  // A public Reel comment is NOT an inbound DM and cannot create a 24h
+  // private conversation window. A user's later DM reply does open one.
+  if (source !== "instagram_reel_comment") appendUserMessage(state, keyword);
+  appendAssistantMessage(state, openingText);
+  const message = state.messages.at(-1);
+  if (message) {
+    message.transport = "lab_scripted_automation";
+    message.outboundStatus = "dry_run";
+    message.dryRun = true;
+    message.sent = false;
+  }
+  state.source = "lab_" + source;
+  state.answers.labEntryKeyword = keyword;
+  state.answers.labEntrySource = source;
+  state.answers.labCampaignMatchStatus = preview.status;
+  persistConversationState(state);
+  return res.json({
+    ok: true, reply: null, replySource: "scripted_context",
+    entryKeyword: keyword, entrySource: source,
+    matchedRealCampaign: preview.status === "matched",
+    campaignMatchStatus: preview.status,
+    note: preview.status === "matched"
+      ? "Kampagnenentwurf als synthetische Nachricht verwendet."
+      : "Beispiel-Einstieg; keine echte Kampagne oder Meta-Zustellung verifiziert.",
     state: { messages: publicLabMessages(state.messages) },
   });
 });
