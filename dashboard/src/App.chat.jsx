@@ -85,6 +85,8 @@ export default function ChatTest() {
   const [refreshing, setRefreshing] = useState(false);
   const [entrySource, setEntrySource] = useState("instagram_dm");
   const [entryNotice, setEntryNotice] = useState("");
+  const [calendlyDiagnostic, setCalendlyDiagnostic] = useState(null);
+  const [calendlyChecking, setCalendlyChecking] = useState(false);
 
   const campaignId = "eltern-vital-fit";
 
@@ -221,6 +223,30 @@ export default function ChatTest() {
       });
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function checkCalendlyReadOnly() {
+    if (calendlyChecking || loading) return;
+    setCalendlyChecking(true);
+    setCalendlyDiagnostic(null);
+    try {
+      const response = await fetch(buildApiUrl("/test-chat/calendly-readiness"), {
+        method: "GET", headers: { Accept: "application/json" },
+      });
+      const body = await response.json();
+      if (!response.ok || !body?.ok) {
+        setCalendlyDiagnostic({ status: "test_mode_required",
+          note: "Der sichere lokale Testmodus ist nicht nachgewiesen.",
+          slots: [], bookingUrl: null });
+      } else {
+        setCalendlyDiagnostic(body);
+      }
+    } catch {
+      setCalendlyDiagnostic({ status: "backend_unavailable",
+        note: "Lokaler Backend-Testdienst nicht erreichbar.", slots: [], bookingUrl: null });
+    } finally {
+      setCalendlyChecking(false);
     }
   }
 
@@ -380,6 +406,54 @@ export default function ChatTest() {
               Erst deine anschließende Antwort an Pete zählt als eingehende DM.
             </p>}
         </div>
+
+        <section aria-label="Calendly-Testdiagnose" style={{
+          background: "#111827", border: "1px solid #2a3348",
+          borderRadius: 12, padding: 14, marginBottom: 14,
+        }}>
+          <strong>Calendly: Verbindung und echte Termine prüfen</strong>
+          <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
+            Diagnose für dich als Betreiber. Nur lesender Kalenderzugriff, keine Buchung,
+            kein Kundensend und keine Pete-KI-Antwort. Diese Anzeige ersetzt nicht
+            den Terminvorschlag im Pete-Gespräch.
+          </p>
+          <button type="button" onClick={checkCalendlyReadOnly}
+            disabled={calendlyChecking || loading}
+            style={{ background: "#ff914d", border: "none", borderRadius: 8,
+              padding: "10px 14px", fontWeight: 700,
+              cursor: calendlyChecking || loading ? "wait" : "pointer" }}>
+            {calendlyChecking ? "Prüfe Calendly..." : "Calendly jetzt lesen (kein Buchen)"}
+          </button>
+          {calendlyDiagnostic && <div role="status" style={{
+            marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
+          }}>
+            <div><strong>Status:</strong> {calendlyDiagnostic.status === "verified_slots"
+              ? "Live-Slots von Calendly bestätigt" :
+              calendlyDiagnostic.status === "credentials_missing"
+                ? "Kein Calendly-Zugang in Funnel Pilot" :
+              calendlyDiagnostic.status === "no_verified_slots"
+                ? "Keine verifizierten freien Slots" :
+              "Keine bestätigte Verbindung oder Verfügbarkeit"}</div>
+            <p>{calendlyDiagnostic.note}</p>
+            {(calendlyDiagnostic.slots || []).length > 0 && (
+              <ul style={{ margin: "8px 0", paddingLeft: 22 }}>
+                {calendlyDiagnostic.slots.map((slot) => (
+                  <li key={slot.startAt}>{slot.label}</li>
+                ))}
+              </ul>
+            )}
+            {calendlyDiagnostic.checkedAt &&
+              <div style={{ color: "#aebbd2" }}>
+                Zuletzt geprüft: {new Date(calendlyDiagnostic.checkedAt).toLocaleString("de-DE")}
+              </div>}
+            {calendlyDiagnostic.bookingUrl && (
+              <a href={calendlyDiagnostic.bookingUrl} target="_blank" rel="noreferrer"
+                style={{ color: "#93c5fd", display: "inline-block", marginTop: 8 }}>
+                Buchungskalender ansehen (externer Link)
+              </a>
+            )}
+          </div>}
+        </section>
 
         {debug?.replySource ? (
           <div
