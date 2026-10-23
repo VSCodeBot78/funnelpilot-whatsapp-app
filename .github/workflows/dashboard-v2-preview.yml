@@ -1,0 +1,65 @@
+name: Dashboard 2.0 - Offline Preview Review
+
+on:
+  push:
+    branches: [feat/dashboard-v2-preview-20261023]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:dashboard-v2
+      - run: npm run build:dashboard-v2
+      - name: Verify default-off bundle excludes the preview data client
+        run: node qa/dashboard-v2/check-build.mjs
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm run test:dashboard-v2:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-v2-review-evidence
+          path: |
+            dashboard/test-results/
+            docs/qa/dashboard-v2/screenshots/
+          retention-days: 14
+
+  backend-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      INSTAGRAM_ENGINE_ENABLED: "false"
+      INSTAGRAM_SEND_ENABLED: "false"
+      WHATSAPP_SEND_ENABLED: "false"
+      PETE_LLM_CONVERSATION_ENABLED: "false"
+      PETE_LLM_API_CALLS_APPROVED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run check
