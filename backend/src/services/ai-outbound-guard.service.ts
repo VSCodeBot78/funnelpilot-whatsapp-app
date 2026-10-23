@@ -9,7 +9,8 @@ export type AiOutboundGuardReason =
   | "stopped"
   | "lead_bot_disabled"
   | "lead_excluded"
-  | "sales_followup_opt_out";
+  | "sales_followup_opt_out"
+  | "message_window_unverified_or_expired";
 
 export type AiOutboundGuardResult =
   | { allowed: true; reason: null }
@@ -50,6 +51,18 @@ export function evaluateLatestAiOutboundPermission(params: {
 
   if (lead && !lead.botEnabled) {
     return { allowed: false, reason: "lead_bot_disabled" };
+  }
+
+  // All existing automated follow-up transports send ordinary text, NOT
+  // approved WhatsApp templates. Their Meta 24h window needs a real inbound
+  // timestamp; a bot response and a comment alone never renew this window.
+  if (params.purpose === "automated_followup") {
+    const inboundMs = Date.parse(state.lastUserMessageAt ?? "");
+    const nowMs = Date.now();
+    if (!Number.isFinite(inboundMs) || inboundMs > nowMs ||
+        nowMs >= inboundMs + 24 * 60 * 60 * 1000) {
+      return { allowed: false, reason: "message_window_unverified_or_expired" };
+    }
   }
 
   return isAiReplyAllowed(state)
