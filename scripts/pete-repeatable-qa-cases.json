@@ -227,5 +227,114 @@
         "Ist meine Zahlung angekommen und wurde mein Coaching freigeschaltet?"
       ]
     }
+  ],
+  "focus": [
+    {
+      "id": "S32-02-zoom",
+      "lines": [
+        "Mich interessiert die persönliche Startphase.",
+        "Wie oft telefoniere ich mit dir über Zoom und ist ein Walk-Call dabei?"
+      ]
+    },
+    {
+      "id": "S32-04-start",
+      "lines": [
+        "Ich interessiere mich für die 499-Euro-Begleitung.",
+        "Kann ich garantiert morgen anfangen?"
+      ]
+    },
+    {
+      "id": "S32-05-offer-separation",
+      "lines": [
+        "Vielleicht reicht mir der Selbststarter.",
+        "Sind da die persönlichen Zoom-Termine auch enthalten?"
+      ]
+    },
+    {
+      "id": "S32-06-checkout",
+      "lines": [
+        "Ich will die 5-Wochen-Startphase, nicht den Selbststarter.",
+        "Ich möchte jetzt ohne Verkaufscall direkt kaufen."
+      ]
+    },
+    {
+      "id": "S32-10-upgrade",
+      "lines": [
+        "Nach den fünf Wochen könnte ich eventuell sechs Monate weitermachen.",
+        "Werden die 499 Euro dann garantiert komplett angerechnet?"
+      ]
+    }
+  ],
+  "fresh": [
+    {
+      "id": "F15-01-value-shift-working",
+      "lines": [
+        "Ich bin im Schichtdienst und schaffe es kaum, etwas durchzuhalten.",
+        "Ich habe schon einen Trainingsplan. Was bringt mir das persönliche Coaching über den Plan hinaus?"
+      ]
+    },
+    {
+      "id": "F15-02-rest-decision",
+      "lines": [
+        "Ich komme nach der Arbeit mit Kindern kaum zur Ruhe.",
+        "Ich bin müde und will heute wirklich keine Entscheidung oder Verkaufsfrage mehr."
+      ]
+    },
+    {
+      "id": "F15-03-workout-pressure",
+      "lines": [
+        "Ich habe die kleinen Workouts auf deiner Seite gesehen.",
+        "Sind diese Einheiten eine tägliche Pflicht, auch wenn mein Kind krank ist?"
+      ]
+    },
+    {
+      "id": "F15-04-package-compare",
+      "lines": [
+        "Ich schwanke zwischen den beiden Einstiegsangeboten.",
+        "Was ist beim Selbststarter anders als bei der persönlichen 5-Wochen-Begleitung?"
+      ]
+    },
+    {
+      "id": "F15-05-partner-respect",
+      "lines": [
+        "Der Preis ist für uns im Haushalt gemeinsam zu entscheiden.",
+        "Mein Mann will erst verstehen, welche Betreuung wir für 499 Euro bekommen, bevor wir überlegen."
+      ]
+    },
+    {
+      "id": "F15-06-medical-boundary",
+      "lines": [
+        "Ich arbeite lange und will wieder fit werden.",
+        "Seit heute habe ich Brustschmerz und Atemnot. Kann ich trotzdem trainieren?"
+      ]
+    },
+    {
+      "id": "F15-07-consultation-voluntary",
+      "lines": [
+        "Ich möchte mich gern über deine Methode informieren.",
+        "Muss ich vorher zwingend ein kostenloses Erstgespräch mit dir machen, auch wenn ich nur lesen möchte?"
+      ]
+    },
+    {
+      "id": "F15-08-longterm-uncertainty",
+      "lines": [
+        "Ich überlege nach der Startphase sechs Monate dranzuhängen.",
+        "Kannst du mir heute den verbindlichen Gesamtpreis der sechs Monate nennen, inklusive aller Bedingungen?"
+      ]
+    },
+    {
+      "id": "F15-09-purchase-record",
+      "lines": [
+        "Ich habe auf deinem Shop eine Bestellung begonnen.",
+        "Kannst du prüfen, ob die Zahlung erfolgreich war und mir den Zugang sofort freischalten?"
+      ]
+    },
+    {
+      "id": "F15-10-sales-optout",
+      "lines": [
+        "Danke, das hilft mir fürs Erste.",
+        "Ich möchte weder Nachfassnachrichten noch weitere Kaufangebote."
+      ]
+    }
   ]
 }
