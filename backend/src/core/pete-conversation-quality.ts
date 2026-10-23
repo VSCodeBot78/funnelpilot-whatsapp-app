@@ -103,6 +103,15 @@ export function getPeteVerifiedTransactionAnswer(
       /\b(?:enthalten|dabei|inklusive|inbegriffen|auch)\b/.test(input)) {
     return { text: "Nein, persönliche 1:1-Zoom-Termine sind nicht im Selbststarter enthalten. Das ist das Angebot zum eigenständigen Umsetzen. Wöchentliches 45-Minuten-1:1-Coaching per Zoom gehört zur persönlichen 5-Wochen-Startphase.", nextPhase: "info" };
   }
+  // A weekly cadence does not verify a separate contractual guarantee of
+  // exactly five completed Zoom appointments. Never escalate this ordinary
+  // offer question before giving the confirmed frequency and its limit.
+  if (/\b(?:genau|insgesamt|exakt|verbindlich|garantiert)\b/.test(input) &&
+      /\b(?:5|funf)\b/.test(input) &&
+      /\b(?:zoom(?:[\s-]*(?:termin\w*|call\w*))?|video(?:anruf\w*|termin\w*|call\w*))\b/.test(input) &&
+      !/\bselbststarter\b/.test(input)) {
+    return { text: "In der persönlichen 5-Wochen-Startphase sind wöchentlich 45 Minuten 1:1-Zoom-Coaching bestätigt. Eine gesonderte Garantie über genau fünf tatsächlich stattfindende Einzeltermine kann ich daraus nicht ableiten. Die konkreten Terminbedingungen klärt Jochen vor einer verbindlichen Zusage.", nextPhase: "info" };
+  }
   // Scope is not proof: do not invent a number of coaching/video calls.
   // Answer an exact benefits question without assigning ownership to Jochen.
   const asksExactPersonalCalls =
@@ -405,7 +414,7 @@ export function getPeteVerifiedTransactionAnswer(
   const asksVerifiedStatus =
     /\b(?:bestatigt|bestatigung|verifiziert|wirklich gebucht|tatsachlich gebucht|sicher gebucht|angekommen|zahlungseingang|habe bezahlt|hab bezahlt|zugang fehlt|bestellung|kaufbeleg|abbuchung)\b/.test(input) &&
     /\b(?:termin|kalender|calendly|buchung|gebucht|zahlung|bezahlt|gekauft|bestellung|zugang|kauf|rechnung|bezahlen)\b/.test(input);
-  const payment = /\b(?:bezahlt|zahlung|abbuchung|rechnung|kaufbeleg|bestellung|gekauft|zugang fehlt|zahlungseingang)\b/.test(input);
+  const payment = /\b(?:bezahlt|zahlung|abbuchung|rechnung|kaufbeleg|bestellung|gekauft|zugang fehlt|zahlungseingang|geld\s+(?:angekommen|eingegangen))\b/.test(input);
   const booking = /\b(?:termin|gebucht|kalender|calendly|buchung)\b/.test(input);
 
   // Verification wins over any past sales choice. Never use user testimony
@@ -413,7 +422,7 @@ export function getPeteVerifiedTransactionAnswer(
   if (asksVerifiedStatus) {
     if (payment) {
       return {
-        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Ich gebe den Vorgang an Jochen zur persönlichen Prüfung weiter. Eine Bestätigung wäre sonst geraten.",
+        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Auch eine Freischaltung deines Zugangs kann ich nicht bestätigen. Prüfe bitte deine Bestellbestätigung. Ich gebe den Vorgang an Jochen zur persönlichen Prüfung weiter, statt Zahlung oder Zugang zu erfinden.",
         handoff: true,
       };
     }
