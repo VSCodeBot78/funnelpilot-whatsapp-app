@@ -257,7 +257,7 @@ test("Phase 12 real follow-up transport truth", async (t) => {
     assert.equal(persisted.providerBooking.sentHistory.length, 0);
   });
 
-  await t.test("provider booking dry-run stays pending and is not faked into history", async () => {
+  await t.test("provider reminder without inbound is blocked and not faked into history", async () => {
     clearConversationStore();
 
     const leadId = "instagram:provider-dry-run";
@@ -308,7 +308,7 @@ test("Phase 12 real follow-up transport truth", async (t) => {
       assert.equal(result.sendSkipped, true);
       assert.equal(
         result.sendSkipReason,
-        "INSTAGRAM_SEND_ENABLED=false",
+        "outbound_guard_message_window_unverified_or_expired",
       );
     });
 
