@@ -157,6 +157,12 @@ function resolveEvaluationCycle(
     return 1;
   }
 
+  // A freshly created conversation starts at cycle=1, inactive, with no
+  // sent history. Do not skip its only current in-window reminder.
+  if (currentGhosting.cycle === 1 && !(currentGhosting.sentHistory?.length)) {
+    return 1;
+  }
+
   if (currentGhosting.cycle === 1) {
     return 2;
   }
