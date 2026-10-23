@@ -108,3 +108,28 @@ test("Missing receipt burns full amount, retries never create fresh approval", (
   assert.equal(settled.extraOwnerQa20261022.usedMicroUsd, 2_861_926);
   assert.equal(settled.extraOwnerQa20261022.reservedMicroUsd, 0);
 });
+
+
+test("Targeted 15-case retest retains fresh owner consent and USD0.75 ceiling", () => {
+  const approval = {
+    version: 1, testSet: "focus15", budgetUsd: "0.75",
+    ownerApprovalRef: "owner:2026-10-23-focus15-075usd",
+  };
+  const { ledger: held, ticket } = preparePeteQaReservation(env(), ledger(), approval);
+  assert.equal(ticket.micro, 750_000);
+  assert.equal(ticket.testSet, "focus15");
+  assert.equal(held.extraOwnerQa20261022.reservedMicroUsd, 750_000);
+  assert.equal(held.extraOwnerQa20261022.reservations["pete-qa-700001"].ownerApprovalRef,
+    approval.ownerApprovalRef);
+  assert.throws(() => checkPeteQaAdmission(
+    { ...env(), GITHUB_RUN_ID: "700002" }, held, approval));
+  const { ledger: settled, chargeMicroUsd } = settlePeteQaReservation(env(), held, {
+    version: 1, committedMicroUsd: 412_000, requestsStarted: 23,
+  });
+  assert.equal(chargeMicroUsd, 412_000);
+  assert.equal(settled.extraOwnerQa20261022.reservedMicroUsd, 0);
+  assert.equal(settled.extraOwnerQa20261022.batches.at(-1).testSet, "focus15");
+  assert.throws(() => checkPeteQaAdmission(
+    { ...env(), GITHUB_RUN_ID: "700003" }, settled, approval),
+    "a consent token may not be reused for a second run");
+});
