@@ -165,6 +165,69 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
       messageText: "Hallo" }, { "X-Pete-CSRF": "" })).status, 403);
     assert.equal(providerCalls, before);
   });
+  await t.test("the desktop switch selects Sol independently of absent or legacy global model flags", async () => {
+    const previousModel = process.env.OPENAI_MODEL;
+    const previousFlag = process.env.PETE_LLM_CONVERSATION_ENABLED;
+    try {
+      for (const [model, flag] of [[undefined, undefined], ["gpt-4.1-mini", "false"]]) {
+        if (model === undefined) delete process.env.OPENAI_MODEL;
+        else process.env.OPENAI_MODEL = model;
+        if (flag === undefined) delete process.env.PETE_LLM_CONVERSATION_ENABLED;
+        else process.env.PETE_LLM_CONVERSATION_ENABLED = flag;
+        resetFiles();
+        const c = await client();
+        const before = providerCalls;
+        const status = (await c.call("status", {})).body;
+        assert.equal(status.providerConfigured, true, "a local key and the scoped switch must suffice");
+        assert.equal(status.model, "gpt-6.1-sol");
+        assert.equal(status.budget.enabled, false);
+        await c.message(await c.lead());
+        assert.equal(providerCalls, before, "configuration alone never authorizes a call");
+        assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true })).status, 200);
+        assert.equal(providerCalls, before, "KI AN itself does not call OpenAI");
+        const result = await c.message(await c.lead());
+        assert.equal(result.body.replySource, "llm");
+        assert.deepEqual(result.body.providerUsage, { model: "gpt-6.1-sol", inputTokens: 100, outputTokens: 20 });
+        assert.equal(result.body.budget.confirmedUsd, 0.0004);
+        assert.equal(result.body.budget.remainingUsd, 0.2496);
+        assert.equal(providerCalls, before + 1);
+        assert.equal(process.env.PETE_LLM_API_CALLS_APPROVED, "false");
+        assert.equal(process.env.OPENAI_MODEL, model, "no process-wide model override");
+        assert.equal(process.env.PETE_LLM_CONVERSATION_ENABLED, flag, "no process-wide enablement");
+        await fetch(base + "/test-chat/message", { method: "POST",
+          headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+            leadId: "ordinary_legacy_config_lead", campaignId: "eltern-vital-fit",
+            messageText: "Ich bin nach der Arbeit müde und esse dann zu viel.", desktopOwner: true }) });
+        assert.equal(providerCalls, before + 1, "ordinary routes gain no desktop authority");
+      }
+    } finally {
+      if (previousModel === undefined) delete process.env.OPENAI_MODEL;
+      else process.env.OPENAI_MODEL = previousModel;
+      if (previousFlag === undefined) delete process.env.PETE_LLM_CONVERSATION_ENABLED;
+      else process.env.PETE_LLM_CONVERSATION_ENABLED = previousFlag;
+    }
+  });
+  await t.test("a missing local key is reported exactly and never grants a budget or makes a provider request", async () => {
+    resetFiles();
+    const previousKey = process.env.OPENAI_API_KEY;
+    const before = providerCalls;
+    try {
+      process.env.OPENAI_API_KEY = " ";
+      const c = await client();
+      const status = (await c.call("status", {})).body;
+      assert.equal(status.providerConfigured, false);
+      const result = await c.call("budget", { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
+      assert.equal(result.status, 409);
+      assert.equal(result.body.error, "desktop_provider_not_configured");
+      await c.message(await c.lead());
+      assert.equal(providerCalls, before);
+      assert.equal(fs.existsSync(ledgerFile), false);
+      assert.equal(JSON.stringify(status).includes("OPENAI_API_KEY"), false, "status exposes no environment data");
+    } finally {
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+    }
+  });
   await t.test("explicit owner-managed activation needs no historical file and meters the scoped mocked model path", async () => {
     resetFiles();
     const c = await client();

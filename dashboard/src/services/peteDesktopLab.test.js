@@ -41,7 +41,7 @@ test("a rejected session never attempts a paid request", async () => {
 test("uncertain historical costs stay blocked and are never formatted as free credit", () => {
   assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: false }, providerConfigured: true }), /Ausgaben/);
   assert.match(desktopBlockReason({ budget: { ok: false } }), /gesperrt/);
-  assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: false }), /fehlen/);
+  assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: false }), /fehlt OPENAI_API_KEY/);
   assert.equal(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: true }), null);
   assert.equal(formatDesktopUsd(null), "Nicht belegt");
   assert.equal(formatDesktopUsd(undefined), "Nicht belegt");
@@ -54,7 +54,7 @@ test("explicit owner-managed local authorization does not claim verified history
   assert.equal(desktopBlockReason(status), null);
   assert.equal(desktopBlockReason({ ...status, budget: { ...status.budget,
     ownerManagedApprovalAvailable: false, ownerManagedCosts: true, blockReason: null } }), null);
-  assert.match(desktopBlockReason({ ...status, providerConfigured: false }), /fehlen/);
+  assert.match(desktopBlockReason({ ...status, providerConfigured: false }), /fehlt OPENAI_API_KEY/);
   assert.match(desktopBlockReason({ ...status, budget: { ...status.budget,
     blockReason: "accounting_review_required" } }), /gesperrt/);
   assert.match(desktopBlockReason({ ...status, budget: { ...status.budget,

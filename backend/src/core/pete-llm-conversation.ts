@@ -10,7 +10,7 @@ import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply } from "./pete-conversation-quality.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
 import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
-import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
+import { PETE_PRODUCT_MODEL, resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 import { decidePeteTurnV4, explainPeteTurnV4 } from "./pete-turn-policy-v4.js";
 import { desktopCallMode, desktopCallSessionHash } from "../services/pete-desktop-lab.service.js";
@@ -473,7 +473,10 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     return { kind: "handoff", reason: "not_authorized" };
   }
 
-  const model = resolvePeteRuntimeModel({
+  // This scope exists only after the guarded desktop session, issued test
+  // contact and explicit budget authorization. Global/legacy model flags
+  // remain unchanged and cannot select another model for the local switch.
+  const model = desktopSessionHash ? PETE_PRODUCT_MODEL : resolvePeteRuntimeModel({
     envModel: process.env.OPENAI_MODEL,
     nodeEnv: process.env.NODE_ENV,
     labGpt54Approved: isPeteLabGpt54Approved(),

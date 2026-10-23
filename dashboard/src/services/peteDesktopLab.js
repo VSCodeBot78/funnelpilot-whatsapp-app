@@ -53,7 +53,7 @@ export function desktopBlockReason(status) {
       : "Die Verbrauchsabrechnung ist nicht verfügbar. KI gesperrt.";
   if (!status.budget.historyVerified && !status.budget.ownerManagedCosts && !status.budget.ownerManagedApprovalAvailable)
     return "Frühere Laptop-Ausgaben und Kostenbelege sind nicht vollständig abgeglichen. KI gesperrt.";
-  if (!status.providerConfigured) return "GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.";
+  if (!status.providerConfigured) return "Im lokalen Backend fehlt OPENAI_API_KEY. Bitte in der lokalen backend/.env hinterlegen und das Backend neu starten.";
   return null;
 }
 

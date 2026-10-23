@@ -22,8 +22,10 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
     INSTAGRAM_ALLOW_ALL_SENDERS: "false", INSTAGRAM_AUTO_ENABLE_NEW_LEADS: "false",
     ENABLE_GENERIC_WEBHOOKS: "false", WHATSAPP_ALLOWED_RECIPIENT_IDS: "",
     INSTAGRAM_ALLOWED_SENDER_IDS: "", PETE_MOBILE_LAB_ENABLED: "false",
-    PETE_LLM_CONVERSATION_ENABLED: "true", PETE_LLM_API_CALLS_APPROVED: "false",
-    OPENAI_MODEL: "gpt-6.1-sol", OPENAI_API_KEY: "SYNTHETIC-browser-key-never-network", CORS_ORIGIN: "",
+    // Match an old .env copied by the immutable AutoStart. Its global flags
+    // must not disable the separate explicit desktop switch or select Mini.
+    PETE_LLM_CONVERSATION_ENABLED: "false", PETE_LLM_API_CALLS_APPROVED: "false",
+    OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_KEY: "SYNTHETIC-browser-key-never-network", CORS_ORIGIN: "",
   });
   const nativeFetch = globalThis.fetch;
   const nativeWarn = console.warn;
@@ -96,6 +98,7 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
           const status = await createPeteDesktopClient().status();
           return { ok: status.ok, historyVerified: status.budget.historyVerified,
             enabled: status.budget.enabled, blockReason: status.budget.blockReason,
+            providerConfigured: status.providerConfigured, model: status.model,
             knownHistoricalBookedUsd: status.budget.knownHistoricalBookedUsd,
             globalApiCallsApproved: status.globalApiCallsApproved, sendsEnabled: status.sendsEnabled };
         } catch (error) { return { error: error.message }; }
@@ -103,6 +106,8 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
       assert.equal(result.ok, true, "real browser status must pass, not just a manually supplied Origin fixture");
       assert.equal(result.historyVerified, false);
       assert.equal(result.enabled, false);
+      assert.equal(result.providerConfigured, true);
+      assert.equal(result.model, "gpt-6.1-sol");
       assert.equal(result.blockReason, "historical_spend_unverified");
       assert.equal(result.knownHistoricalBookedUsd, 11.158772);
       assert.equal(result.globalApiCallsApproved, false);
@@ -191,7 +196,7 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
       process.env.OPENAI_API_KEY = "";
       try {
         await page.reload();
-        await page.getByText("GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.", { exact: true }).waitFor();
+        await page.getByText("Im lokalen Backend fehlt OPENAI_API_KEY. Bitte in der lokalen backend/.env hinterlegen und das Backend neu starten.", { exact: true }).waitFor();
         assert.equal(await page.getByRole("switch", { name: "KI AN (kostenpflichtig)" }).isDisabled(), true);
       } finally { process.env.OPENAI_API_KEY = previousKey; }
     });
@@ -201,6 +206,9 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
       assert.equal(observed.filter(r => /\/message$/.test(r.route)).length, 0);
       assert.equal(externalCalls, 0);
       assert.equal(blockedBrowserRequests, 0);
+      assert.equal(process.env.PETE_LLM_CONVERSATION_ENABLED, "false");
+      assert.equal(process.env.PETE_LLM_API_CALLS_APPROVED, "false");
+      assert.equal(process.env.OPENAI_MODEL, "gpt-4.1-mini");
     });
   } finally {
     await browser?.close();

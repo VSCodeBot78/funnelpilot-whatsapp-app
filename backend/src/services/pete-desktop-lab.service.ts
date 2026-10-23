@@ -121,9 +121,10 @@ export function assertIssuedDesktopLead(req: Request, leadId: unknown, campaignI
 }
 
 export function desktopProviderConfigured(): boolean {
-  return process.env.OPENAI_MODEL === "gpt-6.1-sol" &&
-    process.env.PETE_LLM_CONVERSATION_ENABLED === "true" &&
-    Boolean(process.env.OPENAI_API_KEY?.trim());
+  // The authenticated desktop budget switch is the local opt-in. AutoStart
+  // deliberately keeps global API approval OFF and may inherit legacy model
+  // flags. The scoped model path selects Sol itself, without rewriting env.
+  return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
 export function runDesktopConversation<T>(req: Request, leadId: string, fn: () => T): T {
