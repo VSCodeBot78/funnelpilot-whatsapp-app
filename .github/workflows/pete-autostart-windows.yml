@@ -5,6 +5,8 @@ on:
       - feat/pete-policy-v4-20261022
     paths:
       - scripts/start-pete-auto-release.ps1
+      - FunnelPilot-AutoStart.bootstrap.ps1
+      - FunnelPilot-AutoStart.cmd
       - .github/workflows/pete-autostart-windows.yml
   workflow_dispatch:
 
@@ -24,6 +26,10 @@ jobs:
           $tokens = $null
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          $bootstrapTokens = $null
+          $bootstrapErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.bootstrap.ps1"), [ref]$bootstrapTokens, [ref]$bootstrapErrors) | Out-Null
+          if ($bootstrapErrors.Count -ne 0) { throw "Bootstrap WinPS5.1 parse failed" }
           if ($errors.Count -ne 0) {
             $errors | ForEach-Object { Write-Host $_.Message }
             throw "Windows PowerShell 5.1 parser rejected AutoStart"
@@ -40,4 +46,8 @@ jobs:
               $s -match 'WHATSAPP_SEND_ENABLED = "false"')) {
             throw "No-send and no-cost runtime guard missing"
           }
-          Write-Host "PASS: WinPS5.1 parses, isolated release, safe model/send guards"
+          $bootstrap = Get-Content (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.bootstrap.ps1") -Raw
+          $shortcut = Get-Content (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-AutoStart.cmd") -Raw
+          if (-not ($bootstrap -match "hash-object" -and $bootstrap -match "expectedGitBlob" -and
+              $shortcut -match "AutoStart.bootstrap.ps1")) { throw "Unverified bootstrap shortcut" }
+          Write-Host "PASS: WinPS5.1 parses both scripts; detached releases and safe guards present"
