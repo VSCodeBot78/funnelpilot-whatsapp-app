@@ -435,6 +435,13 @@ export default function ChatTest() {
                 ? "Keine verifizierten freien Slots" :
               "Keine bestätigte Verbindung oder Verfügbarkeit"}</div>
             <p>{calendlyDiagnostic.note}</p>
+            {calendlyDiagnostic.peteUsesCalendar === false && (
+              <p style={{ color: "#fbbf24" }}>
+                Achtung: Pete ist momentan NICHT auf Kalender als
+                Verfügbarkeitsquelle eingestellt. Dieser API-Check ändert
+                keine Einstellungen und ist kein bestandener Pete-Termintest.
+              </p>
+            )}
             {(calendlyDiagnostic.slots || []).length > 0 && (
               <ul style={{ margin: "8px 0", paddingLeft: 22 }}>
                 {calendlyDiagnostic.slots.map((slot) => (
