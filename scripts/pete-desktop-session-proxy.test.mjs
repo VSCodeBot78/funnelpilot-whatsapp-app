@@ -143,6 +143,23 @@ test("desktop login through the real dashboard proxy, no external requests", asy
       assert.equal(fs.existsSync(path.join(dataDir, "pete-api-budget.json")), false);
       assert.equal(externalCalls, 0);
     });
+    await t.test("read-only POST aliases use the same Origin/Host/session/CSRF/JSON boundary", async () => {
+      const valid = await request(port, "session");
+      const headers = { Cookie: valid.headers["set-cookie"][0].split(";")[0], "X-Pete-CSRF": valid.body.csrfToken };
+      const lead = await request(port, "lead", { headers });
+      assert.equal(lead.status, 200);
+      for (const route of ["status", "state/" + lead.body.leadId]) {
+        assert.equal((await request(port, route, { headers })).status, 200);
+        for (const invalid of [
+          { Origin: "https://evil.invalid" }, { Origin: "" }, { Host: "localhost:5173" },
+          { "X-Pete-Desktop": "" }, { "X-Pete-CSRF": "" }, { Cookie: "" },
+          { Forwarded: "for=127.0.0.1" }, { "Sec-Fetch-Site": "cross-site" },
+          { "Content-Type": "text/plain" },
+        ]) assert.equal((await request(port, route, { headers: { ...headers, ...invalid } })).status, 403);
+      }
+      assert.equal(fs.existsSync(path.join(dataDir, "pete-api-budget.json")), false);
+      assert.equal(externalCalls, 0);
+    });
   } finally {
     for (const { server, listener } of proxies) {
       listener.closeAllConnections();

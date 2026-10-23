@@ -20,7 +20,10 @@ on:
       - dashboard/src/App.chat.jsx
       - dashboard/src/services/peteDesktopLab*
       - dashboard/vite.config.js
+      - dashboard/package.json
+      - dashboard/package-lock.json
       - scripts/pete-desktop-session-proxy.test.mjs
+      - scripts/pete-desktop-browser.test.mjs
   workflow_dispatch:
 
 permissions:
@@ -53,6 +56,10 @@ jobs:
       - run: npm run test:desktop
       - name: Real desktop session through Vite, no provider network
         run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
+      - name: Install test-only Chromium
+        run: node ../dashboard/node_modules/playwright/cli.js install chromium
+      - name: Real browser desktop reads, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-browser.test.mjs
 
   powershell51-parse:
     runs-on: windows-latest

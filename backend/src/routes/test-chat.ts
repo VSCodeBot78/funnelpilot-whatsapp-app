@@ -22,11 +22,16 @@ const router = Router();
 // All paid desktop control stays under this authenticated local namespace.
 // No provider request is made by session/status/budget/lead/entry endpoints.
 router.post("/desktop/session", startDesktopBrowserSession);
-router.get("/desktop/status", guardDesktopBrowser, (req, res) => {
+// Browser same-origin GET omits Origin. Read-only POST aliases preserve the
+// exact existing Origin/Host/session/CSRF/JSON guards; GET stays unchanged.
+function desktopStatus(req: Request, res: Response) {
   const budget = getPeteDesktopBudgetStatus(desktopSessionHash(req));
   return res.json({ ok: true, budget, providerConfigured: desktopProviderConfigured(),
     model: "gpt-6.1-sol", globalApiCallsApproved: false, sendsEnabled: false });
-});
+}
+router.route("/desktop/status")
+  .get(guardDesktopBrowser, desktopStatus)
+  .post(guardDesktopBrowser, desktopStatus);
 router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
   const { enabled, budgetUsd } = req.body ?? {};
   if (typeof enabled !== "boolean" ||
@@ -53,13 +58,16 @@ router.post("/desktop/lead", guardDesktopBrowser, (req, res) => {
     return res.json({ ok: true, leadId, campaignId: DEFAULT_CAMPAIGN_ID });
   } catch { return res.status(409).json({ ok: false, error: "desktop_lead_not_created" }); }
 });
-router.get("/desktop/state/:leadId", guardDesktopBrowser, (req, res) => {
+function desktopState(req: Request, res: Response) {
   try {
     assertIssuedDesktopLead(req, req.params.leadId, DEFAULT_CAMPAIGN_ID);
     const state = getConversationState(req.params.leadId as string, DEFAULT_CAMPAIGN_ID);
     return res.json({ ok: true, state: { messages: publicLabMessages(state?.messages ?? []) } });
   } catch { return res.status(403).json({ ok: false, error: "desktop_server_issued_lead_required" }); }
-});
+}
+router.route("/desktop/state/:leadId")
+  .get(guardDesktopBrowser, desktopState)
+  .post(guardDesktopBrowser, desktopState);
 router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
   const { leadId, campaignId, messageText } = req.body ?? {};
   try { assertIssuedDesktopLead(req, leadId, campaignId); }

@@ -15,6 +15,13 @@ test("opening a desktop client only bootstraps a session, reads status and creat
   assert.ok(calls.every(c => c.init.credentials === "same-origin"));
   assert.ok(calls.filter(c => !c.url.endsWith("session"))
     .every(c => c.init.headers["X-Pete-CSRF"] === "a".repeat(64)));
+  // Read-only status/state use POST because browsers do not attach Origin to
+  // same-origin GET. They still require the normal guarded session and CSRF.
+  assert.equal(calls.find(c => c.url.endsWith("/status")).init.method, "POST");
+  await client.state("lab_desktop_test");
+  assert.equal(calls.at(-1).init.method, "POST");
+  assert.equal(calls.at(-1).init.body, "{}");
+  assert.equal(calls.at(-1).url, "/test-chat/desktop/state/lab_desktop_test");
   assert.ok(!calls.some(c => /budget|message/.test(c.url)));
   await client.setBudget(true, "0.25");
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.25" });

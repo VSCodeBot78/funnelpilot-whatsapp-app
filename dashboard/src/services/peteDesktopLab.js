@@ -31,10 +31,12 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     return data;
   }
   return {
-    status: () => request("GET", "status"),
+    // Same-origin GET does not carry a browser Origin header. Use guarded
+    // read-only POSTs so the browser supplies Origin without weakening auth.
+    status: () => request("POST", "status", {}),
     newLead: () => request("POST", "lead", {}),
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
-    state: leadId => request("GET", "state/" + encodeURIComponent(leadId)),
+    state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
     setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled ? { enabled, budgetUsd } : { enabled }),
   };

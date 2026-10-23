@@ -2,6 +2,10 @@
 
 Stand: 24.10.2026, Europe/Berlin. Arbeit ausschließlich auf der bestehenden Branch von PR #191. PR #193 wurde nicht bearbeitet.
 
+Browser-Fortsetzung: Die hier beschriebenen Node-HTTP-Tests setzen Origin selbst.
+Ein zusätzlicher echter Browserfehler bei Status-/Verlaufs-GETs und sein gezielter
+Fix sind in [pete-desktop-browser-origin-20261024.md](pete-desktop-browser-origin-20261024.md) dokumentiert.
+
 ## Nachgewiesener Fehler
 
 Die Browser-Header aus Master-State 68 sind korrekt. Der vorhandene Vite-Proxy verwendet für `/test-chat` jedoch eine Zeichenkette als Kurzform. Die installierte Vite-Version wandelt diese in `{ target: ..., changeOrigin: true }` um. Dadurch ersetzt der Proxy den ursprünglichen Browser-Host `127.0.0.1:5173` durch den Ziel-Host `localhost:3001`.

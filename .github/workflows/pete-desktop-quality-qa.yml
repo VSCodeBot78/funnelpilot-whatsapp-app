@@ -41,6 +41,10 @@ jobs:
         run: npm --prefix ../dashboard ci --no-audit --no-fund
       - name: Real desktop session through Vite, no provider network
         run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
+      - name: Install test-only Chromium
+        run: node ../dashboard/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Real browser desktop reads, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-browser.test.mjs
       - name: Verify one-use residual dollar cap without network
         working-directory: .
         run: node --test scripts/pete-quality-resume-budget.test.mjs scripts/pete-quality-round2-budget.test.mjs
