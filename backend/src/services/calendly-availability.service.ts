@@ -82,6 +82,7 @@ async function calendlyGet<T>(path: string): Promise<T> {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(8000), // bounded read-only slot diagnostic
   });
 
   if (!response.ok) {
