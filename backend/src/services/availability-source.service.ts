@@ -70,7 +70,7 @@ export async function getAvailabilitySource(params?: {
     try {
       const calendlySlots = await getCalendlyAvailableSlots({
         campaignId,
-        daysAhead: 7,
+        daysAhead: 14,
       });
 
       // Empty verified availability is NOT permission to offer unverified
