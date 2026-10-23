@@ -62,8 +62,10 @@ test("Phase 12 real follow-up transport truth", async (t) => {
     const campaignId = "eltern-vital-fit";
     const state = getOrCreateConversationState(leadId, campaignId);
     state.source = "Instagram";
-    state.lastAssistantMessageAt = hoursAgo(96);
-    state.lastUserMessageAt = undefined;
+    // The user last wrote 8h ago, and the bot last wrote 7h ago.
+    // Only then is a 6h reminder due AND still inside Meta's 24h window.
+    state.lastAssistantMessageAt = hoursAgo(7);
+    state.lastUserMessageAt = hoursAgo(8);
     state.owner = "ai";
     state.aiPaused = false;
     state.flags.stopped = false;
@@ -134,8 +136,10 @@ test("Phase 12 real follow-up transport truth", async (t) => {
       leadSync.campaignId,
     );
     state.source = "Instagram";
-    state.lastAssistantMessageAt = hoursAgo(96);
-    state.lastUserMessageAt = undefined;
+    // The user last wrote 8h ago, and the bot last wrote 7h ago.
+    // Only then is a 6h reminder due AND still inside Meta's 24h window.
+    state.lastAssistantMessageAt = hoursAgo(7);
+    state.lastUserMessageAt = hoursAgo(8);
     state.owner = "ai";
     state.aiPaused = false;
     state.flags.stopped = false;
