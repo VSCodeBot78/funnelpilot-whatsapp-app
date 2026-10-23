@@ -185,9 +185,16 @@ export function getPeteVerifiedTransactionAnswer(
     /\b(?:erst|noch|muss)\b.{0,35}\b(?:daruber|druber)\b.{0,20}\bschlafen\b/.test(input) ||
     /\b(?:aber|erst|noch|vorher|zuerst|brauche)\b.{0,70}\b(?:bedenkzeit|daruber|druber|nachdenken|uberlegen|zustimmung)\b/.test(input) ||
     /\bkeine\s+weiteren?\s+(?:nachrichten|verkaufsnachrichten)\b/.test(input);
-  if (namesFiveWeek && explicitlyBuysFiveWeek &&
+  // A buyer may choose the personal entry in the earlier turn and then say
+  // "ich möchte jetzt ohne Verkaufscall direkt kaufen". Preserve that latest
+  // verified product selection, but never guess an ambiguous or newer offer.
+  const currentlyNegatesStarter = /\b(?:nicht|kein(?:en)?)\s+(?:den\s+)?selbststarter\b/.test(input);
+  const ambiguousOfferInCurrentTurn =
+    (/\bselbststarter\b/.test(input) && !currentlyNegatesStarter) ||
+    /\b(?:6[\s-]*monat|sechs[\s-]*monat)\b/.test(input);
+  if ((namesFiveWeek || previousFiveWeekSelected) && explicitlyBuysFiveWeek &&
       !hasFiveWeekBudgetBarrier && !hasPendingFiveWeekDecision &&
-      !asksFiveWeekDetails && !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input) &&
+      !asksFiveWeekDetails && !ambiguousOfferInCurrentTurn &&
       !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
     return {
       text: "Hier ist der hinterlegte Kaufweg für die persönliche 5-Wochen-Startphase: " +
@@ -386,6 +393,15 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // Merely starting a checkout is NOT proof of purchase or an ownership
+  // incident. Do not set human ownership before the actual payment question.
+  if (/\b(?:bestellung|bestellvorgang|checkout|kauf)\b.{0,70}\b(?:begonnen|gestartet)\b/.test(input) &&
+      !/\b(?:zahlung|bezahlt|bestatigung|zugang|freischalt\w*|angekommen|abgebucht|erfolgreich|bestatigt)\b/.test(input)) {
+    return {
+      text: "Du hast den Bestellvorgang begonnen. Ob eine Zahlung abgeschlossen oder ein Zugang freigeschaltet wurde, kann ich hier nicht prüfen. Bitte orientiere dich an der Bestätigung im Checkout.",
+      nextPhase: "info",
+    };
+  }
   const asksVerifiedStatus =
     /\b(?:bestatigt|bestatigung|verifiziert|wirklich gebucht|tatsachlich gebucht|sicher gebucht|angekommen|zahlungseingang|habe bezahlt|hab bezahlt|zugang fehlt|bestellung|kaufbeleg|abbuchung)\b/.test(input) &&
     /\b(?:termin|kalender|calendly|buchung|gebucht|zahlung|bezahlt|gekauft|bestellung|zugang|kauf|rechnung|bezahlen)\b/.test(input);
