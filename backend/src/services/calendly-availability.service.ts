@@ -139,20 +139,23 @@ function isoToAvailabilitySlot(iso: string): AvailabilitySlot | null {
     timeZone: CALENDLY_TIMEZONE,
   }).format(date);
 
-  return {
-    day: mappedDay,
-    time,
-  };
+  const dateLabel = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: CALENDLY_TIMEZONE,
+  }).format(date);
+  // Preserve the actual calendar day; a weekday recurring rule is not a slot.
+  return { day: mappedDay, time, date: dateLabel, startAt: iso };
 }
 
 function uniqueSortedSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   const uniqueMap = new Map<string, AvailabilitySlot>();
 
   for (const slot of slots) {
-    uniqueMap.set(`${slot.day}-${slot.time}`, slot);
+    uniqueMap.set(`${slot.date ?? slot.day}-${slot.time}`, slot);
   }
 
   return [...uniqueMap.values()].sort((a, b) => {
+    if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
     if (a.day !== b.day) {
       const dayOrder: AvailabilityDayKey[] = [
         "monday",
@@ -233,6 +236,7 @@ export async function getCalendlyAvailableSlots(params?: {
   );
 
   const mappedSlots = availability.collection
+    .filter((entry) => !entry.status || entry.status === "available")
     .map((entry) => isoToAvailabilitySlot(entry.start_time))
     .filter((slot): slot is AvailabilitySlot => Boolean(slot));
 
