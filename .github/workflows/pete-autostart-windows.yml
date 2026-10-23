@@ -102,3 +102,40 @@ jobs:
             throw "Actual launcher CMD did not hand a valid root to the bootstrap"
           }
           Write-Host "PASS: actual CMD hands Windows folder root to PowerShell without quotes/backslash corruption"
+
+      - name: Windows release selection retains partial directories and retries safely
+        shell: powershell
+        run: |
+          $scriptFile = Join-Path $env:GITHUB_WORKSPACE "scripts\start-pete-auto-release.ps1"
+          $tokens = $null
+          $errors = $null
+          $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptFile, [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) { throw "Updater parse failed" }
+          $needed = @("Stop-Safe", "Run-Git", "Assert-ReadySnapshot", "Select-ReleaseSlot")
+          foreach ($name in $needed) {
+            $nodes = @($ast.FindAll({
+              param($node)
+              $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name
+            }, $true))
+            if ($nodes.Count -ne 1) { throw ("Missing or duplicate function " + $name) }
+            . ([scriptblock]::Create($nodes[0].Extent.Text))
+          }
+          $releasesDir = Join-Path $env:RUNNER_TEMP "auto-releases-recovery"
+          New-Item -ItemType Directory -Path $releasesDir -Force | Out-Null
+          $sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          $partial = Join-Path $releasesDir $sha
+          New-Item -ItemType Directory -Path (Join-Path $partial "backend") -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $partial "backend\partial-source.txt") -Value "PROTECT-ME"
+          $slot1 = Select-ReleaseSlot $sha
+          if ($slot1.name -ne ($sha + "-retry-1") -or $slot1.ready -ne $false) {
+            throw "First incomplete release was not preserved with new retry directory"
+          }
+          New-Item -ItemType Directory -Path (Join-Path $releasesDir ($sha + "-retry-1")) -Force | Out-Null
+          $slot2 = Select-ReleaseSlot $sha
+          if ($slot2.name -ne ($sha + "-retry-2") -or $slot2.ready -ne $false) {
+            throw "Second interrupted release did not select next safe sibling"
+          }
+          if ((Get-Content -LiteralPath (Join-Path $partial "backend\partial-source.txt") -Raw).Trim() -ne "PROTECT-ME") {
+            throw "Owner partial release was modified"
+          }
+          Write-Host "PASS: interrupted releases preserved, unused retry sibling selected, next retry deterministic"
