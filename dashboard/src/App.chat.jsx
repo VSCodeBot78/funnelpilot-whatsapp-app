@@ -87,6 +87,8 @@ export default function ChatTest() {
   const [entryNotice, setEntryNotice] = useState("");
   const [calendlyDiagnostic, setCalendlyDiagnostic] = useState(null);
   const [calendlyChecking, setCalendlyChecking] = useState(false);
+  const [aiDiagnostic, setAiDiagnostic] = useState(null);
+  const [aiChecking, setAiChecking] = useState(false);
 
   const campaignId = "eltern-vital-fit";
 
@@ -250,6 +252,25 @@ export default function ChatTest() {
     }
   }
 
+  async function checkPeteKiReadOnly() {
+    if (aiChecking || loading) return;
+    setAiChecking(true);
+    setAiDiagnostic(null);
+    try {
+      const [readinessRes, budgetRes] = await Promise.all([
+        fetch(buildApiUrl("/health/readiness"), { headers: { Accept: "application/json" } }),
+        fetch(buildApiUrl("/test-chat/budget"), { headers: { Accept: "application/json" } }),
+      ]);
+      if (!readinessRes.ok || !budgetRes.ok) throw new Error("read_only_unavailable");
+      const [readiness, budget] = await Promise.all([readinessRes.json(), budgetRes.json()]);
+      setAiDiagnostic({ readiness, budget });
+    } catch {
+      setAiDiagnostic({ error: "Der lokale Backend-Status ist nicht erreichbar. Keine KI-Freigabe." });
+    } finally {
+      setAiChecking(false);
+    }
+  }
+
   function resetTest() {
     const newLeadId = makeTestLeadId();
     setLeadId(newLeadId);
@@ -406,6 +427,50 @@ export default function ChatTest() {
               Erst deine anschließende Antwort an Pete zählt als eingehende DM.
             </p>}
         </div>
+
+        <section aria-label="Pete-KI-Diagnose (nur lesen)" style={{
+          background: "#111827", border: "1px solid #2a3348",
+          borderRadius: 12, padding: 14, marginBottom: 14,
+        }}>
+          <strong>Pete-KI: Testmodus und API-Status</strong>
+          <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
+            Diagnose ohne KI-Aufruf und ohne Kosten. Dieser Bereich gibt keine
+            kostenpflichtigen Tests frei. Der angezeigte interne Ledger ist
+            kein OpenAI-Kontostand und keine bestätigte historische Gesamtsumme.
+          </p>
+          <button type="button" onClick={checkPeteKiReadOnly}
+            disabled={aiChecking || loading}
+            style={{ background: "#ff914d", color: "#111827", border: "none",
+              borderRadius: 8, padding: "10px 14px", fontWeight: 700 }}>
+            {aiChecking ? "Prüfe Pete-KI..." : "Pete-KI-Status prüfen (kostenlos)"}
+          </button>
+          {aiDiagnostic && <div role="status" style={{
+            marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
+          }}>
+            {aiDiagnostic.error ? <p>{aiDiagnostic.error}</p> : <>
+              <div><strong>Echte KI-Kostenfreigabe:</strong>{" "}
+                {aiDiagnostic.readiness?.peteLlmCostGateApproved === true
+                  ? "Konfiguriert, aber noch kein bestätigter echter Modelltest"
+                  : "AUS"}</div>
+              <div><strong>KI-Provider bereit:</strong>{" "}
+                {aiDiagnostic.readiness?.peteLlmProviderReady === true
+                  ? "Konfiguriert" : "Nein"}</div>
+              <div><strong>Lokaler Safe Mode:</strong>{" "}
+                {aiDiagnostic.readiness?.localLaptopSafeMode === true
+                  ? "Aktiv" : "Nicht bestätigt"}</div>
+              <div><strong>Budget-Ledger:</strong>{" "}
+                {aiDiagnostic.budget?.ok === true
+                  ? "Lesbar, historische Ausgaben nicht abgeglichen"
+                  : "Nicht verfügbar"}</div>
+              <p style={{ color: "#fbbf24" }}>
+                Keine Freigabe für Darth-Vader-KI-Tests, bis ein separater,
+                begrenzter Test-Schalter samt sicherem Altledger-Abgleich
+                implementiert und geprüft wurde. Nur Antwortquelle „llm“
+                beweist einen echten Modellbeitrag in der jeweiligen Nachricht.
+              </p>
+            </>}
+          </div>}
+        </section>
 
         <section aria-label="Calendly-Testdiagnose" style={{
           background: "#111827", border: "1px solid #2a3348",
