@@ -168,9 +168,27 @@ export async function checkStaticAvailability(params: {
   const requestedTime = parseRequestedTime(params.requestedTimeText);
   const config = getAvailabilityConfig();
 
+  // Manually entered recurring hours are fine for layout rehearsals,
+  // but they are NOT verified provider availability for real customers.
+  if (process.env.NODE_ENV !== "test" && config.sourceMode !== "calendar") {
+    return {
+      requestedDayLabel: params.requestedDayLabel,
+      requestedTimeText: params.requestedTimeText,
+      isBookable: false, suggestions: [],
+      reason: "Keine live verifizierte Calendly-Verfügbarkeit. Nur Buchungslink anbieten.",
+    };
+  }
   const availableSlots = await getAvailableSlots({
     campaignId: params.campaignId,
   });
+  if (availableSlots.length === 0) {
+    return {
+      requestedDayLabel: params.requestedDayLabel,
+      requestedTimeText: params.requestedTimeText,
+      isBookable: false, suggestions: [],
+      reason: "Keine live verifizierten freien Termine abrufbar. Keine Uhrzeit behaupten, Calendly-Buchungslink anbieten.",
+    };
+  }
 
   const suggestionLimit = config.maxSuggestions ?? 3;
 
