@@ -85,6 +85,7 @@ function getPreferenceBucket(
 
 function sortSlots(slots: AvailabilitySlot[]): AvailabilitySlot[] {
   return [...slots].sort((a, b) => {
+    if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
     const dayDiff = getDayIndex(a.day) - getDayIndex(b.day);
     if (dayDiff !== 0) {
       return dayDiff;
@@ -143,6 +144,10 @@ function buildSuggestionsFromSlots(params: {
 }
 
 export function formatAvailabilitySlot(slot: AvailabilitySlot): string {
+  if (slot.date && /^\d{4}-\d{2}-\d{2}$/.test(slot.date)) {
+    const [year, month, day] = slot.date.split("-");
+    return `${DAY_KEY_TO_LABEL[slot.day]}, ${day}.${month}.${year} um ${slot.time}`;
+  }
   return `${DAY_KEY_TO_LABEL[slot.day]} um ${slot.time}`;
 }
 
