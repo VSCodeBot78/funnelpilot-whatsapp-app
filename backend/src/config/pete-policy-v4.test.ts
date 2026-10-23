@@ -311,3 +311,29 @@ test("Pete real-model focus15 corrections stay deterministic where possible", as
   assert.equal(sixMonths?.text, LONG_TERM_PRICE_UNVERIFIED_REPLY);
   assert.equal(sixMonths?.handoff ?? false, false);
 });
+
+
+test("Yoda 23 October: verified Zoom guarantee and payment truth win over vague handoff", async () => {
+  const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
+  const reply = (earlier: string, latest: string) =>
+    getPeteVerifiedTransactionAnswer(latest, {
+      messages: [{ role: "user", text: earlier }, { role: "user", text: latest }],
+    } as any);
+  const zoom = reply("Wöchentliche Betreuung ist mir wichtig.",
+    "Sind genau fünf persönliche 45-Minuten-Zoom-Termine verbindlich garantiert?");
+  assert.match(zoom?.text ?? "", /wöchentlich 45 Minuten/i);
+  assert.match(zoom?.text ?? "", /nicht ableiten/i);
+  assert.equal(zoom?.handoff ?? false, false);
+  assert.doesNotMatch(zoom?.text ?? "", /genau fünf.*garantiert/i);
+
+  const payment = reply("Ich habe gerade die Bestellseite geöffnet und einmal auf Kaufen getippt.",
+    "Kannst du mir verbindlich bestätigen, dass Geld angekommen ist und mein Zugang sofort frei ist?");
+  assert.match(payment?.text ?? "", /Zahlung eingegangen/i);
+  assert.match(payment?.text ?? "", /Freischaltung.*Zugangs/i);
+  assert.match(payment?.text ?? "", /Bestellbestätigung/i);
+  assert.equal(payment?.handoff, true, "real payment status needs a human, never a guessed confirmation");
+
+  const normal = reply("Ich habe gerade meinen Ernährungsplan angesehen.",
+    "Ich habe etwas Geld für Kurzhanteln. Sind die nötig?");
+  assert.equal(normal, null, "ordinary shopping questions are not a transaction dispute");
+});
