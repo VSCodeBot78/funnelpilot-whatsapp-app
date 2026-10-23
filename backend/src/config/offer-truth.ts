@@ -33,7 +33,7 @@ export const LONG_TERM_PRICE_UNVERIFIED_REPLY =
 export function isUnverifiedLongTermPriceQuestion(text: string): boolean {
   const input = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
   return /\b(6[\s-]*monat(?:e|s|ige|igen)?|sechs[\s-]*monat(?:e|s|ige|igen)?|langere begleitung|langfristige begleitung|premium|advanced)\b/.test(input) &&
-    /\b(preis|kostet|kosten|teuer|gebuhr|monatlich|zahlung|investition)\b/.test(input);
+    /\b(preis|gesamtpreis|kostet|kosten|teuer|gebuhr|monatlich|zahlung|investition|vertragsbedingungen|konditionen)\b/.test(input);
 }
 
 /** Historical upgrade figures must never appear in a customer-visible reply. */
