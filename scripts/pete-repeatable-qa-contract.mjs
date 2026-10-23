@@ -60,7 +60,7 @@ function validateLedger(ledger) {
 export function checkPeteQaAdmission(env, ledger, request) {
   assertSafeEnvironment(env);
   if (!request || request.version !== 1 ||
-      !["sales20", "sales32"].includes(request.testSet) ||
+      !["sales20", "sales32", "focus15"].includes(request.testSet) ||
       typeof request.ownerApprovalRef !== "string" ||
       !/^owner:[a-z0-9-]{8,80}$/.test(request.ownerApprovalRef))
     throw Error("qa_approval_required");
