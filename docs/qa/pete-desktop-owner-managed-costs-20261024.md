@@ -75,6 +75,14 @@ Prozessneustarts, parallele Reservierungen, Budgetgrenze und Abrechnungsfehler
 geprüft. Vorherige strenge Review-/Integritätsprüfungen bleiben bestanden.
 
 Die bestehenden Linux-/Windows-CI-Jobs führen diese Prüfungen ebenfalls aus.
+Der erste Linux-Lauf blieb über mehrere Minuten beim Installationsschritt
+`install --with-deps chromium` stehen; ein direkter Abbruch ist über die
+vorhandene Verbindung nicht verfügbar. Der Backend-CI-Job verwendet deshalb
+Ubuntu 24.04 mit dem dort bereits vorinstallierten Chrome statt einer erneuten
+OS-/Browserinstallation, mit festem Job-Timeout von zehn Minuten. Dieselben
+Browser-/Sicherheitsprüfungen bleiben vollständig verpflichtend. Die Windows-CI
+verwendet weiter den gepinnten Playwright-Chromium. Runner-Quelle:
+https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md .
 Ihre tatsächlichen Ergebnisse auf dem veröffentlichten HEAD werden nach
 Abschluss in PR #191 und PETE_MASTER_STATE dokumentiert. Keine echte Sol-
 Dialogbewertung oder erfolgreiche Besitzer-Installation wird daraus abgeleitet.

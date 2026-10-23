@@ -74,7 +74,9 @@ test("desktop browser reads pass the unchanged Origin/CSRF guard without provide
       server: { host: "127.0.0.1", port: 5173, strictPort: true, hmr: false, proxy: { "/test-chat": proxyRule } },
     });
     await vite.listen();
-    browser = await chromium.launch({ headless: true });
+    const channel = process.env.PETE_DESKTOP_TEST_BROWSER;
+    if (channel !== undefined && channel !== "chrome") throw Error("unsupported_test_browser");
+    browser = await chromium.launch({ headless: true, ...(channel ? { channel } : {}) });
     async function isolatedPage() {
       const context = await browser.newContext({ serviceWorkers: "block" });
       await context.route("**/*", route => {
