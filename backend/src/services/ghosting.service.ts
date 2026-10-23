@@ -44,6 +44,17 @@ function getReferenceInboundAt(state: ConversationState): Date | null {
   return parseIso(state.lastUserMessageAt);
 }
 
+// Ordinary automated Instagram/WhatsApp follow-ups require a fresh inbound
+// message. This is a fail-closed local guard, not a provider permission check.
+const AUTOMATED_REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function slotDueAt(outboundAt: Date, slot: GhostingMessageSlot): Date {
+  // The default gentle reminder is relative to the last outbound. Legacy
+  // custom clock-time slots remain readable but never override the 24h guard.
+  if (slot.stage === "cycle1_within24h_6h") return addHours(outboundAt, slot.dayOffsetHours);
+  return setTime(addHours(outboundAt, slot.dayOffsetHours), slot.sendHour, slot.sendMinute);
+}
+
 function getSlotsForCycle(cycle: GhostingCycle): GhostingMessageSlot[] {
   const schedules = getGhostingConfig().schedules;
   const match = schedules.find((entry) => entry.cycle === cycle);
@@ -51,6 +62,16 @@ function getSlotsForCycle(cycle: GhostingCycle): GhostingMessageSlot[] {
 }
 
 function hasLeadRepliedAfterOutbound(state: ConversationState): boolean {
+  // No inbound timestamp, no automated proactive sale. 24h is measured from
+  // the last USER message, not the last bot message or first campaign trigger.
+  const inboundAt = getReferenceInboundAt(state);
+  if (!inboundAt || inboundAt.getTime() > now.getTime()) {
+    return buildInactiveResult("Kein gültiger letzter Kundeneingang: Nachfassen gesperrt.");
+  }
+  if (now.getTime() >= inboundAt.getTime() + AUTOMATED_REPLY_WINDOW_MS) {
+    return buildInactiveResult("24-Stunden-Nachrichtenfenster abgelaufen: normales automatisches Nachfassen gesperrt.");
+  }
+
   const outboundAt = getReferenceOutboundAt(state);
   const inboundAt = getReferenceInboundAt(state);
 
@@ -85,8 +106,7 @@ function getNextDueSlot(params: {
       continue;
     }
 
-    const thresholdDate = addHours(params.outboundAt, slot.dayOffsetHours);
-    const dueDate = setTime(thresholdDate, slot.sendHour, slot.sendMinute);
+    const dueDate = slotDueAt(params.outboundAt, slot);
 
     if (params.now.getTime() < dueDate.getTime()) {
       return slot;
@@ -110,8 +130,7 @@ function getCurrentDueSlot(params: {
       continue;
     }
 
-    const thresholdDate = addHours(params.outboundAt, slot.dayOffsetHours);
-    const dueDate = setTime(thresholdDate, slot.sendHour, slot.sendMinute);
+    const dueDate = slotDueAt(params.outboundAt, slot);
 
     if (params.now.getTime() >= dueDate.getTime()) {
       latestDue = slot;
@@ -263,12 +282,7 @@ export function evaluateGhostingState(
   });
 
   if (currentDueSlot) {
-    const thresholdDate = addHours(outboundAt, currentDueSlot.dayOffsetHours);
-    const dueDate = setTime(
-      thresholdDate,
-      currentDueSlot.sendHour,
-      currentDueSlot.sendMinute,
-    );
+    const dueDate = slotDueAt(outboundAt, currentDueSlot);
 
     return {
       shouldActivate: true,
@@ -282,12 +296,7 @@ export function evaluateGhostingState(
   }
 
   if (nextDueSlot) {
-    const thresholdDate = addHours(outboundAt, nextDueSlot.dayOffsetHours);
-    const dueDate = setTime(
-      thresholdDate,
-      nextDueSlot.sendHour,
-      nextDueSlot.sendMinute,
-    );
+    const dueDate = slotDueAt(outboundAt, nextDueSlot);
 
     return {
       shouldActivate: true,
