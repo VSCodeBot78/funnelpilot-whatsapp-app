@@ -51,7 +51,7 @@ function qualityQaCapMicros(): number | null {
       ledger = JSON.parse(fs.readFileSync(path.join(workspace, "budget-ledger", "phase3-budget-ledger.json"), "utf8"));
     } catch { throw new PeteBudgetStop("unavailable"); }
     const dollars = request.budgetUsd;
-    if (request.version !== 1 || !["sales20", "sales32"].includes(String(request.testSet)) ||
+    if (request.version !== 1 || !["sales20", "sales32", "focus15"].includes(String(request.testSet)) ||
         typeof dollars !== "string" ||
         !/^(?:0\.[0-9]{2}|1\.[0-9]{2}|2\.00)$/.test(dollars) ||
         !/^owner:[a-z0-9-]{8,80}$/.test(String(request.ownerApprovalRef ?? "")))
