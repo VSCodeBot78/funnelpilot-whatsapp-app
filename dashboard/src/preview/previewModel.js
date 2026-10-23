@@ -80,6 +80,18 @@ export function ownership(lead) {
   return "Nicht bestätigt";
 }
 
+// React effects clear old detail state after rendering. Check the identity at
+// render time too, so a contact switch cannot flash the previous person's data.
+export function matchesSelectedConversation(lead, record) {
+  const identity = lead?.conversation;
+  return (
+    !!identity &&
+    !!record &&
+    String(identity.campaignId) === String(record.campaignId) &&
+    String(identity.leadId) === String(record.leadId)
+  );
+}
+
 export function hasBookingMark(lead) {
   const status = String(lead.bookingData?.status || "").toLowerCase();
   return (

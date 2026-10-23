@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-23T20:54:14.486422+00:00",
+  "recorded_at_utc": "2026-10-23T21:01:52.977061+00:00",
   "branch": "feat/dashboard-v2-preview-20261023",
   "protected_parent": "d3c1bd5a0fa31eeec5117da0530136980a659f85",
   "runtime": "v24.19.0",
@@ -41,8 +41,8 @@
   },
   "browser": {
     "stats": {
-      "startTime": "2026-10-23T20:52:25.414Z",
-      "duration": 20754.542,
+      "startTime": "2026-10-23T21:00:42.459Z",
+      "duration": 17083.57,
       "expected": 20,
       "skipped": 0,
       "unexpected": 0,
@@ -200,7 +200,8 @@
       "dark"
     ],
     "axe_audit_states": 28,
-    "axe_violations": 0
+    "axe_violations": 0,
+    "contact_switch_privacy": "Render-time identity guard; delayed second-contact request confirms no previous messages are shown."
   },
   "builds": {
     "legacy_and_pete_lab": "passed",
@@ -271,63 +272,63 @@
       "file": "campaigns-1440-light.png",
       "width": 1440,
       "height": 1286,
-      "sha256": "3f25f6d5b4afd781c1ebdd8fb6e516b4e0627077553b73c2bbff3d2058979ef8",
+      "sha256": "a9d9cfb58114749de1c6c255f0c2032f9ea848f7506e6b292230861056c5babf",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-1440-dark.png",
       "width": 1440,
       "height": 1303,
-      "sha256": "ed14f91ed787c18bed9d5547c673ffbd90bdd63682646959f802eb5eda4c03de",
+      "sha256": "106f4af46c881168176221897d77cb5c2b6715c31133f5523127c02ec69d3a4d",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-1440-light.png",
       "width": 1440,
       "height": 1303,
-      "sha256": "bb1d9683f4121a5120ebb154f500b812355520a59145ce9bac4f6316abd9765f",
+      "sha256": "f56a5435ec46bf54a6633ae410ee0ee5e4d9dc7b153ea4b5f1af64bf555e146d",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-360-light.png",
       "width": 360,
       "height": 2230,
-      "sha256": "52aee26342081a4c13cbd62a294011b64d773f7841ae67a9499d2060f86e3bf0",
+      "sha256": "bf2fa6061efff225eecc34dbf2cd9267e94c8391cfc4623215003be4dd20a012",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-before-1440.png",
       "width": 1440,
       "height": 1145,
-      "sha256": "c5ad401b18c0b90bf5aadc7bcac0535fd5110a3f0645291bd30f1769ef168176",
+      "sha256": "bdb28c640fa7f7ce3fb0eeb58aef9dd5703f0cbf9819a31aaaed11ceef657da6",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-empty.png",
       "width": 1440,
       "height": 1272,
-      "sha256": "0e70e55e3e7bc93488bffdf7e20766c471e008e1056bde4879bb42fe1e67304f",
+      "sha256": "7529eeff13e31e9a8a475711bb649003e14c50487d72f9a3b0f423fd5ecd5bcd",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "dashboard-offline.png",
       "width": 1440,
       "height": 1338,
-      "sha256": "eb164ef5bfe0016de18ecda7df5ed4b351dcdc4fc730d020c5d8f07ee7f8b9b3",
+      "sha256": "568e2d28a39562908e4b37974f7b93a4ec45df786850fd7e1aeb492b4fbd3234",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "inbox-1440-light.png",
       "width": 1440,
       "height": 1655,
-      "sha256": "22bfb3f0fa991bfdc91fc6116bba1e85e907473d6ee8be884f96205c1f7638b9",
+      "sha256": "525c5c02e6b0bc183ff436bcdf53269c5f336ccabd475f43124589888ca5d5aa",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "inbox-360-light.png",
       "width": 360,
       "height": 1635,
-      "sha256": "25a518963c008462bbdd7fda666852a5db76c82cd5b021a7024c8618b9c5e77c",
+      "sha256": "50a34d5d3b7101c9bab88fbd0ec827eb3f9d1aa9d1363863cefa42e7487c1168",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
@@ -341,14 +342,14 @@
       "file": "onboarding-1440-dark.png",
       "width": 1440,
       "height": 1075,
-      "sha256": "6d2ba3a471d9857f28165161b37535d86e6d9c7e0c6b4bdaa77b93c51006547f",
+      "sha256": "68b51166384903b68979472359f51027bb98a9f3d5737755b880955e512c630d",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {
       "file": "onboarding-1440-light.png",
       "width": 1440,
       "height": 1075,
-      "sha256": "d4965d5f2a2853a5228bd8fe7545da214733d4f763b820f73f39db5113a94ca0",
+      "sha256": "17914667cf3f693c8078f08f2d6ea824e158ae8a0449a527b5615b28da6a9fd6",
       "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
     },
     {

@@ -10,6 +10,7 @@ import {
   priorityReason,
   formatDate,
   hasBookingMark,
+  matchesSelectedConversation,
   STATUS_FILTERS,
 } from "./previewModel.js";
 import {
@@ -483,7 +484,9 @@ function Conversation({ selected, detail }) {
         Wähle einen Kontakt aus. Hier erscheint der vorhandene Gesprächsverlauf.
       </EmptyState>
     );
-  const messages = detail.data?.state?.messages;
+  const messages = matchesSelectedConversation(selected, detail.data?.state)
+    ? detail.data.state.messages
+    : null;
   return (
     <div className="v2-conversation">
       <header className="v2-conversation-heading">
@@ -921,7 +924,10 @@ export function FollowUpsPreview({
   followUp,
   snapshot,
 }) {
-  const evaluation = followUp.data?.evaluation;
+  const record = matchesSelectedConversation(selected, followUp.data)
+    ? followUp.data
+    : null;
+  const evaluation = record?.evaluation;
   const schedules = snapshot.schedules?.data?.schedules;
   return (
     <div className="v2-stack">
@@ -989,14 +995,11 @@ export function FollowUpsPreview({
                   ["Status", evaluation.reason],
                   ["Nächster Zeitpunkt", formatDate(evaluation.nextDueAt)],
                   ["Stufe", evaluation.stage],
-                  [
-                    "Letzter Eingang",
-                    formatDate(followUp.data.lastUserMessageAt),
-                  ],
+                  ["Letzter Eingang", formatDate(record.lastUserMessageAt)],
                 ]}
               />
               <div className="v2-saved-copy">
-                {followUp.data.messagePreview ||
+                {record.messagePreview ||
                   "Aktuell kein Nachrichtentext zur Vorschau freigegeben."}
               </div>
               <p className="v2-muted">

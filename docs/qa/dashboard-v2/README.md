@@ -24,7 +24,7 @@ Die Vorschau verwendet dieselben Backend-Ressourcen, Navigationsschlüssel und v
 ### Datenherkunft und Grenzen der Anzeigen
 
 - Listen stammen ausschließlich aus `/leads`, `/campaigns`, `/conversations`, `/booking-events` und `/ghosting/schedule`. Konfigurationsstatus kommt aus `/settings-config` und `/health/readiness`.
-- Ein privates Gespräch wird nur bei eindeutiger Lead- und Kampagnen-ID zugeordnet. Namens- oder Telefonnummernähnlichkeit reicht nicht. Abweichende Detail-IDs werden verworfen.
+- Ein privates Gespräch wird nur bei eindeutiger Lead- und Kampagnen-ID zugeordnet. Namens- oder Telefonnummernähnlichkeit reicht nicht. Abweichende Detail-IDs werden verworfen. Beim Kontaktwechsel werden frühere Gesprächs- und Nachfassdaten bereits vor dem nächsten Rendern der passenden Daten ausgeblendet.
 - „Heiß“ und „im Gespräch“ sind gespeicherte Markierungen. Human Takeover zählt bestätigte menschliche Zuständigkeit oder Pause. Eine Pete-Zuordnung beweist keinen KI-Aufruf.
 - Ein Termin im Lead ist eine Markierung. Anbieterzustellung, Kalender-Synchronisation, Umsatz, Conversion, ungelesene Nachrichten und Kaufwahrscheinlichkeiten werden nicht behauptet.
 - Nachfass-Fälligkeit kommt aus dem vorhandenen Backend. Die Vorschau ändert weder die bestehenden Versandgrenzen noch das 24-Stunden-Fenster.

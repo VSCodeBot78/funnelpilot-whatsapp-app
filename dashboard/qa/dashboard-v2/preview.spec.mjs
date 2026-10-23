@@ -98,7 +98,9 @@ test("default-off entry makes no backend request and does not mount the CRM prev
   request,
 }) => {
   const requests = await mockBackend(page);
-  await page.goto("http://127.0.0.1:5176/preview-v2.html?dashboardV2=true&ai=1");
+  await page.goto(
+    "http://127.0.0.1:5176/preview-v2.html?dashboardV2=true&ai=1",
+  );
   await expect(
     page.getByRole("heading", { name: "Dashboard 2.0 ist deaktiviert." }),
   ).toBeVisible();
@@ -269,6 +271,23 @@ test("inbox uses persisted messages, labels dry runs and blocks all sending and 
   await expect(
     page.getByRole("textbox", { name: "Nachricht in der Vorschau gesperrt" }),
   ).toBeDisabled();
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/conversations/qa-campaign/qa-ben", async (route) => {
+    await held;
+    const data = fixtureResponse("/conversations/qa-campaign/qa-ben");
+    data.state.messages = [
+      {
+        id: "ben-only",
+        role: "user",
+        text: "Nur Bens eigener Verlauf.",
+        createdAt: "2026-10-23T12:20:00Z",
+      },
+    ];
+    await route.fulfill({ json: data });
+  });
   await page
     .getByRole("button", { name: /Ben Sommer/ })
     .first()
@@ -277,6 +296,11 @@ test("inbox uses persisted messages, labels dry runs and blocks all sending and 
     "Ben Sommer",
   );
   await expect(page.locator(".v2-contact-profile")).toContainText("Ben Sommer");
+  await expect(page.locator(".v2-message")).toHaveCount(0);
+  release();
+  await expect(
+    page.getByText("Nur Bens eigener Verlauf.", { exact: true }),
+  ).toBeVisible();
 });
 
 test("empty and partial error states are explicit; unavailable metrics are never zero", async ({

@@ -8,6 +8,7 @@ import {
   leadStatus,
   ownership,
   priorityReason,
+  matchesSelectedConversation,
   summaryMetrics,
 } from "./previewModel.js";
 
@@ -54,6 +55,15 @@ test("joins exact backend IDs through existing campaign aliases", () => {
 });
 
 test("never joins private messages by similar name or phone or duplicate IDs", () => {
+  assert.equal(matchesSelectedConversation(leads[0], states[0]), true);
+  assert.equal(matchesSelectedConversation(leads[1], states[0]), false);
+  assert.equal(
+    matchesSelectedConversation(leads[0], {
+      ...states[0],
+      leadId: "previous-lead",
+    }),
+    false,
+  );
   const misleading = [
     {
       ...states[0],
