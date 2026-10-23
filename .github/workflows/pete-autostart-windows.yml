@@ -1,0 +1,43 @@
+name: Pete AutoStart Windows safety
+on:
+  push:
+    branches:
+      - feat/pete-policy-v4-20261022
+    paths:
+      - scripts/start-pete-auto-release.ps1
+      - .github/workflows/pete-autostart-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  powershell51-parse:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Windows PowerShell 5.1 parse and non-destructive contract
+        shell: powershell
+        run: |
+          $path = Join-Path $env:GITHUB_WORKSPACE "scripts\start-pete-auto-release.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw "Windows PowerShell 5.1 parser rejected AutoStart"
+          }
+          $s = Get-Content $path -Raw
+          if ($s -match 'reset\s+--hard|git\s+clean|git\s+pull|git\s+switch|git\s+checkout') {
+            throw "Unsafe destructive source updater command present"
+          }
+          if (-not ($s -match 'worktree","add"' -and $s -match 'last-ready-sha.txt')) {
+            throw "Isolated release and rollback requirements missing"
+          }
+          if (-not ($s -match 'PETE_LLM_API_CALLS_APPROVED = "false"' -and
+              $s -match 'INSTAGRAM_SEND_ENABLED = "false"' -and
+              $s -match 'WHATSAPP_SEND_ENABLED = "false"')) {
+            throw "No-send and no-cost runtime guard missing"
+          }
+          Write-Host "PASS: WinPS5.1 parses, isolated release, safe model/send guards"
