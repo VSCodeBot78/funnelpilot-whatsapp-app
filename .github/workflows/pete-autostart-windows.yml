@@ -19,6 +19,8 @@ on:
       - backend/package.json
       - dashboard/src/App.chat.jsx
       - dashboard/src/services/peteDesktopLab*
+      - dashboard/vite.config.js
+      - scripts/pete-desktop-session-proxy.test.mjs
   workflow_dispatch:
 
 permissions:
@@ -45,8 +47,12 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - name: Install existing dashboard dependencies for real Vite proxy regression
+        run: npm --prefix ../dashboard ci --no-audit --no-fund
       - run: npm run build
       - run: npm run test:desktop
+      - name: Real desktop session through Vite, no provider network
+        run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
 
   powershell51-parse:
     runs-on: windows-latest

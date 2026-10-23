@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env.js";
 import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
-import { assertDesktopRuntimeSafe, getPeteDesktopBudgetStatus } from "./pete-api-budget.service.js";
+import { assertDesktopRuntimeSafe, getPeteDesktopBudgetStatus, PeteBudgetStop } from "./pete-api-budget.service.js";
 
 const COOKIE = "fp_pete_desktop";
 const TTL_MS = 8 * 60 * 60 * 1000;
@@ -36,7 +36,21 @@ function assertBrowserBoundary(req: Request): void {
   if (req.method !== "GET" && !req.is("application/json")) throw Error("desktop_json_required");
 }
 
-function deny(res: Response): void {
+const SAFE_DENIAL_REASONS = new Set([
+  "desktop_local_browser_required", "desktop_origin_denied", "desktop_host_denied",
+  "desktop_json_required", "desktop_csrf_denied", "desktop_session_capacity",
+]);
+
+function deny(req: Request, res: Response, error: unknown): void {
+  // Diagnostics stay on the local development server. Never log raw errors,
+  // request headers, cookies, CSRF tokens, environment values or credentials.
+  if (env.LOCAL_LAPTOP_TEST_MODE && env.NODE_ENV === "development" &&
+      ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "")) {
+    const reason = error instanceof PeteBudgetStop ? "desktop_runtime_unsafe"
+      : error instanceof Error && SAFE_DENIAL_REASONS.has(error.message)
+        ? error.message : "desktop_guard_denied";
+    console.warn("[pete-desktop] request_denied reason=" + reason);
+  }
   res.status(403).json({ ok: false, error: "desktop_local_session_required" });
 }
 
@@ -67,7 +81,7 @@ export function startDesktopBrowserSession(req: Request, res: Response): void {
     }
     res.setHeader("Cache-Control", "no-store");
     res.json({ ok: true, csrfToken: session.csrf, campaignId: DEFAULT_CAMPAIGN_ID });
-  } catch { deny(res); }
+  } catch (error) { deny(req, res, error); }
 }
 
 export function guardDesktopBrowser(req: Request, res: Response, next: NextFunction): void {
@@ -83,7 +97,7 @@ export function guardDesktopBrowser(req: Request, res: Response, next: NextFunct
     requests.set(req, session);
     res.setHeader("Cache-Control", "no-store");
     next();
-  } catch { deny(res); }
+  } catch (error) { deny(req, res, error); }
 }
 
 export function desktopSessionHash(req: Request): string {
