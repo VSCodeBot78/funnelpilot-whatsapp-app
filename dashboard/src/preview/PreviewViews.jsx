@@ -1229,9 +1229,9 @@ export function OnboardingPreview({ snapshot }) {
               <li>
                 <Icon name="lock" />
                 <span>
-                  Bisherige API-Ausgaben und lokales Budget im bestehenden Labor
-                  abgleichen. Fehlender Nachweis lässt kostenpflichtige KI
-                  gesperrt.
+                  KI-Freigabe, Kostenverbrauch und Restbudget direkt im
+                  bestehenden Pete-Desktop-Labor prüfen. Diese Vorschau
+                  aktiviert oder sperrt keine KI.
                 </span>
               </li>
               <li>
@@ -1258,7 +1258,7 @@ export function OnboardingPreview({ snapshot }) {
                   ["Live-Versand", "Nicht verfügbar"],
                 ]}
               />
-              <LockedAction primary>Dashboard freigeben</LockedAction>
+              <LockedAction primary>Freigabe nach Besitzerprüfung</LockedAction>
             </>
           )}
           {step > 0 && step < 3 && profile?.warnings.length > 0 && (
