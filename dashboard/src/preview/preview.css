@@ -260,8 +260,9 @@ body {
 .v2-nav-count {
   background: var(--purple-bg);
   color: var(--purple);
-  padding: 1px 6px;
-  font-size: 10px;
+  white-space: nowrap;
+  padding: 2px 6px;
+  font-size: 11px;
   border-radius: 5px;
   margin-left: auto;
 }
@@ -1429,7 +1430,7 @@ body {
   font-size: 12px;
 }
 .v2-setup-steps button > strong {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted);
 }
@@ -1475,11 +1476,11 @@ body {
   color: var(--accent-ink);
 }
 .v2-setup-benefits h3 {
-  font-size: 13px;
+  font-size: 14px;
   margin: 16px 0 9px;
 }
 .v2-setup-benefits p {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.8;
 }
@@ -1493,7 +1494,7 @@ body {
   margin-top: 28px;
 }
 .v2-setup-footer > span {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   text-align: center;
 }
@@ -1516,12 +1517,12 @@ body {
 }
 .v2-provider p {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.8;
   margin: 13px 0;
 }
 .v2-provider .v2-button {
-  font-size: 10px !important;
+  font-size: 12px !important;
 }
 .v2-offer-card {
   background: var(--soft);
@@ -2019,7 +2020,7 @@ body {
     min-height: 76px;
   }
   .v2-setup-steps button > strong {
-    font-size: 9px;
+    font-size: 12px;
   }
   .v2-setup-body {
     padding: 25px 20px 0;
@@ -2029,7 +2030,7 @@ body {
     line-height: 1.4;
   }
   .v2-setup-intro {
-    font-size: 12px;
+    font-size: 14px;
   }
   .v2-setup-footer {
     flex-wrap: wrap;
