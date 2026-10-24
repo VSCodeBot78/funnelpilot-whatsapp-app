@@ -316,7 +316,7 @@ export default function SetupWizardModal({
         <div style={{ padding: "22px 28px 15px", borderBottom: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 10 }}>
             <div>
-              <h2 id="setup-title" style={{ margin: 0, fontSize: 25 }}>
+              <h2 id="setup-title" style={{ margin: 0, fontSize: 25, color: "#0f1b3d" }}>
                 {dryRun ? "🛩️ X-Wing: Erststart offline testen" : "🚀 Funnel Pilot einrichten"}
               </h2>
               <div style={{ ...small, marginTop: 5 }}>
@@ -349,7 +349,7 @@ export default function SetupWizardModal({
         <div style={{ overflowY: "auto", padding: "22px 28px", flex: 1, minHeight: 0 }}>
           {stage === 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 16 }}>
             <div style={{ ...box, background: "#eaf3ff" }}>
-              <h2 style={{ margin: "0 0 12px", fontSize: 26 }}>Willkommen bei Funnel Pilot!</h2>
+              <h2 style={{ margin: "0 0 12px", fontSize: 26, color: "#0f1b3d" }}>Willkommen bei Funnel Pilot!</h2>
               <p style={{ ...small, fontSize: 15 }}>
                 Richte deine Marke, Angebote, Antworten und Verbindungen Schritt für Schritt ein.
                 Du brauchst dafür keine technischen Kenntnisse. Andere Coach-Konten
@@ -568,7 +568,7 @@ export default function SetupWizardModal({
           </div>}
 
           {stage === 5 && <div style={{ display: "grid", gap: 15 }}>
-            <h2 style={{ margin: 0 }}>{dryRun
+            <h2 style={{ margin: 0, color: "#0f1b3d" }}>{dryRun
               ? "X-Wing: Einrichtungsablauf durchgespielt" : "Dein Dashboard ist vorbereitet."}</h2>
             <CoachProfilePreview settings={settings} />
             <p style={small}>{dryRun
