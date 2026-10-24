@@ -1,0 +1,369 @@
+{
+  "recorded_at_utc": "2026-10-23T21:01:52.977061+00:00",
+  "branch": "feat/dashboard-v2-preview-20261023",
+  "protected_parent": "d3c1bd5a0fa31eeec5117da0530136980a659f85",
+  "runtime": "v24.19.0",
+  "default_mode": "disabled",
+  "paid_api_calls": 0,
+  "live_sends": 0,
+  "test_counts": {
+    "preview_unit": [
+      {
+        "tests": 18,
+        "passed": 18,
+        "failed": 0
+      }
+    ],
+    "frontend_regression": [
+      {
+        "tests": 102,
+        "passed": 102,
+        "failed": 0
+      }
+    ],
+    "backend_regression": [
+      {
+        "tests": 17,
+        "passed": 17,
+        "failed": 0
+      },
+      {
+        "tests": 520,
+        "passed": 520,
+        "failed": 0
+      },
+      {
+        "tests": 25,
+        "passed": 25,
+        "failed": 0
+      }
+    ]
+  },
+  "browser": {
+    "stats": {
+      "startTime": "2026-10-23T21:00:42.459Z",
+      "duration": 17083.57,
+      "expected": 20,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "cases": [
+      {
+        "name": "default-off entry makes no backend request and does not mount the CRM preview",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "preview server rejects all write methods and unapproved routes before proxying",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "all preview navigation uses only GETs; save/send/takeover stay disabled",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 360px light: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 360px dark: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 768px light: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 768px dark: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 1440px light: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "responsive 1440px dark: navigation, inbox and setup",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "filters combine, explain zero results, reset and preserve the selected contact context",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "inbox uses persisted messages, labels dry runs and blocks all sending and owner changes",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "empty and partial error states are explicit; unavailable metrics are never zero",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "offline display contains no invented contacts or successful safety checks",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "keyboard focus is trapped in mobile navigation, Escape returns it and section changes focus content",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "untrusted lead text renders as text and never executes HTML",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "loading is visible until the real request resolves; refreshing recovers an error",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "mismatched conversation details are not displayed under another contact",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "WCAG A/AA audits across all sections and setup steps (light)",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "WCAG A/AA audits across all sections and setup steps (dark)",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      },
+      {
+        "name": "unchanged legacy dashboard comparison uses the same explicitly synthetic fixture",
+        "passed": true,
+        "status": [
+          "passed"
+        ]
+      }
+    ],
+    "viewports": [
+      360,
+      768,
+      1440
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "axe_audit_states": 28,
+    "axe_violations": 0,
+    "contact_switch_privacy": "Render-time identity guard; delayed second-contact request confirms no previous messages are shown."
+  },
+  "builds": {
+    "legacy_and_pete_lab": "passed",
+    "preview_disabled": "passed; data client excluded",
+    "preview_explicitly_enabled": "passed; separate output only"
+  },
+  "dependency_audit": {
+    "dashboard": {
+      "counts": {
+        "info": 0,
+        "low": 1,
+        "moderate": 2,
+        "high": 5,
+        "critical": 0,
+        "total": 8
+      },
+      "affected_packages": {
+        "@babel/core": "low",
+        "baseline-browser-mapping": "moderate",
+        "browserslist": "high",
+        "esbuild": "moderate",
+        "nanoid": "high",
+        "postcss": "high",
+        "source-map-js": "high",
+        "vite": "high"
+      }
+    },
+    "dashboard_baseline": {
+      "counts": {
+        "info": 0,
+        "low": 1,
+        "moderate": 2,
+        "high": 5,
+        "critical": 0,
+        "total": 8
+      },
+      "affected_packages": {
+        "@babel/core": "low",
+        "baseline-browser-mapping": "moderate",
+        "browserslist": "high",
+        "esbuild": "moderate",
+        "nanoid": "high",
+        "postcss": "high",
+        "source-map-js": "high",
+        "vite": "high"
+      }
+    },
+    "backend": {
+      "counts": {
+        "info": 0,
+        "low": 2,
+        "moderate": 1,
+        "high": 1,
+        "critical": 1,
+        "total": 5
+      },
+      "affected_packages": {
+        "body-parser": "low",
+        "esbuild": "low",
+        "path-to-regexp": "high",
+        "proxy-addr": "critical",
+        "qs": "moderate"
+      }
+    }
+  },
+  "screenshots": [
+    {
+      "file": "campaigns-1440-light.png",
+      "width": 1440,
+      "height": 1286,
+      "sha256": "a9d9cfb58114749de1c6c255f0c2032f9ea848f7506e6b292230861056c5babf",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-1440-dark.png",
+      "width": 1440,
+      "height": 1303,
+      "sha256": "106f4af46c881168176221897d77cb5c2b6715c31133f5523127c02ec69d3a4d",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-1440-light.png",
+      "width": 1440,
+      "height": 1303,
+      "sha256": "f56a5435ec46bf54a6633ae410ee0ee5e4d9dc7b153ea4b5f1af64bf555e146d",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-360-light.png",
+      "width": 360,
+      "height": 2230,
+      "sha256": "bf2fa6061efff225eecc34dbf2cd9267e94c8391cfc4623215003be4dd20a012",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-before-1440.png",
+      "width": 1440,
+      "height": 1145,
+      "sha256": "bdb28c640fa7f7ce3fb0eeb58aef9dd5703f0cbf9819a31aaaed11ceef657da6",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-empty.png",
+      "width": 1440,
+      "height": 1272,
+      "sha256": "7529eeff13e31e9a8a475711bb649003e14c50487d72f9a3b0f423fd5ecd5bcd",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "dashboard-offline.png",
+      "width": 1440,
+      "height": 1338,
+      "sha256": "568e2d28a39562908e4b37974f7b93a4ec45df786850fd7e1aeb492b4fbd3234",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "inbox-1440-light.png",
+      "width": 1440,
+      "height": 1655,
+      "sha256": "525c5c02e6b0bc183ff436bcdf53269c5f336ccabd475f43124589888ca5d5aa",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "inbox-360-light.png",
+      "width": 360,
+      "height": 1635,
+      "sha256": "50a34d5d3b7101c9bab88fbd0ec827eb3f9d1aa9d1363863cefa42e7487c1168",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "inbox-before-1440.png",
+      "width": 1440,
+      "height": 1241,
+      "sha256": "b551f44358b03d877a46899d196476e04aca0e5633bd032eeb353eee7e8c52c0",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "onboarding-1440-dark.png",
+      "width": 1440,
+      "height": 1075,
+      "sha256": "68b51166384903b68979472359f51027bb98a9f3d5737755b880955e512c630d",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "onboarding-1440-light.png",
+      "width": 1440,
+      "height": 1075,
+      "sha256": "17914667cf3f693c8078f08f2d6ea824e158ae8a0449a527b5615b28da6a9fd6",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    },
+    {
+      "file": "preview-disabled.png",
+      "width": 1440,
+      "height": 1050,
+      "sha256": "b518b781b3540e959da4e59ed6270096a7ea2244742a3d2b42268fa4068ece69",
+      "data_source": "QA fixture, visibly labelled; preview-disabled is the actual default-off gate"
+    }
+  ],
+  "limitations": [
+    "No access to owner laptop data; populated screenshots use browser-only synthetic QA fixtures.",
+    "Read-only preview; write actions require separate later implementation and owner approval.",
+    "Existing npm advisories remain unresolved.",
+    "No merge, deployment, public preview or change to PR191."
+  ]
+}

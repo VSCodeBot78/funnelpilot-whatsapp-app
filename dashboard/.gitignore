@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Separate, opt-in Dashboard 2.0 review output
+dist-dashboard-v2-preview/
+playwright-report/
+test-results/
