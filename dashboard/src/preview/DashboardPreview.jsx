@@ -266,8 +266,9 @@ export default function DashboardPreview() {
                   <span
                     className="v2-nav-count"
                     aria-label={`${metrics.human} Human Takeover`}
+                    title={`${metrics.human} menschliche Übernahme${metrics.human === 1 ? "" : "n"}`}
                   >
-                    {metrics.human}
+                    {metrics.human} Übernahme${metrics.human === 1 ? "" : "n"}
                   </span>
                 )}
             </button>
