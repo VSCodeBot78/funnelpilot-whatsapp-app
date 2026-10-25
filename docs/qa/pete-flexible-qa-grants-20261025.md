@@ -76,3 +76,10 @@ Die regulären GitHub-Schreibaktionen wurden angenommen; keine erneute Sicherhei
 Die wiederverwendbaren Paid-Jobs für alle drei Codecommits liefen nicht: beim ersten Commit Job `founder-qa` ausdrücklich SKIPPED, bei den beiden folgenden abgebrochene Workflow-Hüllen ohne Jobs. Auch die historischen Paid-Jobs sind SKIPPED bzw. ohne Jobs. Kein Secret-/Modell-Metadaten-Preflight wurde gestartet. Keine Cloudflare-Ausführung.
 
 **Nächster Schritt:** Projektleitung nimmt die Budgetintegration ab. Erst danach kann sie den bereits genehmigten echten QA-Lauf über den bestehenden expliziten Trigger starten, nach erneutem Lesen beider Refs und erfolgreicher persistenter Reservierung. Work startet keinen Paid-Test. Echte Gesprächsqualität, Yoda und Owner-Darth-Vader wurden durch diese kostenlosen Budgettests nicht neu gemessen.
+
+
+## Projektleitung: freigegebener realer Sol-Teststart, erste Charge
+
+25.10.2026. Unabhängige fachlich-technische PL-Abnahme des separaten QA-Grants siehe [PR-Kommentar 6401929297](https://github.com/VSCodeBot78/funnelpilot-whatsapp-app/pull/191#issuecomment-6401929297). Owner hat ausdrücklich **höchstens 3 USD** für echte GPT-6.1-Sol-Qualitätstests freigegeben. Der erste bestehende QA-Auftrag `qa/pete-approved-test.json` reserviert daraus **höchstens 2,00 USD** (20 vorab festgelegte Sechs-Turn-Fälle) und bleibt die einzige beantragte Charge dieses Trigger-Commits. Ein verbleibender Rest löst **keinen** zweiten Lauf automatisch aus.
+
+Dieser Commit ist ausschließlich die explizit autorisierte Auslösung des vorhandenen GitHub-Test-Workflows. Er verändert keinen Runtime-Code. Dieser Eintrag ist **kein Testresultat**: Ein realer Providerstart ist erst nach bestandenem kostenlosem CI-/Credential-Preflight und erfolgreich **remote persistierter** Run-Reservierung zulässig. Bei Fehlschlag kein Rerun, kein Budget-Reset, keine falsche Qualitätsnote. IG/WA, Kalender, Checkout und Deployment bleiben aus. Der persönliche Darth-Vader-Test sowie Merge-/Live-Freigabe bleiben offen.
