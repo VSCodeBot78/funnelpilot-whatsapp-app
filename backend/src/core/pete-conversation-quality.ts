@@ -646,7 +646,8 @@ export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const unrelatedDoctorAppointment = /\b(?:mein|der)\s+arzttermin\b/.test(input) &&
     /\bkein\s+wunsch\s+nach\s+(?:einem\s+)?coachingtermin\b/.test(input);
   const medicalRedFlag = /\b(?:brust\w*|atemnot|luftnot|schmerz\w*|akut\w*|medikament\w*|insulin\w*|dosis|dosierung|therapie|behandlung|symptom\w*|verschlimmer\w*|belastbarkeit|freigabe|diagnostizier\w*|schwanger|blutung\w*|selbstverletz\w*|suizid|notfall)\b/.test(input) ||
-    /\b(?:darf|soll|kann)\s+ich\b.{0,65}\b(?:trainier\w*|sport|ubel\w*|ubelung\w*|ubelungen|belasten|machen)\b/.test(input);
+    /\b(?:darf|soll|kann)\s+ich\b.{0,65}\b(?:trainier\w*|sport|ubung\w*|belasten|machen)\b/.test(input) ||
+    /\b(?:welche|wie|was)\b.{0,70}\b(?:ubung\w*|trainier\w*|sport|belast\w*|hufte)\b/.test(input);
   if ((incidentalHipCare || unrelatedDoctorAppointment) && !medicalRedFlag)
     return true;
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
