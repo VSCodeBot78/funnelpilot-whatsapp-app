@@ -74,7 +74,9 @@ export function proposePeteNextStep(text: string): PeteNextStepProposal {
   // An explicit inbound request for GENERAL information remains an information
   // request, never a booking or a new permission for sales follow-ups.
   const generalInfoLinkRequest = request && /\blink\b.{0,70}\binformation(?:en)?\b/.test(s) &&
-    !rejectsLinks(s);
+    !rejectsLinks(s) &&
+    !/\b(?:nicht|kein\w*)\b.{0,18}\blink\b/.test(s) &&
+    !/\blink\b.{0,15}\bnicht\b/.test(s);
   if (((browsing && offerTopic && request) || infoLinkRequest || browsePurchaseRoute ||
         generalInfoLinkRequest) && !isOfferDeclined(s)) {
     return { nextStep: "offer_info", evidenceQuote: text };
