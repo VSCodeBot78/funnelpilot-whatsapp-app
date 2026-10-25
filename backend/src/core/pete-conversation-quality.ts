@@ -117,8 +117,9 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
-  const asksTrial = /\b(?:testphase|probierphase|probephase|kennenlernphase|(?:paar|einige|wenige)\s+wochen\s+testen)\b/.test(input);
-  const coachingContext = /\b(?:coaching|begleitung|1:1|zwischenmenschlich)\b/.test(input) ||
+  const asksTrial = /\b(?:testphase|probierphase|probephase|kennenlernphase|(?:paar|einige|wenige)\s+wochen\s+testen)\b/.test(input) ||
+    /\b(?:zusammenarbeit|begleitung|coaching)\b.{0,75}\btesten\b|\btesten\b.{0,75}\b(?:zusammenarbeit|begleitung|coaching)\b/.test(input);
+  const coachingContext = /\b(?:coaching|begleitung|zusammenarbeit|1:1|zwischenmenschlich)\b/.test(input) ||
     (state.messages ?? []).filter(message => message.role === "user").slice(-3)
       .some(message => /coaching|begleitung|1:1/i.test(message.text));
   if (asksTrial && coachingContext && !explicitlyDeclinesPaidOffers) {
@@ -635,6 +636,19 @@ export function isPeteNonMedicalPostPregnancyBodyImage(text: string): boolean {
 
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
+  // A confirmed existing doctor's appointment or a plain statement about
+  // receiving care is not itself a request for a diagnosis or exercise
+  // clearance. Apply this exception ONLY to explicit benign formulations.
+  // Current pain, medication, dosage, treatment changes and fitness clearance
+  // questions keep the ordinary strict medical guard.
+  const incidentalHipCare = /\bwegen\s+meiner\s+hufte\b.{0,70}\bbeim\s+arzt\b/.test(input) &&
+    /\bich\s+brauche\s+(?:hier\s+)?keine\s+(?:fern)?diagnose\b/.test(input);
+  const unrelatedDoctorAppointment = /\b(?:mein|der)\s+arzttermin\b/.test(input) &&
+    /\bkein\s+wunsch\s+nach\s+(?:einem\s+)?coachingtermin\b/.test(input);
+  const medicalRedFlag = /\b(?:brust\w*|atemnot|luftnot|schmerz\w*|akut\w*|medikament\w*|insulin\w*|dosis|dosierung|therapie|behandlung|symptom\w*|verschlimmer\w*|belastbarkeit|freigabe|diagnostizier\w*|schwanger|blutung\w*|selbstverletz\w*|suizid|notfall)\b/.test(input) ||
+    /\b(?:darf|soll|kann)\s+ich\b.{0,65}\b(?:trainier\w*|sport|ubel\w*|ubelung\w*|ubelungen|belasten|machen)\b/.test(input);
+  if ((incidentalHipCare || unrelatedDoctorAppointment) && !medicalRedFlag)
+    return true;
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
