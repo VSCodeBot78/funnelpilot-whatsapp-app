@@ -105,7 +105,17 @@ export function buildPeteContext(state: ConversationState) {
     text: redactForProvider(message.text.slice(0, 1500)),
   }));
   const olderMessages = state.messages.slice(0, Math.max(0, state.messages.length - 36));
+  // Research-informed source-of-truth rule: when the person expressly updates
+  // a topic within the current window, do not reintroduce stale older quotes
+  // as parallel "memory". No model inference, new storage or extra tokens.
+  // Keep the chronological recent conversation untouched.
+  const explicitRevision = /\b(?:nicht\s+mehr|kein(?:e|en|er|es)?\s+mehr|mittlerweile|inzwischen|stattdessen|korrigiere|korrektur|hat\s+sich\s+ge[aä]ndert)\b/i;
+  const revisedTopics = new Set(PETE_EVIDENCE_TOPICS.filter(({ pattern }) =>
+    recentMessages.some(message => message.role === "user" &&
+      explicitRevision.test(message.text) && pattern.test(message.text)))
+    .map(({ topic }) => topic));
   const earlierLeadEvidence = PETE_EVIDENCE_TOPICS.flatMap(({ topic, pattern }) => {
+    if (revisedTopics.has(topic)) return [];
     const evidence = [...olderMessages].reverse().find(message =>
       message.role === "user" && pattern.test(message.text));
     if (!evidence) return [];
