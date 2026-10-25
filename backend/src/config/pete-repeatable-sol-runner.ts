@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { runQaDialogues, validateQaCases } from "./pete-repeatable-qa-evidence.js";
+import { chooseAdaptiveParentFollowUp } from "./pete-adaptive-parent-holdout.js";
 
 const env = process.env;
 if (env.GITHUB_ACTIONS !== "true" ||
@@ -46,7 +47,9 @@ if (![1, 2].includes(request.version) ||
     !Array.isArray(catalog.fresh) || catalog.fresh.length !== 10)
   throw Error("qa_catalog_or_approval_invalid");
 const cases = request.testSet === "focus15"
-  ? [...catalog.focus, ...catalog.fresh]
+  ? [...catalog.focus, ...catalog.fresh.map((c: { id: string; lines: string[] }) => ({
+      ...c, adaptiveTurns: 5,
+    }))]
   : request.testSet === "sales32"
     ? [...catalog.known, ...catalog.blind]
     : [...catalog.known];
@@ -70,6 +73,7 @@ const evidence = await runQaDialogues({
     campaignId: DEFAULT_CAMPAIGN_ID, messageText, conversationMode: "natural",
   }),
   onCase: result => console.log("QA_CASE " + JSON.stringify(result)),
+  nextAdaptiveUser: request.testSet === "focus15" ? chooseAdaptiveParentFollowUp : undefined,
 });
 
 const budget = getPeteBudgetStatusSafe();

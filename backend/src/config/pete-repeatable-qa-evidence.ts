@@ -8,11 +8,14 @@ type QaReply = {
   state: { answers: Record<string, unknown>; owner?: string; aiPaused?: boolean;
     flags: { stopped?: boolean } };
 };
-export type QaCase = { id: string; lines: string[] };
+export type QaCase = { id: string; lines: string[]; adaptiveTurns?: number };
 export function validateQaCases(cases: unknown): asserts cases is QaCase[] {
   if (!Array.isArray(cases) || new Set(cases.map(c => c?.id)).size !== cases.length ||
       cases.some(c => typeof c?.id !== "string" || !/^[A-Za-z0-9-]{1,90}$/.test(c.id) ||
-        !Array.isArray(c.lines) || !(c.lines.length === 2 ||
+        !Array.isArray(c.lines) ||
+        (c.adaptiveTurns !== undefined && (c.lines.length !== 2 ||
+          !Number.isInteger(c.adaptiveTurns) || c.adaptiveTurns < 4 || c.adaptiveTurns > 6)) ||
+        !(c.lines.length === 2 ||
           (c.lines.length >= 6 && c.lines.length <= 12)) ||
         c.lines.some((s: unknown) => typeof s !== "string" || !s.trim() || s.length > 500)))
     throw Error("qa_invalid_synthetic_case");
@@ -21,6 +24,7 @@ export async function runQaDialogues(args: {
   cases: QaCase[]; budget: () => QaBudget;
   reply: (id: string, message: string) => Promise<QaReply>;
   onCase?: (result: unknown) => void;
+  nextAdaptiveUser?: (entry: QaCase, previousTurns: Record<string, unknown>[]) => string;
 }) {
   validateQaCases(args.cases);
   const results: { id: string; plannedLeadTurns: number; completed: boolean;
@@ -29,9 +33,14 @@ export async function runQaDialogues(args: {
   let modelResponses = 0, providerResponses = 0, suppressedTurns = 0;
   let haltedReason: string | null = null;
   for (const entry of args.cases) {
-    const result = { id: entry.id, plannedLeadTurns: entry.lines.length,
+    const totalTurns = entry.adaptiveTurns ?? entry.lines.length;
+    const result = { id: entry.id, plannedLeadTurns: totalTurns,
       completed: false, modelTurns: 0, turns: [] as Record<string, unknown>[] };
-    for (const message of entry.lines) {
+    for (let index = 0; index < totalTurns; index++) {
+      const message = index < entry.lines.length ? entry.lines[index]
+        : args.nextAdaptiveUser?.(entry, result.turns);
+      if (typeof message !== "string" || message.trim().length === 0 ||
+          message.length > 500) { haltedReason = "adaptive_lead_invalid"; break; }
       const before = args.budget();
       if (!before.ok || before.blocked) { haltedReason = "cost_ceiling_or_ledger_unavailable"; break; }
       let out: QaReply;
@@ -70,7 +79,7 @@ export async function runQaDialogues(args: {
         haltedReason = failure;
       if (haltedReason) break;
     }
-    result.completed = result.turns.length === entry.lines.length && !haltedReason;
+    result.completed = result.turns.length === totalTurns && !haltedReason;
     // Retain partial cases and their spend, even when a ceiling interrupts a dialogue.
     results.push(result);
     args.onCase?.(result);
