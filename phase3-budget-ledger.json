@@ -328,16 +328,9 @@
     "conservativeUsdCapMicro": 5000000,
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
-    "usedMicroUsd": 3414646,
-    "reservedMicroUsd": 1570000,
-    "reservations": {
-      "pete-qa-40197907147": {
-        "runId": "40197907147",
-        "holdMicroUsd": 1570000,
-        "testSet": "sales20",
-        "ownerApprovalRef": "owner:2026-10-25-work-go-v3-fix-usd157"
-      }
-    },
+    "usedMicroUsd": 4882540,
+    "reservedMicroUsd": 0,
+    "reservations": {},
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
@@ -389,6 +382,13 @@
         "runId": "40197233847",
         "chargeMicroUsd": 73704,
         "ownerApprovalRef": "owner:2026-10-25-work-go-v3-yoda-usd165",
+        "testSet": "sales20"
+      },
+      {
+        "id": "pete-qa-40197907147",
+        "runId": "40197907147",
+        "chargeMicroUsd": 1467894,
+        "ownerApprovalRef": "owner:2026-10-25-work-go-v3-fix-usd157",
         "testSet": "sales20"
       }
     ]
