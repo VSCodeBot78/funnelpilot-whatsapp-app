@@ -6,6 +6,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { runQaDialogues, validateQaCases } from "./pete-repeatable-qa-evidence.js";
 
 const env = process.env;
 if (env.GITHUB_ACTIONS !== "true" ||
@@ -49,11 +50,7 @@ const cases = request.testSet === "focus15"
   : request.testSet === "sales32"
     ? [...catalog.known, ...catalog.blind]
     : [...catalog.known];
-if (cases.some((c: { id?: unknown; lines?: unknown }) =>
-  typeof c.id !== "string" ||
-  !Array.isArray(c.lines) || c.lines.length !== 2 ||
-  c.lines.some((s: unknown) => typeof s !== "string" || s.length > 500)))
-  throw Error("qa_invalid_synthetic_case");
+validateQaCases(cases);
 
 const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
@@ -66,49 +63,15 @@ if (!before.ok || before.blocked ||
   throw Error("qa_ledger_preflight_denied");
 writeSettings({ aiEnabled: true, aiModel: "gpt-6.1-sol" });
 
-type QaReply = {
-  user: string; reply: string | null; source: string;
-  intent: string | null; blockedReason: string | null;
-};
-const results: {
-  id: string; turns: QaReply[]; modelTurns: number; totalTurns: number;
-}[] = [];
-let modelResponses = 0, verifiedResponses = 0, haltedReason: string | null = null;
-outer: for (const entry of cases) {
-  const transcript: QaReply[] = [];
-  for (const leadMessage of entry.lines) {
-    const budget = getPeteBudgetStatusSafe();
-    if (!budget.ok || budget.blocked) {
-      haltedReason = "cost_ceiling_reached";
-      break outer;
-    }
-    let out;
-    try {
-      out = await processIncomingMessage({
-        leadId: "pete-repeatable-qa-" + env.GITHUB_RUN_ID + "-" + entry.id,
-        campaignId: DEFAULT_CAMPAIGN_ID,
-        messageText: leadMessage,
-        conversationMode: "natural",
-      });
-    } catch {
-      haltedReason = "engine_error";
-      break outer;
-    }
-    const source = String(out.state.answers.peteReplySource ?? "unknown");
-    if (source === "llm") modelResponses++;
-    else verifiedResponses++;
-    transcript.push({
-      user: leadMessage, reply: out.text,
-      source, intent: out.detectedIntent ?? null,
-      blockedReason: out.replySuppressedReason ?? null,
-    });
-  }
-  results.push({
-    id: entry.id, turns: transcript, modelTurns:
-      transcript.filter(t => t.source === "llm").length,
-    totalTurns: transcript.length,
-  });
-}
+const evidence = await runQaDialogues({
+  cases, budget: getPeteBudgetStatusSafe,
+  reply: (id, messageText) => processIncomingMessage({
+    leadId: "pete-repeatable-qa-" + env.GITHUB_RUN_ID + "-" + id,
+    campaignId: DEFAULT_CAMPAIGN_ID, messageText, conversationMode: "natural",
+  }),
+  onCase: result => console.log("QA_CASE " + JSON.stringify(result)),
+});
+
 const budget = getPeteBudgetStatusSafe();
 const report = {
   version: 1, kind: "pete_repeatable_synthetic_sol_qa",
@@ -117,9 +80,7 @@ const report = {
   testSet: request.testSet,
   ownerApprovalRef: request.ownerApprovalRef,
   approvedBudgetUsd: request.budgetUsd,
-  totalPlanned: cases.length, totalCompleted: results.length,
-  modelResponses, verifiedResponses, haltedReason,
-  budget, cases: results,
+  ...evidence, budget,
   automaticGrade: null, // Never claim an 18/20 real quality score automatically.
 };
 const outdir = path.join(workspace, "backend", "qa-reports");
@@ -127,9 +88,11 @@ fs.mkdirSync(outdir, { recursive: true });
 fs.writeFileSync(path.join(outdir, "pete-repeatable-sol-" + env.GITHUB_RUN_ID + ".json"),
   JSON.stringify(report, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
 console.log("QA_SUMMARY " + JSON.stringify({
-  runId: env.GITHUB_RUN_ID, completed: results.length, planned: cases.length,
-  modelResponses, verifiedResponses, haltedReason,
-  actualCommittedUsd: budget.ok ? budget.labCommittedUsd : null,
+  runId: env.GITHUB_RUN_ID, sourceSha: env.GITHUB_SHA,
+  completed: evidence.totalCompleted, planned: cases.length,
+  modelResponses: evidence.modelResponses, providerResponses: evidence.providerResponses,
+  sourceCounts: evidence.sourceCounts, suppressedTurns: evidence.suppressedTurns,
+  haltedReason: evidence.haltedReason, budget,
 }));
-if (haltedReason || !budget.ok || results.length !== cases.length ||
-    modelResponses === 0) process.exitCode = 1;
+if (evidence.haltedReason || !budget.ok || evidence.totalCompleted !== cases.length ||
+    evidence.modelResponses === 0) process.exitCode = 1;

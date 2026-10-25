@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
 import {
   parseQaBudgetMicros, checkPeteQaAdmission,
   preparePeteQaReservation, settlePeteQaReservation,
@@ -32,6 +33,21 @@ const ledger = () => ({
       { id: "historical-once-1", runId: "100000", chargeMicroUsd: 861_926 },
     ],
   },
+});
+
+test("Paid QA trigger requires deployment suppression and explicit QA intent together", () => {
+  const workflow = fs.readFileSync(new URL("../.github/workflows/pete-repeatable-sol-qa.yml", import.meta.url), "utf8");
+  const prefix = workflow.match(/startsWith\(github\.event\.head_commit\.message, '([^']+)'\)/)?.[1];
+  assert.equal(prefix, "[CF-Pages-Skip] PETE_QA_APPROVED_RUN:");
+  const starts = message => message.startsWith(prefix);
+  assert.equal(starts("[CF-Pages-Skip] PETE_QA_APPROVED_RUN: owner authorized"), true);
+  for (const message of ["PETE_QA_APPROVED_RUN: old unprotected trigger", "[CF-Pages-Skip] ordinary fix",
+    "x[CF-Pages-Skip] PETE_QA_APPROVED_RUN:", "[CF-Pages-Skip] PETE_QA_APPROVED_RUN "])
+    assert.equal(starts(message), false);
+  assert.match(workflow, /github\.run_attempt == 1/);
+  assert.match(workflow, /git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger/);
+  assert.match(workflow, /WHATSAPP_SEND_ENABLED: "false"/);
+  assert.match(workflow, /INSTAGRAM_SEND_ENABLED: "false"/);
 });
 
 test("Repeatable QA accepts only a bounded explicit amount in whole cents", () => {

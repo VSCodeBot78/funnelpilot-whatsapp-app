@@ -2,6 +2,7 @@ name: Pete repeatable owner-approved Sol QA (no live sends)
 
 # Permanent workflow: only a NEW budget approval and its normal trigger commit
 # are needed on subsequent runs. Historical one-use runs stay immutable.
+# Both prefixes are required: skip Pages deployment, then explicitly request QA.
 on:
   push:
     branches:
@@ -19,7 +20,7 @@ jobs:
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
-      startsWith(github.event.head_commit.message, 'PETE_QA_APPROVED_RUN:') &&
+      startsWith(github.event.head_commit.message, '[CF-Pages-Skip] PETE_QA_APPROVED_RUN:') &&
       github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -78,6 +79,7 @@ jobs:
             --output /dev/null --write-out '%{http_code}' \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             "https://api.openai.com/v1/models/gpt-6.1-sol")
+          echo "MODEL_CREDENTIAL_HTTP_STATUS=$status"
           test "$status" = "200"
           git -C budget-ledger config user.name "Funnel Pilot QA budget bot"
           git -C budget-ledger config user.email "actions@users.noreply.github.com"

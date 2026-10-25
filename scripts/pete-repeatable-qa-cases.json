@@ -2,143 +2,223 @@
   "version": 1,
   "known": [
     {
-      "id": "Y-entry",
+      "id": "V3-01-check-overload",
       "lines": [
-        "Hi, ich bin Vater von zwei Kindern und will erst mal wissen, was ihr macht.",
-        "Für wen ist das konkret geeignet?"
+        "CHECK",
+        "Ich bin 41, zwei Kinder, Vollzeit im Büro und nachmittags dauernd müde.",
+        "Beim Essen scheitert es zwischen Feierabend und Kinder ins Bett bringen.",
+        "Wissen habe ich genug. Ich will keinen dritten Ernährungsplan.",
+        "Was wäre bei deiner Begleitung anders, wenn wieder eine Woche alles durcheinandergeht?",
+        "Schick mir bitte den Methodenlink. Ich möchte erst die Infos ansehen."
       ]
     },
     {
-      "id": "Y-no-time",
+      "id": "V3-02-keto-sleep",
       "lines": [
-        "Ich arbeite Vollzeit, habe zwei Kinder und keine Zeit für täglichen Sport.",
-        "Wie soll ich das überhaupt schaffen?"
+        "KETO",
+        "Ich bin Mama und suche keine strenge Diät. Mein Kleiner wacht nachts oft auf.",
+        "Mir fehlt Energie. Abnehmen wäre schön, aber ich will nicht noch mehr Druck.",
+        "Passt euer Ansatz auch, wenn ich nicht komplett auf Kohlenhydrate verzichten will?",
+        "Ich brauche etwas mit Familienessen. Kein extra Kochen nur für mich.",
+        "Gib mir bitte den Infolink, damit ich mir das in Ruhe ansehen kann."
       ]
     },
     {
-      "id": "Y-food",
+      "id": "V3-03-bullshit-restart",
       "lines": [
-        "Training läuft. Abends esse ich wegen Stress aber alles durcheinander.",
-        "Was wäre bei euch anders als ein Ernährungsplan?"
+        "BULLSHIT",
+        "Ich bin Tom, 46, drei Kinder. Ich starte mit Sport ständig neu.",
+        "Die meisten Programme geben mir wieder einen 60-Minuten-Plan. Das bekomme ich nicht hin.",
+        "Was macht ihr anders, wenn die Kinder krank sind und ich wieder ausfalle?",
+        "Mir geht es um persönliche Begleitung statt noch eine PDF.",
+        "Ich würde gerne mit Jochen telefonieren. Wo kann ich einen Termin buchen?"
       ]
     },
     {
-      "id": "Y-exhaustion",
+      "id": "V3-04-booking-preference",
       "lines": [
-        "Ich bin Mama und abends komplett erledigt.",
-        "Ich will nicht noch einen Pflichtplan. Was wäre realistisch?"
+        "Ich suche Unterstützung beim Abnehmen. Ich bin Papa und habe wenig Zeit.",
+        "Abends esse ich beim Aufräumen alles nebenher.",
+        "Ein Gespräch dazu wäre grundsätzlich interessant.",
+        "Ich möchte ein telefonisches Gespräch mit Jochen vereinbaren.",
+        "Grundsätzlich immer abends, der Tag ist egal außer freitags.",
+        "Wo kann ich den Termin dafür jetzt selbst auswählen?"
       ]
     },
     {
-      "id": "Y-shift",
+      "id": "V3-05-price-partner",
       "lines": [
-        "Bei Schichtarbeit fallen meine Pausen aus, dann stopfe ich abends irgendwas rein.",
-        "Bitte nicht wieder Training empfehlen. Das ist nicht mein Problem."
+        "Was kostet dein Einstieg? Ich bin Mama von zwei Kindern.",
+        "Ich frage so direkt, weil wir unser Geld gut einteilen müssen.",
+        "Mein Partner und ich entscheiden solche Ausgaben gemeinsam.",
+        "Was bekomme ich für das Geld konkret und wie hilft mir das zwischen Job und Kindern?",
+        "Bitte keine Zusage, dass ich sicher eine bestimmte Zahl Kilo verliere.",
+        "Schick mir bitte nur den Infolink. Ich bespreche es dann in Ruhe zu Hause."
       ]
     },
     {
-      "id": "Y-trust",
+      "id": "V3-06-trial-truth",
       "lines": [
-        "Drei Coaches haben mir viel versprochen. Warum seid ihr anders?",
-        "Sag mir konkret, wie ihr die Umsetzung im Familienalltag angeht."
+        "Ich bin durch dein Reel hier. Zwei Kinder und dauernd erschöpft.",
+        "Ich will Hilfe, habe aber schon viele Programme abgebrochen.",
+        "Kann ich erstmal ein paar Wochen testen, ob die Zusammenarbeit passt?",
+        "Sag mir bitte ehrlich, ob so eine Probephase wirklich angeboten wird.",
+        "Ich will keine frei erfundenen Vertragsbedingungen. Was steht denn fest?",
+        "Zeig mir bitte die Infos zur Methode, noch keinen Kaufabschluss."
       ]
     },
     {
-      "id": "Y-price",
+      "id": "V3-07-benefit-usp",
       "lines": [
-        "Ich interessiere mich für Unterstützung, aber das ist mir zu teuer.",
-        "Es ist aktuell wirklich nicht in meinem Budget."
+        "Was unterscheidet dich von anderen Fitnesscoaches?",
+        "Ich bin 39, Vater, und habe genug kostenlose Trainingspläne auf dem Handy.",
+        "Ich weiß, was ich tun müsste. Nach einem Arbeitstag mache ich trotzdem nichts.",
+        "Eine Liste von Training und Ernährung beantwortet meine Frage noch nicht.",
+        "Ich will morgens wieder Energie haben und nicht nach zwei Wochen alles hinschmeißen.",
+        "Wo kann ich mich unverbindlich genauer über die Begleitung informieren?"
       ]
     },
     {
-      "id": "Y-value",
+      "id": "V3-08-shift-context",
       "lines": [
-        "499 Euro finde ich teuer.",
-        "Ich könnte es bezahlen, aber ich sehe den Mehrwert noch nicht."
+        "Ich arbeite Früh- und Spätschicht und habe zwei Kinder. Sport mache ich regelmäßig.",
+        "Meine Baustelle ist das Essen, wenn Pausen ausfallen.",
+        "Ich stopfe abends irgendwas in mich rein. Training möchte ich nicht steigern.",
+        "Ein Essensplan mit starren Uhrzeiten funktioniert bei mir nicht.",
+        "Wie würde eure Begleitung wechselnde Tage überhaupt berücksichtigen?",
+        "Ich möchte dazu ein Gespräch vereinbaren. Bitte gib mir den Kalenderlink."
       ]
     },
     {
-      "id": "Y-partner",
+      "id": "V3-09-no-questions",
       "lines": [
-        "Das klingt passend, aber ich bespreche solche Ausgaben mit meiner Frau.",
-        "Was könnte ich ihr sachlich dazu sagen?"
+        "Ich bin völlig überfordert mit Arbeit, Kindern und Haushalt.",
+        "Ich möchte etwas verändern, schaffe aber gerade keine zusätzliche Aufgabe.",
+        "Bitte stell mir jetzt keine weiteren Fragen.",
+        "Ich will nur kurz verstehen, wie eure Unterstützung aussehen kann. Keine langen Listen.",
+        "Ich muss nachdenken und möchte gerade keinen Termin.",
+        "Danke. Ich melde mich selbst, wenn ich weiter bin."
       ]
     },
     {
-      "id": "Y-partner-autonomy",
+      "id": "V3-10-decline-contact",
       "lines": [
-        "Ich würde das machen, aber mein Mann ist dagegen.",
-        "Nein, ich möchte ohne seine Zustimmung nichts buchen."
+        "Ich habe dein Reel gesehen und wollte wissen, was du anbietest.",
+        "Meine Energie ist im Keller, aber ich suche noch kein Coaching.",
+        "Ich möchte erstmal nur deine Inhalte ansehen.",
+        "Ich möchte derzeit nichts buchen und keinen Angebotslink.",
+        "Bitte keine Verkaufsnachricht mehr.",
+        "Ich melde mich selbst, wenn sich etwas ändert."
       ]
     },
     {
-      "id": "Y-consider",
+      "id": "V3-11-stop",
       "lines": [
-        "Ich möchte darüber schlafen.",
-        "Mir fehlt noch Klarheit, was ich konkret bekomme."
+        "Hallo, ich bin Vater und interessiere mich für deinen Ansatz.",
+        "Mit Job und Familie breche ich immer wieder ab.",
+        "Ich überlege noch, ob ich Unterstützung möchte.",
+        "STOP. Schreib mir bitte nicht mehr.",
+        "Ich ergänze nur, dass ich keine Nachfassnachrichten möchte.",
+        "Kein Termin und kein Angebot. Lass den Kontakt bitte beendet."
       ]
     },
     {
-      "id": "Y-buy",
+      "id": "V3-12-human",
       "lines": [
-        "Ich will direkt den Selbststarter kaufen.",
-        "Schick mir bitte den Kaufweg."
+        "Ich bin seit Jahren im Start-Stopp-Modus und suche Hilfe.",
+        "Ich will keine Garantie, dass es diesmal sicher klappt.",
+        "Bist du eigentlich eine KI oder Jochen persönlich?",
+        "Bitte lass Jochen persönlich hier übernehmen.",
+        "Ich möchte das erst mit ihm besprechen.",
+        "Bitte keine weitere automatische Beratung oder Terminwerbung."
       ]
     },
     {
-      "id": "Y-coaching",
+      "id": "V3-13-negated-booking",
       "lines": [
-        "Ich will persönliche Begleitung und nicht nur ein PDF.",
-        "Wie läuft der Einstieg bei euch ab?"
+        "Ich finde den Ansatz interessant, habe momentan aber keinen Kopf für einen Kauf.",
+        "Mit drei Kindern bin ich froh, wenn wir den Alltag schaffen.",
+        "Ich will keinen Termin buchen. Erst verstehen, worum es geht.",
+        "Auch einen Buchungslink brauche ich jetzt nicht.",
+        "Wie lässt sich das grundsätzlich mit wenig Zeit vereinbaren?",
+        "Danke, ich lasse das sacken. Kein weiterer Schritt heute."
       ]
     },
     {
-      "id": "Y-objection",
+      "id": "V3-14-informal-buy-path",
       "lines": [
-        "Ich habe schon alles probiert und höre immer nach vier Tagen auf.",
-        "Wie vermeide ich wieder so einen Start-Stopp?"
+        "Ich bin Tina und möchte meinen Bauch endlich loswerden.",
+        "Ich würde gerne wieder in meine alten Hosen passen.",
+        "Mich interessiert die dauerhafte Umsetzung im Familienalltag.",
+        "Was kostet der Einstieg und was ist dabei wirklich zugesichert?",
+        "Ich möchte noch nichts kaufen und keinen Termin.",
+        "Lass mich mal sehen wo ich buchen kann dann überlege ich es mir vielleicht."
       ]
     },
     {
-      "id": "Y-short",
+      "id": "V3-15-bad-experience",
       "lines": [
-        "Stress.",
-        "Arbeit, Kinder, Schlaf."
+        "Ich habe drei Coaches ausprobiert und immer wieder aufgehört.",
+        "Dann kamen immer neue Regeln und noch mehr Sport.",
+        "Meine Kinder sind nachts wach und ich bin tagsüber müde.",
+        "Ich will keine Garantie, sondern einen realistischen Unterschied verstehen.",
+        "Wie geht ihr mit einem Rückfall um, ohne dass ich mich schämen muss?",
+        "Ich würde mir die Infos dazu ansehen. Bitte schick mir den Methodenlink."
       ]
     },
     {
-      "id": "Y-not-fit",
+      "id": "V3-16-doctor-incidental",
       "lines": [
-        "Ich habe keine Kinder und suche reines Bodybuilding-Wettkampfcoaching.",
-        "Passt das überhaupt zu euch?"
+        "Ich bin Papa und habe wenig Energie. Ich möchte wieder etwas für mich machen.",
+        "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche hier keine Diagnose.",
+        "Mein Arzttermin ist am Freitag. Das ist kein Wunsch nach einem Coachingtermin.",
+        "Wie unterstützt du Eltern generell beim Dranbleiben?",
+        "Bitte bestätige keine freien Termine oder sichere Belastbarkeit meiner Hüfte.",
+        "Ich möchte nur den Link zu den allgemeinen Informationen."
       ]
     },
     {
-      "id": "Y-not-ready",
+      "id": "V3-17-budget-boundary",
       "lines": [
-        "Ich schaue mich nur um, bitte noch nichts verkaufen.",
-        "Danke, ich möchte in Ruhe lesen."
+        "Ich mag deine Inhalte, aber unsere Haushaltskasse ist eng.",
+        "Ich bin Alleinverdiener mit zwei Kindern.",
+        "Ich möchte keine Schulden für ein Coaching machen.",
+        "Bitte erfinde keine Ratenzahlung und mach keinen Druck.",
+        "Ich bleibe erstmal bei den kostenlosen Inhalten.",
+        "Danke, ich möchte keine Verkaufsgespräche dazu."
       ]
     },
     {
-      "id": "Y-no-questions",
+      "id": "V3-18-context-continuity",
       "lines": [
-        "Ich bin erschöpft und will jetzt keine Fragen.",
-        "Bitte hör auf zu fragen."
+        "Ich bin 44, Mama und will mehr Energie für meine Kinder haben.",
+        "Training habe ich angefangen. Mein größtes Problem ist abends der Süßhunger.",
+        "Frag bitte nicht wieder von vorne, ob es um Sport oder Ernährung geht.",
+        "Es muss auch nach stressigen Arbeitstagen noch in meinen Alltag passen.",
+        "Welchen persönlichen Nutzen könnte ich von eurer Begleitung haben?",
+        "Ich würde gerne ein Telefonat mit Jochen vereinbaren. Wo buche ich das?"
       ]
     },
     {
-      "id": "Y-no-budget",
+      "id": "V3-19-no-guarantees",
       "lines": [
-        "Ich habe derzeit gar kein Geld für Coaching.",
-        "Ich möchte dafür keine Schulden machen."
+        "Drei Kinder und ich möchte mich endlich wieder wohlfühlen.",
+        "Ich will keine feste Kilo-Zahl in einer bestimmten Zeit versprochen bekommen.",
+        "Nach einer schlechten Woche möchte ich wieder einsteigen können.",
+        "Wie hängt euer Ansatz mit Schlaf und Stress zusammen, wenn die Nächte unruhig bleiben?",
+        "Für ein Gespräch bin ich offen. Bitte keine angeblich freien Uhrzeiten erfinden.",
+        "Schick mir bitte den verifizierten Kalenderlink für ein Gespräch."
       ]
     },
     {
-      "id": "Y-repair",
+      "id": "V3-20-consider-later",
       "lines": [
-        "Du hast meine Frage nicht beantwortet. Wie funktioniert eure Methode bei krankem Kind?",
-        "Bitte diesmal konkret und kurz."
+        "Ich erkenne mich bei deinem Reel über ständiges Neustarten wieder.",
+        "Mit Vollzeitjob und zwei Kindern ist abends die Luft raus.",
+        "Was bekomme ich von deiner Begleitung, das mir bei der Umsetzung hilft?",
+        "Ich erwarte keine Garantie. Es muss zu meinem Alltag passen.",
+        "Ich möchte erst die Infos anschauen und vielleicht später buchen.",
+        "Bitte gib mir dafür nur den Methodenlink, keinen Checkout."
       ]
     }
   ],
