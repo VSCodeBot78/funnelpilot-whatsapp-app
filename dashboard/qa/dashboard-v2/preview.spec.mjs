@@ -9,7 +9,7 @@ const screenshotDir = fileURLToPath(
   new URL("../../../docs/qa/dashboard-v2/screenshots/", import.meta.url),
 );
 const apiPattern =
-  /^\/(health|leads|campaigns|conversations|settings-config|ghosting|booking-events|availability-config|scheduling-config)(\/|$)/;
+  /^\/(health|leads|campaigns|conversations|settings-config|ghosting|booking-events|availability-config|scheduling-config|integrations)(\/|$)/;
 
 async function mockBackend(page, options = {}) {
   const requests = [];
@@ -30,7 +30,9 @@ async function mockBackend(page, options = {}) {
       });
     if (options.offline || options.fail === url.pathname)
       return route.fulfill({ status: 503, json: { ok: false } });
-    const data = fixtureResponse(url.pathname, options);
+    const data = url.pathname === "/integrations/oauth/status"
+      ? { ok: true, providers: [] }
+      : fixtureResponse(url.pathname, options);
     if (data) return route.fulfill({ status: 200, json: data });
     return route.fulfill({ status: 404, json: { ok: false } });
   });
@@ -58,6 +60,17 @@ async function noOverflow(page) {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+}
+async function auditAccessibility(page) {
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(
+    result.violations.map((item) => ({
+      id: item.id,
+      nodes: item.nodes.map((node) => node.target),
+    })),
+  ).toEqual([]);
 }
 async function screenshot(
   page,
@@ -173,8 +186,13 @@ for (const width of [360, 768, 1440])
     test(`responsive ${width}px ${dark ? "dark" : "light"}: navigation, inbox and setup`, async ({
       page,
     }) => {
+      test.setTimeout(90000);
       await page.setViewportSize({ width, height: width === 360 ? 800 : 1050 });
+      // Exercise the previous failure combination: dark OS with a light app.
+      await page.emulateMedia({ colorScheme: "dark" });
       await openPreview(page);
+      if (width === 1440)
+        await expect(page.locator(".v2-nav-count")).toHaveText("1 Übernahme");
       if (dark) {
         if (width <= 900)
           await page.getByRole("button", { name: "Navigation öffnen" }).click();
@@ -218,14 +236,20 @@ for (const width of [360, 768, 1440])
         ).toBeVisible();
       }
       await navigate(page, "Einrichtung");
+      await expect(page.getByText("SCHRITT 1 VON 6", { exact: true })).toBeVisible();
+      await screenshot(page, `onboarding-start-${width}-${dark ? "dark" : "light"}.png`);
       for (let index = 0; index < 5; index++) {
         await noOverflow(page);
+        await auditAccessibility(page);
         await page.getByRole("button", { name: "Weiter", exact: true }).click();
       }
       await expect(
         page.getByText("Keine Freigabe gespeichert.", { exact: false }),
       ).toBeVisible();
+      await expect(page.getByText("SCHRITT 6 VON 6", { exact: true })).toBeVisible();
       await noOverflow(page);
+      await auditAccessibility(page);
+      await screenshot(page, `onboarding-end-${width}-${dark ? "dark" : "light"}.png`);
     });
   }
 
@@ -468,15 +492,7 @@ for (const dark of [false, true])
         .getByRole("button", { name: "Dunkelmodus einschalten" })
         .click();
     async function audit() {
-      const result = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-        .analyze();
-      expect(
-        result.violations.map((item) => ({
-          id: item.id,
-          nodes: item.nodes.map((node) => node.target),
-        })),
-      ).toEqual([]);
+      await auditAccessibility(page);
     }
     await audit();
     for (const section of [
@@ -533,4 +549,39 @@ test("unchanged legacy dashboard comparison uses the same explicitly synthetic f
       .or(page.getByText("Ada Winter", { exact: true }).first()),
   ).toBeVisible();
   await screenshot(page, "inbox-before-1440.png");
+});
+
+for (const width of [360, 768, 1440])
+  test(`legacy light onboarding stays readable with a dark OS (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 360 ? 800 : 1050 });
+    await page.emulateMedia({ colorScheme: "dark" });
+    const requests = await mockBackend(page);
+    await page.goto("http://127.0.0.1:5177/");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(dialog.locator("#setup-title")).toHaveCSS("color", "rgb(15, 27, 61)");
+    const welcome = dialog.getByRole("heading", { name: "Willkommen bei Funnel Pilot!" });
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toHaveCSS("color", "rgb(15, 27, 61)");
+    await screenshot(page, `legacy-onboarding-start-${width}-os-dark.png`);
+    await dialog.getByRole("button", { name: "6. Fertig", exact: true }).click();
+    const finish = dialog.getByRole("heading", { name: "Dein Dashboard ist vorbereitet." });
+    await expect(finish).toBeVisible();
+    await expect(finish).toHaveCSS("color", "rgb(15, 27, 61)");
+    await screenshot(page, `legacy-onboarding-end-${width}-os-dark.png`);
+    // Any legacy mount-time write is rejected by mockBackend, never persisted.
+    expect(requests.some((item) => /send|takeover|release|test-chat/.test(item.path))).toBe(false);
+  });
+
+test("human takeover badge uses the plural after a second backend-owned conversation", async ({ page }) => {
+  await mockBackend(page);
+  const data = fixtureResponse("/conversations");
+  await page.route("**/conversations", (route) => route.fulfill({ json: {
+    ...data,
+    conversations: data.conversations.map((conversation, index) => index < 2
+      ? { ...conversation, owner: "human", aiPaused: true } : conversation),
+  } }));
+  await page.goto("/preview-v2.html");
+  await expect(page.locator(".v2-nav-count")).toHaveText("2 Übernahmen");
 });

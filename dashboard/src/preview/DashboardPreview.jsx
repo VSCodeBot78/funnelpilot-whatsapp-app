@@ -268,7 +268,7 @@ export default function DashboardPreview() {
                     aria-label={`${metrics.human} Human Takeover`}
                     title={`${metrics.human} menschliche Übernahme${metrics.human === 1 ? "" : "n"}`}
                   >
-                    {metrics.human} Übernahme${metrics.human === 1 ? "" : "n"}
+                    {metrics.human} {metrics.human === 1 ? "Übernahme" : "Übernahmen"}
                   </span>
                 )}
             </button>

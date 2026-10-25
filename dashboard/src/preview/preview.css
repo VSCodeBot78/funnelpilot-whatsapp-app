@@ -1041,7 +1041,7 @@ body {
 }
 .v2-contact-profile p {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   margin-bottom: 12px;
   overflow-wrap: anywhere;
 }
@@ -1086,7 +1086,7 @@ body {
   gap: 12px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .v2-definitions > div:last-child {
@@ -1101,7 +1101,7 @@ body {
   overflow-wrap: anywhere;
 }
 .v2-note-text {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
   white-space: pre-wrap;
@@ -1141,7 +1141,7 @@ body {
 }
 .v2-conversation-heading small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -1154,7 +1154,7 @@ body {
   padding: 10px 18px;
   background: var(--soft);
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .v2-message-area {
   flex: 1;
@@ -1168,7 +1168,7 @@ body {
 }
 .v2-message {
   max-width: 92%;
-  font-size: 12px;
+  font-size: 14px;
 }
 .v2-message.is-outgoing {
   align-self: flex-end;
@@ -1177,14 +1177,14 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 5px 12px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 7px;
 }
 .v2-message-author time {
   font-weight: 400;
-  font-size: 9px;
+  font-size: 12px;
 }
 .v2-message-bubble {
   padding: 13px 15px;
@@ -1202,7 +1202,7 @@ body {
 }
 .v2-message-delivery {
   text-align: right;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 5px;
 }
@@ -1216,7 +1216,7 @@ body {
   padding: 12px;
   background: var(--soft);
   border: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 7px;
 }
 .v2-composer-footer {
@@ -1228,7 +1228,7 @@ body {
 }
 .v2-composer-footer > span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   gap: 5px;
   align-items: center;
@@ -1820,7 +1820,7 @@ body {
     gap: 0;
   }
   .v2-topbar-right .v2-badge {
-    font-size: 9px;
+    font-size: 11px;
     padding: 4px 6px;
   }
   .v2-breadcrumb {
@@ -1836,7 +1836,7 @@ body {
     font-size: 0;
   }
   .v2-breadcrumb strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .v2-preview-banner {
     padding: 10px 15px;
@@ -1850,7 +1850,7 @@ body {
     font-size: 23px;
   }
   .v2-page-heading p {
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.7;
   }
   .v2-page-heading > .v2-button {
@@ -1862,7 +1862,7 @@ body {
     flex-shrink: 0;
   }
   .v2-eyebrow {
-    font-size: 8px;
+    font-size: 12px;
   }
   .v2-stack {
     gap: 16px;
@@ -1891,7 +1891,7 @@ body {
     padding: 13px;
   }
   .v2-metric-top {
-    font-size: 10px;
+    font-size: 12px;
     gap: 5px;
     align-items: flex-start;
   }
@@ -1904,7 +1904,7 @@ body {
     width: 15px;
   }
   .v2-metric > small {
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1.6;
   }
   .v2-metric > strong {
@@ -1918,7 +1918,7 @@ body {
     font-size: 14px;
   }
   .v2-panel-heading p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .v2-priority-row {
     padding: 16px;
@@ -1967,14 +1967,14 @@ body {
     gap: 5px;
   }
   .v2-sort {
-    font-size: 10px;
+    font-size: 12px;
   }
   .v2-sort select {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 130px;
   }
   .v2-filter-bottom .v2-text-button {
-    font-size: 10px !important;
+    font-size: 12px !important;
   }
   .v2-contact-row-status {
     justify-content: space-between;
@@ -2038,7 +2038,7 @@ body {
   .v2-setup-footer > span {
     order: 3;
     width: 100%;
-    font-size: 10px;
+    font-size: 12px;
   }
   .v2-setup-benefits {
     padding-bottom: 0;
@@ -2051,7 +2051,7 @@ body {
   }
   .v2-footer {
     margin-top: 20px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .v2-gate {
     margin: 10vh 16px;

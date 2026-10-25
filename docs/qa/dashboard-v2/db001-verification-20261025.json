@@ -1,0 +1,185 @@
+{
+  "sourceBase": "323bbd574368785ab53466b44aa60eab29fd2283",
+  "localBrowserStats": {
+    "startTime": "2026-10-25T17:06:53.047Z",
+    "duration": 100743.761,
+    "expected": 24,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "sourceSha256": {
+    "dashboard/qa/dashboard-v2/preview.spec.mjs": "059824cb76db6bdeac5b26565556586bf4e49c1d3087681fd2bdf252c3f66f64",
+    "dashboard/src/preview/preview.css": "292f3b6ac48dea061866a9444e4f1a8354e40e3f86a1834c6eba22742922fb4c",
+    "dashboard/src/preview/DashboardPreview.jsx": "3ec2e7ed88da0e20b1f0ffff319e96e3deeb0e811828b2ccd5b652e07ffcb9e3"
+  },
+  "screenshots": {
+    "onboarding-start-360-light.png": "d54cda99c69b6d070882ee740a680ed59a201d4abfe582c06b3907919708156f",
+    "onboarding-end-360-light.png": "5e146874379e0d386fd279186910a3c5c94ad1c03c567f0e757f785b2e417395",
+    "onboarding-start-360-dark.png": "0beaa200d9253ebf12b42ee05dd302b5a2766319e7f95749547c7ea40b612daa",
+    "onboarding-end-360-dark.png": "e1cf585d386ea4e82848b2c2ba87c6ce5484d4d04e9440a497cc6a5922df1259",
+    "onboarding-start-768-light.png": "45c9689c22bc73a9d038d4e328d9d0417ec50ea86724e1424f762627286f0088",
+    "onboarding-end-768-light.png": "c7b4dd378b7da58689e5b60f44310d41785a4fe6f63e7dcea2edaa52af2693d6",
+    "onboarding-start-768-dark.png": "cb73d237bab8cb3529bb650a205c587c54fe4f91883f9b1b3481de7f217083f7",
+    "onboarding-end-768-dark.png": "f8c0f7fc7665a3af1111ceb1b72d970882a6b268c22a27fb6e12c978e46b3af8",
+    "onboarding-start-1440-light.png": "52a4ef0387e44684f67d710602c7840ca14874ed4ca4c19876a42257c49e0055",
+    "onboarding-end-1440-light.png": "7acb9092cf8e6ac7748ec74d6f2f01c52574f6994e6e98d1b95900fa8978d5bf",
+    "onboarding-start-1440-dark.png": "3c9fc2cbfa9ced49450936f73cb9b427d078f330141d02447ec66e85961b8819",
+    "onboarding-end-1440-dark.png": "b391e878fbcc6a4e1c3187dd941ff7e3b0addfb4fdfe0955607ebfde679e76ef",
+    "legacy-onboarding-start-360-os-dark.png": "477ed8e9099107a2db96092d4d59dad60ac190f10d1ae67121fc63ccc5a57152",
+    "legacy-onboarding-end-360-os-dark.png": "6be0765ec3835740d5ba7defa3f7a69028377e478b1bb3a6452f5e082212e7ca",
+    "legacy-onboarding-start-768-os-dark.png": "c029ed293f7e19a9b73cdff0f4b7b85c96c56034eda8a4255ea969145d8e3bbb",
+    "legacy-onboarding-end-768-os-dark.png": "45e09a4cbeefce083c6ac6239827070ebd63c8452d415c858207fe22802a70e4",
+    "legacy-onboarding-start-1440-os-dark.png": "08762ab0b3f9304cec66199cd22a1fae58c2fe0212b2444b840d5541b04ecab5",
+    "legacy-onboarding-end-1440-os-dark.png": "d84f1fde3e49ada149fdccefb8a92194f7b964cbc9860cc3019106732eebfb32"
+  },
+  "fontAdjustments": [
+    {
+      "selector": ".v2-contact-profile p",
+      "maxWidth": null,
+      "beforePx": 11,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-definitions > div",
+      "maxWidth": null,
+      "beforePx": 11,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-note-text",
+      "maxWidth": null,
+      "beforePx": 11,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-conversation-heading small",
+      "maxWidth": null,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-conversation-meta",
+      "maxWidth": null,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-message",
+      "maxWidth": null,
+      "beforePx": 12,
+      "afterPx": 14
+    },
+    {
+      "selector": ".v2-message-author",
+      "maxWidth": null,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-message-author time",
+      "maxWidth": null,
+      "beforePx": 9,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-message-delivery",
+      "maxWidth": null,
+      "beforePx": 9,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-composer textarea",
+      "maxWidth": null,
+      "beforePx": 11,
+      "afterPx": 13
+    },
+    {
+      "selector": ".v2-composer-footer > span",
+      "maxWidth": null,
+      "beforePx": 9,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-topbar-right .v2-badge",
+      "maxWidth": 620,
+      "beforePx": 9,
+      "afterPx": 11
+    },
+    {
+      "selector": ".v2-breadcrumb strong",
+      "maxWidth": 620,
+      "beforePx": 11,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-page-heading p",
+      "maxWidth": 620,
+      "beforePx": 11,
+      "afterPx": 13
+    },
+    {
+      "selector": ".v2-eyebrow",
+      "maxWidth": 620,
+      "beforePx": 8,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-metric-top",
+      "maxWidth": 620,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-metric > small",
+      "maxWidth": 620,
+      "beforePx": 9,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-panel-heading p",
+      "maxWidth": 620,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-sort",
+      "maxWidth": 620,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-sort select",
+      "maxWidth": 620,
+      "beforePx": 11,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-filter-bottom .v2-text-button",
+      "maxWidth": 620,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-setup-footer > span",
+      "maxWidth": 620,
+      "beforePx": 10,
+      "afterPx": 12
+    },
+    {
+      "selector": ".v2-footer",
+      "maxWidth": 620,
+      "beforePx": 9,
+      "afterPx": 12
+    }
+  ],
+  "accessibility": {
+    "axeScans": 64,
+    "reportedViolations": 0,
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21aa"
+    ]
+  }
+}
