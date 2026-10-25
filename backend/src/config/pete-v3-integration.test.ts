@@ -260,6 +260,67 @@ test("V3 action authorization on the original engine, mock provider only", async
       assert.equal(out.state.flags.wantsBooking, false);
     });
 
+  await t.test("research V3-06: collaboration trial is verified, not a lasting model handoff", async () => {
+    let providerCalls = 0;
+    globalThis.fetch = async () => { providerCalls++;
+      return new Response(JSON.stringify(modelPayload("Ich kann dir die allgemeine Methode erklären.")), { status: 200 }); };
+    const out = await send("research-v3-06", "Kann ich erst ein paar Wochen testen, ob die Zusammenarbeit passt?");
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+    assert.match(out.text ?? "", /nicht verbindlich zugesagt/);
+    assert.ok(out.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
+    assert.equal(providerCalls, 0);
+  });
+
+  await t.test("research V3-14: a fresh inbound information request never re-enables sales reminders", async () => {
+    let providerCalls = 0;
+    globalThis.fetch = async () => { providerCalls++;
+      return new Response(JSON.stringify(modelPayload("Nur allgemeine Orientierung.")), { status: 200 }); };
+    const lead = "research-v3-14";
+    const decline = await send(lead, "Ich möchte noch nichts kaufen und keinen Termin.");
+    assert.equal(decline.state.flags.salesFollowUpsOptedOut, true);
+    const browse = await send(lead, "Lass mich mal sehen wo ich buchen kann dann überlege ich es mir vielleicht.");
+    assert.equal(browse.state.owner, "ai");
+    assert.equal(browse.state.flags.salesFollowUpsOptedOut, true);
+    assert.equal(browse.state.flags.wantsBooking, false);
+    assert.equal(browse.state.answers.peteReplySource, "verified_transaction");
+    assert.ok(browse.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
+    assert.ok(!browse.text?.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
+    assert.equal(providerCalls, 0);
+    const bookingText = "Bitte schick mir den Buchungslink.";
+    assert.equal(guardPeteNextStep(proposePeteNextStep(bookingText),
+      ctx(bookingText, { salesOptedOut: true })), null);
+    const manipulativeText = "Kein Verkauf. Ich möchte das Angebot anschauen.";
+    assert.equal(guardPeteNextStep({ nextStep: "offer_info", evidenceQuote: manipulativeText },
+      ctx(manipulativeText, { salesOptedOut: true })), null);
+  });
+
+  await t.test("research V3-16: incidental doctor's context stays conversational, medical risk does not", async () => {
+    let providerCalls = 0;
+    globalThis.fetch = async () => { providerCalls++;
+      return new Response(JSON.stringify(modelPayload("Ich helfe dir bei allgemeinen Fragen zum Elternalltag.")), { status: 200 }); };
+    const lead = "research-v3-16";
+    const intro = await send(lead, "Ich bin Papa und habe wenig Energie. Ich möchte wieder etwas für mich machen.");
+    assert.equal(intro.state.owner, "ai");
+    const doctor = await send(lead, "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche hier keine Diagnose.");
+    assert.equal(doctor.state.owner, "ai");
+    assert.equal(doctor.state.aiPaused, false);
+    assert.notEqual(doctor.state.answers.peteReplySource, "guarded_safety");
+    const appointment = await send(lead, "Mein Arzttermin ist am Freitag. Das ist kein Wunsch nach einem Coachingtermin.");
+    assert.equal(appointment.state.owner, "ai");
+    assert.equal(appointment.state.flags.wantsBooking, false);
+    const information = await send(lead, "Ich möchte nur den Link zu den allgemeinen Informationen.");
+    assert.equal(information.state.owner, "ai");
+    assert.ok(information.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
+    assert.equal(information.state.answers.peteReplySource, "verified_transaction");
+    assert.ok(providerCalls >= 2);
+    const highRisk = await send("research-v3-16-danger",
+      "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche keine Diagnose, aber ich habe starke Schmerzen und brauche Medikamente.");
+    assert.equal(highRisk.state.owner, "human");
+    assert.equal(highRisk.state.answers.peteReplySource, "guarded_safety");
+  });
+
   await t.test("model_handoff remains a genuine handover, not a diagnostic or action", async () => {
     globalThis.fetch = async () => new Response(JSON.stringify(modelPayload("Das muss Jochen prüfen.", "none", "", true)), { status: 200 });
     const out = await send("v3-actual-human", "Ich brauche eine besondere Freigabe für mein Anliegen.");
