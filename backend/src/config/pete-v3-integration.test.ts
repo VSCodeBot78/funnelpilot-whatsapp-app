@@ -14,7 +14,10 @@ const { validatePeteLlmReply } = await import("../core/pete-llm-conversation.js"
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
 const { takeOverByHuman, persistConversationState, appendUserMessage, appendAssistantMessage, getOrCreateConversationState } = await import("../core/state-manager.js");
-const { getPeteGuardedNextStep } = await import("../core/pete-conversation-quality.js");
+const { getPeteGuardedNextStep, isGeneralNonMedicalKnowledgeRequest } = await import("../core/pete-conversation-quality.js");
+const { evaluateGhostingState } = await import("../services/ghosting.service.js");
+const { evaluateProviderBookingFollowUp } = await import("../services/provider-booking.service.js");
+const { evaluateLatestAiOutboundPermission } = await import("../services/ai-outbound-guard.service.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { OFFER_TRUTH } = await import("./offer-truth.js");
 const { peteLabTechnicalFailure } = await import("../core/pete-lab-failure-contract.js");
@@ -135,6 +138,8 @@ test("V3 action authorization on the original engine, mock provider only", async
     "Ich möchte keinen Link, ich möchte ein Strategiegespräch.",
     "Ich möchte keinen externen Link zur Methode, nur hier lesen.",
     "Bitte keinen Methodenlink.", "Methodenlink bitte nicht schicken.",
+    "Bitte bestätige keine freien Termine oder sichere Belastbarkeit meiner Hüfte.",
+    "Bitte keine verfügbaren Termine bestätigen.",
     "Ich habe keine Zeit für einen Termin.", "Buchungslink bitte jetzt nicht.",
     "Wie läuft ein Strategiegespräch ab?", "Wie lange dauert das Gespräch?",
     "Mein Arzttermin passt mir nicht. Das Telefonat beim Arzt wäre gut.",
@@ -271,6 +276,11 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.match(out.text ?? "", /nicht verbindlich zugesagt/);
     assert.ok(out.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
     assert.equal(providerCalls, 0);
+    const follow = await send("research-v3-06", "Sag mir bitte ehrlich, ob so eine Probephase wirklich angeboten wird.");
+    assert.equal(follow.state.owner, "ai");
+    assert.equal(follow.state.answers.peteReplySource, "verified_transaction");
+    assert.match(follow.text ?? "", /nicht verbindlich zugesagt/);
+    assert.equal(providerCalls, 0);
   });
 
   await t.test("research V3-14: a fresh inbound information request never re-enables sales reminders", async () => {
@@ -296,12 +306,26 @@ test("V3 action authorization on the original engine, mock provider only", async
     const manipulativeText = "Kein Verkauf. Ich möchte das Angebot anschauen.";
     assert.equal(guardPeteNextStep({ nextStep: "offer_info", evidenceQuote: manipulativeText },
       ctx(manipulativeText, { salesOptedOut: true })), null);
+    // An inbound reply is not consent to future marketing or a booking.
+    browse.state.providerBooking = { status: "awaiting_booking", active: true,
+      stage: "inactive", linkSentAt: new Date(Date.now() - 72 * 3600000).toISOString(), sentHistory: [] };
+    persistConversationState(browse.state);
+    assert.equal(evaluateGhostingState(browse.state, browse.state.ghosting).dueNow, false);
+    assert.equal(evaluateProviderBookingFollowUp(browse.state).dueNow, false);
+    assert.equal(evaluateLatestAiOutboundPermission({ leadId: lead, campaignId,
+      purpose: "automated_followup" }).reason, "sales_followup_opt_out");
   });
 
   await t.test("research V3-16: incidental doctor's context stays conversational, medical risk does not", async () => {
     let providerCalls = 0;
+    const replies = [
+      "Was möchtest du an deinem Elternalltag ändern?",
+      "Medizinische Fragen bleiben bei deinem Arzt. Wir können bei allgemeinen Informationen bleiben.",
+      "Verstanden, das ist dein Arzttermin.",
+    ];
     globalThis.fetch = async () => { providerCalls++;
-      return new Response(JSON.stringify(modelPayload("Ich helfe dir bei allgemeinen Fragen zum Elternalltag.")), { status: 200 }); };
+      assert.ok(providerCalls <= replies.length);
+      return new Response(JSON.stringify(modelPayload(replies[providerCalls - 1])), { status: 200 }); };
     const lead = "research-v3-16";
     const intro = await send(lead, "Ich bin Papa und habe wenig Energie. Ich möchte wieder etwas für mich machen.");
     assert.equal(intro.state.owner, "ai");
@@ -316,7 +340,7 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.equal(information.state.owner, "ai");
     assert.ok(information.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
     assert.equal(information.state.answers.peteReplySource, "verified_transaction");
-    assert.ok(providerCalls >= 2);
+    assert.equal(providerCalls, 3);
     const highRisk = await send("research-v3-16-danger",
       "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche keine Diagnose, aber ich habe starke Schmerzen und brauche Medikamente.");
     assert.equal(highRisk.state.owner, "human");
@@ -326,6 +350,111 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.equal(exerciseAdvice.state.owner, "human");
     assert.equal(exerciseAdvice.state.answers.peteReplySource, "guarded_safety");
   });
+
+  for (const [i, risk] of [
+    "Mir wird schwindelig.", "Ich bin in Ohnmacht gefallen.", "Ich habe Krebs.",
+    "Ich habe einen Tumor.", "Ich habe Bluthochdruck.", "Ich bin in der Stillzeit.",
+    "Ich habe eine Essstörung.", "Ich habe Epilepsie.", "Ich höre ständig ein Pfeifen im Ohr.",
+    "Ich habe starke Schmerzen.", "Welche Übungen darf ich machen?",
+  ].entries()) await t.test("incidental doctor disclaimer cannot hide a medical risk: " + risk, async () => {
+    const input = "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche hier keine Diagnose. " + risk;
+    assert.equal(isGeneralNonMedicalKnowledgeRequest(input), false);
+    let providerCalls = 0;
+    globalThis.fetch = async () => { providerCalls++;
+      return new Response(JSON.stringify(modelPayload("Hier sind allgemeine Informationen.")), { status: 200 }); };
+    const out = await send("research-doctor-risk-" + i, input);
+    assert.equal(providerCalls, 0);
+    assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+    assert.equal(out.state.owner, "human");
+    assert.doesNotMatch(out.text ?? "", /https?:\/\/|calendly|checkout/);
+  });
+
+  await t.test("a negated doctor visit is not evidence for the incidental-care exception", () => {
+    assert.equal(isGeneralNonMedicalKnowledgeRequest(
+      "Wegen meiner Hüfte bin ich nicht beim Arzt. Ich brauche hier keine Diagnose."), false);
+  });
+
+  for (const [i, concern] of [
+    "Ich will widerrufen.", "Ich möchte meinen Vertrag kündigen.",
+    "Bitte lösche meine personenbezogenen Daten.", "Mein Anwalt prüft die Haftung.",
+    "Meine Zahlung ist abgebucht und ich will eine Rückzahlung.",
+  ].entries()) await t.test("trial facts never waive a real legal/privacy/payment concern: " + concern, async () => {
+    let providerCalls = 0;
+    globalThis.fetch = async () => { providerCalls++;
+      return new Response(JSON.stringify(modelPayload("Allgemeine Informationen.")), { status: 200 }); };
+    const leadId = "trial-real-concern-" + i;
+    const first = await send(leadId, "Kann ich die Zusammenarbeit ein paar Wochen testen?");
+    assert.equal(first.state.owner, "ai");
+    const out = await send(leadId, "Was steht denn fest? " + concern);
+    assert.equal(out.state.owner, "human");
+    assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+    assert.equal(providerCalls, 0);
+  });
+
+  await t.test("confirmed-facts wording without earlier trial context does not bypass the legal guard", async () => {
+    const out = await send("trial-no-context", "Ich will keine frei erfundenen Vertragsbedingungen. Was steht denn fest?");
+    assert.equal(out.state.owner, "human");
+    assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+  });
+
+  await t.test("appointment disclaimer cannot conceal a critical medical signal", async () => {
+    const input = "Mein Arzttermin ist am Freitag. Das ist kein Wunsch nach einem Coachingtermin. Ich bin in Ohnmacht gefallen.";
+    assert.equal(isGeneralNonMedicalKnowledgeRequest(input), false);
+    const out = await send("doctor-appointment-risk", input);
+    assert.equal(out.state.owner, "human");
+    assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+  });
+
+  for (const [i, sensitive] of ["Bitte lösche meine personenbezogenen Daten.", "Ich bin komplett am Ende."].entries())
+    await t.test("benign medical context cannot mask a second sensitive concern: " + sensitive, async () => {
+      const input = "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche hier keine Diagnose. " + sensitive;
+      assert.equal(isGeneralNonMedicalKnowledgeRequest(input), false);
+      const out = await send("doctor-mixed-sensitive-" + i, input);
+      assert.equal(out.state.owner, "human");
+      assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+    });
+
+  const recorded = JSON.parse(fs.readFileSync(new URL("../../../docs/qa/pete-v3-sol-qa-20261025.json", import.meta.url), "utf8"));
+  for (const id of ["V3-06-trial-truth", "V3-14-informal-buy-path", "V3-16-doctor-incidental"])
+    await t.test("all six ORIGINAL lead turns reach a safe information end-state, mocked provider: " + id, async () => {
+      const original = recorded.correctedRun.cases.find((c: { id: string }) => c.id === id);
+      assert.equal(original.turns.length, 6);
+      const replies = [
+        "Was möchtest du im Elternalltag verändern?",
+        "Es geht dir um Unterstützung bei der Umsetzung im Alltag.",
+        "Wir können bei allgemeinen Informationen bleiben, ohne medizinische Empfehlungen zu geben.",
+        "Dabei bleibe ich bei den bestätigten Angaben zur Methode.",
+        "Ungeklärte Vertragsdetails muss Jochen vor einer verbindlichen Zusage prüfen.",
+        "Eine persönliche Entscheidung braucht keinen Verkaufsdruck.",
+      ];
+      let providerCalls = 0;
+      globalThis.fetch = async () => {
+        const reply = replies[providerCalls++];
+        assert.ok(reply);
+        return new Response(JSON.stringify(modelPayload(reply)), { status: 200 });
+      };
+      const leadId = "recorded-replay-" + id;
+      let final;
+      for (const turn of original.turns) {
+        final = await send(leadId, turn.user);
+        assert.equal(final.state.owner, "ai", turn.user + " | " +
+          String(final.state.answers.peteReplySource) + " | " + String(final.state.answers.peteLlmFailureReason));
+        assert.equal(final.state.aiPaused, false, turn.user);
+        assert.notEqual(final.state.answers.peteReplySource, "llm_handoff", turn.user);
+        assert.equal(final.replySuppressedReason, undefined, turn.user);
+        assert.equal(final.state.flags.wantsBooking, false, turn.user);
+      }
+      assert.equal(final!.state.answers.peteReplySource, "verified_transaction");
+      assert.ok(final!.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
+      assert.ok(!final!.text?.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
+      assert.equal(final!.state.flags.wantsBooking, false);
+      assert.notEqual(final!.state.providerBooking?.status, "booked");
+      if (id === "V3-14-informal-buy-path") {
+        assert.equal(final!.state.flags.salesFollowUpsOptedOut, true);
+        assert.equal(evaluateLatestAiOutboundPermission({ leadId, campaignId,
+          purpose: "automated_followup" }).allowed, false);
+      }
+    });
 
   await t.test("model_handoff remains a genuine handover, not a diagnostic or action", async () => {
     globalThis.fetch = async () => new Response(JSON.stringify(modelPayload("Das muss Jochen prüfen.", "none", "", true)), { status: 200 });

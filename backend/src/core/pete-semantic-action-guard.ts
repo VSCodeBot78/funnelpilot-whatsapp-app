@@ -32,7 +32,7 @@ const norm = (s: string) => s.toLocaleLowerCase("de-DE").normalize("NFD")
 
 export function isPeteBookingDeclined(text: string): boolean {
   const s = norm(text);
-  return /\bkein(?:e|en)?\s+(?:(?:weiteren?|neuen?|telefonischen?|solchen?)\s+){0,3}(?:termin\w*|buchungslink|terminlink|kalenderlink|gesprach\w*|telefonat\w*|anruf\w*)\b/.test(s) ||
+  return /\bkein(?:e|en)?\s+(?:(?:weiteren?|neuen?|telefonischen?|solchen?|freien?|verfugbaren?|bestatigten?)\s+){0,3}(?:termin\w*|buchungslink|terminlink|kalenderlink|gesprach\w*|telefonat\w*|anruf\w*)\b/.test(s) ||
     /\b(?:bevor|ehe)\b.{0,90}\b(?:termin|gesprach|telefonat|telefonieren)\b/.test(s) ||
     /\berst\b.{0,65}\b(?:verstehen|klaren|besprechen|nachdenken|uberlegen)\b/.test(s) ||
     /\b(?:nicht|nie|niemals)\s+(?:(?:mehr|jetzt|gerade|telefonisch|mit\s+jochen)\s+){0,3}(?:telefonieren|anrufen|angerufen|sprechen|buchen)\b/.test(s) ||

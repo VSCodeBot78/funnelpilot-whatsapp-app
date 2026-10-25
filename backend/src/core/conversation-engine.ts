@@ -4,6 +4,7 @@ import {
   isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
+  isPeteTrialFactFollowUp,
   isPeteChestBreathingEmergency,
   isPeteNonMedicalPostPregnancyBodyImage,
   peteSafeRoutineRepairReply,
@@ -1340,7 +1341,9 @@ export async function processIncomingMessage(
       "emotional_crisis", "legal_privacy",
     ].includes(decision.decisionType) &&
         !(safeGeneralKnowledge &&
-          ["medical_critical", "medical_soft"].includes(decision.decisionType))) {
+          ["medical_critical", "medical_soft"].includes(decision.decisionType)) &&
+        !(isPeteLlmConversationSelected() && decision.decisionType === "legal_privacy" &&
+          isPeteTrialFactFollowUp(input.messageText, state))) {
       const guarded = composePeteResponse(decision, {
         campaign, currentStep: state.currentStep,
         userText: input.messageText,
