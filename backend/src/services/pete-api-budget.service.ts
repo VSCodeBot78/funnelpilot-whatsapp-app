@@ -496,7 +496,8 @@ export function getPeteBudgetStatus() {
       (approval.active ? approval.newCap / 1_000_000 : null),
     labCommittedUsd: qaCap !== null || approval.active ? data.committedMicroUsd / 1_000_000 : null,
     labRemainingUsd: qaCap !== null || approval.active ? remaining / 1_000_000 : null,
-    globalRemainingUsd: globalRemaining / 1_000_000,
+    // This isolated QA receipt does not measure or debit the Pete account.
+    globalRemainingUsd: data.qaGrant ? null : globalRemaining / 1_000_000,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
     blocked: remaining <= 0,

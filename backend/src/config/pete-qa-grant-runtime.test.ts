@@ -125,6 +125,7 @@ test("Separate QA grant is enforced by the actual provider service, no network",
     const before = budget.getPeteBudgetStatus();
     assert.equal(before.ownerGrantId, grantId); assert.equal(before.budgetScope, "owner_qa_grant");
     assert.equal(before.hardCapUsd, 2); assert.equal(before.remainingUsd, 2);
+    assert.equal(before.globalRemainingUsd, null, "QA cannot report its usage as a legacy Pete debit");
     const result = await getPeteLlmConversationReply(providerState());
     assert.equal(result.kind, "llm"); assert.equal(calls, 1);
     assert.equal(budget.getPeteBudgetStatus().confirmedUsd, .0004);
