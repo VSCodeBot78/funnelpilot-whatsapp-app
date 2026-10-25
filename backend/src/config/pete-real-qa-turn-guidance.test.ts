@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPeteTurnPriorityGuidance, evaluatePeteLlmContinuity } from "../core/pete-llm-conversation.js";
+import { buildPeteContext, buildPeteTurnPriorityGuidance, evaluatePeteLlmContinuity } from "../core/pete-llm-conversation.js";
 
 function guide(...turns: string[]): string {
   const conversation = {
@@ -201,4 +201,61 @@ test("strong setter: partner's role is respected, never framed as an obstacle", 
   assert.match(guidance, /Legitime Partnerentscheidung/);
   assert.match(guidance, /keine Umgehung oder Abwertung/);
   assert.doesNotMatch(guide("Ich muss mit meiner Frau reden."), /Legitime Partnerentscheidung/);
+});
+
+/**
+ * University research transfer (Princeton reliability, Microsoft state/memory):
+ * Paired, deterministic long-context tests with no provider and no new tools.
+ * A correction is recent user evidence, not an inferred personality profile.
+ */
+function longContext(old: string, latest: string, middle?: string) {
+  const messages = [
+    { role: "user", text: old },
+    ...(middle ? [{ role: "user", text: middle }] : []),
+    ...Array.from({ length: 37 }, () => ({ role: "assistant", text: "Okay." })),
+    { role: "user", text: latest },
+  ];
+  return buildPeteContext({ campaignId: "research-memory", source: "ig-test", messages } as any);
+}
+
+test("research memory: explicit updated schedule supersedes stale old shift-work evidence", () => {
+  const context = longContext("Ich arbeite im Schichtdienst und habe unregelmäßige Pausen.",
+    "Ich arbeite inzwischen tagsüber und habe feste Pausen.");
+  assert.equal(context.earlierLeadEvidence.find(item => item.topic === "work_and_schedule"), undefined);
+  assert.match(context.conversation.at(-1)?.text ?? "", /inzwischen tagsüber/);
+  assert.ok(JSON.stringify(context).length <= 12000);
+});
+
+test("research memory: no correction preserves the older literal lead statement", () => {
+  const context = longContext("Meine Schichtarbeit lässt mir kaum feste Pausen.",
+    "Ich wollte noch mal wegen deiner Methode fragen.");
+  const older = context.earlierLeadEvidence.find(item => item.topic === "work_and_schedule");
+  assert.match(older?.excerpt ?? "", /Schichtarbeit/);
+});
+
+test("research memory: a schedule correction does not erase unrelated nutrition evidence", () => {
+  const context = longContext("Ich esse oft spät und habe abends Heißhunger.",
+    "Ich arbeite mittlerweile nur noch tagsüber.", "Ich hatte früher viele Nachtschichten.");
+  const nutrition = context.earlierLeadEvidence.find(item => item.topic === "nutrition");
+  assert.match(nutrition?.excerpt ?? "", /Heißhunger/);
+  assert.equal(context.earlierLeadEvidence.find(item => item.topic === "work_and_schedule"), undefined);
+});
+
+test("research memory: recent assistant wording cannot rewrite user-supplied facts", () => {
+  const messages = [
+    { role: "user", text: "Ich arbeite im Schichtdienst." },
+    ...Array.from({ length: 37 }, () => ({ role: "assistant", text: "Okay." })),
+    { role: "assistant", text: "Du arbeitest inzwischen tagsüber, oder?" },
+    { role: "user", text: "Welche Angebote gibt es?" },
+  ];
+  const context = buildPeteContext({ campaignId: "research-memory", messages } as any);
+  assert.match(context.earlierLeadEvidence.find(item => item.topic === "work_and_schedule")?.excerpt ?? "", /Schichtdienst/);
+});
+
+test("research memory: explicit revised goal wins but stored refusal is not a new consent", () => {
+  const context = longContext("Ich möchte vor allem meinen Bauchumfang reduzieren.",
+    "Inzwischen will ich erst mal mehr Energie im Alltag.");
+  assert.equal(context.earlierLeadEvidence.find(item => item.topic === "goals"), undefined);
+  assert.match(context.conversation.at(-1)?.text ?? "", /mehr Energie/);
+  assert.ok(!("marketingConsent" in context));
 });
