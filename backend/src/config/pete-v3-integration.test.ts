@@ -74,6 +74,7 @@ test("V3 action authorization on the original engine, mock provider only", async
   for (const text of [
     "Wo kann ich mir das Angebot anschauen und gegebenenfalls buchen?",
     "Bitte zeig mir die Methode zum Nachlesen.",
+    "Schick mir bitte den Methodenlink.",
     "Ich möchte das Paket erst in Ruhe ansehen.",
     "Ich habe noch kein Angebot bekommen. Kannst du mir bitte die Details schicken?",
     "Ich will keinen Termin, aber ich möchte mir das Paket anschauen.",
@@ -133,6 +134,7 @@ test("V3 action authorization on the original engine, mock provider only", async
     "Ich will keinen Buchungslink.", "Bitte den Termin nicht buchen.",
     "Ich möchte keinen Link, ich möchte ein Strategiegespräch.",
     "Ich möchte keinen externen Link zur Methode, nur hier lesen.",
+    "Bitte keinen Methodenlink.", "Methodenlink bitte nicht schicken.",
     "Ich habe keine Zeit für einen Termin.", "Buchungslink bitte jetzt nicht.",
     "Wie läuft ein Strategiegespräch ab?", "Wie lange dauert das Gespräch?",
     "Mein Arzttermin passt mir nicht. Das Telefonat beim Arzt wäre gut.",
@@ -198,6 +200,43 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.equal(out.state.owner, "ai");
     assert.equal(out.state.providerBooking?.status, "awaiting_booking");
     assert.equal(calls, before + 1);
+  });
+
+  await t.test("denied model proposal cannot mute a normal factual dialogue or authorize an action", async () => {
+    const text = "Was wäre bei deiner Begleitung anders, wenn wieder eine Woche alles durcheinandergeht?";
+    globalThis.fetch = async () => new Response(JSON.stringify(modelPayload(
+      "Unterbrechungen gehören zum Familienalltag. Entscheidend ist ein realistischer Wiedereinstieg statt immer mehr Regeln.",
+      "booking", text)), { status: 200 });
+    const out = await send("v3-denied-proposal", text);
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.equal(out.state.answers.peteReplySource, "llm");
+    assert.equal(out.state.answers.peteSemanticProposalRejected, true);
+    assert.equal(out.state.answers.peteSemanticNextStep, undefined);
+    assert.equal(out.state.flags.wantsBooking, false);
+    assert.equal(out.state.providerBooking?.status === "awaiting_booking", false);
+    assert.doesNotMatch(out.text!, /https?:|www\.|Jochen weiter/);
+    globalThis.fetch = async () => new Response(JSON.stringify(modelPayload("Du kannst dir die Methode zunächst unverbindlich ansehen.")), { status: 200 });
+    const next = await send("v3-denied-proposal", "Ich möchte erst verstehen, ob das zu mir passt.");
+    assert.equal(next.state.owner, "ai");
+    assert.equal(next.state.answers.peteSemanticProposalRejected, false);
+    assert.equal(next.state.answers.peteReplySource, "llm");
+    const link = await send("v3-denied-proposal", "Schick mir bitte den Methodenlink.");
+    assert.equal(link.state.answers.peteReplySource, "verified_transaction");
+    assert.equal(link.state.answers.peteSemanticProposalRejected, false);
+  });
+
+  await t.test("denied action never bypasses prose URL/price/confirmation validation", async () => {
+    for (const [i, unsafe] of ["Hier ist dein Link: https://evil.example", "Du zahlst 199 Euro.",
+      "Deine Buchung ist bestätigt."].entries()) {
+      globalThis.fetch = async () => new Response(JSON.stringify(modelPayload(unsafe,
+        "booking", "Ich möchte erst allgemeine Informationen.")), { status: 200 });
+      const out = await send("v3-unsafe-denied-" + i, "Ich möchte erst allgemeine Informationen.");
+      assert.equal(out.state.owner, "human");
+      assert.equal(out.state.answers.peteLlmFailureReason, "invalid_output");
+      assert.doesNotMatch(out.text!, /evil\.example|199|ist bestätigt/);
+      assert.equal(out.state.flags.wantsBooking, false);
+    }
   });
 
   for (const boundary of ["stop", "human", "superseded"] as const)

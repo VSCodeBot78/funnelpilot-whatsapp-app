@@ -1405,7 +1405,8 @@ export async function processIncomingMessage(
       if (verified) {
         patchAnswers(state, { peteReplySource: "verified_transaction", peteProviderUsageMetered: false,
           peteProviderModel: undefined, peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined,
-          peteSemanticNextStep: undefined, peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined });
+          peteSemanticNextStep: undefined, peteSemanticProposalRejected: false,
+          peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined });
         if (verified.nextPhase) updateAnswer(state, "naturalPhase", verified.nextPhase);
         if (verified.handoff) {
           patchFlags(state, {
@@ -1463,7 +1464,8 @@ export async function processIncomingMessage(
       if (result.kind === "llm" || result.kind === "safe_reply" || result.kind === "verified_next_step") {
         patchAnswers(latest, { peteProviderUsageMetered: false, peteProviderModel: undefined,
           peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined, peteSemanticNextStep: undefined,
-          peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined });
+          peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined,
+          peteSemanticProposalRejected: result.kind === "llm" && result.rejectedNextStep === true });
         updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" :
           result.kind === "verified_next_step" ? "verified_transaction" : "safe_noncritical");
         if (result.kind === "llm" || result.kind === "verified_next_step") patchAnswers(latest, {
@@ -1496,7 +1498,7 @@ export async function processIncomingMessage(
       if (labFailure) {
         patchAnswers(latest, { peteReplySource: "lab_error", peteProviderUsageMetered: false,
           peteProviderModel: undefined, peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined,
-          peteSemanticNextStep: undefined, peteLlmFailureReason: result.reason,
+          peteSemanticNextStep: undefined, peteSemanticProposalRejected: false, peteLlmFailureReason: result.reason,
           peteLlmFailureDetail: result.detail ?? "unspecified" });
         appendAssistantMessage(latest, labFailure);
         persistConversationState(latest);

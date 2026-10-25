@@ -44,12 +44,12 @@ export function isPeteBookingDeclined(text: string): boolean {
 
 function isOfferDeclined(s: string): boolean {
   return /\b(?:keine\s+(?:weiteren?\s+)?(?:angebote|werbung|verkaufsnachrichten)|kein\s+verkauf|nichts\s+kaufen)\b/.test(s) ||
-    /\b(?:will|mochte|brauche)\s+(?:ich\s+)?kein(?:en|e)?\s+(?:angebotslink|infolink|angebot)\b/.test(s);
+    /\b(?:will|mochte|brauche)\s+(?:ich\s+)?kein(?:en|e)?\s+(?:angebotslink|infolink|methodenlink|angebot)\b/.test(s);
 }
 
 function rejectsLinks(s: string): boolean {
-  return /\bkein(?:en|e)?\s+(?:(?:weiteren?|neuen?|externen?|solchen?)\s+){0,3}link\b/.test(s) ||
-    /\blink\s+(?:(?:bitte|jetzt|heute|gerade|lieber)\s+){0,3}nicht\s+(?:schicken|senden|zeigen)\b/.test(s);
+  return /\bkein(?:en|e)?\s+(?:(?:weiteren?|neuen?|externen?|solchen?)\s+){0,3}(?:link|methodenlink|infolink|angebotslink)\b/.test(s) ||
+    /\b(?:link|methodenlink|infolink|angebotslink)\s+(?:(?:bitte|jetzt|heute|gerade|lieber)\s+){0,3}nicht\s+(?:schicken|senden|zeigen)\b/.test(s);
 }
 
 /** High-precision free-text entry to the same guard, never a second engine. */
@@ -66,9 +66,9 @@ export function proposePeteNextStep(text: string): PeteNextStepProposal {
     return { nextStep: "booking", evidenceQuote: text };
   }
   const browsing = /\b(?:anschauen|ansehen|angucken|nachlesen|durchlesen|nachschauen|informieren|in\s+ruhe\s+lesen)\b/.test(s);
-  const offerTopic = /\b(?:angebot|paket|methode|begleitung|coaching|produkt|leistungen|info(?:s|link)?|seite|details|buchungsweg)\b/.test(s);
-  const infoLinkRequest = /\b(?:schick\w*|sende\w*|zeig\w*|gib|wo\s+finde)\b.{0,65}\b(?:info(?:s|link)?|angebotslink|seite|details|methode)\b/.test(s) ||
-    (request && /\b(?:info(?:s|link)?|angebotslink|seite|details|methode)\b.{0,45}\b(?:schicken|senden|zeigen)\b/.test(s));
+  const offerTopic = /\b(?:angebot|paket|methode(?:nlink)?|begleitung|coaching|produkt|leistungen|info(?:s|link)?|seite|details|buchungsweg)\b/.test(s);
+  const infoLinkRequest = /\b(?:schick\w*|sende\w*|zeig\w*|gib|wo\s+finde)\b.{0,65}\b(?:info(?:s|link)?|angebotslink|seite|details|methode(?:nlink)?)\b/.test(s) ||
+    (request && /\b(?:info(?:s|link)?|angebotslink|seite|details|methode(?:nlink)?)\b.{0,45}\b(?:schicken|senden|zeigen)\b/.test(s));
   const browsePurchaseRoute = /\blass\s+mich\b.{0,35}\b(?:sehen|schauen|gucken)\b/.test(s) &&
     /\bwo\b.{0,40}\bbuchen\b/.test(s) && !bookingTopic;
   if (((browsing && offerTopic && request) || infoLinkRequest || browsePurchaseRoute) && !isOfferDeclined(s)) {

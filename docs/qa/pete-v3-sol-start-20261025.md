@@ -39,3 +39,36 @@ Run-IDs, SHAs, Dialogbewertung und abgerechnete Kosten werden erst nach dem Lauf
 im vorhandenen PR und Master ergänzt. Falls die Freigabe-/Providerstrecke blockiert
 oder das Budget nicht für zwanzig vollständige Dialoge reicht, bleibt das
 Qualitätsgate offen. Kein Merge, Deployment oder Live-Send.
+
+## Erster echter Lauf und eng begrenzte Korrektur
+
+Run `40197233847`, Source `c460464e0bab89d7790d678c7f2eb5593d4b9ab9`:
+Credential-Metadaten HTTP 200; 1,65 USD vor Modellaufrufen remote reserviert.
+Vier erfolgreiche, abgerechnete Sol-Antworten: drei normale Modelltexte und eine
+abgelehnte Modellantwort, die als `llm_handoff` erschien; zusätzlich ein
+serverseitiger CHECK-Link. 35.042 Input-/362 Output-Token, 0,073704 USD gebucht,
+keine offene Reservierung. Kein vollständiger Sechs-Runden-Fall, kein Yoda-Score.
+
+Die fünfte Lead-Nachricht war eine normale Sachfrage zur Begleitung. Ein vom
+Modell vorgeschlagener Next Step scheiterte am unveränderten Guard, danach wurde
+der Chat durch `invalid_output / next_step_denied` dauerhaft menschlich übernommen.
+Der Lauf stoppte sofort. Der rohe verworfene Antworttext ist nicht gespeichert;
+eine Aussage über dessen genaue Formulierung wird nicht erfunden.
+
+Korrektur: Ein nicht autorisierter Vorschlag bleibt ohne Aktion. Die separat
+validierte, URL-/preisfreie Modellprosa läuft jedoch weiter durch dieselben
+Wahrheits-, Kontinuitäts- und Fragegrenzen. Ein verworfener Handlungsvorschlag ist
+kein Human-Takeover-Wunsch. Schemafehler, gefährliche Texte, echte Human-Wünsche,
+Provider-/Budgetfehler und alle asynchronen Ownership-Prüfungen bleiben gesperrt.
+Diagnose `peteSemanticProposalRejected` markiert echte Modelltexte nach verworfenem
+Vorschlag. Regressionen prüfen Weiterreden ohne Buchung/Linkberechtigung sowie
+weiterhin blockierte Modell-URLs, Preise und Buchungsbestätigungen.
+
+Owner-Klarstellung: Cloudflare war nur für das nicht mehr verwendete Handy-Feature.
+Pete benötigt keine Cloudflare-Auslieferung. Der spätere persönliche
+Darth-Vader-Test bleibt ausschließlich am Laptop. Die unabhängige Sol-QA läuft
+im bestehenden isolierten GitHub-Testbackend. Die alte Cloudflare-Verknüpfung
+wird per offiziellem Skip-Präfix ausgelassen; keine Kontoeinstellung deaktiviert
+oder deren Deaktivierung behauptet.
+
+Lokaler Korrekturcheck: TS-Build, 25 Desktop-, 621 Backend- und 26 Starter-/Budgettests PASS. Zusätzlich ausdrückliche Methodenlink-Bitte und ihre Verneinung abgesichert. Neue Korrekturcharge maximal 1,57 USD mit eigener Approval-Ref; zusammen mit den 0,073704 USD des ersten Laufs höchstens 1,643704 USD. Kein Rerun der verbrauchten ersten Charge.

@@ -61,6 +61,7 @@ export async function runQaDialogues(args: {
         reservedUsdAfter: after.reservedUsd ?? null,
         intent: out.detectedIntent ?? null, blockedReason: out.replySuppressedReason ?? null,
         failureReason: failure, failureDetail: a.peteLlmFailureDetail ?? null,
+        semanticProposalRejected: genuine && a.peteSemanticProposalRejected === true,
         owner: out.state.owner ?? null, aiPaused: out.state.aiPaused ?? null,
         stopped: out.state.flags.stopped === true });
       if (!after.ok || started > metered) haltedReason = "provider_usage_unverified";
