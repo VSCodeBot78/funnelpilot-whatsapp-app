@@ -8,6 +8,39 @@
 import { OFFER_TRUTH, isUnverifiedLongTermPriceQuestion,
   LONG_TERM_PRICE_UNVERIFIED_REPLY } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
+import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
+
+/** Founder configuration only. No model, browser or lead supplies hosts/URLs.
+ * A future tenant adapter must provide its own authenticated configuration.
+ */
+export function getPeteGuardedNextStep(
+  text: string, state: ConversationState, bookingUrl?: string,
+  proposal?: PeteNextStepProposal,
+) {
+  if (!state.flags) return null;
+  const messages = state.messages ?? [];
+  const lastLead = [...messages].reverse().find(message => message.role === "user");
+  const lastLeadIndex = lastLead ? messages.lastIndexOf(lastLead) : -1;
+  const previous = messages.slice(0, Math.max(0, lastLeadIndex));
+  const lastAssistant = [...previous].reverse().find(message => message.role === "assistant");
+  const latestBookingChoice = previous.filter(message => message.role === "user").slice(-6).reverse()
+    .find(message => isPeteBookingDeclined(message.text) || proposePeteNextStep(message.text).nextStep === "booking");
+  const bookingRequestActive = Boolean(latestBookingChoice && !isPeteBookingDeclined(latestBookingChoice.text) &&
+    lastAssistant?.text.includes("?") && /\b(?:wann|erreichbar|welche.{0,20}zeit)\b/i.test(lastAssistant.text));
+  const inferred = proposePeteNextStep(text);
+  const proposed = proposal ?? (bookingRequestActive && inferred.nextStep === "none"
+    ? { nextStep: "booking" as const, evidenceQuote: text } : inferred);
+  return guardPeteNextStep(proposed, {
+    lastUserText: text, owner: state.owner, aiPaused: state.aiPaused,
+    stopped: state.flags.stopped, handoffActive: state.flags.peteRuntimeHandoffActive,
+    salesOptedOut: state.flags.salesFollowUpsOptedOut,
+    noQuestionsRequested: hasPeteActiveNoQuestionBoundary(state),
+    bookingRequestActive,
+    bookingUrl, offerInfoUrl: OFFER_TRUTH.coachingEntry.infoUrl,
+    bookingHosts: ["calendly.com"], offerInfoHosts: ["jochen-kammerer.de"],
+  });
+}
 
 export type PeteVerifiedAnswer = {
   text: string;
@@ -49,7 +82,7 @@ function isExplicitPaidOfferRefusal(input: string): boolean {
   return (
     /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(refusalText) ||
     /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(refusalText) ||
-    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(refusalText) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachricht(?:en)?|kaufangebote?)\b/.test(refusalText) ||
     /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(refusalText)
   );
 }
@@ -84,6 +117,22 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  const asksTrial = /\b(?:testphase|probierphase|probephase|kennenlernphase|(?:paar|einige|wenige)\s+wochen\s+testen)\b/.test(input);
+  const coachingContext = /\b(?:coaching|begleitung|1:1|zwischenmenschlich)\b/.test(input) ||
+    (state.messages ?? []).filter(message => message.role === "user").slice(-3)
+      .some(message => /coaching|begleitung|1:1/i.test(message.text));
+  if (asksTrial && coachingContext && !explicitlyDeclinesPaidOffers) {
+    const info = !state.flags?.salesFollowUpsOptedOut && !hasPeteActiveNoQuestionBoundary(state)
+      ? " Die Methode kannst du dir vorab hier anschauen: " + OFFER_TRUTH.coachingEntry.infoUrl : "";
+    return { text: "Eine gesonderte Probe- oder Kennenlernphase ist in den bestätigten Angebotsangaben nicht verbindlich zugesagt. Individuelle Sonderbedingungen muss Jochen selbst klären." + info };
+  }
+  // Browsing a package is NOT a purchase, even when the same sentence also
+  // mentions possibly booking later. Never preempt verified payment issues.
+  const nextStep = getPeteGuardedNextStep(text, state, bookingUrl);
+  if (nextStep?.nextStep === "offer_info" && !explicitlyDeclinesPaidOffers &&
+      !/\b(?:bezahlt|gekauft|bestellt|zahlung|rechnung|zugang|freischalt\w*)\b/.test(input)) {
+    return { text: nextStep.text };
+  }
   // A short follow-up may omit the offer name. Use only the latest earlier
   // customer message naming an offer, never an old campaign or guess.
   const lastOfferMention = (state.messages ?? []).slice(0, -1).slice(-8).reverse()
@@ -541,13 +590,8 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier ist der kostenlose Elternfitness-Check: " +
       OFFER_TRUTH.resources.elterncheck.url };
   }
-  if (/\b(?:buchungslink|terminlink|calendly.?link|strategiegesprach buchen)\b/.test(input) &&
-      !/\b(?:nicht|kein|ohne|erstmal nicht|lieber hier)\b/.test(input)) {
-    return bookingUrl?.startsWith("https://")
-      ? { text: "Hier kannst du einen Termin für ein Strategiegespräch auswählen: " + bookingUrl,
-          nextPhase: "booking_offered" }
-      : { text: "Ich kann dir hier keinen verifizierten Buchungslink nennen. Jochen kann dir den richtigen Weg zeigen.", handoff: true };
-  }
+  if (nextStep?.nextStep === "booking" && !explicitlyDeclinesPaidOffers)
+    return { text: nextStep.text, nextPhase: nextStep.nextPhase };
 
   // A generic mention of "price", "book", "appointment" or "Jochen"
   // without a concrete verified transaction stays with the LLM.
@@ -623,19 +667,19 @@ export function isSalesFollowUpOptOut(text: string): boolean {
     // explicitly forbidden. Do not let the positive request erase that choice.
     // Exclude the generic "keine Angebote bekommen" phrase from opt-out.
     return [
-      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachrichten?|nachrichten?)\b/,
-      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachricht(?:en)?|nachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:werbenachricht(?:en)?|werbung|verkaufsnachricht(?:en)?)\b/,
       /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
       /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
       /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
     ].some(pattern => pattern.test(refusalText));
   }
   return isExplicitPaidOfferRefusal(input) || [
-    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
+    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachricht(?:en)?|werbenachricht(?:en)?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
     /\b(?:bitte\s+)?nicht\s+(?:(?:mehr|weiter|erneut|nochmal)\s+)?(?:hinterherlaufen|hinterherschreiben|nachhaken)\b/,
     /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
-    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
+    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachricht(?:en)?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
   ].some(pattern => pattern.test(refusalText));
 }

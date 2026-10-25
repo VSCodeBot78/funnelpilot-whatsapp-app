@@ -6,9 +6,10 @@ test("real model replies are distinguishable from hardcoded templates", () => {
   assert.match(describePeteReplySource("llm"), /OpenAI-KI-Modell/);
   for (const source of [
     "verified_transaction", "guarded_safety", "deterministic",
-    "legacy", "human_handoff", "llm_handoff", "safe_noncritical",
+    "legacy", "human_handoff", "llm_handoff", "safe_noncritical", "lab_error",
   ]) {
     assert.doesNotMatch(describePeteReplySource(source), /echte Modellantwort/, source);
   }
   assert.equal(describePeteReplySource(undefined), "Antwortquelle nicht verifiziert");
+  assert.match(describePeteReplySource("lab_error"), /keine Modellantwort oder persönliche Übergabe/);
 });

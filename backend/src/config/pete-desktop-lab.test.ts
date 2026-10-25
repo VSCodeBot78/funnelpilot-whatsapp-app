@@ -59,6 +59,8 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
   const nativeFetch = globalThis.fetch;
   let providerCalls = 0;
   let responseUsage: unknown = { input_tokens: 100, output_tokens: 20 };
+  let providerHttpStatus = 200;
+  let providerNeedsHuman = false;
   let holdProvider = false;
   let waiting: Array<() => void> = [];
   globalThis.fetch = async (input, init) => {
@@ -87,10 +89,11 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(body.store, false);
     providerCalls++;
     if (holdProvider) await new Promise<void>(resolve => waiting.push(resolve));
+    if (providerHttpStatus !== 200) return new Response("SYNTHETIC provider error, never customer text", { status: providerHttpStatus });
     return new Response(JSON.stringify({ usage: responseUsage,
       output: [{ content: [{ type: "output_text", text: JSON.stringify({
         reply: "Der Abend nach der Arbeit ist bei dir besonders anstrengend. Was fällt dir dann am schwersten?",
-        needsHuman: false,
+        needsHuman: providerNeedsHuman,
       }) }] }],
     }), { status: 200 });
   };
@@ -526,6 +529,37 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(process.env.PETE_LLM_API_CALLS_APPROVED, "false");
     assert.equal(process.env.INSTAGRAM_SEND_ENABLED, "false");
     assert.equal(process.env.WHATSAPP_SEND_ENABLED, "false");
+  });
+  await t.test("a technical provider failure stays visible in the authenticated lab without a false human takeover", async () => {
+    const c = await granted("1.00");
+    const leadId = await c.lead();
+    const before = providerCalls;
+    providerHttpStatus = 403;
+    let out;
+    try { out = await c.message(leadId); } finally { providerHttpStatus = 200; }
+    assert.equal(out.status, 200);
+    assert.equal(out.body.replySource, "lab_error");
+    assert.match(out.body.reply, /keine persönliche Übernahme/);
+    assert.doesNotMatch(out.body.reply, /SYNTHETIC provider error/);
+    assert.equal(getConversationState(leadId, "eltern-vital-fit")?.owner, "ai");
+    assert.equal(getConversationState(leadId, "eltern-vital-fit")?.aiPaused, false);
+    assert.equal(getConversationState(leadId, "eltern-vital-fit")?.answers.peteLlmFailureReason, "provider_unavailable");
+    assert.equal(providerCalls, before + 1, "no automatic retry");
+    assert.ok(out.body.budget.reservedUsd > 0, "uncertain usage stays reserved");
+    const next = await c.message(leadId, "Ich möchte den Engpass nach der Arbeit genauer erklären.");
+    assert.equal(next.body.replySource, "llm", "a new owner message can continue the same lead");
+    assert.equal(providerCalls, before + 2);
+  });
+  await t.test("a real model-requested human handover still pauses the desktop conversation", async () => {
+    const c = await granted();
+    const leadId = await c.lead();
+    providerNeedsHuman = true;
+    try {
+      const out = await c.message(leadId);
+      assert.equal(out.body.replySource, "llm_handoff");
+      assert.equal(getConversationState(leadId, "eltern-vital-fit")?.owner, "human");
+      assert.equal(getConversationState(leadId, "eltern-vital-fit")?.aiPaused, true);
+    } finally { providerNeedsHuman = false; }
   });
   await t.test("unsafe runtime drift rejects the owner session rather than opening a real channel", async () => {
     const c = await granted();

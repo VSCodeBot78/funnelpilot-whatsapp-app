@@ -36,6 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
       - run: npm run build
       - run: npm test
       - name: Install existing dashboard dependencies for real Vite proxy regression
@@ -64,4 +66,6 @@ jobs:
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
       - run: npm ci
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
       - run: npm run build

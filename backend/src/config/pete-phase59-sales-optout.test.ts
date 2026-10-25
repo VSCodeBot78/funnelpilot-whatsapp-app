@@ -65,7 +65,7 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
       calls++;
       const request = JSON.parse(String((options as RequestInit).body));
       assert.match(request.instructions, /kein Nachfassen/i);
-      assert.match(request.instructions, /wieder dieselben Tipps/i);
+      assert.match(request.instructions, /nicht reflexartig die alte Lösung wiederholen/i);
       assert.match(request.instructions, /Stagnation nicht automatisch/i);
       return new Response(JSON.stringify({ output: [{ content: [{
         type: "output_text", text: JSON.stringify({
@@ -80,7 +80,11 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
     assert.equal(first.state.flags.stopped, false);
     assert.equal(first.state.owner, "ai");
     assert.equal(first.state.aiPaused, false);
-    assert.equal(first.state.answers.peteReplySource, "llm");
+    // Refusal is acknowledged deterministically, including the singular
+    // "Verkaufsnachricht". No model call is needed to respect this boundary.
+    assert.equal(first.state.answers.peteReplySource, "verified_transaction");
+    assert.doesNotMatch(first.text ?? "", /https?:|\?/i);
+    assert.equal(calls, 0);
     const state = getConversationState(id, DEFAULT_CAMPAIGN_ID);
     assert.ok(state);
     state.providerBooking = {
@@ -107,7 +111,8 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
     assert.ok(next.text);
     assert.equal(next.state.flags.salesFollowUpsOptedOut, true);
     assert.equal(next.state.owner, "ai");
-    assert.equal(calls, 2);
+    assert.equal(next.state.answers.peteReplySource, "llm");
+    assert.equal(calls, 1);
     assert.equal(evaluateProviderBookingFollowUp(next.state).dueNow, false);
   });
 

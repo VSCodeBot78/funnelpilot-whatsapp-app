@@ -14,6 +14,8 @@ export function describePeteReplySource(source) {
       return "Übergabe an einen Menschen (kein KI-Text)";
     case "llm_handoff":
       return "KI-Handoff oder Fehler, keine Modellantwort";
+    case "lab_error":
+      return "Technischer Laborfehler, keine Modellantwort oder persönliche Übergabe";
     case "safe_noncritical":
       return "Sichere Ersatzantwort (kein KI-Text)";
     default:
