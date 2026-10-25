@@ -403,12 +403,44 @@
       "model": "gpt-6.1-sol",
       "repository": "VSCodeBot78/funnelpilot-whatsapp-app",
       "usedMicroUsd": 0,
-      "reservedMicroUsd": 0,
-      "reservations": {},
+      "reservedMicroUsd": 2000000,
+      "reservations": {
+        "pete-qa-40230454652": {
+          "id": "pete-qa-40230454652",
+          "micro": 2000000,
+          "runId": "40230454652",
+          "testSet": "sales20",
+          "ownerGrantId": "qa-20261025-owner-sol-separate-3usd",
+          "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
+          "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+          "sourceSha": "c1966b24c20409c10dd6edaf7d24b09fd172b3a3",
+          "previousHistorySha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+          "bindingSha256": "a486f3de9bcb3a25906313fadd1aacfa71e53df6d7bccc7043698524ec8ceacd",
+          "status": "reserved"
+        }
+      },
       "batches": [],
-      "history": [],
+      "history": [
+        {
+          "kind": "reserve",
+          "ticket": {
+            "id": "pete-qa-40230454652",
+            "micro": 2000000,
+            "runId": "40230454652",
+            "testSet": "sales20",
+            "ownerGrantId": "qa-20261025-owner-sol-separate-3usd",
+            "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
+            "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+            "sourceSha": "c1966b24c20409c10dd6edaf7d24b09fd172b3a3",
+            "previousHistorySha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+            "bindingSha256": "a486f3de9bcb3a25906313fadd1aacfa71e53df6d7bccc7043698524ec8ceacd"
+          },
+          "previousSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+          "sha256": "8b8fd9f418646c22a8202a08f046b998fa4b3dc84daacacc47dd2ccfe719461a"
+        }
+      ],
       "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
-      "historySha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c"
+      "historySha256": "8b8fd9f418646c22a8202a08f046b998fa4b3dc84daacacc47dd2ccfe719461a"
     }
   }
 }
