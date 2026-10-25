@@ -54,6 +54,8 @@ jobs:
         run: npm --prefix ../dashboard ci --no-audit --no-fund
       - run: npm run build
       - run: npm run test:desktop
+      - name: Separate QA grant ledger and actual provider budget, no network
+        run: node --import tsx --test src/config/pete-qa-grant-runtime.test.ts ../scripts/pete-repeatable-qa-contract.test.mjs
       - name: V3 repair and research context regressions, mocked provider only
         run: node --import tsx --test src/config/pete-v3-integration.test.ts src/config/pete-real-qa-turn-guidance.test.ts
       - name: Real desktop session through Vite, no provider network

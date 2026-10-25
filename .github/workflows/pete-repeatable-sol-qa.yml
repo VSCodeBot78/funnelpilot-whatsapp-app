@@ -48,6 +48,7 @@ jobs:
         with:
           ref: pete-phase3-budget-ledger
           path: budget-ledger
+          fetch-depth: 0
           persist-credentials: true
       - name: Node 22
         uses: actions/setup-node@v4

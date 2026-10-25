@@ -37,7 +37,7 @@ if (path.resolve(process.cwd()) !== path.join(workspace, "backend") ||
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 const request = readJson(path.join(workspace, "qa", "pete-approved-test.json"));
 const catalog = readJson(path.join(workspace, "scripts", "pete-repeatable-qa-cases.json"));
-if (request.version !== 1 ||
+if (![1, 2].includes(request.version) ||
     !["sales20", "sales32", "focus15"].includes(request.testSet) ||
     catalog.version !== 1 ||
     !Array.isArray(catalog.known) || catalog.known.length !== 20 ||
