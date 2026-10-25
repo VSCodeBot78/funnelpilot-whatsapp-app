@@ -392,5 +392,23 @@
         "testSet": "sales20"
       }
     ]
+  },
+  "qaOwnerGrantsV1": {
+    "qa-20261025-owner-sol-separate-3usd": {
+      "grantId": "qa-20261025-owner-sol-separate-3usd",
+      "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
+      "approvalEvidenceUrl": "https://github.com/VSCodeBot78/funnelpilot-whatsapp-app/pull/191#issuecomment-6400728469",
+      "capMicroUsd": 3000000,
+      "purpose": "pete-synthetic-sol-qa",
+      "model": "gpt-6.1-sol",
+      "repository": "VSCodeBot78/funnelpilot-whatsapp-app",
+      "usedMicroUsd": 0,
+      "reservedMicroUsd": 0,
+      "reservations": {},
+      "batches": [],
+      "history": [],
+      "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+      "historySha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c"
+    }
   }
 }
