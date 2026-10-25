@@ -403,8 +403,22 @@
       "model": "gpt-6.1-sol",
       "repository": "VSCodeBot78/funnelpilot-whatsapp-app",
       "usedMicroUsd": 1622518,
-      "reservedMicroUsd": 0,
-      "reservations": {},
+      "reservedMicroUsd": 1200000,
+      "reservations": {
+        "pete-qa-40234425172": {
+          "id": "pete-qa-40234425172",
+          "micro": 1200000,
+          "runId": "40234425172",
+          "testSet": "focus15",
+          "ownerGrantId": "qa-20261025-owner-sol-separate-3usd",
+          "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
+          "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+          "sourceSha": "81691850f2e8f322885c4cd798f186f5bde80abd",
+          "previousHistorySha256": "8d90d8ebb3b2dcd67995ac2b5cccb9196e4cceba7e29ebcab4d1e4e69abf92ef",
+          "bindingSha256": "437c09965f3230b49a78e8deccc25624a1de5a8dcdfaff29f7355c67eac9b210",
+          "status": "reserved"
+        }
+      },
       "batches": [
         {
           "id": "pete-qa-40230454652",
@@ -448,10 +462,27 @@
           "receiptSha256": "be9c58123672dde79f5d9d2192bc958f4461bcef6d73e05686bcf3796a5848d8",
           "previousSha256": "8b8fd9f418646c22a8202a08f046b998fa4b3dc84daacacc47dd2ccfe719461a",
           "sha256": "8d90d8ebb3b2dcd67995ac2b5cccb9196e4cceba7e29ebcab4d1e4e69abf92ef"
+        },
+        {
+          "kind": "reserve",
+          "ticket": {
+            "id": "pete-qa-40234425172",
+            "micro": 1200000,
+            "runId": "40234425172",
+            "testSet": "focus15",
+            "ownerGrantId": "qa-20261025-owner-sol-separate-3usd",
+            "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
+            "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
+            "sourceSha": "81691850f2e8f322885c4cd798f186f5bde80abd",
+            "previousHistorySha256": "8d90d8ebb3b2dcd67995ac2b5cccb9196e4cceba7e29ebcab4d1e4e69abf92ef",
+            "bindingSha256": "437c09965f3230b49a78e8deccc25624a1de5a8dcdfaff29f7355c67eac9b210"
+          },
+          "previousSha256": "8d90d8ebb3b2dcd67995ac2b5cccb9196e4cceba7e29ebcab4d1e4e69abf92ef",
+          "sha256": "6c8402d53c3f42e4545ec9df335984dda1b929387c5b38d3317ffcdab1f389a2"
         }
       ],
       "approvalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c",
-      "historySha256": "8d90d8ebb3b2dcd67995ac2b5cccb9196e4cceba7e29ebcab4d1e4e69abf92ef"
+      "historySha256": "6c8402d53c3f42e4545ec9df335984dda1b929387c5b38d3317ffcdab1f389a2"
     }
   }
 }
