@@ -288,6 +288,8 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.ok(browse.text?.includes(OFFER_TRUTH.coachingEntry.infoUrl));
     assert.ok(!browse.text?.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
     assert.equal(providerCalls, 0);
+    const deniedInfo = "Ich möchte nicht den Link zu den allgemeinen Informationen.";
+    assert.equal(proposePeteNextStep(deniedInfo).nextStep, "none");
     const bookingText = "Bitte schick mir den Buchungslink.";
     assert.equal(guardPeteNextStep(proposePeteNextStep(bookingText),
       ctx(bookingText, { salesOptedOut: true })), null);
@@ -319,6 +321,10 @@ test("V3 action authorization on the original engine, mock provider only", async
       "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche keine Diagnose, aber ich habe starke Schmerzen und brauche Medikamente.");
     assert.equal(highRisk.state.owner, "human");
     assert.equal(highRisk.state.answers.peteReplySource, "guarded_safety");
+    const exerciseAdvice = await send("research-v3-16-exercise",
+      "Wegen meiner Hüfte bin ich beim Arzt. Ich brauche keine Diagnose, aber welche Übungen darf ich machen?");
+    assert.equal(exerciseAdvice.state.owner, "human");
+    assert.equal(exerciseAdvice.state.answers.peteReplySource, "guarded_safety");
   });
 
   await t.test("model_handoff remains a genuine handover, not a diagnostic or action", async () => {
