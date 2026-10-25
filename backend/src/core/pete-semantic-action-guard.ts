@@ -71,7 +71,12 @@ export function proposePeteNextStep(text: string): PeteNextStepProposal {
     (request && /\b(?:info(?:s|link)?|angebotslink|seite|details|methode(?:nlink)?)\b.{0,45}\b(?:schicken|senden|zeigen)\b/.test(s));
   const browsePurchaseRoute = /\blass\s+mich\b.{0,35}\b(?:sehen|schauen|gucken)\b/.test(s) &&
     /\bwo\b.{0,40}\bbuchen\b/.test(s) && !bookingTopic;
-  if (((browsing && offerTopic && request) || infoLinkRequest || browsePurchaseRoute) && !isOfferDeclined(s)) {
+  // An explicit inbound request for GENERAL information remains an information
+  // request, never a booking or a new permission for sales follow-ups.
+  const generalInfoLinkRequest = request && /\blink\b.{0,70}\binformation(?:en)?\b/.test(s) &&
+    !rejectsLinks(s);
+  if (((browsing && offerTopic && request) || infoLinkRequest || browsePurchaseRoute ||
+        generalInfoLinkRequest) && !isOfferDeclined(s)) {
     return { nextStep: "offer_info", evidenceQuote: text };
   }
   return { nextStep: "none", evidenceQuote: "" };
@@ -98,7 +103,7 @@ function trustedUrl(raw: string | undefined, hosts: readonly string[]): string |
 export function guardPeteNextStep(proposal: PeteNextStepProposal, ctx: PeteNextStepContext): PeteGuardedNextStep | null {
   if (!isPeteNextStepProposal(proposal) || proposal.nextStep === "none" ||
       ctx.owner === "human" || ctx.aiPaused || ctx.stopped || ctx.handoffActive ||
-      ctx.salesOptedOut || ctx.noQuestionsRequested) return null;
+      ctx.noQuestionsRequested) return null;
   // Exact quote of the LAST actual lead turn. Older turns, paraphrases, model
   // instructions, and confidence scores cannot grant action authority.
   if (!ctx.lastUserText.includes(proposal.evidenceQuote)) return null;
@@ -109,6 +114,13 @@ export function guardPeteNextStep(proposal: PeteNextStepProposal, ctx: PeteNextS
   // The model may select semantics, but cannot turn a negation, incidental
   // topic, medical appointment or quoted instruction into positive consent.
   const independent = proposePeteNextStep(ctx.lastUserText);
+  // Persistent opt-out forbids unsolicited selling and booking. It does NOT
+  // erase the person's right to request information in a NEW inbound message.
+  // Require an independently verified positive information intent on exactly
+  // this fresh user text; never clear or overwrite the persistent opt-out.
+  if (ctx.salesOptedOut &&
+      !(proposal.nextStep === "offer_info" && independent.nextStep === "offer_info"))
+    return null;
   if (independent.nextStep !== proposal.nextStep) {
     // Additional semantic paraphrases are admitted only with a positive,
     // independently visible request/acceptance for this specific subject.
