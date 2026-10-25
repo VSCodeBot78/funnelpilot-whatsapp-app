@@ -129,6 +129,7 @@ test("Separate QA grant: timeout, lost or wrong receipt retains the full reserva
   for (const bad of [null, {}, { ...good, requestsMetered: 0 },
     { ...good, qaGrant: { ...good.qaGrant, bindingSha256: "0".repeat(64) } },
     { ...good, confirmedMicroUsd: 0, committedMicroUsd: 0 },
+    { ...good, confirmedMicroUsd: 0, committedMicroUsd: 0, billedInputTokens: 0, billedOutputTokens: 0 },
     { ...good, billedInputTokens: -1 }, { ...good, accountingError: true },
     { ...good, pending: { unknown: { microUsd: 1 } } }]) {
     const result = settlePeteQaReservation(grantEnv(), held, bad);

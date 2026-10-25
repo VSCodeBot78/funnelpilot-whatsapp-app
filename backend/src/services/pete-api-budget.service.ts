@@ -595,6 +595,9 @@ export function settlePeteBudget(id: string, usage: unknown): boolean {
     const data = load();
     const pending = data.pending[id];
     if (!pending) return false;
+    // A real request contains a prompt. Zero input tokens cannot prove a
+    // free call; keep its reservation instead of allowing unlimited retries.
+    if (data.qaGrant && u.input_tokens === 0) return false;
     const pricing = priceFor(pending.model ?? MODEL);
     if (!pricing) throw new PeteBudgetStop("unavailable");
     const actualMicros = Math.ceil(u.input_tokens as number * pricing.input +

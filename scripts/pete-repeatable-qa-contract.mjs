@@ -336,7 +336,8 @@ function authenticGrantReceipt(receipt, held) {
       receipt.committedMicroUsd !== receipt.confirmedMicroUsd ||
       receipt.reservedMicroUsd !== 0 || !object(receipt.pending) ||
       Object.keys(receipt.pending).length !== 0 ||
-      !whole(receipt.billedInputTokens) || !whole(receipt.billedOutputTokens) ||
+      !whole(receipt.billedInputTokens) || receipt.billedInputTokens < receipt.requestsMetered ||
+      !whole(receipt.billedOutputTokens) ||
       receipt.confirmedMicroUsd !== receipt.billedInputTokens * 2 + receipt.billedOutputTokens * 10)
     return false;
   return true;

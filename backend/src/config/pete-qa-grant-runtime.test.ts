@@ -177,9 +177,10 @@ test("Separate QA grant is enforced by the actual provider service, no network",
     assert.equal(budget.settlePeteBudget(id, { input_tokens: 100, output_tokens: 20 }), true);
     assert.equal(budget.settlePeteBudget(id, { input_tokens: 100, output_tokens: 20 }), false);
   });
-  for (const kind of ["timeout", "missing usage", "excessive usage"]) await t.test(kind + " keeps its hold and forbids retry", async () => {
+  for (const kind of ["timeout", "missing usage", "zero-token usage", "excessive usage"]) await t.test(kind + " keeps its hold and forbids retry", async () => {
     reset(); calls = 0; timeout = kind === "timeout";
-    payloadUsage = kind === "missing usage" ? undefined : { input_tokens: 10_000_000, output_tokens: 20 };
+    payloadUsage = kind === "missing usage" ? undefined : kind === "zero-token usage"
+      ? { input_tokens: 0, output_tokens: 0 } : { input_tokens: 10_000_000, output_tokens: 20 };
     try {
       await getPeteLlmConversationReply(providerState());
       assert.equal(calls, 1);
