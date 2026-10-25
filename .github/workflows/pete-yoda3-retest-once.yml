@@ -10,12 +10,11 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: funnelpilot-pete-phase3-global-budget
-  cancel-in-progress: false
-
 jobs:
   pete-yoda3-real-qa:
+    concurrency:
+      group: funnelpilot-pete-phase3-global-budget
+      cancel-in-progress: false
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
       github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
