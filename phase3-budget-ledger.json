@@ -329,8 +329,15 @@
     "oldProjectCapMicroUsd": 8000000,
     "oldProjectSpendAtApprovalMicroUsd": 7817830,
     "usedMicroUsd": 3340942,
-    "reservedMicroUsd": 0,
-    "reservations": {},
+    "reservedMicroUsd": 1650000,
+    "reservations": {
+      "pete-qa-40197233847": {
+        "runId": "40197233847",
+        "holdMicroUsd": 1650000,
+        "testSet": "sales20",
+        "ownerApprovalRef": "owner:2026-10-25-work-go-v3-yoda-usd165"
+      }
+    },
     "batches": [
       {
         "id": "pete-v42-sol-20-cases-20261022-usd1",
