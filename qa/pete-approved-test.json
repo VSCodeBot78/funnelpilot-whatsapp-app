@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "budgetUsd": "2.00",
-  "testSet": "sales20",
+  "budgetUsd": "1.20",
+  "testSet": "focus15",
   "ownerGrantId": "qa-20261025-owner-sol-separate-3usd",
   "ownerApprovalRef": "owner:2026-10-25-separate-sol-3usd",
   "grantApprovalSha256": "94a0fb832eefdc4194f26c5f27a6a36bd82b63446763594609a4534157d3ce7c"
