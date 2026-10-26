@@ -1,0 +1,338 @@
+{
+  "baseSha": "74b3437ee385a1e122c9134c752944265f172369",
+  "resolverCommands": [
+    "npm install --save-dev --save-exact vite@6.4.5 --package-lock-only --ignore-scripts",
+    "npm audit fix --package-lock-only --ignore-scripts"
+  ],
+  "runtime": {
+    "node": "24.22.1",
+    "npm": "11.9.0"
+  },
+  "versions": {
+    "vite": {
+      "before": "5.4.21",
+      "after": "6.4.5"
+    },
+    "esbuild": {
+      "before": "0.21.5",
+      "after": "0.25.12"
+    },
+    "postcss": {
+      "before": "8.5.8",
+      "after": "8.5.31"
+    },
+    "@babel/core": {
+      "before": "7.29.0",
+      "after": "7.29.7"
+    },
+    "browserslist": {
+      "before": "4.28.1",
+      "after": "4.29.4"
+    },
+    "nanoid": {
+      "before": "3.3.11",
+      "after": "3.3.20"
+    },
+    "source-map-js": {
+      "before": "1.2.1",
+      "after": "1.2.2"
+    },
+    "baseline-browser-mapping": {
+      "before": "2.10.7",
+      "after": "2.11.33"
+    },
+    "@vitejs/plugin-react": {
+      "before": "4.7.0",
+      "after": "4.7.0"
+    },
+    "@axe-core/playwright": {
+      "before": "4.10.2",
+      "after": "4.10.2"
+    },
+    "@playwright/test": {
+      "before": "1.56.1",
+      "after": "1.56.1"
+    },
+    "axe-core": {
+      "before": "4.10.3",
+      "after": "4.10.3"
+    },
+    "playwright": {
+      "before": "1.56.1",
+      "after": "1.56.1"
+    },
+    "playwright-core": {
+      "before": "1.56.1",
+      "after": "1.56.1"
+    }
+  },
+  "qaLockEntriesUnchanged": [
+    "@axe-core/playwright",
+    "@playwright/test",
+    "axe-core",
+    "playwright",
+    "playwright-core"
+  ],
+  "frontendAudit": {
+    "before": {
+      "info": 0,
+      "low": 1,
+      "moderate": 2,
+      "high": 5,
+      "critical": 0,
+      "total": 8
+    },
+    "afterViteOnly": {
+      "info": 0,
+      "low": 1,
+      "moderate": 1,
+      "high": 4,
+      "critical": 0,
+      "total": 6
+    },
+    "final": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "finalExitCode": 0
+  },
+  "backendAudit": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 1,
+      "moderate": 1,
+      "high": 2,
+      "critical": 1,
+      "total": 5
+    },
+    "exitCode": 1,
+    "findings": {
+      "body-parser": {
+        "name": "body-parser",
+        "severity": "high",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1123977,
+            "name": "body-parser",
+            "dependency": "body-parser",
+            "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+            "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6",
+            "severity": "low",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 3.7,
+              "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": "<1.20.6"
+          },
+          {
+            "source": 1243073,
+            "name": "body-parser",
+            "dependency": "body-parser",
+            "title": "body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+            "url": "https://github.com/advisories/GHSA-27r3-jxmh-p828",
+            "severity": "high",
+            "cwe": [
+              "CWE-248"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<1.20.9"
+          }
+        ],
+        "effects": [],
+        "range": "<=1.20.8",
+        "nodes": [
+          "node_modules/body-parser"
+        ],
+        "fixAvailable": true
+      },
+      "esbuild": {
+        "name": "esbuild",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1120680,
+            "name": "esbuild",
+            "dependency": "esbuild",
+            "title": "esbuild allows arbitrary file read when running the development server on Windows",
+            "url": "https://github.com/advisories/GHSA-g7r4-m6w7-qqqr",
+            "severity": "low",
+            "cwe": [
+              "CWE-22"
+            ],
+            "cvss": {
+              "score": 2.5,
+              "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N"
+            },
+            "range": ">=0.27.3 <0.28.1"
+          }
+        ],
+        "effects": [],
+        "range": "0.27.3 - 0.28.0",
+        "nodes": [
+          "node_modules/esbuild"
+        ],
+        "fixAvailable": true
+      },
+      "path-to-regexp": {
+        "name": "path-to-regexp",
+        "severity": "high",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1115527,
+            "name": "path-to-regexp",
+            "dependency": "path-to-regexp",
+            "title": "path-to-regexp vulnerable to Regular Expression Denial of Service via multiple route parameters",
+            "url": "https://github.com/advisories/GHSA-37ch-88jc-xwx2",
+            "severity": "high",
+            "cwe": [
+              "CWE-1333"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<0.1.13"
+          }
+        ],
+        "effects": [],
+        "range": "<0.1.13",
+        "nodes": [
+          "node_modules/path-to-regexp"
+        ],
+        "fixAvailable": true
+      },
+      "proxy-addr": {
+        "name": "proxy-addr",
+        "severity": "critical",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1241210,
+            "name": "proxy-addr",
+            "dependency": "proxy-addr",
+            "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+            "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+            "severity": "critical",
+            "cwe": [
+              "CWE-290",
+              "CWE-348",
+              "CWE-697"
+            ],
+            "cvss": {
+              "score": 9.1,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+            },
+            "range": ">=1.1.0 <2.0.8"
+          }
+        ],
+        "effects": [],
+        "range": "1.1.0 - 2.0.7",
+        "nodes": [
+          "node_modules/proxy-addr"
+        ],
+        "fixAvailable": true
+      },
+      "qs": {
+        "name": "qs",
+        "severity": "moderate",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1119502,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs has a remotely triggerable DoS: qs.stringify crashes with TypeError on null/undefined entries in comma-format arrays when encodeValuesOnly is set",
+            "url": "https://github.com/advisories/GHSA-q8mj-m7cp-5q26",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-476"
+            ],
+            "cvss": {
+              "score": 5.3,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=6.11.1 <=6.15.1"
+          },
+          {
+            "source": 1158506,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs array-limit bypass via bracket-key comma parsing",
+            "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 3.7,
+              "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=6.14.2 <=6.15.3"
+          },
+          {
+            "source": 1158507,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+            "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-248",
+              "CWE-703"
+            ],
+            "cvss": {
+              "score": 5.3,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=2.2.5 <6.16.0"
+          }
+        ],
+        "effects": [],
+        "range": "2.2.5 - 6.15.3",
+        "nodes": [
+          "node_modules/qs"
+        ],
+        "fixAvailable": true
+      }
+    }
+  },
+  "localTests": {
+    "frontend": 102,
+    "previewUnits": 18,
+    "backend": 520,
+    "desktop": 17,
+    "relayStarterSafety": 25,
+    "failed": 0,
+    "skipped": 0,
+    "chromium": {
+      "startTime": "2026-10-26T11:31:05.754Z",
+      "duration": 29167.066,
+      "expected": 24,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "axeScans": 64,
+    "axeViolations": 0,
+    "npmCi": "pass",
+    "npmLsAll": "pass",
+    "defaultOffBundle": "pass"
+  },
+  "sourceSha256": {
+    "dashboard/package.json": "d4bf06849a2f18329dd819861f308eb46fab465f3a818ff77e4a35b5279d7b2f",
+    "dashboard/package-lock.json": "32a28b263ad8a74ef8a6ab6df0380cbedda647becfbb416a03946ae1699a4987"
+  }
+}
