@@ -8,9 +8,10 @@
 import { OFFER_TRUTH, isUnverifiedLongTermPriceQuestion,
   LONG_TERM_PRICE_UNVERIFIED_REPLY } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
+import { getConversationState } from "../data/store.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 import { hasPeteMedicalSafetySignal, evaluatePeteRuntimeSafety } from "./pete-runtime-safety.js";
-import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
+import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, isPeteBookingCancellationRequest, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
 
 /** Founder configuration only. No model, browser or lead supplies hosts/URLs.
  * A future tenant adapter must provide its own authenticated configuration.
@@ -19,6 +20,15 @@ export function getPeteGuardedNextStep(
   text: string, state: ConversationState, bookingUrl?: string,
   proposal?: PeteNextStepProposal,
 ) {
+  // A pending model call can retain an obsolete object after a store update.
+  // Recheck action authority against the current persisted record, including
+  // an opt-out that did not itself transfer human ownership.
+  const current = getConversationState(state.leadId, state.campaignId);
+  if (current && current !== state) {
+    const lastLead = [...current.messages].reverse().find(message => message.role === "user");
+    if (lastLead?.text !== text) return null;
+    state = current;
+  }
   if (!state.flags) return null;
   const messages = state.messages ?? [];
   const lastLead = [...messages].reverse().find(message => message.role === "user");
@@ -26,7 +36,11 @@ export function getPeteGuardedNextStep(
   const previous = messages.slice(0, Math.max(0, lastLeadIndex));
   const lastAssistant = [...previous].reverse().find(message => message.role === "assistant");
   const latestBookingChoice = previous.filter(message => message.role === "user").slice(-6).reverse()
-    .find(message => isPeteBookingDeclined(message.text) || proposePeteNextStep(message.text).nextStep === "booking");
+    .find(message => isPeteBookingDeclined(message.text) ||
+      guardPeteNextStep(proposePeteNextStep(message.text), {
+        lastUserText: message.text, bookingUrl,
+        bookingHosts: ["calendly.com"], offerInfoHosts: [],
+      })?.nextPhase === "booking_offered");
   const bookingRequestActive = Boolean(latestBookingChoice && !isPeteBookingDeclined(latestBookingChoice.text) &&
     lastAssistant?.text.includes("?") && /\b(?:wann|erreichbar|welche.{0,20}zeit)\b/i.test(lastAssistant.text));
   const inferred = proposePeteNextStep(text);
@@ -104,6 +118,17 @@ export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
   const input = norm(text);
+  if (isPeteBookingCancellationRequest(text)) {
+    return { text: "Eine Terminabsage oder Änderung muss über die tatsächliche Buchung geklärt werden. Ich pausiere Pete und gebe den Vorgang an Jochen weiter, ohne eine Stornierung oder einen neuen Termin zu bestätigen.", handoff: true };
+  }
+  // Explicit ownership and an actual payment incident precede every FAQ or
+  // link, including mixed requests. No changes to the research model module.
+  if (/\bjochen\s+(?:(?:soll|kann|konnte)\s+)?(?:(?:bitte|hier|jetzt|personlich|den|diesen|chat|im)\s+){0,7}(?:ubernehm\w*|ubernimm\w*)\b/.test(input)) {
+    return { text: "Verstanden. Pete pausiert hier. Jochen kann den Chat persönlich übernehmen.", handoff: true };
+  }
+  if (/\b(?:doppelt|zweimal|zwei\s+mal)\b.{0,35}\b(?:abgebucht|bezahlt|belastet)\b|\b(?:abgebucht|bezahlt|belastet)\b.{0,35}\b(?:doppelt|zweimal|zwei\s+mal)\b/.test(input)) {
+    return { text: "Eine mögliche doppelte Abbuchung muss Jochen anhand der tatsächlichen Zahlung prüfen. Ich gebe den Vorgang zur persönlichen Klärung weiter, ohne eine Zahlung oder Erstattung zu bestätigen.", handoff: true };
+  }
   // Exact source keywords are verified resource requests, including when
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.
@@ -159,6 +184,20 @@ export function getPeteVerifiedTransactionAnswer(
   const previousSelfstarterSelected =
     /\bselbststarter\b/.test(lastOfferText) &&
     !/\b(?:5[\s-]*wochen|startphase|499)\b/.test(lastOfferText);
+  // The 14.95 EUR DIY product has NO verified one-to-one chat-support promise.
+  // Give confirmed facts without escalating a harmless scope question into a
+  // persistent human-owned state; payments, privacy and health remain gated.
+  const asksDiyChatSupport =
+    /\b(?:chat[\s-]*support|chat[\s-]*betreuung|nachrichten[\s-]*support|support\s+(?:im|per)\s+chat)\b/.test(input) &&
+    /\b(?:bekomm\w*|gibt|enthalten|dabei|inklusive|inbegriffen|drin|gehor\w*|bietet|vorhanden)\b/.test(input) &&
+    (/\b(?:selbststarter|14[,.]95|14\s+euro\s+95|diy)\b/.test(input) || previousSelfstarterSelected) &&
+    !/\b(?:rechnung\w*|zahlung\w*|bezahlt|abbuch\w*|doppelt|ruckzahl\w*|erstatt\w*|widerruf\w*|vertrag\w*|datenschutz|dsgvo|losch\w*|diagnos\w*|medikament\w*|therapie\w*|arzt|notfall)\b/.test(input);
+  if (asksDiyChatSupport && !explicitlyDeclinesPaidOffers) {
+    return { text: "Beim Selbststarter ist die eigenständige Nutzung bestätigt. " +
+      "Ob persönlicher Chat-Support dazugehört, ist in den geprüften Angaben nicht verbindlich bestätigt. " +
+      "Erweiterter Chat-Support gehört dagegen zu den bestätigten Leistungen der persönlichen 5-Wochen-Begleitung.",
+      nextPhase: "info" };
+  }
   if (!explicitlyDeclinesPaidOffers &&
       (/\bselbststarter\b/.test(input) || previousSelfstarterSelected) &&
       /\b(?:zoom|video(?:-termin|-call)?|1:1|einzelcoaching)\b/.test(input) &&

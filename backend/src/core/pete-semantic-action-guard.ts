@@ -30,9 +30,14 @@ export type PeteGuardedNextStep = {
 const norm = (s: string) => s.toLocaleLowerCase("de-DE").normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss").replace(/\s+/g, " ").trim();
 
+export function isPeteBookingCancellationRequest(text: string): boolean {
+  return /\b(?:termin\w*|buchung)\b.{0,45}\b(?:absagen|abzusagen|stornier\w*|verschieb\w*)\b/.test(norm(text));
+}
+
 export function isPeteBookingDeclined(text: string): boolean {
   const s = norm(text);
-  return /\bkein(?:e|en)?\s+(?:(?:weiteren?|neuen?|telefonischen?|solchen?|freien?|verfugbaren?|bestatigten?)\s+){0,3}(?:termin\w*|buchungslink|terminlink|kalenderlink|gesprach\w*|telefonat\w*|anruf\w*)\b/.test(s) ||
+  return isPeteBookingCancellationRequest(text) ||
+    /\bkein(?:e|en)?\s+(?:(?:weiteren?|neuen?|telefonischen?|solchen?|freien?|verfugbaren?|bestatigten?)\s+){0,3}(?:termin\w*|buchungslink|terminlink|kalenderlink|gesprach\w*|telefonat\w*|anruf\w*)\b/.test(s) ||
     /\b(?:bevor|ehe)\b.{0,90}\b(?:termin|gesprach|telefonat|telefonieren)\b/.test(s) ||
     /\berst\b.{0,65}\b(?:verstehen|klaren|besprechen|nachdenken|uberlegen)\b/.test(s) ||
     /\b(?:nicht|nie|niemals)\s+(?:(?:mehr|jetzt|gerade|telefonisch|mit\s+jochen)\s+){0,3}(?:telefonieren|anrufen|angerufen|sprechen|buchen)\b/.test(s) ||
@@ -52,17 +57,73 @@ function rejectsLinks(s: string): boolean {
     /\b(?:link|methodenlink|infolink|angebotslink)\s+(?:(?:bitte|jetzt|heute|gerade|lieber)\s+){0,3}nicht\s+(?:schicken|senden|zeigen)\b/.test(s);
 }
 
+/** Only classify positive requests to *see* a verified calendar URL. */
+function isPeteRejectedOrHypotheticalLink(s: string): boolean {
+  return /\b(?:theoretisch|hypothetisch|angenommen|als\s+beispiel|nur\s+ein\s+beispiel)\b/.test(s) ||
+    /\b(?:wenn|falls)\s+(?:ich|wir)\b.{0,100}\b(?:wollte\w*|wurde\w*|hatte\w*|konnte\w*)\b/.test(s) ||
+    /\b(?:nicht|kein\w*)\s+(?:(?:mehr|bitte|den|einen|diesen)\s+){0,3}(?:link|kalender|terminkalender|buchungslink|terminlink|kalenderlink|buchungsseite)\b/.test(s) ||
+    /\b(?:nicht|kein\w*)\s+(?:mehr\s+)?(?:zu\s*)?(?:schick\w*|send\w*|zeig\w*)\b/.test(s) ||
+    /\b(?:link|kalender|buchungsseite)\b.{0,28}\b(?:nicht|kein\w*)\s+(?:zu\s*)?(?:schick\w*|send\w*|zeig\w*)\b/.test(s) ||
+    /\bnicht\s+wo\b.{0,90}\b(?:buchungslink|terminlink|kalenderlink|buchungsseite|terminkalender)\b/.test(s) ||
+    /\b(?:buchungslink|terminlink|kalenderlink|buchungsseite)\b.{0,60}\b(?:nicht|kein\w*)\s+(?:(?:mehr|wirklich|haben|bekommen)\s+)?(?:mochte\w*|brauche\w*|will|haben|bekommen)\b/.test(s) ||
+    /\bohne\b.{0,42}\b(?:ihn|link|kalenderlink|buchungslink)\b.{0,20}\b(?:zu\s+)?(?:bekommen|erhalten|sehen)\b/.test(s);
+}
+function hasPeteExplicitBookingWish(s: string): boolean {
+  return /\b(?:(?:ich|wir)\s+(?:(?:jetzt|direkt|gern|gerne|bitte)\s+)?(?:will|wollen|mochte\w*|wurde\w*|hatte\w*|brauche\w*)|(?:will|wollen|mochte\w*|wurde\w*|hatte\w*|brauche\w*)\s+(?:ich|wir))\b.{0,55}\b(?:einen?\s+(?:telefon)?termin|ein\s+(?:gesprach|telefonat))\b/.test(s);
+}
+function isPetePassiveBookingLinkRequest(s: string): boolean {
+  const urlWords = /\b(?:buchungslink|terminlink|kalenderlink|terminkalender|buchungsseite|kalender)\b/;
+  const lookup = /\b(?:wo|wohin|auf\s+welcher|wie\s+komme|wie\s+finde|wie\s+gelange)\b.{0,85}\b(?:buchungslink|terminlink|kalenderlink|terminkalender|buchungsseite|kalender)\b/.test(s) ||
+    /\b(?:schick\w*|sende\w*|zeig\w*|gib)\b.{0,40}\b(?:buchungslink|terminlink|kalenderlink|terminkalender|kalender)\b/.test(s) ||
+    /\b(?:wie\s+(?:kann|konnte)\s+ich|(?:kann|konnte)\s+ich)\b.{0,75}\b(?:kalender|terminkalender|buchungsseite)\b.{0,55}\b(?:ansehen|anschauen|durchsehen|sehen|offnen)\b/.test(s) ||
+    /\b(?:kannst|konntest|konnte|kann)\b.{0,75}\b(?:buchungslink|terminlink|kalenderlink|terminkalender)\b.{0,24}\b(?:schick\w*|send\w*|zeig\w*)\b/.test(s) ||
+    /\b(?:gibt\s+es|hast\s+du|kann\s+ich)\b.{0,55}\b(?:buchungslink|terminlink|kalenderlink|buchungsseite|terminkalender)\b/.test(s) ||
+    (/\bkalender\b.{0,70}\b(?:wo\s+(?:ware|ist)|wie\s+finde)\b.{0,35}\blink\b/.test(s) && urlWords.test(s));
+  const explicitBookingVerb = (hasPeteExplicitBookingWish(s) &&
+    /\b(?:termin|telefontermin|gesprach|telefonat)\b.{0,45}\b(?:buchen|vereinbaren|ausmachen)\b/.test(s)) ||
+    /\b(?:bitte|jetzt)\s+(?:einen?\s+)?(?:termin|gesprach|telefonat)\s+(?:buchen|vereinbaren|ausmachen)\b/.test(s);
+  const activeBooking = explicitBookingVerb || hasPeteExplicitBookingWish(s);
+  // Only offer Jochen's calendar. Foreign/personal appointment resources
+  // and discussions of viewing an appointment are not a booking consent.
+  const personalCalendar = /\b(?:mein(?:e|en|em|er)?|unser(?:e|en|em|er)?|kita|schule|dienstplan)\b.{0,18}\bkalender\b|\bfamilienkalender\b/.test(s);
+  const unrelatedCalendar = /\b(?:kalender|terminkalender)\b.{0,25}\b(?:fur\s+(?:die|den|das|meine|meinen|unseren)?\s*)?(?:schule|elternabend|kita|friseur|frisor|frisur|arzt|zahnarzt)\b/.test(s) ||
+    /\b(?:buchungslink|terminlink|kalenderlink)\b.{0,30}\b(?:fur|zum|beim)\s+(?:(?:den|die|das|meinen|unsere)\s+)?(?:arzt|zahnarzt|friseur|frisor|frisur|kita|schule|elternabend)\b/.test(s) ||
+    /\b(?:arzttermin|zahnarzttermin|kinderarzttermin)\b/.test(s);
+  const viewingOnly = /\b(?:termin|kalender|buchungsseite|termine)\b.{0,28}\b(?:nur\s+)?(?:ansehen|anschauen|durchsehen|durchschauen)\b/.test(s) ||
+    /\b(?:nur|erst|zuerst|vorher|unverbindlich)\b.{0,45}\b(?:ansehen|anschauen|durchsehen|durchschauen)\b/.test(s);
+  const speculative = /\b(?:spater|irgendwann|vielleicht|eventuell|unter\s+umstanden)\b/.test(s) &&
+    !/\b(?:jetzt|direkt|heute)\b/.test(s);
+  return lookup && (!activeBooking || speculative || (viewingOnly && !explicitBookingVerb)) &&
+    !personalCalendar && !unrelatedCalendar && !isPeteUnrelatedCalendarRequest(s) &&
+    !isPeteRejectedOrHypotheticalLink(s);
+}
+/** Unrelated calendars are NEVER authority for Pete booking actions. */
+function isPeteUnrelatedCalendarRequest(s: string): boolean {
+  const directJochenBooking = hasPeteExplicitBookingWish(s) &&
+    /\b(?:termin|telefontermin|telefonat|gesprach)\b.{0,45}\b(?:buchen|vereinbaren|ausmachen)\b/.test(s) &&
+    /\b(?:termin|telefontermin|telefonat|gesprach)\b.{0,25}\bmit\s+jochen\b|\bmit\s+jochen\b.{0,30}\b(?:termin|telefontermin|telefonat|gesprach)\b|\b(?:strategiegesprach|erstgesprach)\b/.test(s);
+  if (directJochenBooking) return false;
+  return /\b(?:mein(?:e|en|em|er)?|unser(?:e|en|em|er)?|familien|schul|kita|dienst|arbeits)\s*(?:kalender|terminkalender|kalenderlink|buchungslink)\b/.test(s) ||
+    /\b(?:termin\w*|gesprach|telefonat)\b.{0,40}\b(?:fur|von|vom|zum|bei|beim|in)\b.{0,25}\b(?:schule|elternabend|kita|friseur|frisor|frisur|arzt|zahnarzt|kinderarzt)\b/.test(s) ||
+    /\b(?:kalender|terminkalender|buchungslink|terminlink|kalenderlink|buchungsseite)\b.{0,55}\b(?:fur|von|vom|zum|bei|aus)\b.{0,35}\b(?:schule|elternabend|kita|friseur|frisor|frisur|arzt|zahnarzt|kinderarzt)\b/.test(s) ||
+    /\b(?:schule|elternabend|kita|friseur|frisor|frisur|arzt|zahnarzt|kinderarzt)\b.{0,55}\b(?:kalender|terminkalender|buchungslink|terminlink|kalenderlink|buchungsseite)\b/.test(s);
+}
 /** High-precision free-text entry to the same guard, never a second engine. */
 export function proposePeteNextStep(text: string): PeteNextStepProposal {
   const s = norm(text);
   const request = /\b(?:ich|wir)\s+(?:(?:wurde|wurden)\s+)?(?:will|wollen|mochte\w*|hatte\w*|hatten|ware\w*)\b|\b(?:bitte|gerne|gern|schick\w*|sende\w*|zeig\w*|gib|konnen\s+wir|konnten\s+wir|(?:kann|konnte)\w*\s+(?:ich|du)|wo\s+finde|wie\s+finde|wie\s+bekomme|wann\s+kann|wann\s+konnen)\b/.test(s);
-  const bookingTopic = /\b(?:termin\w*|telefontermin|telefonat|telefonisch\w*|telefonieren|strategiegesprach|erstgesprach|buchungslink|terminlink|kalenderlink|kalender)\b/.test(s);
+  const bookingTopic = /\b(?:termin\w*|telefontermin|telefonat|telefonisch\w*|telefonieren|strategiegesprach|erstgesprach|buchungslink|terminlink|kalenderlink|kalender|terminkalender|buchungsseite)\b/.test(s);
   const bookingQuestion = /\b(?:was|wie|warum|wieso|wie\s+lange)\b.{0,55}\b(?:passiert|lauft|ablauf|dauert|kostet|funktioniert|notwendig|pflicht)\b/.test(s) ||
     /\b(?:ablauf|dauer|pflichttermin|pflichtcall)\b/.test(s);
   const unrelatedAppointment = /\b(?:arzttermin|zahnarzt|arzt|zahnarzttermin|kinderarzt|therapeut\w*)\b/.test(s);
   const bookingAcceptance = bookingTopic && /\b(?:ware|ist|klingt)\b.{0,25}\b(?:super|gut|passend)\b/.test(s) &&
     !/\b(?:nicht|kein\w*)\b.{0,25}\b(?:super|gut|passend)\b/.test(s);
-  if ((request || bookingAcceptance) && bookingTopic && !bookingQuestion && !unrelatedAppointment && !isPeteBookingDeclined(text)) {
+  // A neutral question about where the calendar/link is does not authorize a booking
+  // status, automated follow-up, or a promise of an available appointment.
+  const asksWhereLinkIs = isPetePassiveBookingLinkRequest(s);
+  if ((request || hasPeteExplicitBookingWish(s) || bookingAcceptance || asksWhereLinkIs) && bookingTopic && !bookingQuestion &&
+      !unrelatedAppointment && !isPeteBookingDeclined(text) &&
+      !isPeteRejectedOrHypotheticalLink(s) && !isPeteUnrelatedCalendarRequest(s)) {
     return { nextStep: "booking", evidenceQuote: text };
   }
   const browsing = /\b(?:anschauen|ansehen|angucken|nachlesen|durchlesen|nachschauen|informieren|in\s+ruhe\s+lesen)\b/.test(s);
@@ -110,6 +171,9 @@ export function guardPeteNextStep(proposal: PeteNextStepProposal, ctx: PeteNextS
   // instructions, and confidence scores cannot grant action authority.
   if (!ctx.lastUserText.includes(proposal.evidenceQuote)) return null;
   const s = norm(ctx.lastUserText);
+  if (proposal.nextStep === "booking" &&
+      (isPeteRejectedOrHypotheticalLink(s) || isPeteUnrelatedCalendarRequest(s) ||
+       isPeteBookingDeclined(ctx.lastUserText))) return null;
   if (isOfferDeclined(s) || rejectsLinks(s) || /^(?:stop|stopp)[.!\s]*$/.test(s) ||
       /\b(?:nicht\s+mehr\s+anschreiben|keine\s+nachrichten\s+mehr|lass\s+mich\s+in\s+ruhe)\b/.test(s)) return null;
   if (/\b(?:nextstep|evidencequote|systemanweisung|ignoriere|json|nur\s+ein\s+beispiel|als\s+zitat)\b/.test(s)) return null;
@@ -139,6 +203,14 @@ export function guardPeteNextStep(proposal: PeteNextStepProposal, ctx: PeteNextS
   if (proposal.nextStep === "booking") {
     const url = trustedUrl(ctx.bookingUrl, ctx.bookingHosts);
     if (!url) return null;
+    if (isPetePassiveBookingLinkRequest(s)) {
+      // Link-only reply: NO nextPhase, NO wantsBooking, NO providerBooking,
+      // NO linkSentAt, NO booking reminder. Engine changes state only for
+      // the explicit booking_offered phase; retain every guard above.
+      return { nextStep: "booking", outboundAuthorized: false,
+        text: "Den Terminkalender findest du hier: " + url +
+          " Die dort verfügbaren Zeiten kannst du unverbindlich ansehen." };
+    }
     return { nextStep: "booking", nextPhase: "booking_offered", outboundAuthorized: false,
       text: "Hier kannst du selbst einen Termin für ein Strategiegespräch mit Jochen auswählen: " + url +
         " Die verfügbaren Zeiten stehen im Kalender. Ein Termin ist erst nach der Buchungsbestätigung vereinbart." };

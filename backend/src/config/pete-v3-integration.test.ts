@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,6 +9,7 @@ import test from "node:test";
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fp-v3-integration-"));
 Object.assign(process.env, { NODE_ENV: "test", DATA_DIR: temp,
   INSTAGRAM_ENGINE_ENABLED: "false", INSTAGRAM_SEND_ENABLED: "false", WHATSAPP_SEND_ENABLED: "false",
+  CALENDLY_WEBHOOK_SECRET: "SYNTHETIC-v5-webhook-secret", CALENDLY_WEBHOOK_VERIFY_MODE: "strict",
   PETE_LLM_CONVERSATION_ENABLED: "true", PETE_LLM_API_CALLS_APPROVED: "true",
   OPENAI_MODEL: "gpt-6.1-sol", OPENAI_API_KEY: "SYNTHETIC-never-network" });
 const { guardPeteNextStep, proposePeteNextStep } = await import("../core/pete-semantic-action-guard.js");
@@ -18,6 +21,7 @@ const { getPeteGuardedNextStep, isGeneralNonMedicalKnowledgeRequest } = await im
 const { evaluateGhostingState } = await import("../services/ghosting.service.js");
 const { evaluateProviderBookingFollowUp } = await import("../services/provider-booking.service.js");
 const { evaluateLatestAiOutboundPermission } = await import("../services/ai-outbound-guard.service.js");
+const { markProviderBookingBooked, markProviderFollowUpAsSent } = await import("../services/provider-booking.service.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { OFFER_TRUTH } = await import("./offer-truth.js");
 const { peteLabTechnicalFailure } = await import("../core/pete-lab-failure-contract.js");
@@ -32,6 +36,26 @@ const modelPayload = (reply: string, nextStep = "none", evidenceQuote = "", need
   usage: { input_tokens: 100, output_tokens: 20 },
   output: [{ content: [{ type: "output_text", text: JSON.stringify({ reply, needsHuman, nextStep, evidenceQuote }) }] }],
 });
+const restoredBookingState = (leadId: string, at: number) => {
+  // Real process restart: load the existing private store and service from
+  // disk in a fresh Node process. No copied or simulated transition rules.
+  const script = `
+    globalThis.fetch = async () => { throw Error("restart_provider_network_forbidden"); };
+    const { getConversationState } = await import(${JSON.stringify(new URL("../data/store.js", import.meta.url).href)});
+    const { evaluateProviderBookingFollowUp } = await import(${JSON.stringify(new URL("../services/provider-booking.service.js", import.meta.url).href)});
+    const state = getConversationState(${JSON.stringify(leadId)}, ${JSON.stringify(campaignId)});
+    if (!state) throw Error("restart_state_missing");
+    process.stdout.write(JSON.stringify({ state, evaluations: [0, 6, 24, 48, 72].map(hours =>
+      evaluateProviderBookingFollowUp(state, new Date(${at} + hours * 3600000))) }));
+  `;
+  const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script], {
+    encoding: "utf8", timeout: 15000,
+    env: { ...process.env, PETE_LLM_API_CALLS_APPROVED: "false", OPENAI_API_KEY: "" },
+  });
+  assert.equal(child.status, 0, child.error?.message ?? child.stderr);
+  return JSON.parse(child.stdout) as { state: ReturnType<typeof getOrCreateConversationState>;
+    evaluations: ReturnType<typeof evaluateProviderBookingFollowUp>[] };
+};
 
 test("V3 action authorization on the original engine, mock provider only", async t => {
   const nativeFetch = globalThis.fetch;
@@ -91,6 +115,217 @@ test("V3 action authorization on the original engine, mock provider only", async
     assert.equal(out.state.flags.wantsBooking, false);
     assert.equal(out.state.answers.peteReplySource, "verified_transaction");
     assert.equal(calls, before);
+  });
+
+  // Freely phrased enquiries must not create a booking-triggered follow-up.
+  for (const msg of [
+    "Wo wäre der Buchungslink? Ich kann freitags nicht.",
+    "Auf welcher Buchungsseite finde ich die Zeiten?",
+    "Wo ist der Terminkalender?",
+    "Wie komme ich zum Kalender, wenn ich selbst schauen will?",
+    "Bitte schick mir den Kalenderlink.",
+  ]) await t.test("Yoda passive calendar lookup is link-only: " + msg, async () => {
+    const before = calls;
+    const out = await send("yoda-passive-" + before + "-" + msg.length, msg);
+    assert.ok(out.text?.includes(bookingUrl), msg);
+    assert.equal(out.state.flags.wantsBooking, false);
+    assert.notEqual(out.state.providerBooking?.status, "awaiting_booking");
+    assert.equal(out.state.providerBooking?.linkSentAt, undefined);
+    assert.equal(evaluateProviderBookingFollowUp(out.state).shouldActivate, false);
+    assert.equal(calls, before);
+  });
+  for (const msg of [
+    "Wo wäre der Buchungslink, den du nicht schicken sollst?",
+    "Wo wäre der Buchungslink? Nur theoretisch, bitte nicht zuschicken.",
+    "Wo ist mein Kinderarzttermin?",
+  ]) await t.test("Yoda denied or unrelated links stay denied: " + msg, () => {
+    assert.notEqual(proposePeteNextStep(msg).nextStep, "booking");
+  });
+  await t.test("Yoda verified DIY support uncertainty does not seize human ownership", async () => {
+    const before = calls;
+    const id = "yoda-14eur-support";
+    const first = await send(id, "Beim Selbststarter für 14,95 Euro, gibt es persönlichen Chat-Support dazu?");
+    assert.equal(first.state.owner, "ai");
+    assert.equal(first.state.aiPaused, false);
+    assert.match(first.text!, /nicht verbindlich bestätigt/i);
+    const next = await send(id, "Kann ich stattdessen erst die Methode nachlesen?");
+    assert.notEqual(next.replySuppressedReason, "human_owned");
+    assert.equal(next.state.owner, "ai");
+    assert.equal(calls, before);
+  });
+
+  // These exercise the actual engine and persisted booking service, rather
+  // than the review package's simulated state transition.
+  const assertNoBooking = (state: ReturnType<typeof getOrCreateConversationState>) => {
+    assert.notEqual(state.answers.naturalPhase, "booking_offered");
+    assert.equal(state.flags.wantsBooking, false);
+    assert.equal(state.providerBooking?.linkSentAt, undefined);
+    for (const hours of [0, 6, 24, 48, 72]) {
+      const evaluation = evaluateProviderBookingFollowUp(state,
+        new Date(Date.now() + hours * 3600000));
+      assert.equal(evaluation.shouldActivate, false);
+      assert.equal(evaluation.dueNow, false);
+    }
+  };
+  for (const [i, text] of [
+    "Wie kann ich den Kalender ansehen?",
+    "Kann ich den Kalender erst unverbindlich ansehen?",
+    "Schick mir den Kalender.",
+    "Kannst du mir bitte den Buchungslink zeigen?",
+    "Schickst du mir den Kalenderlink, damit ich die freien Zeiten in Ruhe ansehen kann?",
+    "Ich möchte mir den Kalender unverbindlich ansehen, wo wäre der Link?",
+    "Ich hätte gern einen Termin nur zum Anschauen. Wo finde ich den Kalender?",
+    "Ich würde später vielleicht einen Termin machen, wo ist der Buchungslink?",
+    "Bitte schick mir den Buchungslink zum Anschauen, nicht zum Buchen.",
+  ].entries()) await t.test("V5 full-engine passive link and 72h follow-up: " + text, async () => {
+    const before = calls;
+    const out = await send("v5-passive-full-" + i, text);
+    assert.ok(out.text?.includes(bookingUrl), out.text ?? "missing reply");
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+    assertNoBooking(out.state);
+    const disk = JSON.parse(fs.readFileSync(path.join(temp, "conversations.json"), "utf8"));
+    assertNoBooking(disk[campaignId + "::" + out.state.leadId]);
+    assert.equal(calls, before);
+  });
+  for (const [i, text] of [
+    "Schick mir bitte den Kalender für die Schule.",
+    "Kannst du mir meinen Kalender zeigen?",
+    "Schickst du mir den Kalender vom Elternabend?",
+    "Kann ich den Terminkalender vom Friseur haben?",
+    "Bitte gib mir unseren Kalender.",
+    "Kannst du mir den Kalender für die Kita zeigen?",
+    "Schick mir den Buchungslink für den Kinderarzt.",
+    "Bitte schick mir den privaten Familienkalender.",
+    "Bitte nicht den Terminkalender schicken.",
+    "Schick mir nicht den Kalenderlink.",
+    "Nur theoretisch: Ich möchte einen Termin buchen. Wo ist der Kalender?",
+    "Wenn ich einen Termin buchen wollte, wo wäre der Kalender?",
+    "Angenommen, ich möchte einen Termin. Schick mir den Kalender.",
+    "Ich möchte keinen Termin. Wo ist der Kalenderlink?",
+    "Ich will keinen Termin für Jochen buchen, schick mir den Schulkalender.",
+    "Ich möchte einen Termin absagen. Wo ist der Kalenderlink?",
+    "Bitte vereinbare einen Termin beim Friseur.",
+    "Ich möchte einen Termin beim Friseur vereinbaren, Jochen hat mir das empfohlen.",
+  ].entries()) await t.test("V5 full-engine denied/foreign calendar: " + text, async () => {
+    const out = await send("v5-foreign-full-" + i, text);
+    assert.ok(!out.text?.includes(bookingUrl));
+    assertNoBooking(out.state);
+    assert.equal(guardPeteNextStep({ nextStep: "booking", evidenceQuote: text }, ctx(text)), null);
+  });
+  for (const [i, text] of [
+    "Ich möchte einen Termin buchen. Wo finde ich den Kalender?",
+    "Ich hätte gern einen Termin. Wo finde ich den Buchungslink?",
+    "Ich möchte direkt einen Telefontermin buchen. Wo finde ich den Buchungslink?",
+    "Nach dem Elternabend möchte ich jetzt einen Termin mit Jochen vereinbaren. Wo ist der Kalender?",
+    "Ich will mit Jochen einen Termin vereinbaren. Mein Kalender ist zwar voll.",
+  ].entries()) await t.test("V5 full-engine explicit intent retains booking path: " + text, async () => {
+    const before = calls;
+    const out = await send("v5-active-full-" + i, text);
+    assert.ok(out.text?.includes(bookingUrl));
+    assert.equal(out.state.flags.wantsBooking, true);
+    assert.equal(out.state.answers.naturalPhase, "booking_offered");
+    assert.equal(out.state.providerBooking?.status, "awaiting_booking");
+    assert.ok(out.state.providerBooking?.linkSentAt);
+    assert.notEqual(out.state.providerBooking?.status, "booked");
+    assert.match(out.text!, /erst nach der Buchungsbestätigung/);
+    const at = Date.parse(out.state.providerBooking!.linkSentAt!);
+    assert.equal(evaluateProviderBookingFollowUp(out.state, new Date(at + 6 * 3600000)).stage, "reminder_6h");
+    assert.equal(calls, before);
+  });
+  await t.test("V5 passive history and availability never create retrospective booking consent", async () => {
+    const lead = "v5-no-retroactive-booking";
+    const state = getOrCreateConversationState(lead, campaignId);
+    appendUserMessage(state, "Bitte schick mir den Kalenderlink.");
+    appendAssistantMessage(state, "Wann bist du erreichbar?");
+    persistConversationState(state);
+    const out = await send(lead, "Abends außer Freitag.");
+    assertNoBooking(out.state);
+    assert.ok(!out.text?.includes(bookingUrl));
+  });
+  await t.test("V5 booking reminder persisted history deduplicates and confirmed booking stops all stages", async () => {
+    const out = await send("v5-reminder-persistence", "Ich möchte jetzt einen Termin buchen.");
+    const state = out.state;
+    const at = Date.parse(state.providerBooking!.linkSentAt!);
+    state.providerBooking = markProviderFollowUpAsSent(state.providerBooking!, "reminder_6h", new Date(at + 6 * 3600000).toISOString());
+    state.providerBooking = markProviderFollowUpAsSent(state.providerBooking!, "reminder_6h");
+    persistConversationState(state);
+    const disk = JSON.parse(fs.readFileSync(path.join(temp, "conversations.json"), "utf8"))[campaignId + "::" + state.leadId];
+    assert.equal(disk.providerBooking.sentHistory.length, 1);
+    assert.equal(evaluateProviderBookingFollowUp(disk, new Date(at + 7 * 3600000)).dueNow, false);
+    assert.equal(evaluateProviderBookingFollowUp(disk, new Date(at + 24 * 3600000)).stage, "reminder_24h");
+    assert.equal(evaluateProviderBookingFollowUp(disk, new Date(at + 48 * 3600000)).stage, "reminder_48h");
+    state.lastUserMessageAt = new Date(Date.now() - 48 * 3600000).toISOString();
+    persistConversationState(state);
+    assert.equal(evaluateLatestAiOutboundPermission({ leadId: state.leadId, campaignId,
+      purpose: "automated_followup" }).reason, "message_window_unverified_or_expired");
+    state.providerBooking = markProviderBookingBooked(state.providerBooking);
+    persistConversationState(state);
+    for (const hours of [6, 24, 48, 72])
+      assert.equal(evaluateProviderBookingFollowUp(getConversationState(state.leadId, campaignId)!,
+        new Date(at + hours * 3600000)).shouldActivate, false);
+  });
+
+  await t.test("V5 process restart retains passive no-reminder state and deduplicated active history", async () => {
+    const passive = await send("v5-restart-passive", "Wo ist der Kalenderlink?");
+    const passiveRestored = restoredBookingState(passive.state.leadId, Date.now());
+    assertNoBooking(passiveRestored.state);
+    assert.ok(passiveRestored.evaluations
+      .every(evaluation => !evaluation.shouldActivate && !evaluation.dueNow));
+    const active = await send("v5-restart-active", "Ich möchte jetzt einen Termin vereinbaren.");
+    const at = Date.parse(active.state.providerBooking!.linkSentAt!);
+    active.state.providerBooking = markProviderFollowUpAsSent(active.state.providerBooking!, "reminder_6h");
+    active.state.providerBooking = markProviderFollowUpAsSent(active.state.providerBooking!, "reminder_6h");
+    persistConversationState(active.state);
+    const restored = restoredBookingState(active.state.leadId, at);
+    assert.equal(restored.state.providerBooking?.status, "awaiting_booking");
+    assert.equal(restored.state.providerBooking?.sentHistory.length, 1);
+    assert.equal(restored.evaluations[1].dueNow, false);
+    assert.equal(restored.evaluations[2].stage, "reminder_24h");
+  });
+
+  await t.test("V5 actual engine -> signed mock webhook -> deduplicated booked state -> restart", async t => {
+    const { default: app } = await import("../app.js");
+    const server = app.listen(0, "127.0.0.1");
+    await new Promise<void>(resolve => server.once("listening", resolve));
+    t.after(() => new Promise<void>(resolve => server.close(() => resolve())));
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const before = calls;
+    const active = await send("v5-engine-webhook", "Ich möchte einen Telefontermin mit Jochen vereinbaren.");
+    assert.equal(active.state.providerBooking?.status, "awaiting_booking");
+    assert.ok(active.state.providerBooking?.linkSentAt, "no manual activation fallback in this E2E");
+    const at = Date.parse(active.state.providerBooking!.linkSentAt!);
+    const raw = JSON.stringify({ event: "invitee.created", payload: {
+      tracking: { utm_campaign: campaignId, utm_content: active.state.leadId },
+      event: { uri: "https://api.calendly.com/scheduled_events/v5-synthetic-event",
+        name: "Strategiegespräch", start_time: new Date(at + 86400000).toISOString(),
+        end_time: new Date(at + 88200000).toISOString() },
+      invitee: { uri: "https://api.calendly.com/invitees/v5-synthetic", name: "Synthetic QA", email: "qa@example.invalid" },
+    } });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const digest = createHmac("sha256", "SYNTHETIC-v5-webhook-secret")
+      .update(String(timestamp) + "." + raw).digest("hex");
+    const post = (signature: string) => nativeFetch(`http://127.0.0.1:${address.port}/booking-events/calendly`, {
+      method: "POST", headers: { "content-type": "application/json", "calendly-webhook-signature": signature }, body: raw,
+    });
+    assert.equal((await post(`t=${timestamp},v1=${"0".repeat(64)}`)).status, 401);
+    assert.equal(getConversationState(active.state.leadId, campaignId)!.providerBooking?.status, "awaiting_booking");
+    assert.equal((await post(`t=${timestamp},v1=${digest}`)).status, 200);
+    const booked = getConversationState(active.state.leadId, campaignId)!;
+    assert.equal(booked.providerBooking?.status, "booked");
+    assert.equal(booked.bookingData?.status, "booked");
+    assert.equal(booked.messages.at(-1)?.sent, false);
+    const count = booked.messages.length;
+    const duplicate = await post(`t=${timestamp},v1=${digest}`);
+    assert.equal(duplicate.status, 200);
+    assert.equal((await duplicate.json() as { eventLog: { status: string } }).eventLog.status, "ignored_duplicate");
+    assert.equal(getConversationState(active.state.leadId, campaignId)!.messages.length, count);
+    const restored = restoredBookingState(active.state.leadId, at);
+    assert.equal(restored.state.providerBooking?.status, "booked");
+    assert.ok(restored.evaluations.every(evaluation => !evaluation.shouldActivate && !evaluation.dueNow));
+    assert.equal(calls, before, "webhook and engine performed no external provider request");
   });
 
   await t.test("requested availability uses real lead history, without inventing a Friday slot", async () => {
@@ -264,6 +499,98 @@ test("V3 action authorization on the original engine, mock provider only", async
       assert.equal(out.replySuppressedReason, boundary === "stop" ? "stopped" : boundary === "human" ? "human_owned" : "superseded");
       assert.equal(out.state.flags.wantsBooking, false);
     });
+
+  for (const boundary of ["sales_opt_out", "paused", "handoff_active", "replaced_record", "replaced_opt_out"] as const)
+    await t.test("V5 asynchronous booking proposal obeys current persisted state: " + boundary, async () => {
+      const text = "Ein Telefonat wäre für mich ein guter nächster Schritt.";
+      let release!: () => void, entered!: () => void;
+      const started = new Promise<void>(resolve => { entered = resolve; });
+      const waiting = new Promise<void>(resolve => { release = resolve; });
+      globalThis.fetch = async url => {
+        assert.equal(String(url), "https://api.openai.com/v1/responses");
+        entered(); await waiting;
+        return new Response(JSON.stringify(modelPayload("Du kannst selbst auswählen.", "booking", text)), { status: 200 });
+      };
+      const lead = "v5-async-" + boundary;
+      const pending = send(lead, text); await started;
+      const state = getConversationState(lead, campaignId)!;
+      if (boundary === "sales_opt_out") state.flags.salesFollowUpsOptedOut = true;
+      else if (boundary === "paused") state.aiPaused = true;
+      else if (boundary === "handoff_active") state.flags.peteRuntimeHandoffActive = true;
+      else {
+        // Replace the store object, not only the in-memory reference held by
+        // the outstanding model call. The engine must reload this exact state.
+        const replacement = structuredClone(state);
+        if (boundary === "replaced_opt_out") replacement.flags.salesFollowUpsOptedOut = true;
+        else takeOverByHuman(replacement);
+        persistConversationState(replacement);
+      }
+      if (boundary !== "replaced_record" && boundary !== "replaced_opt_out") persistConversationState(state);
+      release();
+      const out = await pending;
+      assertNoBooking(out.state);
+      assert.ok(!out.text?.includes(bookingUrl));
+      if (boundary === "sales_opt_out" || boundary === "replaced_opt_out") {
+        assert.equal(out.state.flags.salesFollowUpsOptedOut, true);
+        assert.equal(evaluateLatestAiOutboundPermission({ leadId: lead, campaignId,
+          purpose: "automated_followup" }).reason, "sales_followup_opt_out");
+      } else {
+        assert.equal(out.text, null);
+        assert.equal(out.replySuppressedReason, "human_owned");
+      }
+    });
+
+  for (const [i, text] of [
+    "STOP. Bitte schick mir den Kalenderlink.",
+    "Jochen soll den Chat persönlich übernehmen. Wo ist der Kalenderlink?",
+    "Bitte lösche meine personenbezogenen Daten. Wo ist der Kalender?",
+    "Ich habe starke Schmerzen. Welche Übungen darf ich machen? Schick mir den Kalenderlink.",
+    "Beim Selbststarter gibt es Chat-Support? Meine Zahlung wurde doppelt abgebucht.",
+  ].entries()) await t.test("V5 verified replies never bypass a hard safety boundary: " + text, async () => {
+    let mockedCalls = 0;
+    globalThis.fetch = async () => { mockedCalls++;
+      return new Response(JSON.stringify(modelPayload("Du kannst selbst auswählen.", "booking", text)), { status: 200 }); };
+    const out = await send("v5-hard-boundary-" + i, text);
+    assertNoBooking(out.state);
+    assert.ok(!out.text?.includes(bookingUrl));
+    assert.equal(mockedCalls, 0);
+    assert.ok(out.state.flags.stopped || out.state.owner === "human");
+  });
+
+  await t.test("V5 medical-soft boundary retains the existing health interception without model or booking", async () => {
+    let mockedCalls = 0;
+    globalThis.fetch = async () => { mockedCalls++;
+      return new Response(JSON.stringify(modelPayload("Du kannst selbst auswählen.")), { status: 200 }); };
+    const out = await send("v5-medical-soft", "Welche Übungen darf ich bei starken Schmerzen machen? Schick mir den Kalenderlink.");
+    assert.equal(out.state.answers.peteReplySource, "guarded_safety");
+    assert.match(out.text!, /gesundheitlich|medizinisch|arzt|ärztlich/i);
+    assert.doesNotMatch(out.text!, /https?:|calendly|checkout/);
+    assertNoBooking(out.state);
+    assert.equal(mockedCalls, 0);
+  });
+
+  for (const [i, text] of [
+    "Beim Selbststarter für 14,95 Euro, gibt es persönlichen Chat-Support dazu?",
+    "Ist beim DIY Chat-Support enthalten?",
+  ].entries()) await t.test("V5 DIY uncertainty stays honest and permits a later conversation: " + text, async () => {
+    let mockedCalls = 0;
+    globalThis.fetch = async () => { mockedCalls++;
+      return new Response(JSON.stringify(modelPayload("Wir können bei allgemeinen Informationen bleiben.")), { status: 200 }); };
+    const lead = "v5-diy-dialogue-" + i;
+    const out = await send(lead, text);
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.notEqual(out.state.flags.peteRuntimeHandoffActive, true);
+    assert.match(out.text!, /nicht verbindlich bestätigt/);
+    assert.doesNotMatch(out.text!, /(?:kein|ohne)\s+(?:persönlichen?\s+)?Chat-Support/i);
+    assertNoBooking(out.state);
+    assert.equal(mockedCalls, 0);
+    const follow = await send(lead, "Im Alltag fehlen mir vor allem kurze Routinen.");
+    assert.equal(follow.state.owner, "ai");
+    assert.equal(follow.state.aiPaused, false);
+    assert.equal(follow.state.answers.peteReplySource, "llm");
+    assert.equal(mockedCalls, 1, "synthetic mocked model response, no external provider");
+  });
 
   await t.test("research V3-06: collaboration trial is verified, not a lasting model handoff", async () => {
     let providerCalls = 0;
