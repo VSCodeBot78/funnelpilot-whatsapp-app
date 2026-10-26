@@ -1,0 +1,339 @@
+{
+  "baseSha": "41790b0efc6ad79f9a1758c5b74be61732ae7d7e",
+  "ownerAuthorization": "Go after clarification that the five backend findings must be repaired before a system acceptance",
+  "resolverCommands": [
+    "npm audit fix --package-lock-only --ignore-scripts",
+    "npm update express tsx --package-lock-only --ignore-scripts"
+  ],
+  "versions": {
+    "express": {
+      "before": "4.22.1",
+      "after": "4.22.3"
+    },
+    "body-parser": {
+      "before": "1.20.4",
+      "after": "1.20.9"
+    },
+    "proxy-addr": {
+      "before": "2.0.7",
+      "after": "2.0.8"
+    },
+    "path-to-regexp": {
+      "before": "0.1.12",
+      "after": "0.1.13"
+    },
+    "qs": {
+      "before": "6.14.2",
+      "after": "6.16.1"
+    },
+    "esbuild": {
+      "before": "0.27.4",
+      "after": "0.28.2"
+    },
+    "tsx": {
+      "before": "4.21.0",
+      "after": "4.23.15"
+    }
+  },
+  "backendAuditBefore": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {
+      "body-parser": {
+        "name": "body-parser",
+        "severity": "high",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1123977,
+            "name": "body-parser",
+            "dependency": "body-parser",
+            "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+            "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6",
+            "severity": "low",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 3.7,
+              "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": "<1.20.6"
+          },
+          {
+            "source": 1243073,
+            "name": "body-parser",
+            "dependency": "body-parser",
+            "title": "body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+            "url": "https://github.com/advisories/GHSA-27r3-jxmh-p828",
+            "severity": "high",
+            "cwe": [
+              "CWE-248"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<1.20.9"
+          }
+        ],
+        "effects": [],
+        "range": "<=1.20.8",
+        "nodes": [
+          "node_modules/body-parser"
+        ],
+        "fixAvailable": true
+      },
+      "esbuild": {
+        "name": "esbuild",
+        "severity": "low",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1120680,
+            "name": "esbuild",
+            "dependency": "esbuild",
+            "title": "esbuild allows arbitrary file read when running the development server on Windows",
+            "url": "https://github.com/advisories/GHSA-g7r4-m6w7-qqqr",
+            "severity": "low",
+            "cwe": [
+              "CWE-22"
+            ],
+            "cvss": {
+              "score": 2.5,
+              "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N"
+            },
+            "range": ">=0.27.3 <0.28.1"
+          }
+        ],
+        "effects": [],
+        "range": "0.27.3 - 0.28.0",
+        "nodes": [
+          "node_modules/esbuild"
+        ],
+        "fixAvailable": true
+      },
+      "path-to-regexp": {
+        "name": "path-to-regexp",
+        "severity": "high",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1115527,
+            "name": "path-to-regexp",
+            "dependency": "path-to-regexp",
+            "title": "path-to-regexp vulnerable to Regular Expression Denial of Service via multiple route parameters",
+            "url": "https://github.com/advisories/GHSA-37ch-88jc-xwx2",
+            "severity": "high",
+            "cwe": [
+              "CWE-1333"
+            ],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<0.1.13"
+          }
+        ],
+        "effects": [],
+        "range": "<0.1.13",
+        "nodes": [
+          "node_modules/path-to-regexp"
+        ],
+        "fixAvailable": true
+      },
+      "proxy-addr": {
+        "name": "proxy-addr",
+        "severity": "critical",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1241210,
+            "name": "proxy-addr",
+            "dependency": "proxy-addr",
+            "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+            "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+            "severity": "critical",
+            "cwe": [
+              "CWE-290",
+              "CWE-348",
+              "CWE-697"
+            ],
+            "cvss": {
+              "score": 9.1,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+            },
+            "range": ">=1.1.0 <2.0.8"
+          }
+        ],
+        "effects": [],
+        "range": "1.1.0 - 2.0.7",
+        "nodes": [
+          "node_modules/proxy-addr"
+        ],
+        "fixAvailable": true
+      },
+      "qs": {
+        "name": "qs",
+        "severity": "moderate",
+        "isDirect": false,
+        "via": [
+          {
+            "source": 1119502,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs has a remotely triggerable DoS: qs.stringify crashes with TypeError on null/undefined entries in comma-format arrays when encodeValuesOnly is set",
+            "url": "https://github.com/advisories/GHSA-q8mj-m7cp-5q26",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-476"
+            ],
+            "cvss": {
+              "score": 5.3,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=6.11.1 <=6.15.1"
+          },
+          {
+            "source": 1158506,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs array-limit bypass via bracket-key comma parsing",
+            "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-770"
+            ],
+            "cvss": {
+              "score": 3.7,
+              "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=6.14.2 <=6.15.3"
+          },
+          {
+            "source": 1158507,
+            "name": "qs",
+            "dependency": "qs",
+            "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+            "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+            "severity": "moderate",
+            "cwe": [
+              "CWE-248",
+              "CWE-703"
+            ],
+            "cvss": {
+              "score": 5.3,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+            },
+            "range": ">=2.2.5 <6.16.0"
+          }
+        ],
+        "effects": [],
+        "range": "2.2.5 - 6.15.3",
+        "nodes": [
+          "node_modules/qs"
+        ],
+        "fixAvailable": true
+      }
+    },
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 1,
+        "moderate": 1,
+        "high": 2,
+        "critical": 1,
+        "total": 5
+      },
+      "dependencies": {
+        "prod": 72,
+        "dev": 44,
+        "optional": 27,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 115
+      }
+    }
+  },
+  "backendAuditAfter": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {},
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 72,
+        "dev": 42,
+        "optional": 27,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 113
+      }
+    }
+  },
+  "frontendAuditAfter": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {},
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 6,
+        "dev": 116,
+        "optional": 53,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 121
+      }
+    }
+  },
+  "localTests": {
+    "backend": 520,
+    "desktop": 17,
+    "relayStarterSafety": 25,
+    "dependencySecurity": 7,
+    "dependencySecurityNames": [
+      "a short IPv4-mapped IPv6 trust prefix never trusts arbitrary IPv4 peers",
+      "an untrusted peer cannot supply its own client IP through X-Forwarded-For",
+      "valid IPv4-mapped trust ranges still accept only their named IPv4 block",
+      "an IPv6-only trust subnet does not implicitly trust IPv4 peers",
+      "three-parameter routes reject an ambiguous non-match within a bounded child process",
+      "compressed JSON requests retain their normal parsing behavior",
+      "trailing bytes after a compressed JSON frame do not terminate the HTTP process"
+    ],
+    "frontend": 102,
+    "previewUnits": 18,
+    "browserStats": {
+      "startTime": "2026-10-26T14:36:25.886Z",
+      "duration": 29738.698,
+      "expected": 24,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "axeScans": 64,
+    "axeViolations": 0,
+    "failed": 0,
+    "skipped": 0
+  },
+  "runtime": {
+    "node": "24.22.1",
+    "npm": "11.9.0"
+  },
+  "sourceSha256": {
+    "backend/package.json": "11ac2f1500df31518d070297dc224589060182b3c53c3222502c4c498c8844a0",
+    "backend/package-lock.json": "cd3774f2c93675afef684446feb8408f83106815b08664ef4e990cee9ecdbd51",
+    "backend/qa/dependency-security.test.mjs": "f94ea17c5ee9592c28623b8c5a5d3b76ddd0d6dfc40b669aabf74d90bf8eb6f6"
+  }
+}
