@@ -55,10 +55,25 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   await expect(page.getByRole("heading", { level: 1, name: "Kampagnen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Kampagne anlegen" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Kampagne speichern" })).toBeEnabled();
+  await expect(page.locator(".v2-native-campaigns .v2-native-campaign-grid")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Kampagnen verwalten" })).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-campaigns.png", fullPage: true });
+
+  await navigation.getByRole("button", { name: "Leads" }).click();
+  await expect(page.locator(".v2-native-leads .v2-native-lead-grid")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Leads verwalten" })).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-leads.png", fullPage: true });
+
+  await navigation.getByRole("button", { name: "Inbox" }).click();
+  await expect(page.locator(".v2-native-inbox .v2-native-inbox-grid")).toBeVisible();
+  await expect(page.locator(".v2-native-inbox").getByText("GESPRÄCHE & VERANTWORTUNG")).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-inbox.png", fullPage: true });
 
   await navigation.getByRole("button", { name: "Pete testen" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Pete testen" })).toBeVisible();
-  await expect(page.getByText("Pete im Testchat", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Pete im Testchat" })).toBeVisible();
+  await expect(page.locator(".v2-native-lab")).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-pete.png", fullPage: true });
   await expect(page.getByText("Follower-Begrüßung (von Jochen manuell, nur Simulation)")).toBeVisible();
   await expect(page.getByRole("button", { name: "Begrüßung 1 · Energie / Fitness" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Begrüßung 2 · mit Keto" })).toBeEnabled();
@@ -69,6 +84,10 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
 
   await navigation.getByRole("button", { name: "Einstellungen" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Einstellungen" })).toBeVisible();
+  await expect(page.locator(".v2-native-settings")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Einstellungen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Einstellungen speichern" })).toBeEnabled();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-settings.png", fullPage: true });
 
   expect(requests.some((r) => r.method === "POST" && r.path === "/test-chat/desktop/session")).toBe(true);
   expect(requests.some((r) => /\/meta|\/webhook|\/ghosting\/send|\/conversations\/send/i.test(r.path))).toBe(false);
