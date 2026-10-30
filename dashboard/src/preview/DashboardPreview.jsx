@@ -24,9 +24,28 @@ import {
 } from "./PreviewViews.jsx";
 
 const TITLES = { dashboard: "Kommandozentrale", onboarding: "Einrichtung" };
-export default function DashboardPreview() {
-  const [section, setSection] = useState("dashboard");
-  const [theme, setTheme] = useState("light");
+export default function DashboardPreview({
+  operational = false,
+  activeSection = "dashboard",
+  onSectionChange,
+  operationalContent,
+  onSelectOperationalLead,
+  darkMode = false,
+  onToggleTheme,
+  operatorName,
+}) {
+  const [previewSection, setPreviewSection] = useState("dashboard");
+  const section = operational ? activeSection : previewSection;
+  const setSection = useCallback((next) => {
+    if (operational) onSectionChange?.(next);
+    else setPreviewSection(next);
+  }, [operational, onSectionChange]);
+  const [previewTheme, setPreviewTheme] = useState("light");
+  const theme = operational ? (darkMode ? "dark" : "light") : previewTheme;
+  const toggleTheme = () => {
+    if (operational) onToggleTheme?.();
+    else setPreviewTheme(current => current === "light" ? "dark" : "light");
+  };
   const [mobileNav, setMobileNav] = useState(false);
   const [snapshot, setSnapshot] = useState({});
   const [loading, setLoading] = useState(true);
@@ -123,7 +142,7 @@ export default function DashboardPreview() {
     setMobilePane("list");
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     requestAnimationFrame(() => mainRef.current?.focus({ preventScroll: true }));
-  }, []);
+  }, [setSection]);
   function openLead(lead, destination = "inbox") {
     setSearch("");
     setFilters({
@@ -133,7 +152,8 @@ export default function DashboardPreview() {
       sort: "priority",
     });
     setSelectedId(lead.id);
-    setSection(destination);
+    if (operational && onSelectOperationalLead) onSelectOperationalLead(lead.id, destination);
+    else setSection(destination);
     setMobilePane(destination === "inbox" ? "chat" : "context");
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     requestAnimationFrame(() => mainRef.current?.focus({ preventScroll: true }));
@@ -193,10 +213,10 @@ export default function DashboardPreview() {
     reload,
   };
   const errors = Object.entries(snapshot).filter(([, value]) => value.error);
-  const title = TITLES[section] || getSectionLabel(section);
+  const title = section === "pete-lab" ? "Pete testen" : (TITLES[section] || getSectionLabel(section));
 
   return (
-    <div className="v2-app" data-theme={theme}>
+    <div className={`v2-app${operational ? " v2-operational" : ""}`} data-theme={theme}>
       <a className="v2-skip" href="#v2-main">
         Zum Inhalt springen
       </a>
@@ -239,11 +259,11 @@ export default function DashboardPreview() {
           <span className="v2-workspace-icon">P</span>
           <div>
             <strong>Pete Workspace</strong>
-            <small>Dashboard 2.0 · Vorschau</small>
+            <small>{operational ? "Dashboard 2.0 · Lokaler Workspace" : "Dashboard 2.0 · Vorschau"}</small>
           </div>
-          <Icon name="lock" size={14} />
+          <Icon name={operational ? "check" : "lock"} size={14} />
         </div>
-        <nav>
+        <nav aria-label={operational ? "Dashboard-Bereiche" : undefined}>
           <p className="v2-nav-label">ARBEITSPLATZ</p>
           {DAILY_NAV.map((item) => (
             <button
@@ -273,6 +293,13 @@ export default function DashboardPreview() {
                 )}
             </button>
           ))}
+          {operational && (
+            <button type="button"
+              className={`v2-nav-item${section === "pete-lab" ? " is-active" : ""}`}
+              aria-current={section === "pete-lab" ? "page" : undefined}
+              onClick={() => navigate("pete-lab")}
+            ><Icon name="spark" /><span>Pete testen</span></button>
+          )}
           <p className="v2-nav-label">VERWALTUNG</p>
           {ADMIN_NAV.map((item) => (
             <button
@@ -293,14 +320,19 @@ export default function DashboardPreview() {
         <div className="v2-sidebar-bottom">
           <div className="v2-pete-card">
             <Icon name="spark" />
-            <strong>Pete bleibt in deinem Labor.</strong>
-            <p>KI-Schalter und Budget werden hier nicht verändert.</p>
-            <Badge tone="orange">Nur lesende Vorschau</Badge>
+            <strong>{operational ? "Pete direkt im Workspace" : "Pete bleibt in deinem Labor."}</strong>
+            <p>{operational
+              ? "Das bestehende lokale Labor verwaltet KI-Budget und Testkontakte. Keine Live-Sends."
+              : "KI-Schalter und Budget werden hier nicht verändert."}</p>
+            {operational ? (
+              <button type="button" className="v2-button v2-button-primary"
+                onClick={() => navigate("pete-lab")}>Pete-Labor öffnen</button>
+            ) : <Badge tone="orange">Nur lesende Vorschau</Badge>}
           </div>
           <button
             type="button"
             className="v2-theme-button"
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            onClick={toggleTheme}
             aria-label={
               theme === "light"
                 ? "Dunkelmodus einschalten"
@@ -313,8 +345,8 @@ export default function DashboardPreview() {
           <div className="v2-profile">
             <span className="v2-profile-dot">FP</span>
             <div>
-              <strong>Besitzer-Vorschau</strong>
-              <small>Freigabe steht aus</small>
+              <strong>{operational ? (operatorName || "Coach Workspace") : "Besitzer-Vorschau"}</strong>
+              <small>{operational ? "Lokaler Testmodus" : "Freigabe steht aus"}</small>
             </div>
           </div>
         </div>
@@ -337,7 +369,7 @@ export default function DashboardPreview() {
             </span>
           </div>
           <div className="v2-topbar-right">
-            <Badge tone="orange">Vorschau 2.0</Badge>
+            <Badge tone="orange">{operational ? "Lokale Beta" : "Vorschau 2.0"}</Badge>
             <span className="v2-connection">
               <span
                 className={`v2-dot ${snapshot.health?.data ? "is-connected" : ""}`}
@@ -351,10 +383,10 @@ export default function DashboardPreview() {
           </div>
         </header>
         <div className="v2-preview-banner">
-          <Icon name="lock" size={16} />
-          <p>
-            <strong>Prüfmodus.</strong> Lesen und navigieren. Speichern,
-            KI-Aufrufe und Versand sind deaktiviert.
+          <Icon name={operational ? "info" : "lock"} size={16} />
+          <p>{operational
+            ? <>Lokaler Testbetrieb. Kampagnen und Einstellungen werden im verbundenen Backend gespeichert. KI erfordert deine gesonderte Labor-Budgetfreigabe. Kein Meta-Live-Versand.</>
+            : <><strong>Prüfmodus.</strong> Lesen und navigieren. Speichern, KI-Aufrufe und Versand sind deaktiviert.</>}
           </p>
         </div>
         <main
@@ -411,11 +443,15 @@ export default function DashboardPreview() {
           {section === "dashboard" && (
             <CommandCenter
               {...shared}
+              operational={operational}
               metrics={metrics}
               onOpenLead={openLead}
               navigate={navigate}
             />
           )}
+          {operational && section !== "dashboard" ? (
+            <div className="v2-operational-content">{operationalContent}</div>
+          ) : <>
           {["inbox", "leads"].includes(section) && (
             <ContactsView {...shared} inbox={section === "inbox"} />
           )}
@@ -440,6 +476,7 @@ export default function DashboardPreview() {
               eventsOnly={section === "booking-events"}
             />
           )}
+          </>}
           <footer className="v2-footer">
             <span>Funnel Pilot · Pete Dashboard 2.0</span>
             <span>
