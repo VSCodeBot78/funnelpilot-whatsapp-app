@@ -45,6 +45,12 @@ test("uncertain historical costs stay blocked and are never formatted as free cr
     ownerManagedCosts: false, ownerManagedApprovalAvailable: true }, providerConfigured: true };
   assert.match(desktopBlockReason(eligible), /Eigenverantwortung/);
   assert.equal(desktopBlockReason(eligible, true), null);
+  const historyLocked = { ...eligible, budget: { ...eligible.budget,
+    blockReason: "historical_spend_unverified" } };
+  assert.match(desktopBlockReason(historyLocked), /Eigenverantwortung/);
+  assert.equal(desktopBlockReason(historyLocked, true), null);
+  assert.match(desktopBlockReason({ ...historyLocked, budget: { ...historyLocked.budget,
+    blockReason: "accounting_review_required" } }, true), /gesperrt/);
   assert.match(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
     ownerManagedApprovalAvailable: false } }, true), /Eigenverantwortung/);
   assert.equal(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
