@@ -101,7 +101,9 @@ test("desktop login through the real dashboard proxy, no external requests", asy
       const old = await request(oldPort, "session");
       assert.equal(old.status, 403);
       assert.equal(old.body.error, "desktop_local_session_required");
-      assert.equal(observedHost, "localhost:" + backendPort);
+      // Dashboard V2 targets explicit 127.0.0.1, unlike the Pete branch's
+      // historical 'localhost' shorthand. The security rejection is identical.
+      assert.equal(observedHost, "127.0.0.1:" + backendPort);
       assert.deepEqual(diagnostics, ["[pete-desktop] request_denied reason=desktop_host_denied"]);
     });
     await t.test("same-host localhost remains a valid desktop origin", async () => {
