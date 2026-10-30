@@ -212,6 +212,20 @@ test("Calendly: dated slots survive, closed days never fallback to fake hours", 
   }
 });
 
+test("P0-1: explicit booking status outranks a stale legacy booked boolean", async () => {
+  const { normalizeBookingData } = await import("../domain/booking-sync.js");
+  for (const status of ["cancelled", "pending_confirmation", "requested", "inactive", "completed"] as const) {
+    const data = normalizeBookingData({ status, bookingProvider: "calendly",
+      cancelledAt: status === "cancelled" ? "2026-10-30T17:00:00Z" : null }, true);
+    assert.equal(data.status, status, "stale booked=true must not resurrect status=" + status);
+    assert.ok(!data.confirmedAt, "explicit non-booked status must not generate fresh confirmation");
+  }
+  assert.equal(normalizeBookingData({}, true).status, "booked",
+    "missing structured status retains legacy booked compatibility");
+  assert.equal(normalizeBookingData({ status: "booked" }, false).status, "booked");
+  assert.equal(normalizeBookingData({ status: "cancelled" }, false).status, "cancelled");
+});
+
 test("Default booking copy never promises old unverified weekday times", async () => {
   const { getSchedulingTextsConfig } = await import("./scheduling-providers.js");
   const real = getSchedulingTextsConfig("eltern-vital-fit").bookingPrompt ?? "";
