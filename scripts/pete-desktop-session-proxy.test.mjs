@@ -166,6 +166,36 @@ test("desktop login through the real dashboard proxy, no external requests", asy
       assert.equal(fs.existsSync(path.join(dataDir, "pete-api-budget.json")), false);
       assert.equal(externalCalls, 0);
     });
+    await t.test("two manual owner welcomes and the next follower reply work through real Vite without sends", async () => {
+      const valid = await request(port, "session");
+      assert.equal(valid.status, 200);
+      const headers = { Cookie: valid.headers["set-cookie"][0].split(";")[0],
+        "X-Pete-CSRF": valid.body.csrfToken };
+      const expected = [
+        ["WELCOME_1", "Hi, herzlich willkommen bei mir auf dem Profil 🙌\nFreut mich wirklich, dass du da bist.\nWas beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?"],
+        ["WELCOME_2", "Hey, herzlich willkommen bei mir auf dem Profil 🙌\nFreut mich wirklich, dass du da bist.\nWas beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?\nOder bist du gerade wegen Keto hier?"],
+      ];
+      for (const [keyword, message] of expected) {
+        const opening = await request(port, "entry", { headers,
+          body: JSON.stringify({ keyword, source: "instagram_dm" }) });
+        assert.equal(opening.status, 200);
+        assert.equal(opening.body.entryKeyword, keyword);
+        assert.equal(opening.body.matchedRealCampaign, false);
+        assert.equal(opening.body.state.messages.length, 1);
+        assert.equal(opening.body.state.messages[0].text, message);
+        assert.equal(opening.body.state.messages[0].actor, "human");
+        const answer = await request(port, "message", { headers,
+          body: JSON.stringify({ leadId: opening.body.leadId,
+            campaignId: opening.body.campaignId,
+            messageText: "Ich möchte wieder fitter werden, aber der Alltag ist stressig." }) });
+        assert.equal(answer.status, 200);
+        assert.notEqual(answer.body.replySuppressedReason, "human_owned");
+      }
+      assert.equal((await request(port, "entry", { headers,
+        body: JSON.stringify({ keyword: "WELCOME_1", source: "instagram_reel_comment" }) })).status, 403);
+      assert.equal(externalCalls, 0, "welcome entry and free follower reply must never hit an external provider");
+      assert.equal(fs.existsSync(path.join(dataDir, "pete-api-budget.json")), false);
+    });
   } finally {
     for (const { server, listener } of proxies) {
       listener.closeAllConnections();
