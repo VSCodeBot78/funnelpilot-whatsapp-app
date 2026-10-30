@@ -328,9 +328,10 @@ router.post("/conversations/ensure", (req, res) => {
     const source = raw.source === undefined ? undefined : String(raw.source ?? "").trim();
     const note = raw.note === undefined ? undefined : String(raw.note ?? "").trim();
     const rawBookingData = raw.bookingData as Record<string, unknown> | undefined;
-    const bookingStatus = String(rawBookingData?.status ?? "").trim().toLowerCase();
-    const isBooked = Boolean(raw.booked) || bookingStatus === "booked";
-    const bookingData = normalizeBookingData(rawBookingData ?? {}, isBooked);
+    const bookingData = normalizeBookingData(rawBookingData ?? {}, Boolean(raw.booked));
+    // Explicit bookingData.status is the source of truth; raw.booked is only
+    // a compatibility fallback for legacy payloads without structured status.
+    const isBooked = bookingData.status === "booked";
 
     if (!leadId || !campaignId || !leadName || !phone) {
       return res.status(400).json({
