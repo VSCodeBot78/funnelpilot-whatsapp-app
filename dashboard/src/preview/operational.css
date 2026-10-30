@@ -38,3 +38,10 @@
   .v2-operational .v2-operational-safety { padding: 9px 16px; }
   .v2-operational .v2-operational-main { padding-bottom: 16px; }
 }
+
+/* The preserved read-only command-center card belongs to the QA preview,
+   not the functional owner workspace. Hide that one misleading row only in
+   operational mode. All backend status/NoSend labels remain visible. */
+.v2-operational .v2-system-row:first-of-type {
+  display: none;
+}
