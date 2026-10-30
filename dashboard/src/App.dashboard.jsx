@@ -24,6 +24,8 @@ import GhostingView from "./ghosting/GhostingView";
 import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
+import ChatTest from "./App.chat.jsx";
+import OperationalV2Shell from "./preview/OperationalV2Shell.jsx";
 import { createXWingOfflineSettings } from "./onboarding/xwingOfflineSettings.js";
 
 const navItems = ALL_NAV;
@@ -38,7 +40,7 @@ function firstSection() {
   }
 }
 
-export default function AppDashboard({ onOpenTestChat = () => {} }) {
+export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v2" }) {
   const [section, setSection] = useState(firstSection);
   const [onboardingStartStep, setOnboardingStartStep] = useState(0);
   const [xwingDryRunOpen, setXwingDryRunOpen] = useState(false);
@@ -365,6 +367,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
   }, [xwingDryRunOpen, handleCloseWizard]);
 
   function renderContent() {
+    if (section === "pete-lab") return <ChatTest />;
     if (section === "dashboard" || section === "onboarding") {
       return (
         <DashboardHome
@@ -380,7 +383,7 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
           }}
           onOpenInbox={() => { setMobileInboxPane("list"); setSection("inbox"); }}
           onOpenLeads={() => setSection("leads")}
-          onOpenTestChat={onOpenTestChat}
+          onOpenTestChat={uiVersion === "v2" ? () => setSection("pete-lab") : onOpenTestChat}
           onRestartOnboarding={() => {
             setOnboardingStartStep(0);
             setSection("onboarding");
@@ -545,6 +548,50 @@ export default function AppDashboard({ onOpenTestChat = () => {} }) {
     }
 
     return null;
+  }
+
+
+  // Live/local workspace: the original forms, stores, onboarding and Pete
+  // desktop client remain the only owners of their respective actions.
+  // The separate preview-v2.html remains a read-only QA surface.
+  if (uiVersion === "v2") {
+    return (
+      <OperationalV2Shell
+        section={section}
+        onSectionChange={(next) => {
+          if (next === "inbox") setMobileInboxPane("list");
+          setSection(next);
+        }}
+        onOpenPete={() => setSection("pete-lab")}
+        darkMode={darkMode}
+        onToggleTheme={() => setDarkMode(!darkMode)}
+        backendHealthy={backendHealthy}
+        backendHealthMessage={backendHealthMessage}
+        settings={settings}
+      >
+        {backendHealthy === false && (
+          <button type="button" className="v2-button" onClick={retryBackendHealth}>
+            Backend erneut prüfen
+          </button>
+        )}
+        {renderContent()}
+        {(section === "onboarding" || xwingDryRunOpen) && (
+          <SetupWizardModal
+            startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
+            dryRun={xwingDryRunOpen}
+            colors={colors}
+            settings={xwingDryRunOpen ? xwingSettings : settings}
+            onSettingsChange={xwingDryRunOpen ? setXwingSettings : setSettings}
+            onSaveSettings={xwingDryRunOpen ? async () => ({ ...xwingSettings }) : handleSaveSettings}
+            onSaveCoachDraft={xwingDryRunOpen ? async () => true : saveCoachDraftOnly}
+            onOpenTestChat={xwingDryRunOpen ? () => {} : () => setSection("pete-lab")}
+            onOpenSection={xwingDryRunOpen ? () => {} : setSection}
+            onClose={handleCloseWizard}
+            onFinish={handleFinishWizard}
+          />
+        )}
+      </OperationalV2Shell>
+    );
   }
 
   return (
