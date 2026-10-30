@@ -36,16 +36,17 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("GET", "state/" + encodeURIComponent(leadId)),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
-    setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled ? { enabled, budgetUsd } : { enabled }),
+    setBudget: (enabled, budgetUsd, ownerManagedCosts = false) => request("POST", "budget", enabled ? { enabled, budgetUsd, ...(ownerManagedCosts === true ? { ownerManagedCosts: true } : {}) } : { enabled }),
   };
 }
 
-export function desktopBlockReason(status) {
+export function desktopBlockReason(status, explicitOwnerManagedCosts = false) {
   if (!status) return "Status noch nicht geprüft.";
   if (status.error) return status.error;
   if (!status.budget?.ok) return "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.";
-  if (!status.budget.historyVerified)
-    return "Frühere Laptop-Ausgaben und Kostenbelege sind nicht vollständig abgeglichen. KI gesperrt.";
+  if (!status.budget.historyVerified && !status.budget.ownerManagedCosts &&
+      !(explicitOwnerManagedCosts && status.budget.ownerManagedApprovalAvailable))
+    return "Frühere Laptop-Ausgaben sind nicht vollständig abgeglichen. Für einen begrenzten Test ist eine ausdrückliche Kosten-Eigenverantwortung erforderlich, sofern verfügbar.";
   if (status.budget.blockReason) return "Budget gesperrt. Kostenabgleich erforderlich.";
   if (!status.providerConfigured) return "GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.";
   return null;
