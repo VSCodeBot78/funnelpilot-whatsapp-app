@@ -10,7 +10,16 @@ test("opening a desktop client only bootstraps a session, reads status and creat
       ? { ok: true, csrfToken: "a".repeat(64) } : { ok: true } };
   });
   await Promise.all([client.status(), client.newLead()]);
+  await client.state("lab_desktop_synthetic_unit_test");
   assert.equal(calls.filter(c => c.url.endsWith("session")).length, 1);
+  // The real browser omits Origin on GET; readonly POST retains it and the
+  // backend enforces the same strict cookie, CSRF and Origin checks.
+  for (const route of ["status", "state/lab_desktop_synthetic_unit_test"]) {
+    const req = calls.find(c => c.url.endsWith("/" + route));
+    assert.ok(req);
+    assert.equal(req.init.method, "POST");
+    assert.equal(req.init.body, "{}");
+  }
   assert.ok(calls.every(c => c.url.startsWith("/test-chat/desktop/")));
   assert.ok(calls.every(c => c.init.credentials === "same-origin"));
   assert.ok(calls.filter(c => !c.url.endsWith("session"))
