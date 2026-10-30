@@ -26,9 +26,9 @@ function normalizeLeadPayload(input: unknown): LeadRecord {
   }
 
   const rawBookingData = raw.bookingData as Record<string, unknown> | undefined;
-  const rawBookingStatus = String(rawBookingData?.status ?? "").trim().toLowerCase();
-  const isBooked = Boolean(raw.booked) || rawBookingStatus === "booked";
-  const normalizedBookingData = normalizeBookingData(rawBookingData ?? {}, isBooked);
+  const normalizedBookingData = normalizeBookingData(rawBookingData ?? {}, Boolean(raw.booked));
+  // Keep legacy lead.booked consistent with explicit, normalized structured status.
+  const isBooked = normalizedBookingData.status === "booked";
 
   return {
     id,

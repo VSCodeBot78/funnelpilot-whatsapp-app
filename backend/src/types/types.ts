@@ -412,7 +412,7 @@ export type EngineReply = {
   nextStep: FlowStepId;
   detectedIntent: LeadIntent;
   state: ConversationState;
-  replySuppressedReason?: "human_owned" | "stopped" | "superseded";
+  replySuppressedReason?: "human_owned" | "stopped" | "superseded" | "desktop_switched_off";
 };
 
 export type IncomingMessagePayload = {

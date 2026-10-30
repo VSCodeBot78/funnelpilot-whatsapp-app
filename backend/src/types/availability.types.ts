@@ -9,6 +9,9 @@ export type AvailabilityDayKey =
 export type AvailabilitySlot = {
   day: AvailabilityDayKey;
   time: string;
+  // Only on an actual, timestamped Calendly instance.
+  date?: string;
+  startAt?: string;
 };
 
 export type AvailabilityCheckResult = {

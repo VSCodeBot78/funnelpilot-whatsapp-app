@@ -38,6 +38,7 @@ export default function SettingsBotPanel({
     defaultLanguage: "Deutsch",
     brandVoice: "Jochen-Sprache",
     masterPrompt: "",
+    offerValueMap: "",
     customerTopObjections: "",
     dmConversationMode: "natural",
     answerLength: "kurz",
@@ -193,6 +194,27 @@ export default function SettingsBotPanel({
                 onChange={(event) => updateField("customerTopObjections", event.target.value)}
                 placeholder={"Zu wenig Zeit\nPreis / Budget\nSchon vieles probiert"}
               />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <FieldLabelWithInfo
+                label="Angebote: Leistung, Vorteil und Kundennutzen"
+                title="Was bietest du konkret, und warum ist das für den Kunden relevant?"
+                text="Für jedes Angebot belegbare Inhalte und Begleitung eintragen. Erkläre pro Leistung den praktischen Vorteil und den möglichen Nutzen für deine Zielgruppe. Das Wunschziel des Kunden wird im Gespräch erfragt. Keine garantierten Ergebnisse, erfundenen Termine oder Vertragsdetails hinterlegen."
+                placement="right"
+              />
+              <textarea
+                rows={8}
+                style={baseTextareaStyle(colors, 175)}
+                maxLength={5000}
+                value={safeSettings.offerValueMap || ""}
+                onChange={(event) => updateField("offerValueMap", event.target.value)}
+                placeholder={"ANGEBOT: 5-Wochen-Startphase\\nLEISTUNG: Begleitung zu Fitness, Ernährung, Schlaf und Stress\\nVORTEIL: Umsetzung gemeinsam auf den Familienalltag ausrichten\\nMÖGLICHER NUTZEN: Ein individuell passenderer Weg zum selbst genannten Ziel\\nNACHWEIS: Nur tatsächlich bestätigte Inhalte und Referenzen eintragen"}
+              />
+              <div style={{ color: colors.sub, fontSize: 12, marginTop: 5 }}>
+                Mehr Details helfen Pete, den Unterschied zwischen Leistung, Mehrwert und Wunschziel zu erklären.
+                Verbindliche Preise, Kauf- und Buchungslinks werden separat geprüft.
+              </div>
             </div>
 
             <div style={{ marginTop: 12 }}>

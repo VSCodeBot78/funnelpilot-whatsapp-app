@@ -45,7 +45,9 @@ test("X-Wing: onboarding dryRun guards ALL direct API and external provider acti
     "if (!dryRun && stage >= 3) reload();",
     "dryRun ?",
     "X-WING TROCKENLAUF",
-    "Kampagneneditor im Trockenlauf nicht öffnen",
+    "Demo-Kampagne (nicht gespeichert)",
+    "Verbindung simulieren",
+    "Demo-Verbindung zurücksetzen",
     "Trockenlauf verwerfen und schließen",
     "onFinish",
   ]) assert.ok(wizard.includes(required), required);
@@ -97,3 +99,15 @@ test("X-Wing: follow-up editor is reachable from Nachfassaktionen and never gran
   assert.ok(!view.includes("META_ACCESS_TOKEN"));
 });
 
+
+test("X-Wing: provider brand icons and fake connections stay isolated", () => {
+  const wizard = read("./SetupWizardModal.jsx");
+  const icons = read("./ProviderBrandIcon.jsx");
+  assert.ok(wizard.includes("<ProviderBrandIcon provider={p.id} />"));
+  assert.ok(wizard.includes("setDemoConnections(current"));
+  assert.ok(wizard.includes('dryRun ? <button type="button"'));
+  assert.ok(wizard.includes("setDemoCampaign(d =>"));
+  assert.ok(wizard.includes("Keine Meta-Zustellung, kein Pete-Modellaufruf"));
+  for (const p of ["instagram", "facebook", "whatsapp", "google_calendar", "calendly", "hubspot"])
+    assert.ok(icons.includes(p + ": "), "missing branded offline icon " + p);
+});

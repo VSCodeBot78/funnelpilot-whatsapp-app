@@ -118,8 +118,8 @@ router.post("/mark-sent/:campaignId/:leadId", (req, res) => {
 router.post("/send-due/:campaignId/:leadId", async (req, res) => {
   try {
     const { campaignId, leadId } = req.params;
-    const sentAt = typeof req.body?.sentAt === "string" ? req.body.sentAt : undefined;
-    const now = sentAt ? new Date(sentAt) : new Date();
+    // Real outbound authorization uses server time, never a client clock.
+    const now = new Date();
 
     if (Number.isNaN(now.getTime())) {
       return res.status(400).json({

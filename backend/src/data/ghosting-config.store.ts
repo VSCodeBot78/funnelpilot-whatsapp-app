@@ -35,78 +35,21 @@ function cloneGhostingConfig(config: GhostingConfig): GhostingConfig {
 export type { GhostingSlot, GhostingSchedule, GhostingConfig };
 
 const defaultGhostingConfig: GhostingConfig = {
-  schedules: [
-    {
+  // One optional, gentle reminder only inside a fresh inbound 24h window.
+  // Live sends still require all independent send/ownership/opt-out gates.
+  schedules: [{
+    cycle: 1,
+    slots: [{
       cycle: 1,
-      slots: [
-        {
-          cycle: 1,
-          stage: "cycle1_day1_0700",
-          dayOffsetHours: 24,
-          sendHour: 7,
-          sendMinute: 0,
-        },
-        {
-          cycle: 1,
-          stage: "cycle1_day1_1400",
-          dayOffsetHours: 24,
-          sendHour: 14,
-          sendMinute: 0,
-        },
-        {
-          cycle: 1,
-          stage: "cycle1_day1_2100",
-          dayOffsetHours: 24,
-          sendHour: 21,
-          sendMinute: 0,
-        },
-      ],
-    },
-    {
-      cycle: 2,
-      slots: [
-        {
-          cycle: 2,
-          stage: "cycle2_day2_0900",
-          dayOffsetHours: 48,
-          sendHour: 9,
-          sendMinute: 0,
-        },
-        {
-          cycle: 2,
-          stage: "cycle2_day2_1800",
-          dayOffsetHours: 48,
-          sendHour: 18,
-          sendMinute: 0,
-        },
-      ],
-    },
-    {
-      cycle: 3,
-      slots: [
-        {
-          cycle: 3,
-          stage: "cycle3_day3_1700",
-          dayOffsetHours: 72,
-          sendHour: 17,
-          sendMinute: 0,
-        },
-      ],
-    },
-  ],
+      stage: "cycle1_within24h_6h",
+      dayOffsetHours: 6,
+      sendHour: 0,
+      sendMinute: 0,
+    }],
+  }],
   messages: {
-    cycle1_day1_0700:
-      "Kurze Erinnerung von mir 🙂\nIst das Thema bei dir gerade noch auf dem Schirm oder ist der Alltag dazwischengekommen?",
-    cycle1_day1_1400:
-      "Ich halte nur kurz nach:\nIst das Thema gerade noch relevant für dich oder ist im Alltag einfach alles dazwischengegrätscht?",
-    cycle1_day1_2100:
-      "Kurzer Check von mir am Abend:\nIst das Thema noch offen oder ist der Tag inzwischen komplett darübergerollt?",
-    cycle2_day2_0900:
-      "Ich melde mich nochmal kurz 🙂\nWenn das Thema noch offen ist, schreib mir einfach kurz zurück.",
-    cycle2_day2_1800:
-      "Kurze ehrliche Nachfrage:\nIst das Thema für dich noch wichtig oder soll ich es erstmal wieder loslassen?",
-    cycle3_day3_1700:
-      "Ich schließe das Thema erstmal für den Moment.\nWenn du es wieder aufgreifen willst, reicht ein kurzes Zeichen.",
+    cycle1_within24h_6h:
+      "Kurze Nachfrage: Ist das Thema für dich noch aktuell? Wenn nicht, ist das völlig in Ordnung.",
   },
 };
 

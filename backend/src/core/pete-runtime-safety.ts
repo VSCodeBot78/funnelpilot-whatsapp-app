@@ -145,6 +145,17 @@ const MEDICAL_CRITICAL_KEYWORDS = [
   "schnell abnehmen",
 ];
 
+/** Reuse all authoritative medical signals when checking narrow exceptions.
+ * Critical-only words (for example Ohnmacht) must also block an exception.
+ * This helper does not change the existing safety classification or actions.
+ */
+export function hasPeteMedicalSafetySignal(text: string): boolean {
+  const normalized = normalizeText(text);
+  return Boolean(includesAnyKeyword(normalized, MEDICAL_KEYWORDS) ??
+    includesAnyKeyword(normalized, MEDICAL_SOFT_KEYWORDS) ??
+    includesAnyKeyword(normalized, MEDICAL_CRITICAL_KEYWORDS));
+}
+
 const EMOTIONAL_CRISIS_KEYWORDS = [
   "ich kann nicht mehr",
   "alles zu viel",
@@ -1102,7 +1113,10 @@ export function evaluatePeteRuntimeSafety(
   const legalPrivacyMatch = includesAnyKeyword(
     normalized,
     LEGAL_PRIVACY_KEYWORDS,
-  );
+  ) ?? (/\b(?:losch\w*|entfern\w*|vergiss)\b.{0,65}\b(?:daten|informationen)\b|\b(?:daten|informationen)\b.{0,45}\b(?:losch\w*|entfern\w*)\b/.test(normalized)
+    ? "personal_data_request" : undefined)
+    ?? (/\b(?:ich|wir)\s+(?:will|wollen|mochte\w*)\b.{0,55}\b(?:ruckzahlung|erstattung|geld\s+zuruck)\b/.test(normalized)
+      ? "refund_request" : undefined);
   if (legalPrivacyMatch) {
     return result({
       category: "legal_privacy",

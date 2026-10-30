@@ -8,6 +8,54 @@
 import { OFFER_TRUTH, isUnverifiedLongTermPriceQuestion,
   LONG_TERM_PRICE_UNVERIFIED_REPLY } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
+import { getConversationState } from "../data/store.js";
+import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { hasPeteMedicalSafetySignal, evaluatePeteRuntimeSafety } from "./pete-runtime-safety.js";
+import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, isPeteBookingCancellationRequest, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
+
+/** Founder configuration only. No model, browser or lead supplies hosts/URLs.
+ * A future tenant adapter must provide its own authenticated configuration.
+ */
+export function getPeteGuardedNextStep(
+  text: string, state: ConversationState, bookingUrl?: string,
+  proposal?: PeteNextStepProposal,
+) {
+  // A pending model call can retain an obsolete object after a store update.
+  // Recheck action authority against the current persisted record, including
+  // an opt-out that did not itself transfer human ownership.
+  const current = getConversationState(state.leadId, state.campaignId);
+  if (current && current !== state) {
+    const lastLead = [...current.messages].reverse().find(message => message.role === "user");
+    if (lastLead?.text !== text) return null;
+    state = current;
+  }
+  if (!state.flags) return null;
+  const messages = state.messages ?? [];
+  const lastLead = [...messages].reverse().find(message => message.role === "user");
+  const lastLeadIndex = lastLead ? messages.lastIndexOf(lastLead) : -1;
+  const previous = messages.slice(0, Math.max(0, lastLeadIndex));
+  const lastAssistant = [...previous].reverse().find(message => message.role === "assistant");
+  const latestBookingChoice = previous.filter(message => message.role === "user").slice(-6).reverse()
+    .find(message => isPeteBookingDeclined(message.text) ||
+      guardPeteNextStep(proposePeteNextStep(message.text), {
+        lastUserText: message.text, bookingUrl,
+        bookingHosts: ["calendly.com"], offerInfoHosts: [],
+      })?.nextPhase === "booking_offered");
+  const bookingRequestActive = Boolean(latestBookingChoice && !isPeteBookingDeclined(latestBookingChoice.text) &&
+    lastAssistant?.text.includes("?") && /\b(?:wann|erreichbar|welche.{0,20}zeit)\b/i.test(lastAssistant.text));
+  const inferred = proposePeteNextStep(text);
+  const proposed = proposal ?? (bookingRequestActive && inferred.nextStep === "none"
+    ? { nextStep: "booking" as const, evidenceQuote: text } : inferred);
+  return guardPeteNextStep(proposed, {
+    lastUserText: text, owner: state.owner, aiPaused: state.aiPaused,
+    stopped: state.flags.stopped, handoffActive: state.flags.peteRuntimeHandoffActive,
+    salesOptedOut: state.flags.salesFollowUpsOptedOut,
+    noQuestionsRequested: hasPeteActiveNoQuestionBoundary(state),
+    bookingRequestActive,
+    bookingUrl, offerInfoUrl: OFFER_TRUTH.coachingEntry.infoUrl,
+    bookingHosts: ["calendly.com"], offerInfoHosts: ["jochen-kammerer.de"],
+  });
+}
 
 export type PeteVerifiedAnswer = {
   text: string;
@@ -49,16 +97,38 @@ function isExplicitPaidOfferRefusal(input: string): boolean {
   return (
     /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(refusalText) ||
     /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(refusalText) ||
-    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(refusalText) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachricht(?:en)?|kaufangebote?)\b/.test(refusalText) ||
     /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(refusalText)
   );
 }
 
 
+/** A bounded request for confirmed trial facts is not legal advice.
+ * Only recent actual lead context qualifies. Real disputes/privacy stay gated.
+ */
+export function isPeteTrialFactFollowUp(text: string, state: ConversationState): boolean {
+  const input = norm(text);
+  if (!/\b(?:was\s+steht\s+(?:denn\s+)?fest|was\s+ist\s+(?:wirklich\s+)?bestatigt|welche\s+angaben\s+sind\s+bestatigt)\b/.test(input)) return false;
+  if (/\b(?:widerruf\w*|kundig\w*|stornier\w*|ruckzahl\w*|erstatt\w*|geld\s+zuruck|zahlung\w*|bezahlt|abbuch\w*|rechnung\w*|bestell\w*|anwalt\w*|gericht\w*|recht\w*|haftung\w*|agb|impressum|datenschutz|dsgvo|losch\w*|personenbezogen\w*|schadenersatz)\b/.test(input)) return false;
+  return state.messages.filter(message => message.role === "user").slice(0, -1).slice(-3)
+    .some(message => /\b(?:probephase|testphase|probierphase|kennenlernphase|(?:paar|einige|wenige)\s+wochen\s+testen)\b|\b(?:zusammenarbeit|begleitung|coaching)\b.{0,75}\btesten\b|\btesten\b.{0,75}\b(?:zusammenarbeit|begleitung|coaching)\b/.test(norm(message.text)));
+}
+
 export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
   const input = norm(text);
+  if (isPeteBookingCancellationRequest(text)) {
+    return { text: "Eine Terminabsage oder Änderung muss über die tatsächliche Buchung geklärt werden. Ich pausiere Pete und gebe den Vorgang an Jochen weiter, ohne eine Stornierung oder einen neuen Termin zu bestätigen.", handoff: true };
+  }
+  // Explicit ownership and an actual payment incident precede every FAQ or
+  // link, including mixed requests. No changes to the research model module.
+  if (/\bjochen\s+(?:(?:soll|kann|konnte)\s+)?(?:(?:bitte|hier|jetzt|personlich|den|diesen|chat|im)\s+){0,7}(?:ubernehm\w*|ubernimm\w*)\b/.test(input)) {
+    return { text: "Verstanden. Pete pausiert hier. Jochen kann den Chat persönlich übernehmen.", handoff: true };
+  }
+  if (/\b(?:doppelt|zweimal|zwei\s+mal)\b.{0,35}\b(?:abgebucht|bezahlt|belastet)\b|\b(?:abgebucht|bezahlt|belastet)\b.{0,35}\b(?:doppelt|zweimal|zwei\s+mal)\b/.test(input)) {
+    return { text: "Eine mögliche doppelte Abbuchung muss Jochen anhand der tatsächlichen Zahlung prüfen. Ich gebe den Vorgang zur persönlichen Klärung weiter, ohne eine Zahlung oder Erstattung zu bestätigen.", handoff: true };
+  }
   // Exact source keywords are verified resource requests, including when
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.
@@ -84,6 +154,111 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  const asksTrial = /\b(?:testphase|probierphase|probephase|kennenlernphase|(?:paar|einige|wenige)\s+wochen\s+testen)\b/.test(input) ||
+    /\b(?:zusammenarbeit|begleitung|coaching)\b.{0,75}\btesten\b|\btesten\b.{0,75}\b(?:zusammenarbeit|begleitung|coaching)\b/.test(input);
+  const coachingContext = /\b(?:coaching|begleitung|zusammenarbeit|1:1|zwischenmenschlich)\b/.test(input) ||
+    (state.messages ?? []).filter(message => message.role === "user").slice(-3)
+      .some(message => /coaching|begleitung|zusammenarbeit|1:1/i.test(message.text));
+  if (((asksTrial && coachingContext) || isPeteTrialFactFollowUp(text, state)) && !explicitlyDeclinesPaidOffers) {
+    const info = !state.flags?.salesFollowUpsOptedOut && !hasPeteActiveNoQuestionBoundary(state)
+      ? " Die Methode kannst du dir vorab hier anschauen: " + OFFER_TRUTH.coachingEntry.infoUrl : "";
+    return { text: "Eine gesonderte Probe- oder Kennenlernphase ist in den bestätigten Angebotsangaben nicht verbindlich zugesagt. Individuelle Sonderbedingungen muss Jochen selbst klären." + info };
+  }
+  // Browsing a package is NOT a purchase, even when the same sentence also
+  // mentions possibly booking later. Never preempt verified payment issues.
+  const nextStep = getPeteGuardedNextStep(text, state, bookingUrl);
+  if (nextStep?.nextStep === "offer_info" && !explicitlyDeclinesPaidOffers &&
+      !/\b(?:bezahlt|gekauft|bestellt|zahlung|rechnung|zugang|freischalt\w*)\b/.test(input)) {
+    return { text: nextStep.text };
+  }
+  // A short follow-up may omit the offer name. Use only the latest earlier
+  // customer message naming an offer, never an old campaign or guess.
+  const lastOfferMention = (state.messages ?? []).slice(0, -1).slice(-8).reverse()
+    .find(message => message.role === "user" &&
+      /\b(?:selbststarter|5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s-]*(?:euro|€))\b/.test(norm(message.text)));
+  const lastOfferText = norm(lastOfferMention?.text ?? "");
+  const previousFiveWeekSelected =
+    /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase|499[\s-]*(?:euro|€))\b/.test(lastOfferText) &&
+    (!/\bselbststarter\b/.test(lastOfferText) ||
+      /\b(?:nicht|kein(?:en)?)\s+(?:den\s+)?selbststarter\b/.test(lastOfferText));
+  const previousSelfstarterSelected =
+    /\bselbststarter\b/.test(lastOfferText) &&
+    !/\b(?:5[\s-]*wochen|startphase|499)\b/.test(lastOfferText);
+  // The 14.95 EUR DIY product has NO verified one-to-one chat-support promise.
+  // Give confirmed facts without escalating a harmless scope question into a
+  // persistent human-owned state; payments, privacy and health remain gated.
+  const asksDiyChatSupport =
+    /\b(?:chat[\s-]*support|chat[\s-]*betreuung|nachrichten[\s-]*support|support\s+(?:im|per)\s+chat)\b/.test(input) &&
+    /\b(?:bekomm\w*|gibt|enthalten|dabei|inklusive|inbegriffen|drin|gehor\w*|bietet|vorhanden)\b/.test(input) &&
+    (/\b(?:selbststarter|14[,.]95|14\s+euro\s+95|diy)\b/.test(input) || previousSelfstarterSelected) &&
+    !/\b(?:rechnung\w*|zahlung\w*|bezahlt|abbuch\w*|doppelt|ruckzahl\w*|erstatt\w*|widerruf\w*|vertrag\w*|datenschutz|dsgvo|losch\w*|diagnos\w*|medikament\w*|therapie\w*|arzt|notfall)\b/.test(input);
+  if (asksDiyChatSupport && !explicitlyDeclinesPaidOffers) {
+    return { text: "Beim Selbststarter ist die eigenständige Nutzung bestätigt. " +
+      "Ob persönlicher Chat-Support dazugehört, ist in den geprüften Angaben nicht verbindlich bestätigt. " +
+      "Erweiterter Chat-Support gehört dagegen zu den bestätigten Leistungen der persönlichen 5-Wochen-Begleitung.",
+      nextPhase: "info" };
+  }
+  if (!explicitlyDeclinesPaidOffers &&
+      (/\bselbststarter\b/.test(input) || previousSelfstarterSelected) &&
+      /\b(?:zoom|video(?:-termin|-call)?|1:1|einzelcoaching)\b/.test(input) &&
+      /\b(?:enthalten|dabei|inklusive|inbegriffen|auch)\b/.test(input)) {
+    return { text: "Nein, persönliche 1:1-Zoom-Termine sind nicht im Selbststarter enthalten. Das ist das Angebot zum eigenständigen Umsetzen. Wöchentliches 45-Minuten-1:1-Coaching per Zoom gehört zur persönlichen 5-Wochen-Startphase.", nextPhase: "info" };
+  }
+  // A weekly cadence does not verify a separate contractual guarantee of
+  // exactly five completed Zoom appointments. Never escalate this ordinary
+  // offer question before giving the confirmed frequency and its limit.
+  if (/\b(?:genau|insgesamt|exakt|verbindlich|garantiert)\b/.test(input) &&
+      /\b(?:5|funf)\b/.test(input) &&
+      /\b(?:zoom(?:[\s-]*(?:termin\w*|call\w*))?|video(?:anruf\w*|termin\w*|call\w*))\b/.test(input) &&
+      !/\bselbststarter\b/.test(input)) {
+    return { text: "In der persönlichen 5-Wochen-Startphase sind wöchentlich 45 Minuten 1:1-Zoom-Coaching bestätigt. Eine gesonderte Garantie über genau fünf tatsächlich stattfindende Einzeltermine kann ich daraus nicht ableiten. Die konkreten Terminbedingungen klärt Jochen vor einer verbindlichen Zusage.", nextPhase: "info" };
+  }
+  // Scope is not proof: do not invent a number of coaching/video calls.
+  // Answer an exact benefits question without assigning ownership to Jochen.
+  const asksExactPersonalCalls =
+    /\b(?:wie viele|wieviele|anzahl|wie oft|wie haufig)\b.{0,85}\b(?:videoanruf\w*|video.?call\w*|coach(?:ing)?call\w*|gesprach\w*|zoom(?:-call|-termin)?\w*)\b/.test(input) &&
+    (/\b(?:pro woche|je woche|enthalten|inbegriffen|im preis|startphase|begleitung|5[\s-]*wochen)\b/.test(input) ||
+      previousFiveWeekSelected) &&
+    !/\bselbststarter\b/.test(input);
+  if (asksExactPersonalCalls) {
+    // The current Nutrilize 5-week checkout explicitly verifies the cadence.
+    // Do not infer other contract terms or a particular number of completed calls.
+    return { text: "Bei der persönlichen 5-Wochen-Startphase sind wöchentlich 45 Minuten 1:1-Coaching per Zoom enthalten. Dazu gibt es einmal pro Woche den Power Walk & Call für kurze Fragen und Motivation.", nextPhase: "info" };
+  }
+
+  // A direct question about what the 499 EUR coaching actually includes must
+  // be answered with the founder-verified deliverables before any sales pitch.
+  // This applies only to the personal five-week offer, never the DIY starter.
+  const asksFiveWeekScope =
+    /\b(?:was(?: genau)? bekomme|was beinhaltet|was ist.{0,85}(?:enthalten|dabei|drin)|welche leistungen|leistungsumfang|was umfasst)\b/.test(input) &&
+    (/\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input) ||
+     /\b499\s*(?:euro\b|€)/.test(input)) &&
+    !/\b(?:selbststarter|6[\s-]*monat|sechs[\s-]*monat)\b/.test(input);
+  if (asksFiveWeekScope && !explicitlyDeclinesPaidOffers) {
+    return {
+      text: "Die persönliche 5-Wochen-Startphase für " +
+        OFFER_TRUTH.coachingEntry.priceText + " beinhaltet " +
+        OFFER_TRUTH.coachingEntry.includedServices.join(", ") +
+        ". Der Start ist innerhalb von " +
+        OFFER_TRUTH.coachingEntry.startSelectableWithinDays +
+        " Tagen wählbar. Ergebnisse sind nicht garantiert.",
+      nextPhase: "info",
+    };
+  }
+
+  // Starting inside a selectable 14-day window does NOT guarantee that
+  // the very next day is available. Do not escalate an ordinary date question.
+  if (/\b(?:garantiert|sicher|verbindlich)\b.{0,55}\b(?:morgen|heute|sofort|anfangen|starten)\b/.test(input) &&
+      (previousFiveWeekSelected || /\b(?:startphase|5[\s-]*wochen|499[\s-]*(?:euro|€))\b/.test(input))) {
+    return { text: "Den Start der persönlichen 5-Wochen-Begleitung kannst du laut Angebot innerhalb von 14 Tagen wählen. Einen konkreten Start morgen kann ich dir hier nicht garantieren. Prüfe die verfügbaren Angaben vor einer Buchung im Checkout.", nextPhase: "info" };
+  }
+
+  // A mention of a possible credit is not verified contractual consent.
+  if ((/\b499\b.{0,80}\b(?:anrechn\w*|angerechn\w*|gutschreib\w*)\b/.test(input) ||
+       /\b(?:anrechn\w*|angerechn\w*|gutschreib\w*)\b.{0,85}\b499\b/.test(input)) &&
+      /\b(?:garantiert|komplett|voll|sicher|sechs|6[\s-]*monat)\b/.test(input)) {
+    return { text: "Eine mögliche Anrechnung der 499 Euro bei einer späteren 6-Monats-Begleitung ist erwähnt. Die aktuell verbindlichen Upgrade- und Anrechnungsbedingungen sind hier aber nicht ausreichend bestätigt. Bitte kläre diese vor einer Entscheidung direkt mit Jochen, damit ich dir keine falsche Vertragszusage mache.", nextPhase: "info" };
+  }
   // A concrete purchase request must lead to the VERIFIED product URL now.
   // Never let the model invent a future checkout event or a fake payment.
   const declinedSelfstarterPurchase =
@@ -96,6 +271,49 @@ export function getPeteVerifiedTransactionAnswer(
       OFFER_TRUTH.selfstarter.productUrl + ". Die verbindliche Gesamtsumme und Bedingungen siehst du vor dem Kauf im Checkout.",
       nextPhase:"selfstarter_offered"};
   }
+  // An explicit buyer of the VERIFIED five-week entry may receive its stored
+  // checkout directly. A vague interest or price objection is NOT consent.
+  // Avoid guessing which offer the lead means if several are mentioned.
+  const namesFiveWeek = /\b(?:5[\s-]*wochen|funf[\s-]*wochen|startphase)\b/.test(input);
+  const explicitlyBuysFiveWeek =
+    /\bich (?:will|mochte|nehme)\b.{0,110}\b(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:wo|wie)\s+(?:kann|konnt)\w*\b.{0,90}\b(?:kaufen|bestellen)\b/.test(input) ||
+    /\b(?:schick|sende|gib|zeig)\w*\b.{0,90}\b(?:link|checkout|kaufweg)\b/.test(input);
+  const asksFiveWeekDetails =
+    /\b(?:was bekomme|was beinhaltet|welche leistungen|wie viele|wie oft)\b/.test(input);
+  const hasFiveWeekBudgetBarrier =
+    /\b(?:kein(?:e|en)?\s+(?:geld|budget)|nicht\s+leisten|zu\s+teuer|sprengt\s+(?:mein|das)\s+budget|geld\s+reicht\s+nicht|nicht\s+bezahlbar|nicht\s+finanzierbar|nicht\s+(?:genug|genugend)\s+geld|zu\s+wenig\s+geld)\b/.test(input) ||
+    /\b(?:wenn|falls)\b.{0,80}\b(?:geld|budget)\b.{0,30}\b(?:habe|reicht|da)\b/.test(input);
+  // A conditional "I want to buy, but first..." is not a finalized purchase
+  // decision. Leave an unresolved joint decision or reflection to the
+  // regular respectful conversation path, never force a checkout link.
+  const hasPendingFiveWeekDecision =
+    /\b(?:erst|noch|vorher|zuerst|muss)\b.{0,75}\b(?:frau|mann|partner(?:in)?|ehepartner(?:in)?)\b.{0,35}\b(?:fragen|besprechen|sprechen|absprechen|zustimm\w*|klaren|reden)\b/.test(input) ||
+    /\b(?:wenn|falls)\b.{0,80}\b(?:frau|mann|partner(?:in)?)\b.{0,40}\b(?:zustimm\w*|einverstanden)\b/.test(input) ||
+    /\b(?:brauche|warte|erst)\b.{0,75}\b(?:zustimmung|einverstandnis)\b.{0,50}\b(?:frau|mann|partner(?:in)?)\b/.test(input) ||
+    /\bohne\b.{0,55}\b(?:frau|mann|partner(?:in)?)\b.{0,35}\b(?:fragen|einverstandnis|zustimmung)\b/.test(input) ||
+    /\b(?:erst|noch|muss)\b.{0,35}\b(?:daruber|druber)\b.{0,20}\bschlafen\b/.test(input) ||
+    /\b(?:aber|erst|noch|vorher|zuerst|brauche)\b.{0,70}\b(?:bedenkzeit|daruber|druber|nachdenken|uberlegen|zustimmung)\b/.test(input) ||
+    /\bkeine\s+weiteren?\s+(?:nachrichten|verkaufsnachrichten)\b/.test(input);
+  // A buyer may choose the personal entry in the earlier turn and then say
+  // "ich möchte jetzt ohne Verkaufscall direkt kaufen". Preserve that latest
+  // verified product selection, but never guess an ambiguous or newer offer.
+  const currentlyNegatesStarter = /\b(?:nicht|kein(?:en)?)\s+(?:den\s+)?selbststarter\b/.test(input);
+  const ambiguousOfferInCurrentTurn =
+    (/\bselbststarter\b/.test(input) && !currentlyNegatesStarter) ||
+    /\b(?:6[\s-]*monat|sechs[\s-]*monat)\b/.test(input);
+  if ((namesFiveWeek || previousFiveWeekSelected) && explicitlyBuysFiveWeek &&
+      !hasFiveWeekBudgetBarrier && !hasPendingFiveWeekDecision &&
+      !asksFiveWeekDetails && !ambiguousOfferInCurrentTurn &&
+      !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
+    return {
+      text: "Hier ist der hinterlegte Kaufweg für die persönliche 5-Wochen-Startphase: " +
+        OFFER_TRUTH.coachingEntry.checkoutUrl +
+        ". Bitte prüfe die verbindlichen Angaben im Checkout vor einer Bestellung.",
+      nextPhase: "info",
+    };
+  }
+
   // Verified offer facts win over a generic LLM answer when a parent asks
   // about the concrete time commitment or DIY scope. We have no approved
   // minute-per-day promises or detailed module inventory in offer-truth.
@@ -112,7 +330,7 @@ export function getPeteVerifiedTransactionAnswer(
   }
   if (asksTimeCommitment && fiveWeekMentioned && !selfstarterMentioned) {
     return {
-      text: "Die persönliche Startphase dauert fünf Wochen. Wie viele Minuten oder Stunden pro Woche du dafür einplanen musst, ist hier nicht verbindlich hinterlegt. Den genauen Aufwand kann Jochen mit dir klären.",
+      text: "Die Startphase dauert fünf Wochen. Enthalten sind wöchentlich 45 Minuten 1:1-Coaching per Zoom und ein Power Walk & Call pro Woche. Zusätzlich gibt es Workouts, App und Chat-Support. Ein Gesamtzeitaufwand pro Woche ist nicht verbindlich angegeben, weil er vom individuellen Alltag abhängt.",
       nextPhase: "info",
     };
   }
@@ -146,6 +364,12 @@ export function getPeteVerifiedTransactionAnswer(
   if (explicitlyDeclinesPaidOffers) {
     return { text: "Verstanden. Dann lasse ich Kaufangebote weg. Wenn du später von dir aus eine Frage hast, kannst du dich melden.", nextPhase: "info" };
   }
+  // When someone explicitly has *no* money, do not pitch an allegedly
+  // affordable product. The person can request a self-directed offer later.
+  if (/\b(?:gar kein geld|kein budget|kein geld|uberhaupt kein geld)\b/.test(input) &&
+      /\b(?:coaching|begleitung|startphase)\b/.test(input)) {
+    return { text: "Dann ist eine kostenpflichtige Begleitung gerade nicht passend. Du musst dafür keine Schulden machen oder dich jetzt entscheiden." };
+  }
   // A price boundary is not an emergency or a reason for compulsory handover.
   if (/\b(?:499\s*euro|499\s*€|coaching|begleitung)\b/.test(input) &&
       /\b(?:zu teuer|zu viel|nicht leisten|sprengt mein budget|kein geld)\b/.test(input) &&
@@ -164,6 +388,50 @@ export function getPeteVerifiedTransactionAnswer(
         (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
           /no bullshit elternfitness selbststarter/i.test(message.text)));
   });
+  // The verified selfstarter product page allows independent checkout.
+  // A follow-up about a compulsory call is NOT a human-handover request.
+  // Require the VERIFIED selfstarter link in this same conversation first.
+  const asksBuyWithoutAppointment =
+    /\b(?:kaufen|bestellen|direkt|link|checkout)\b/.test(input) &&
+    /\b(?:ohne|kein(?:en|e)?|pflicht)\b.{0,30}\b(?:pflichttermin|pflichtcall|strategiegesprach|termin|call|gesprach)\b/.test(input);
+  if (asksBuyWithoutAppointment && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
+    return { text: "Ja, den Selbststarter kannst du eigenständig über die Produktseite kaufen, ohne vorheriges Strategiegespräch. Hier ist der verifizierte Link: " +
+      OFFER_TRUTH.selfstarter.productUrl +
+      ". Die verbindliche Gesamtsumme und Bedingungen stehen vor dem Kauf im Checkout.",
+      nextPhase: "selfstarter_offered" };
+  }
+  // A repeat link request uses ONLY a checkout URL already delivered in this
+  // conversation AND still approved in offer-truth. No model-generated link,
+  // no guessed product and no unverified payment/booking confirmation.
+  const asksToResendCheckout =
+    /\b(?:schick\w*|sende\w*|gib|zeig\w*)\b.{0,70}\b(?:link|kaufweg|checkout)\b/.test(input) &&
+    /\b(?:noch\s*mal|nochmal|erneut|wieder|verloren|nicht mehr)\b/.test(input) &&
+    !/\b(?:nicht|kein(?:e|en|es)?)\b.{0,30}\b(?:schick\w*|sende\w*|gib|link|kaufweg|checkout)\b/.test(input) &&
+    !/\b(?:link|kaufweg|checkout)\b.{0,25}\bnicht\s+(?:mehr\s+)?(?:noch\s*mal|nochmal|schicken|senden)\b/.test(input);
+  if (asksToResendCheckout && !explicitlyDeclinesPaidOffers &&
+      !/\b(?:keto|elterncheck|fitnesscheck)\b/.test(input)) {
+    const previousCheckout = (state.messages ?? []).slice(0, -1).slice(-30).reverse().find(message =>
+      message.role === "assistant" &&
+      (message.text.includes(OFFER_TRUTH.selfstarter.productUrl) ||
+       message.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl)));
+    if (previousCheckout) {
+      const hasSelfstarter = previousCheckout.text.includes(OFFER_TRUTH.selfstarter.productUrl);
+      const hasCoaching = previousCheckout.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl);
+      const namedSelfstarter = /\bselbststarter\b/.test(input);
+      const namedCoaching = /\b(?:coaching|startphase|5[\s-]*wochen)\b/.test(input);
+      if (hasSelfstarter !== hasCoaching &&
+          (!namedSelfstarter || hasSelfstarter) &&
+          (!namedCoaching || hasCoaching)) {
+        return hasSelfstarter
+          ? { text: "Klar, hier ist der verifizierte Selbststarter-Link noch einmal: " +
+              OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" }
+          : { text: "Klar, hier ist der verifizierte Link zur 5-Wochen-Startphase noch einmal: " +
+              OFFER_TRUTH.coachingEntry.checkoutUrl +
+              ". Die verbindlichen Bedingungen siehst du vor dem Kauf im Checkout.", nextPhase: "info" };
+      }
+    }
+  }
+
   if (wantsBundleLink && previousSelfstarter && !explicitlyDeclinesPaidOffers) {
     return { text: "Klar, hier kannst du dir den No Bullshit Elternfitness Selbststarter anschauen: " +
       OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" };
@@ -235,10 +503,19 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // Merely starting a checkout is NOT proof of purchase or an ownership
+  // incident. Do not set human ownership before the actual payment question.
+  if (/\b(?:bestellung|bestellvorgang|checkout|kauf)\b.{0,70}\b(?:begonnen|gestartet)\b/.test(input) &&
+      !/\b(?:zahlung|bezahlt|bestatigung|zugang|freischalt\w*|angekommen|abgebucht|erfolgreich|bestatigt)\b/.test(input)) {
+    return {
+      text: "Du hast den Bestellvorgang begonnen. Ob eine Zahlung abgeschlossen oder ein Zugang freigeschaltet wurde, kann ich hier nicht prüfen. Bitte orientiere dich an der Bestätigung im Checkout.",
+      nextPhase: "info",
+    };
+  }
   const asksVerifiedStatus =
     /\b(?:bestatigt|bestatigung|verifiziert|wirklich gebucht|tatsachlich gebucht|sicher gebucht|angekommen|zahlungseingang|habe bezahlt|hab bezahlt|zugang fehlt|bestellung|kaufbeleg|abbuchung)\b/.test(input) &&
     /\b(?:termin|kalender|calendly|buchung|gebucht|zahlung|bezahlt|gekauft|bestellung|zugang|kauf|rechnung|bezahlen)\b/.test(input);
-  const payment = /\b(?:bezahlt|zahlung|abbuchung|rechnung|kaufbeleg|bestellung|gekauft|zugang fehlt|zahlungseingang)\b/.test(input);
+  const payment = /\b(?:bezahlt|zahlung|abbuchung|rechnung|kaufbeleg|bestellung|gekauft|zugang fehlt|zahlungseingang|geld\s+(?:angekommen|eingegangen))\b/.test(input);
   const booking = /\b(?:termin|gebucht|kalender|calendly|buchung)\b/.test(input);
 
   // Verification wins over any past sales choice. Never use user testimony
@@ -246,7 +523,7 @@ export function getPeteVerifiedTransactionAnswer(
   if (asksVerifiedStatus) {
     if (payment) {
       return {
-        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Ich gebe den Vorgang an Jochen zur persönlichen Prüfung weiter. Eine Bestätigung wäre sonst geraten.",
+        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Auch eine Freischaltung deines Zugangs kann ich nicht bestätigen. Prüfe bitte deine Bestellbestätigung. Ich gebe den Vorgang an Jochen zur persönlichen Prüfung weiter, statt Zahlung oder Zugang zu erfinden.",
         handoff: true,
       };
     }
@@ -365,13 +642,8 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier ist der kostenlose Elternfitness-Check: " +
       OFFER_TRUTH.resources.elterncheck.url };
   }
-  if (/\b(?:buchungslink|terminlink|calendly.?link|strategiegesprach buchen)\b/.test(input) &&
-      !/\b(?:nicht|kein|ohne|erstmal nicht|lieber hier)\b/.test(input)) {
-    return bookingUrl?.startsWith("https://")
-      ? { text: "Hier kannst du einen Termin für ein Strategiegespräch auswählen: " + bookingUrl,
-          nextPhase: "booking_offered" }
-      : { text: "Ich kann dir hier keinen verifizierten Buchungslink nennen. Jochen kann dir den richtigen Weg zeigen.", handoff: true };
-  }
+  if (nextStep?.nextStep === "booking" && !explicitlyDeclinesPaidOffers)
+    return { text: nextStep.text, nextPhase: nextStep.nextPhase };
 
   // A generic mention of "price", "book", "appointment" or "Jochen"
   // without a concrete verified transaction stays with the LLM.
@@ -391,7 +663,7 @@ export function getPeteVerifiedTransactionAnswer(
  */
 export function isPeteChestBreathingEmergency(text: string): boolean {
   const input = norm(text);
-  const breath = /\b(?:atemnot|luftnot|kaum\s+luft|keine\s+luft|nicht\s+atmen|bekomme\s+(?:kaum|keine)\s+luft)\b/.test(input);
+  const breath = /\b(?:atemnot|luftnot|kurzatmig(?:keit)?|kaum\s+luft|keine\s+luft|schlecht\s+luft|schwer\s+luft|nicht\s+atmen|(?:bekomme|krieg(?:e)?)\s+(?:kaum|keine|schlecht|schwer|nur\s+schwer|nicht\s+richtig|zu\s+wenig)\s+luft|(?:kann|konnte)\s+(?:kaum|nicht\s+richtig|nicht)\s+(?:atmen|durchatmen))\b/.test(input);
   const chest = /\b(?:brustschmerz\w*|brustenge|enge\s+(?:auf|in)\s+der\s+brust|druck\s+(?:auf|in)\s+der\s+brust|schmerzen?\s+(?:auf|in)\s+der\s+brust)\b/.test(input);
   return breath && chest;
 }
@@ -404,14 +676,39 @@ export function isPeteChestBreathingEmergency(text: string): boolean {
 export function isPeteNonMedicalPostPregnancyBodyImage(text: string): boolean {
   const input = norm(text);
   const history = /\b(?:seit|nach)\s+(?:(?:den|der|meiner|meinen)\s+)?schwangerschaft\w*\b/.test(input) ||
-    /\b(?:seit|nach)\s+(?:der|den)\s+geburt\w*\b/.test(input);
-  const bodyImage = /\b(?:scham\w*|unsicher|unwohl|korperbild|selbstbild|bauch|figur)\b/.test(input);
+    /\b(?:seit|nach)\s+(?:der|den)\s+geburt\w*\b/.test(input) ||
+    // Historical pregnancy phrasing, not present pregnancy.
+    /\b(?:meine|die)?\s*(?:letzte|fruhere|vorige)\s+schwangerschaft\s+(?:liegt|ist)(?:\s+schon)?\s+(?:\d+|ein|zwei|drei|vier|funf)\s+jahre?\s+(?:zuruck|her)\b/.test(input);
+  const bodyImage = /\b(?:scham\w*|unsicher|unwohl|korperbild|selbstbild|bauch|figur)\b/.test(input) ||
+    /\bfuhle\s+mich\s+(?:in\s+(?:meinem|dem)\s+korper\s+)?nicht\s+wohl\b/.test(input);
   const redFlag = /\b(?:schwanger|atemnot|luftnot|kaum\s+luft|brustschmerz\w*|brustenge|herzschmerz\w*|blutung\w*|schmerz\w*|suizid\w*|selbstverletz\w*|medikament\w*|krankheit\w*|therapie|diagnose|akut\w*|fieber)\b/.test(input);
   return history && bodyImage && !redFlag;
 }
 
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
+  // A confirmed existing doctor's appointment or a plain statement about
+  // receiving care is not itself a request for a diagnosis or exercise
+  // clearance. Apply this exception ONLY to explicit benign formulations.
+  // Current pain, medication, dosage, treatment changes and fitness clearance
+  // questions keep the ordinary strict medical guard.
+  const incidentalHipCare = /\bwegen\s+meiner\s+hufte\s+bin\s+ich\s+(?:(?:schon|bereits)\s+)?beim\s+arzt\b/.test(input) &&
+    /\bich\s+brauche\s+(?:hier\s+)?keine\s+(?:fern)?diagnose\b/.test(input);
+  const unrelatedDoctorAppointment = /\b(?:mein|der)\s+arzttermin\b/.test(input) &&
+    /\bkein\s+wunsch\s+nach\s+(?:einem\s+)?coachingtermin\b/.test(input);
+  const medicalRedFlag = /\b(?:brust\w*|atemnot|luftnot|schmerz\w*|akut\w*|medikament\w*|insulin\w*|dosis|dosierung|therapie|behandlung|symptom\w*|verschlimmer\w*|belastbarkeit|freigabe|diagnostizier\w*|schwanger|blutung\w*|selbstverletz\w*|suizid|notfall|blut(?:hoch)?druck)\b/.test(input) ||
+    /\b(?:darf|soll|kann)\s+ich\b.{0,65}\b(?:trainier\w*|sport|ubung\w*|belasten|machen)\b/.test(input) ||
+    /\b(?:welche|wie|was)\b.{0,70}\b(?:ubung\w*|trainier\w*|sport|belast\w*|hufte)\b/.test(input);
+  if (incidentalHipCare || unrelatedDoctorAppointment) {
+    // Ignore only the explicitly benign doctor's reference and the explicit
+    // diagnosis refusal. All remaining medical signals stay authoritative,
+    // including critical-only words absent from the older short regex above.
+    const remaining = input
+      .replace(/\bich\s+brauche\s+(?:hier\s+)?keine\s+(?:fern)?diagnose\b/g, "")
+      .replace(/\bbeim\s+arzt\b|\barzttermin\b/g, "");
+    return !medicalRedFlag && !hasPeteMedicalSafetySignal(remaining) &&
+      !["legal_privacy", "emotional_crisis"].includes(evaluatePeteRuntimeSafety(remaining).category);
+  }
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über
@@ -444,21 +741,77 @@ export function isSalesFollowUpOptOut(text: string): boolean {
     // explicitly forbidden. Do not let the positive request erase that choice.
     // Exclude the generic "keine Angebote bekommen" phrase from opt-out.
     return [
-      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachrichten?|nachrichten?)\b/,
-      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachricht(?:en)?|nachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:werbenachricht(?:en)?|werbung|verkaufsnachricht(?:en)?)\b/,
       /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
       /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
       /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
     ].some(pattern => pattern.test(refusalText));
   }
   return isExplicitPaidOfferRefusal(input) || [
-    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
+    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachricht(?:en)?|werbenachricht(?:en)?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
     /\b(?:bitte\s+)?nicht\s+(?:(?:mehr|weiter|erneut|nochmal)\s+)?(?:hinterherlaufen|hinterherschreiben|nachhaken)\b/,
     /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
-    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
+    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachricht(?:en)?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
   ].some(pattern => pattern.test(refusalText));
+}
+
+/**
+ * Narrow, fact-checked reply for a false model escalation after a parent
+ * asks how the *coaching routine* handles a sick child. Never advises on
+ * a child's symptoms, diagnosis or treatment, and cannot authorize a send.
+ * This function runs only after the engine has checked owner/STOP/safety.
+ */
+export function peteSafeRoutineRepairReply(state: ConversationState): string | null {
+  const leadTexts = (state.messages ?? [])
+    .filter(message => message.role === "user")
+    .slice(-2).map(message => String(message.text ?? ""));
+  const context = norm(leadTexts.join(" "));
+  if (!/\b(?:wie funktioniert|wie geht|wie kann)\b.{0,100}\b(?:eure|die|unsere)?\s*(?:methode|training|alltagsroutine|plan)\b/.test(context) ||
+      !/\bkrank(?:em|en|es|e)?\s+kind\b/.test(context)) return null;
+  if (/\b(?:atemnot|brustschmerz|fieber|schmerz|insulin|medikament|arzt|medizin|diagnose|therapie|behandlung|notfall|dosierung|selbstverletzung|suizid|krise|widerruf|datenschutz|stop|nicht mehr schreiben|lass mich in ruhe)\b/.test(context) ||
+      /\b(?:jochen|ein mensch)\b.{0,40}\b(?:ubernimm|ubernehmen|personlich|antworten)\b/.test(context)) return null;
+  return "Wenn dein Kind krank ist, darf das Training pausieren. Sobald wieder Luft ist, steigst du mit einer kurzen Einheit ein, statt verpasste Einheiten nachzuholen. So bleibt die Routine auch in unruhigen Familienwochen machbar.";
+}
+
+/**
+ * Policy v4.1. The model sometimes sets needsHuman=true for ordinary
+ * method/scope questions. Respond with ONLY independently verified high-level
+ * facts, instead of permanently assigning the chat to Jochen. Never use the
+ * model's untrusted answer to form this fallback, and never guess package
+ * terms or claim a guaranteed coaching outcome.
+ *
+ * Scope is deliberately narrow: a person who explicitly requests human
+ * ownership, a sensitive transaction, or medical advice still requires the
+ * normal engine's guarded route.
+ */
+export function peteSafeNoncriticalExplanationReply(state: ConversationState): string | null {
+  const turns = (state.messages ?? []).filter(message => message.role === "user");
+  const latest = norm(String(turns.at(-1)?.text ?? ""));
+  if (!latest || latest.length > 600) return null;
+  const context = norm(turns.slice(-2).map(message => String(message.text ?? "")).join(" "));
+  if (/\b(?:brust|atemnot|luftnot|schlecht luft|kaum luft|schmerz\w*|fieber|krankheit|medikament\w*|insulin|diagnos\w*|therapie|behandlung|arzt|notfall|suizid|selbstverletz\w*|schwanger|krise|akut|dosierung|blutdruck|medizin\w*|rezept\w*|widerruf|datenschutz|losch\w*|rechnung|zahlung|bezahlt|zugang fehlt|ratenzahlung|stop|nicht mehr schreiben|lass mich in ruhe)\b/.test(context)) return null;
+  if (/\b(?:jochen|mensch|personlich)\b.{0,50}\b(?:ubernimm\w*|ubernehmen|antworten|schreiben|hier im chat|direkt sprechen)\b/.test(latest) ||
+      /\b(?:bitte|mochte|will)\s+(?:mit\s+)?(?:jochen|einem menschen)\b/.test(latest)) return null;
+
+  // We know the offer orientation, NOT required intake calls or exact timings.
+  if (/\b(?:wie|was)\b.{0,42}\b(?:einstieg|start|anmeldung|anfang)\b.{0,45}\b(?:strukturiert|lauft|beginnt|funktioniert|organisiert|ablauf)\b/.test(latest) ||
+      /\b(?:wie ist der einstieg strukturiert|wie lauft der einstieg|wie beginnt die begleitung|wie starte ich mit euch)\b/.test(latest)) {
+    return "Die 5-Wochen-Startphase startet mit einer persönlichen Analyse. Dazu gehören wöchentlich 45 Minuten 1:1-Coaching via Zoom, individuelle Pläne über die App und erweiterter Chat-Support. Der Start ist innerhalb von 14 Tagen wählbar. Einen Pflicht-Call vor dem Kauf gibt es im bestätigten Kaufweg nicht.";
+  }
+  // Skepticism is not a request to transfer chat ownership.
+  if (/\b(?:wie|warum)\b.{0,85}\b(?:unterbrechungen|uberstunden|familie|alltag|dranbleiben|wiedereinstieg)\b.{0,60}\b(?:um|funktioniert|geht|anders)\b/.test(latest) ||
+      /\b(?:wie geht ihr mit unterbrechungen|wie hilft eure methode bei familienchaos|was ist bei euch anders)\b/.test(latest) ||
+      // The user asks how the approach handles a disrupted family schedule.
+      // This is ordinary method information, not a medical or transaction case.
+      (/\b(?:was passiert|was macht ihr|wie reagiert ihr|wie geht ihr|wie funktioniert)\b/.test(latest) &&
+       /\b(?:kinderbetreuung|betreuung|familienalltag|familie|kinder|woche|zeitplan)\b/.test(latest) &&
+       /\b(?:ausfall\w*|fallt aus|unterbrech\w*|durcheinander\w*|spontan|chaos)\b/.test(latest))) {
+    return "Wenn durch Kinder oder Überstunden etwas ausfällt, ist ein machbarer Wiedereinstieg wichtig. In der 5-Wochen-Startphase gibt es dafür individuelle Trainings- und Ernährungspläne, wöchentlich 45 Minuten 1:1-Coaching per Zoom und erweiterten Chat-Support. Das ist Begleitung bei der Umsetzung, keine Ergebnisgarantie.";
+  }
+  return null;
 }
 
 export function peteSafeBudgetBoundaryReply(latestText: string): string | null {

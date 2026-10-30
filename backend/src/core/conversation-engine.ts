@@ -4,10 +4,26 @@ import {
   isSalesFollowUpOptOut,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
+  isPeteTrialFactFollowUp,
   isPeteChestBreathingEmergency,
   isPeteNonMedicalPostPregnancyBodyImage,
+  peteSafeRoutineRepairReply,
+  peteSafeNoncriticalExplanationReply,
 } from "./pete-conversation-quality.js";
 import { getConversationState } from "../data/store.js";
+import { desktopCallMode } from "../services/pete-desktop-lab.service.js";
+import { peteLabTechnicalFailure } from "./pete-lab-failure-contract.js";
+
+/** Disclosure is enforced by the application, including rule-based replies.
+ * It must not depend on the lead first asking whether Pete is Jochen.
+ */
+function disclosePeteIdentity(state: import("../types/types.js").ConversationState, text: string): string {
+  const identifiesPete = (value: string) => /\bPete\b.{0,60}\bKI[- ]Assistent\w*\b/i.test(value);
+  const disclosed = state.answers.peteIdentityDisclosed === true ||
+    state.messages.some(message => message.role === "assistant" && identifiesPete(message.text));
+  patchAnswers(state, { peteIdentityDisclosed: true });
+  return disclosed || identifiesPete(text) ? text : "Ich bin Pete, Jochens KI-Assistent. " + text;
+}
 import {
   getPeteLlmConversationReply,
   isExplicitPeteHumanTakeoverRequest,
@@ -1284,6 +1300,20 @@ export async function processIncomingMessage(
       detectedIntent: "unknown", state, replySuppressedReason: "human_owned" };
   }
 
+  // Critical safety gate before ANY natural-flow classifier or model call.
+  // "Brustschmerz und bekomme schlecht Luft" was under-triaged in holdout H12.
+  // The first answer must direct emergency help and no sales/fitness questions.
+  if (isPeteChestBreathingEmergency(input.messageText)) {
+    patchAnswers(state, { peteReplySource: "guarded_safety" });
+    patchFlags(state, { peteRuntimeHandoffRequested: true, peteRuntimeHandoffActive: true });
+    takeOverByHuman(state);
+    const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Nicht trainieren oder selbst zum Arzt fahren.";
+    appendAssistantMessage(state, urgent);
+    persistConversationState(state);
+    return { text: urgent, nextStep: state.currentStep,
+      detectedIntent: "unknown", state };
+  }
+
   if (input.conversationMode === "natural") {
     const bookingUrl = getRuntimeBookingUrl({ state });
     let decision = decidePeteNextAction(input.messageText, {
@@ -1311,7 +1341,9 @@ export async function processIncomingMessage(
       "emotional_crisis", "legal_privacy",
     ].includes(decision.decisionType) &&
         !(safeGeneralKnowledge &&
-          ["medical_critical", "medical_soft"].includes(decision.decisionType))) {
+          ["medical_critical", "medical_soft"].includes(decision.decisionType)) &&
+        !(isPeteLlmConversationSelected() && decision.decisionType === "legal_privacy" &&
+          isPeteTrialFactFollowUp(input.messageText, state))) {
       const guarded = composePeteResponse(decision, {
         campaign, currentStep: state.currentStep,
         userText: input.messageText,
@@ -1374,7 +1406,10 @@ export async function processIncomingMessage(
     if (isPeteLlmConversationSelected()) {
       const verified = getPeteVerifiedTransactionAnswer(input.messageText, state, bookingUrl);
       if (verified) {
-        updateAnswer(state, "peteReplySource", "verified_transaction");
+        patchAnswers(state, { peteReplySource: "verified_transaction", peteProviderUsageMetered: false,
+          peteProviderModel: undefined, peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined,
+          peteSemanticNextStep: undefined, peteSemanticProposalRejected: false,
+          peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined });
         if (verified.nextPhase) updateAnswer(state, "naturalPhase", verified.nextPhase);
         if (verified.handoff) {
           patchFlags(state, {
@@ -1392,15 +1427,16 @@ export async function processIncomingMessage(
             bookingUrl, linkSentAt: nowIso(),
           });
         }
-        appendAssistantMessage(state, verified.text);
+        const text = verified.handoff ? verified.text : disclosePeteIdentity(state, verified.text);
+        appendAssistantMessage(state, text);
         persistConversationState(state);
-        return { text: verified.text, nextStep: state.currentStep,
+        return { text, nextStep: state.currentStep,
           detectedIntent: "flow_answer", state };
       }
     }
 
     if (isPeteLlmConversationSelected()) {
-      const result = await getPeteLlmConversationReply(state);
+      const result = await getPeteLlmConversationReply(state, bookingUrl);
       // The LLM call is asynchronous. A human may take over, STOP may arrive,
       // or another incoming message may supersede this one during the await.
       // Always reload the authoritative state before appending its response.
@@ -1421,12 +1457,88 @@ export async function processIncomingMessage(
           detectedIntent: "unknown", state: latest,
           replySuppressedReason: "superseded" };
       }
-      if (result.kind === "llm" || result.kind === "safe_reply") {
-        updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" : "safe_noncritical");
-        appendAssistantMessage(latest, result.text);
+      if (result.kind === "suppressed") {
+        // An owner switching the local test OFF is not a human takeover.
+        // Preserve the conversation so a later explicit ON can resume it.
+        return { text: null, nextStep: latest.currentStep,
+          detectedIntent: "unknown", state: latest,
+          replySuppressedReason: "desktop_switched_off" };
+      }
+      if (result.kind === "llm" || result.kind === "safe_reply" || result.kind === "verified_next_step") {
+        patchAnswers(latest, { peteProviderUsageMetered: false, peteProviderModel: undefined,
+          peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined, peteSemanticNextStep: undefined,
+          peteLlmFailureReason: undefined, peteLlmFailureDetail: undefined,
+          peteSemanticProposalRejected: result.kind === "llm" && result.rejectedNextStep === true });
+        updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" :
+          result.kind === "verified_next_step" ? "verified_transaction" : "safe_noncritical");
+        if (result.kind === "llm" || result.kind === "verified_next_step") patchAnswers(latest, {
+          peteProviderUsageMetered: Boolean(result.usage),
+          peteProviderModel: result.usage?.model,
+          peteProviderInputTokens: result.usage?.inputTokens,
+          peteProviderOutputTokens: result.usage?.outputTokens,
+        });
+        if (result.kind === "verified_next_step") {
+          updateAnswer(latest, "peteSemanticNextStep", result.nextStep);
+          if (result.nextPhase) updateAnswer(latest, "naturalPhase", result.nextPhase);
+          if (result.nextPhase === "booking_offered" && bookingUrl) {
+            patchFlags(latest, { wantsBooking: true });
+            setCurrentStep(latest, "booking");
+            latest.providerBooking = activateProviderBookingState({
+              current: latest.providerBooking, provider: inferBookingProviderFromUrl(bookingUrl),
+              bookingUrl, linkSentAt: nowIso(),
+            });
+          }
+        }
+        const text = disclosePeteIdentity(latest, result.text);
+        appendAssistantMessage(latest, text);
         persistConversationState(latest);
-        return { text: result.text, nextStep: latest.currentStep,
+        return { text, nextStep: latest.currentStep,
           detectedIntent: "flow_answer", state: latest };
+      }
+      // ONLY the server-issued desktop request scope may surface diagnostics
+      // without assigning a human owner. Live failures stay conservative.
+      const labFailure = desktopCallMode() !== null ? peteLabTechnicalFailure(result.reason) : null;
+      if (labFailure) {
+        patchAnswers(latest, { peteReplySource: "lab_error", peteProviderUsageMetered: false,
+          peteProviderModel: undefined, peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined,
+          peteSemanticNextStep: undefined, peteSemanticProposalRejected: false, peteLlmFailureReason: result.reason,
+          peteLlmFailureDetail: result.detail ?? "unspecified" });
+        appendAssistantMessage(latest, labFailure);
+        persistConversationState(latest);
+        return { text: labFailure, nextStep: latest.currentStep, detectedIntent: "unknown", state: latest };
+      }
+      // Policy-v4: a narrow, verified non-medical answer can repair a
+      // needless escalation for a routine interruption by a sick child.
+      // Never override STOP, human ownership, actual emergencies, failed
+      // provider authorization or budget exhaustion. All such guards ran above.
+      if ((result.reason === "model_handoff" || result.reason === "invalid_output")) {
+        const routine = peteSafeRoutineRepairReply(latest);
+        if (routine) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_family_routine_repair",
+          });
+          appendAssistantMessage(latest, routine);
+          persistConversationState(latest);
+          return { text: routine, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
+        // Only a model-initiated handoff (not unsafe/invalid model output) may
+        // use a narrowly verified explanation. Medical/sales/privacy excluded.
+        const noncritical = result.reason === "model_handoff"
+          ? peteSafeNoncriticalExplanationReply(latest) : null;
+        if (noncritical) {
+          patchAnswers(latest, {
+            peteReplySource: "safe_noncritical",
+            peteLlmFailureReason: result.reason,
+            peteLlmFailureDetail: "verified_method_or_entry_answer",
+          });
+          appendAssistantMessage(latest, noncritical);
+          persistConversationState(latest);
+          return { text: noncritical, nextStep: latest.currentStep,
+            detectedIntent: "flow_answer", state: latest };
+        }
       }
       // Fail closed: never silently continue the old broken question loop.
       patchAnswers(latest, {

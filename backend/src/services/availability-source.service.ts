@@ -51,7 +51,7 @@ function buildDashboardSlots(): AvailabilitySlot[] {
  * Aktuelle Logik:
  * - static    => feste config/availability.js Slots
  * - dashboard => Slots aus availability-config.store
- * - calendar  => live Calendly-Slots, bei Fehler/Fallback Dashboard-Slots
+ * - calendar  => live Calendly-Slots, never a fabricated dashboard fallback
  */
 export async function getAvailabilitySource(params?: {
   campaignId?: string;
@@ -70,22 +70,22 @@ export async function getAvailabilitySource(params?: {
     try {
       const calendlySlots = await getCalendlyAvailableSlots({
         campaignId,
-        daysAhead: 7,
+        daysAhead: 14,
       });
 
-      if (calendlySlots.length > 0) {
-        return {
-          mode: "calendar",
-          slots: calendlySlots,
-        };
-      }
+      // Empty verified availability is NOT permission to offer unverified
+      // dashboard times. No slots means link-only booking until verified.
+      return {
+        mode: "calendar",
+        slots: calendlySlots,
+      };
     } catch (error) {
       console.error("calendar availability fallback to dashboard:", error);
     }
 
     return {
       mode: "calendar",
-      slots: buildDashboardSlots(),
+      slots: [], // fail closed when Calendly token/API/calendar is unavailable
     };
   }
 

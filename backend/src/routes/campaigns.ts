@@ -12,6 +12,35 @@ import {
 
 const router = Router();
 
+// Validate before normalizePeteCampaignConfig can silently truncate the list.
+// The same owner-only route validates both campaign POST and PUT requests.
+function assertValidPeteKeywords(raw: Record<string, unknown>): void {
+  const config = raw.peteCampaign;
+  if (config === null || config === undefined) return;
+  if (typeof config !== "object" || Array.isArray(config)) {
+    throw new Error("invalid_pete_campaign_config");
+  }
+  if (!("keywords" in config)) return;
+  const words = (config as Record<string, unknown>).keywords;
+  if (!Array.isArray(words)) {
+    throw new Error("invalid_pete_campaign_keywords");
+  }
+  const normalized = new Set<string>();
+  for (const value of words) {
+    if (typeof value !== "string") {
+      throw new Error("invalid_pete_campaign_keywords");
+    }
+    const keyword = value.trim().toUpperCase();
+    if (!/^[A-ZÄÖÜ0-9_-]{1,32}$/.test(keyword)) {
+      throw new Error("invalid_pete_campaign_keywords");
+    }
+    normalized.add(keyword);
+    if (normalized.size > 20) {
+      throw new Error("pete_campaign_keywords_limit_exceeded");
+    }
+  }
+}
+
 function normalizeCampaignPayload(input: unknown): CampaignRecord {
   const raw = (input ?? {}) as Record<string, unknown>;
   const id = String(raw.id ?? "").trim();
@@ -19,6 +48,7 @@ function normalizeCampaignPayload(input: unknown): CampaignRecord {
   if (!id) {
     throw new Error("Campaign braucht eine id.");
   }
+  assertValidPeteKeywords(raw);
 
   return {
     ...raw,

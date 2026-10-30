@@ -48,12 +48,13 @@ const ALLOWED_BOOKING_PROVIDERS = new Set([
 function normalizeBookingStatus(raw: unknown, booked: boolean): BookingDataStatus {
   const rawValue = String(raw ?? "").trim().toLowerCase();
   const normalized = rawValue === "idle" ? "inactive" : rawValue;
-  if (booked || normalized === "booked") {
-    return "booked";
+  // A legacy booked=true flag is only a fallback when no valid structured
+  // status exists. Explicit cancellation, pending confirmation and completed
+  // status must never be resurrected as booked by a stale boolean.
+  if (ALLOWED_BOOKING_DATA_STATUSES.has(normalized)) {
+    return normalized as BookingDataStatus;
   }
-  return ALLOWED_BOOKING_DATA_STATUSES.has(normalized)
-    ? (normalized as BookingDataStatus)
-    : "inactive";
+  return booked ? "booked" : "inactive";
 }
 
 function normalizeBookingProvider(raw: unknown): BookingProvider {

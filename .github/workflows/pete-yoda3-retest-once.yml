@@ -1,35 +1,34 @@
-name: Pete Yoda3 real-model QA - single use USD1 of new USD5 approval
+name: Pete Policy v4.2 - 3 pregnancy boundary Sol smoke chats - extra EUR5 QA
 
-# Owner approved new USD5 Yoda3 QA; this batch uses at most USD1 under existing USD8 lifetime cap.
-# One-time reservation persisted on shared ledger. No live sends.
+# Three synthetic historical/current pregnancy cases, at most USD0.25 within EUR5 owner approval.
+# Historical USD8 ledger remains immutable; extra QA tracked separately in same shared file. No live sends.
 on:
   push:
     branches:
-      - pete-yoda3-retest-20261021
+      - feat/pete-policy-v4-20261022
 
 permissions:
   contents: write
 
-concurrency:
-  group: funnelpilot-pete-phase3-global-budget
-  cancel-in-progress: false
-
 jobs:
   pete-yoda3-real-qa:
+    concurrency:
+      group: funnelpilot-pete-phase3-global-budget
+      cancel-in-progress: false
     if: >-
       github.repository == 'VSCodeBot78/funnelpilot-whatsapp-app' &&
-      github.ref == 'refs/heads/pete-yoda3-retest-20261021' &&
-      startsWith(github.event.head_commit.message, 'PETE_YODA3_RETEST_APPROVED_20261021')
+      github.ref == 'refs/heads/feat/pete-policy-v4-20261022' &&
+      startsWith(github.event.head_commit.message, 'PETE_V42_PREGNANCY_APPROVED_20261022')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       NODE_ENV: test
-      OPENAI_MODEL: gpt-4.1-mini
+      OPENAI_MODEL: gpt-6.1-sol
       PETE_LLM_CONVERSATION_ENABLED: "true"
       PETE_LLM_API_CALLS_APPROVED: "true"
-      PETE_YODA3_QA_20261021: "true"
+      PETE_V42_PREGNANCY_QA_ENABLED: "true"
 
-      PETE_YODA3_APPROVAL: single-retest-20261021-usd5
+      PETE_V42_PREGNANCY_QA_APPROVAL: once-20261022-eur5-usd0p25-pregnancy
       INSTAGRAM_ENGINE_ENABLED: "false"
       INSTAGRAM_SEND_ENABLED: "false"
       WHATSAPP_SEND_ENABLED: "false"
@@ -86,7 +85,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 20 \
             --output /dev/null --write-out '%{http_code}' \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            "https://api.openai.com/v1/models/gpt-4.1-mini")
+            "https://api.openai.com/v1/models/gpt-6.1-sol")
           echo "OpenAI model access HTTP: $status"
           if [ "$status" != "200" ]; then
             echo "::error::OpenAI credentials/model unavailable. Zero paid QA calls authorized."
@@ -110,22 +109,22 @@ jobs:
             echo "::error::Budget write not confirmed; stop."
             return 1
           }
-          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-yoda3-retest-20261021"
+          export DATA_DIR="$GITHUB_WORKSPACE/backend/.pete-v42-pregnancy-sol-20261022"
           mkdir -p "$DATA_DIR"
 
-          node scripts/pete-yoda3-retest-budget.mjs reserve
+          node scripts/pete-v42-pregnancy-smoke-budget.mjs reserve
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Reserve once USD1 Pete Yoda3 20261021 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Reserve once USD0.25 of EUR5 pregnancy-boundary QA $GITHUB_RUN_ID"
           push_confirmed
 
           set +e
-          (cd backend && npx tsx src/config/pete-yoda3-retest-runner.ts)
+          (cd backend && npx tsx src/config/pete-v42-pregnancy-smoke-runner.ts)
           run_code=$?
           set -e
 
-          node scripts/pete-yoda3-retest-budget.mjs settle
+          node scripts/pete-v42-pregnancy-smoke-budget.mjs settle
           git -C budget-ledger add phase3-budget-ledger.json
-          git -C budget-ledger commit -m "Settle once USD1 Pete Yoda3 20261021 $GITHUB_RUN_ID"
+          git -C budget-ledger commit -m "Settle once USD0.25 of EUR5 pregnancy-boundary QA $GITHUB_RUN_ID"
           push_confirmed
           exit "$run_code"
 
@@ -133,7 +132,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pete-yoda3-retest-20-real-synthetic-20261021
-          path: backend/qa-reports/pete-yoda3-retest-20261021.json
+          name: pete-v42-sol-3-pregnancy-boundary-20261022
+          path: backend/qa-reports/pete-v42-pregnancy-sol-20261022.json
           if-no-files-found: warn
           retention-days: 30
