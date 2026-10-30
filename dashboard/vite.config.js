@@ -20,7 +20,10 @@ export default defineConfig({
       "/leads": "http://127.0.0.1:3001",
       "/scheduling-config": "http://127.0.0.1:3001",
       "/settings-config": "http://127.0.0.1:3001",
-      "/test-chat": "http://127.0.0.1:3001",
+      // Desktop lab validates the *browser* Host against its Origin.
+      // Vite's string proxy rewrites Host to the backend and fails closed.
+      // Keep exact IPv4 loopback while preserving the browser Host and Origin.
+      "/test-chat": { target: "http://127.0.0.1:3001", changeOrigin: false },
     },
   },
 })
