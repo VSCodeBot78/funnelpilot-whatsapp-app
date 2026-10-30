@@ -65,7 +65,7 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   await page.screenshot({ path: "test-results/dashboard-v2-operational-leads.png", fullPage: true });
 
   await navigation.getByRole("button", { name: "Inbox" }).click();
-  await expect(page.locator(".v2-native-inbox .v2-native-inbox-grid")).toBeVisible();
+  await expect(page.locator(".v2-native-inbox .fp-inbox-grid")).toBeVisible();
   await expect(page.locator(".v2-native-inbox").getByText("GESPRÄCHE & VERANTWORTUNG")).toBeVisible();
   await page.screenshot({ path: "test-results/dashboard-v2-operational-inbox.png", fullPage: true });
 
