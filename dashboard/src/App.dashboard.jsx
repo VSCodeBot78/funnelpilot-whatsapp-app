@@ -25,7 +25,7 @@ import DashboardHome from "./dashboard/DashboardHome";
 import BookingEventsDebugView from "./booking-events/BookingEventsDebugView";
 import SetupWizardModal from "./onboarding/SetupWizardModal";
 import ChatTest from "./App.chat.jsx";
-import OperationalV2Shell from "./preview/OperationalV2Shell.jsx";
+import DashboardPreview from "./preview/DashboardPreview.jsx";
 import { createXWingOfflineSettings } from "./onboarding/xwingOfflineSettings.js";
 
 const navItems = ALL_NAV;
@@ -551,30 +551,46 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
   }
 
 
-  // Live/local workspace: the original forms, stores, onboarding and Pete
-  // desktop client remain the only owners of their respective actions.
-  // The separate preview-v2.html remains a read-only QA surface.
+  // Render the ORIGINAL Dashboard 2.0 design, including its command center.
+  // Existing functional controllers remain authoritative for all write actions.
+  // preview-v2.html still mounts DashboardPreview without operational props,
+  // so its default-off read-only safety tests and 403 proxy remain intact.
   if (uiVersion === "v2") {
     return (
-      <OperationalV2Shell
-        section={section}
-        onSectionChange={(next) => {
-          if (next === "inbox") setMobileInboxPane("list");
-          setSection(next);
-        }}
-        onOpenPete={() => setSection("pete-lab")}
-        darkMode={darkMode}
-        onToggleTheme={() => setDarkMode(!darkMode)}
-        backendHealthy={backendHealthy}
-        backendHealthMessage={backendHealthMessage}
-        settings={settings}
-      >
-        {backendHealthy === false && (
-          <button type="button" className="v2-button" onClick={retryBackendHealth}>
-            Backend erneut prüfen
-          </button>
-        )}
-        {renderContent()}
+      <>
+        <DashboardPreview
+          operational
+          activeSection={section}
+          onSectionChange={(next) => {
+            if (next === "inbox") setMobileInboxPane("list");
+            setSection(next);
+          }}
+          onSelectOperationalLead={(id, destination) => {
+            setActiveContactId(id);
+            if (destination === "inbox") {
+              setMobileInboxPane("chat");
+              openChat(id);
+            } else {
+              setSection(destination);
+            }
+          }}
+          darkMode={darkMode}
+          onToggleTheme={() => setDarkMode(!darkMode)}
+          operatorName={settings.adminName}
+          operationalContent={
+            <>
+              {backendHealthy === false && (
+                <div className="v2-operational-health" role="status">
+                  {backendHealthMessage}
+                  <button type="button" className="v2-button" onClick={retryBackendHealth}>
+                    Backend erneut prüfen
+                  </button>
+                </div>
+              )}
+              {renderContent()}
+            </>
+          }
+        />
         {(section === "onboarding" || xwingDryRunOpen) && (
           <SetupWizardModal
             startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
@@ -590,7 +606,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
             onFinish={handleFinishWizard}
           />
         )}
-      </OperationalV2Shell>
+      </>
     );
   }
 
