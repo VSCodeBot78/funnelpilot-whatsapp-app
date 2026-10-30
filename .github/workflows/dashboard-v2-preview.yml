@@ -63,3 +63,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run check
+      # Verify the real Host/Origin/HttpOnly/CSRF handshake through Vite.
+      # Test blocks every external provider request and uses an isolated data dir.
+      - name: Install existing dashboard Vite for guarded loopback regression
+        run: npm --prefix ../dashboard ci --no-audit --no-fund
+      - name: Real Vite + Express Pete desktop login, offline only
+        run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
