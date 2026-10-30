@@ -73,7 +73,7 @@ function mapStateMessagesToUi(stateMessages = []) {
   }));
 }
 
-export default function ChatTest() {
+export default function ChatTest({ v2 = false }) {
   const desktopClient = useRef(null);
   desktopClient.current ??= createPeteDesktopClient();
   const [leadId, setLeadId] = useState(null);
@@ -282,8 +282,8 @@ export default function ChatTest() {
   }
 
   return (
-    <div
-      style={{
+    <section className={v2 ? "v2-native-page v2-native-lab" : undefined}
+      style={v2 ? { minHeight: 0, background: "var(--surface)", color: "var(--text)", padding: 0 } : {
         minHeight: "100vh",
         background: "#0b1020",
         color: "#fff",
@@ -297,15 +297,12 @@ export default function ChatTest() {
           margin: "0 auto",
         }}
       >
-        <h1
-          style={{
-            textAlign: "center",
-            fontSize: 32,
-            marginBottom: 20,
-          }}
-        >
-          Pete im Testchat
-        </h1>
+        {v2 ? <header className="v2-native-section-head">
+          <div><span className="v2-eyebrow">PETE DESKTOP-LABOR</span>
+            <h2>Pete im Testchat</h2>
+            <p>Manuelle Follower-Begrüßungen, Keywords und freie Antworten. Kein Meta-Live-Versand.</p></div>
+          <span className="v2-native-counter">NoSend</span>
+        </header> : <h1 style={{ textAlign: "center", fontSize: 32, marginBottom: 20 }}>Pete im Testchat</h1>}
 
         <div
           style={{
@@ -751,6 +748,6 @@ export default function ChatTest() {
           {debug ? JSON.stringify(debug, null, 2) : "Noch keine Response"}
         </pre>
       </div>
-    </div>
+    </section>
   );
 }
