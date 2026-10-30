@@ -45,6 +45,7 @@ const statusBadge = (lead) => {
 };
 
 export function CommandCenter({
+  operational = false,
   leads,
   metrics,
   snapshot,
@@ -206,8 +207,8 @@ export function CommandCenter({
                 <Icon name="check" size={17} />
               </span>
               <div>
-                <strong>Lesende Vorschau</strong>
-                <small>Keine Schreib- oder Versandfunktion eingebunden</small>
+                <strong>{operational ? "Funktionaler Coach-Workspace" : "Lesende Vorschau"}</strong>
+                <small>{operational ? "Gespeicherte Kampagnen und Einstellungen bearbeitbar. Versand bleibt gesperrt." : "Keine Schreib- oder Versandfunktion eingebunden"}</small>
               </div>
               <Badge tone="green">Aktiv</Badge>
             </div>
@@ -235,9 +236,9 @@ export function CommandCenter({
               </span>
               <div>
                 <strong>KI-Test und Budget</strong>
-                <small>Nur im bestehenden Pete-Desktop-Labor</small>
+                <small>{operational ? "Direkt über Pete testen im Dashboard" : "Nur im bestehenden Pete-Desktop-Labor"}</small>
               </div>
-              <Badge>Separat</Badge>
+              <Badge>{operational ? "Im Dashboard" : "Separat"}</Badge>
             </div>
           </Panel>
           <div className="v2-next-card">
