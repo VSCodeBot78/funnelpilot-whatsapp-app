@@ -19,6 +19,7 @@ export default function CampaignsView({
   onSaveCampaign,
   onDeleteCampaign,
   onCampaignFormChange,
+  v2 = false,
 }) {
   // Compare the current editable form to the last confirmed/loaded values.
   // A change reverted to its original value must not trigger a false warning.
@@ -92,10 +93,16 @@ export default function CampaignsView({
   }
 
   return (
-    <div style={{
-      background: colors.panel,
-      border: `1px solid ${colors.border}`,
-    }}>
+    <section className={v2 ? "v2-native-page v2-native-campaigns" : undefined}
+      style={v2 ? undefined : { background: colors.panel, border: `1px solid ${colors.border}` }}>
+      {v2 && <header className="v2-native-section-head">
+        <div>
+          <span className="v2-eyebrow">KAMPAGNEN & AUTOMATION</span>
+          <h2>Kampagnen verwalten</h2>
+          <p>Erstellen, bearbeiten und im verbundenen Backend speichern. Einstiege und Pete bleiben in einem Arbeitsbereich.</p>
+        </div>
+        <span className="v2-native-counter">{campaigns.length} Kampagnen</span>
+      </header>}
       {pendingNavigation && (
         <div className="fp-campaign-unsaved-guard" role="alertdialog"
           aria-label="Ungespeicherte Kampagnenänderungen"
@@ -124,7 +131,7 @@ export default function CampaignsView({
           </div>
         </div>
       )}
-      <div className="fp-campaigns-layout">
+      <div className={v2 ? "fp-campaigns-layout v2-native-campaign-grid" : "fp-campaigns-layout"}>
         <CampaignList
           colors={colors}
           campaigns={campaigns}
@@ -147,6 +154,6 @@ export default function CampaignsView({
           onCampaignFormChange={trackFormChange}
         />
       </div>
-    </div>
+    </section>
   );
 }
