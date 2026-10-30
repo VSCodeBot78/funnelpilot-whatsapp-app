@@ -60,6 +60,8 @@ function mapStateMessagesToUi(stateMessages = []) {
   return stateMessages.map((msg, index) => ({
     id: msg.id || `${msg.role}_${index}_${msg.createdAt || Date.now()}`,
     role: msg.role === "assistant" ? "bot" : msg.role,
+    actor: msg.actor || null,
+    manualOwnerGreeting: msg.role === "assistant" && msg.actor === "human" && msg.syntheticAutomation !== true,
     text: msg.text || "",
     syntheticAutomation: msg.syntheticAutomation === true || msg.transport === "lab_scripted_automation",
     time: msg.createdAt
@@ -114,12 +116,18 @@ export default function ChatTest() {
     setEntryNotice("");
     setLoading(true);
     try {
-      const data = await desktopClient.current.entry(keyword, entrySource);
+      // Manual follower welcomes are prewritten by Jochen, never triggered by
+      // a reel comment, story or an automated new-follower event.
+      const manualWelcome = keyword === "WELCOME_1" || keyword === "WELCOME_2";
+      const source = manualWelcome ? "instagram_dm" : entrySource;
+      const data = await desktopClient.current.entry(keyword, source);
       setLeadId(data.leadId);
       setDebug(data);
       setMessages(mapStateMessagesToUi(data.state?.messages || []));
-      setEntryNotice(`${entrySource === "instagram_reel_comment" ? "Reel-Kommentar" :
-        entrySource === "instagram_story_reply" ? "Story-Antwort" : "Instagram-DM"} · ${keyword}: ${data.note}`);
+      setEntryNotice(manualWelcome
+        ? `Manuelle Follower-Begrüßung ${keyword === "WELCOME_1" ? "1" : "2"} (nur Simulation). Antworte jetzt frei als Follower. Kein echter Versand.`
+        : `${source === "instagram_reel_comment" ? "Reel-Kommentar" :
+          source === "instagram_story_reply" ? "Story-Antwort" : "Instagram-DM"} · ${keyword}: ${data.note}`);
     } catch (error) {
       setDebug({ error: error instanceof Error ? error.message : "Kampagnenstart fehlgeschlagen" });
       setEntryNotice("Simulation nicht gestartet. Prüfe lokalen Desktop-Modus und deaktivierte Meta-Sendeflags.");
@@ -401,6 +409,28 @@ export default function ChatTest() {
               </button>
             ))}
           </div>
+          <div style={{ borderTop: "1px solid #334155", marginTop: 15, paddingTop: 12 }}>
+            <strong>Follower-Begrüßung (von Jochen manuell, nur Simulation)</strong>
+            <p style={{ color: "#cbd5e1", fontSize: 12, marginTop: 6 }}>
+              Zwei Originaltexte. Die Begrüßung ist bereits von Jochen geschrieben.
+              Kein automatisches Anschreiben, kein echtes DM-Zeitfenster.
+              Danach antwortest du als Follower und testest Pete.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                ["WELCOME_1", "Begrüßung 1 · Energie / Fitness"],
+                ["WELCOME_2", "Begrüßung 2 · mit Keto"],
+              ].map(([keyword, title]) => (
+                <button key={keyword} type="button" onClick={() => startCampaignSimulation(keyword)}
+                  disabled={loading || refreshing}
+                  style={{ padding: "10px 14px", borderRadius: 8,
+                    border: "1px solid #ff914d", background: "#26354a", color: "#fff",
+                    fontWeight: 700, cursor: loading ? "wait" : "pointer" }}>
+                  {title}
+                </button>
+              ))}
+            </div>
+          </div>
           {entryNotice && <p role="status" style={{ color: "#f8fafc", fontSize: 13,
             marginTop: 10, marginBottom: 0 }}>{entryNotice}</p>}
           {entrySource === "instagram_reel_comment" &&
@@ -604,7 +634,13 @@ export default function ChatTest() {
                       fontSize: 16,
                     }}
                   >
-                    <strong>{isUser ? "Du" : msg.syntheticAutomation ? "Kampagnen-Automatik (Simulation)" : "Pete"}:</strong>{" "}
+                    <strong>{isUser
+                      ? (messages.some(item => item.manualOwnerGreeting) ? "Follower (du im Test)" : "Du")
+                      : msg.manualOwnerGreeting
+                        ? "Jochen (manuell, simuliert)"
+                        : msg.syntheticAutomation
+                          ? "Kampagnen-Automatik (Simulation)"
+                          : "Pete"}:</strong>{" "}
                     {isUser ? msg.text : renderTextWithLinks(msg.text)}
                     <div
                       style={{
@@ -657,7 +693,9 @@ export default function ChatTest() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nachricht eingeben..."
+            placeholder={messages.some(item => item.manualOwnerGreeting)
+              ? "Als Follower auf Jochens Begrüßung antworten..."
+              : "Nachricht eingeben..."}
             style={{
               flex: 1,
               borderRadius: 12,
