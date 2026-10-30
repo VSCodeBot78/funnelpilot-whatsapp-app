@@ -26,6 +26,7 @@ export default function InboxView({
   onSetActiveContactId,
   onCloseChatTab,
   onReloadInbox,
+  v2 = false,
 }) {
   const showConversation = Boolean(activeContact);
   const stopped = activeConversation?.flags?.stopped === true;
@@ -38,9 +39,10 @@ export default function InboxView({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
+    <section className={v2 ? "v2-native-page v2-native-inbox" : undefined}
+      style={v2 ? undefined : { display: "flex", flexDirection: "column", gap: 12 }}>
+      <header className={v2 ? "v2-native-section-head" : undefined}
+        style={v2 ? undefined : {
           background: colors.panel,
           border: `1px solid ${colors.border}`,
           padding: 14,
@@ -52,16 +54,18 @@ export default function InboxView({
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Inbox</div>
+          {v2 && <span className="v2-eyebrow">GESPRÄCHE & VERANTWORTUNG</span>}
+          <div className={v2 ? "v2-native-subtitle" : undefined} style={v2 ? undefined : { fontWeight: 700, fontSize: 15 }}>Inbox</div>
           <div style={{ color: colors.sub, fontSize: 12, marginTop: 4 }}>
             Gespräche ansehen, übernehmen und bei Bedarf wieder an Pete zurückgeben.
           </div>
         </div>
 
-        <button type="button" onClick={onReloadInbox} style={ghostButtonStyle(colors)}>
+        <button type="button" onClick={onReloadInbox} className={v2 ? "v2-button" : undefined}
+          style={v2 ? undefined : ghostButtonStyle(colors)}>
           {loading ? "Lädt..." : "Inbox neu laden"}
         </button>
-      </div>
+      </header>
 
       {message ? (
         <div
@@ -100,7 +104,7 @@ export default function InboxView({
       </nav>
 
       <div
-        className="fp-inbox-grid"
+        className={v2 ? "fp-inbox-grid v2-native-inbox-grid" : "fp-inbox-grid"}
         data-mobile-pane={mobilePane}
         style={{
           display: "grid",
@@ -167,6 +171,6 @@ export default function InboxView({
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }
