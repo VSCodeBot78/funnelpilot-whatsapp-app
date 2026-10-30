@@ -20,6 +20,11 @@ test("opening a desktop client only bootstraps a session, reads status and creat
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.25" });
   await client.setBudget(false);
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
+  await client.setBudget(true, "0.25", true);
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body),
+    { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
+  await client.setBudget(false, undefined, true);
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
 });
 
 test("a rejected session never attempts a paid request", async () => {
@@ -36,6 +41,14 @@ test("uncertain historical costs stay blocked and are never formatted as free cr
   assert.match(desktopBlockReason({ budget: { ok: false } }), /gesperrt/);
   assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: false }), /fehlen/);
   assert.equal(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: true }), null);
+  const eligible = { budget: { ok: true, historyVerified: false,
+    ownerManagedCosts: false, ownerManagedApprovalAvailable: true }, providerConfigured: true };
+  assert.match(desktopBlockReason(eligible), /Eigenverantwortung/);
+  assert.equal(desktopBlockReason(eligible, true), null);
+  assert.match(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
+    ownerManagedApprovalAvailable: false } }, true), /Eigenverantwortung/);
+  assert.equal(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
+    ownerManagedCosts: true } }), null);
   assert.equal(formatDesktopUsd(null), "Nicht belegt");
   assert.equal(formatDesktopUsd(undefined), "Nicht belegt");
   assert.equal(formatDesktopUsd(0.2496), "0.249600 USD");
