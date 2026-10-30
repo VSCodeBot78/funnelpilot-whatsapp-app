@@ -44,10 +44,15 @@ export function desktopBlockReason(status, explicitOwnerManagedCosts = false) {
   if (!status) return "Status noch nicht geprüft.";
   if (status.error) return status.error;
   if (!status.budget?.ok) return "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.";
-  if (!status.budget.historyVerified && !status.budget.ownerManagedCosts &&
-      !(explicitOwnerManagedCosts && status.budget.ownerManagedApprovalAvailable))
+  const ownerCostConsent = status.budget.ownerManagedCosts === true ||
+    (explicitOwnerManagedCosts && status.budget.ownerManagedApprovalAvailable === true);
+  if (!status.budget.historyVerified && !ownerCostConsent)
     return "Frühere Laptop-Ausgaben sind nicht vollständig abgeglichen. Für einen begrenzten Test ist eine ausdrückliche Kosten-Eigenverantwortung erforderlich, sofern verfügbar.";
-  if (status.budget.blockReason) return "Budget gesperrt. Kostenabgleich erforderlich.";
+  // Only the historical-review lock may be handled by the backend's explicit
+  // owner-managed path. Accounting errors and exhausted budgets remain locked.
+  if (status.budget.blockReason &&
+      !(ownerCostConsent && status.budget.blockReason === "historical_spend_unverified"))
+    return "Budget gesperrt. Kostenabgleich erforderlich.";
   if (!status.providerConfigured) return "GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.";
   return null;
 }
