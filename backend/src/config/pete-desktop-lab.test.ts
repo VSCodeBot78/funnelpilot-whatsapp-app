@@ -145,6 +145,26 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(providerCalls, before);
     assert.equal(fs.existsSync(ledgerFile), false, "status cannot manufacture or reset a ledger");
   });
+  await t.test("read-only POST aliases preserve strict origin, CSRF and no paid network", async () => {
+    resetFiles();
+    const c = await client();
+    const before = providerCalls;
+    const result = await c.call("status", {});
+    assert.equal(result.status, 200);
+    assert.equal(result.body.ok, true);
+    assert.equal(result.body.budget.enabled, false);
+    const leadId = await c.lead();
+    const state = await c.call("state/" + encodeURIComponent(leadId), {});
+    assert.equal(state.status, 200);
+    assert.equal(state.body.ok, true);
+    for (const route of ["status", "state/" + encodeURIComponent(leadId)]) {
+      assert.equal((await c.call(route, {}, { Origin: "" })).status, 403);
+      assert.equal((await c.call(route, {}, { "X-Pete-CSRF": "" })).status, 403);
+      assert.equal((await c.call(route, {}, { Host: "evil.invalid:5173" })).status, 403);
+    }
+    assert.equal(providerCalls, before);
+    assert.equal(fs.existsSync(ledgerFile), false);
+  });
   await t.test("exact origin, host, cookie, CSRF and no forwarded headers are all required", async () => {
     const c = await granted();
     const invalidHeaders: Record<string, string>[] = [
