@@ -29,6 +29,7 @@ export default function SettingsView({
   onSaveGhostingConfig,
   onReloadGhostingConfig,
   onResetGhostingConfig,
+  v2 = false,
 }) {
   const safeSettings = {
     productName: "",
@@ -88,9 +89,10 @@ export default function SettingsView({
     typeof onSettingsChange === "function" ? onSettingsChange : () => {};
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={{
+    <section className={v2 ? "v2-native-page v2-native-settings" : undefined}
+      style={v2 ? undefined : { display: "flex", flexDirection: "column", gap: 12 }}>
+      <header className={v2 ? "v2-native-section-head" : undefined}
+        style={v2 ? undefined : {
           background: colors.panel,
           border: `1px solid ${colors.border}`,
           padding: 14,
@@ -102,10 +104,12 @@ export default function SettingsView({
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Einstellungen</div>
-          <div style={{ color: colors.sub, fontSize: 12, marginTop: 4 }}>
-            Die aktuelle Settings-Seite ist die interne Admin- und
-            Owner-Konsole. Nicht für Drittzugriff gedacht.
+          {v2 && <span className="v2-eyebrow">COACH-PROFIL & KONFIGURATION</span>}
+          <div className={v2 ? "v2-native-subtitle" : undefined}
+            style={v2 ? undefined : { fontWeight: 700, fontSize: 15 }}>Einstellungen</div>
+          <div className={v2 ? "v2-native-help" : undefined}
+            style={v2 ? undefined : { color: colors.sub, fontSize: 12, marginTop: 4 }}>
+            {v2 ? "Marke, Pete, Buchungen und Verbindungen in einem Coach-Workspace. Änderungen werden über den bestehenden Speicherweg gesichert." : "Interne Admin- und Owner-Konsole. Nicht für Drittzugriff gedacht."}
           </div>
         </div>
 
@@ -125,7 +129,7 @@ export default function SettingsView({
             Reset
           </button>
         </div>
-      </div>
+      </header>
 
       {settingsMessage ? (
         <div
@@ -242,6 +246,6 @@ export default function SettingsView({
           onResetGhostingConfig={onResetGhostingConfig}
         />
       </CollapsibleSection>
-    </div>
+    </section>
   );
 }
