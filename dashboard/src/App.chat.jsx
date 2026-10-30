@@ -87,13 +87,14 @@ export default function ChatTest() {
   const [aiDiagnostic, setAiDiagnostic] = useState(null);
   const [aiChecking, setAiChecking] = useState(false);
   const [budgetChoice, setBudgetChoice] = useState("0.25");
+  const [ownerManagedCostsAcknowledged, setOwnerManagedCostsAcknowledged] = useState(false);
 
   const campaignId = "eltern-vital-fit";
 
   const canSend = useMemo(() => Boolean(leadId) && input.trim().length > 0 && !loading && !aiChecking && !aiDiagnostic?.error,
     [leadId, input, loading, aiChecking, aiDiagnostic]);
   const budget = aiDiagnostic?.budget;
-  const aiBlock = desktopBlockReason(aiDiagnostic);
+  const aiBlock = desktopBlockReason(aiDiagnostic, ownerManagedCostsAcknowledged);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,7 +242,8 @@ export default function ChatTest() {
     if (aiChecking) return;
     setAiChecking(true);
     try {
-      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice);
+      const ownerManagedCosts = ownerManagedCostsAcknowledged && budget?.ownerManagedApprovalAvailable === true && !budget?.historyVerified;
+      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice, ownerManagedCosts);
       setAiDiagnostic(previous => ({ ...previous, budget: data.budget }));
     } catch (error) {
       setAiDiagnostic(previous => ({ ...previous, ...(error.budget ? { budget: error.budget } : {}),
@@ -428,6 +430,20 @@ export default function ChatTest() {
             {["0.25", "0.50", "1.00", "2.00"].map(amount =>
               <option key={amount} value={amount}>{amount} USD</option>)}
           </select>
+          {!budget?.historyVerified && budget?.ownerManagedApprovalAvailable === true &&
+            budget?.ownerManagedCosts !== true && !budget?.enabled && (
+              <label style={{ display: "block", color: "#fff", fontSize: 13, marginTop: 12, marginBottom: 8, lineHeight: 1.55 }}>
+                <input type="checkbox" checked={ownerManagedCostsAcknowledged}
+                  onChange={event => setOwnerManagedCostsAcknowledged(event.target.checked)}
+                  disabled={aiChecking || loading}
+                  style={{ marginRight: 8 }} />
+                Ich habe die tatsächlichen bisherigen OpenAI-Ausgaben eigenständig geprüft und
+                übernehme die Verantwortung für nicht erfasste historische Kosten.
+                Ich genehmige ausschließlich das oben gewählte zusätzliche,
+                kumulativ begrenzte lokale Testbudget. Die historischen Mindestausgaben
+                sind kein bestätigtes Kontoguthaben.
+              </label>
+            )}
           <button type="button" role="switch" aria-checked={budget?.enabled === true}
             onClick={togglePeteAi}
             disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
@@ -445,6 +461,12 @@ export default function ChatTest() {
             marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
           }}>
             {aiBlock && <p style={{ color: "#fbbf24" }}>{aiBlock}</p>}
+            {budget?.ownerManagedCosts && !budget.historyVerified && (
+              <p style={{ color: "#fbbf24" }}>
+                Historische Cloudkosten wurden nicht vollständig abgeglichen.
+                Eigenverantwortlicher Budgetmodus aktiv, keine bestätigte Gesamtrestgrenze.
+              </p>
+            )}
             <div>Freigegeben: {formatDesktopUsd(budget?.authorizedUsd)}</div>
             <div>Verbrauch bestätigt: {formatDesktopUsd(budget?.confirmedUsd)}</div>
             <div>Reserviert oder noch ungeklärt: {formatDesktopUsd(budget?.reservedUsd)}</div>
