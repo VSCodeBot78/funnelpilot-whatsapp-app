@@ -525,6 +525,43 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(entry.status, 200);
     assert.equal(entry.body.replySource, "scripted_context");
     assert.ok(entry.body.state.messages.every((m: any) => m.syntheticAutomation === true));
+    // WELCOME-001: These are the owner's exact two manually sent greetings,
+    // NOT a fake follower DM. Later synthetic user text must reach Pete.
+    const welcomes = [
+      ["WELCOME_1", "Hi, herzlich willkommen bei mir auf dem Profil 🙌\nFreut mich wirklich, dass du da bist.\nWas beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?"],
+      ["WELCOME_2", "Hey, herzlich willkommen bei mir auf dem Profil 🙌\nFreut mich wirklich, dass du da bist.\nWas beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?\nOder bist du gerade wegen Keto hier?"],
+    ] as const;
+    const welcomeLeads: string[] = [];
+    for (const [keyword, text] of welcomes) {
+      const started = await c.call("entry", { keyword, source: "instagram_dm" });
+      assert.equal(started.status, 200);
+      assert.equal(started.body.entryKeyword, keyword);
+      assert.equal(started.body.matchedRealCampaign, false);
+      assert.equal(started.body.state.messages.length, 1);
+      assert.equal(started.body.state.messages[0].text, text);
+      assert.equal(started.body.state.messages[0].actor, "human");
+      assert.equal(started.body.state.messages[0].syntheticAutomation, false);
+      assert.match(started.body.note, /Keine automatische Follower-DM/);
+      const state = getConversationState(started.body.leadId, "eltern-vital-fit")!;
+      assert.equal(state.messages[0].text, text);
+      assert.equal(state.messages[0].actor, "human");
+      assert.equal(state.messages[0].transport, "lab_manual_owner_greeting");
+      assert.equal(state.messages[0].dryRun, true);
+      assert.equal(state.messages[0].sent, false);
+      assert.equal(state.lastUserMessageAt, undefined, "manual outgoing welcome must not fake a 24-hour inbound window");
+      assert.equal(state.owner, "ai", "synthetic owner greeting must release Pete to answer a follower reply");
+      assert.equal(state.aiPaused, false);
+      welcomeLeads.push(started.body.leadId);
+    }
+    assert.equal((await c.call("entry", { keyword: "WELCOME_1", source: "instagram_reel_comment" })).status, 403);
+    assert.equal((await c.call("entry", { keyword: "WELCOME_2", source: "instagram_story_reply" })).status, 403);
+    assert.equal((await c.call("entry", { keyword: "WELCOME_3", source: "instagram_dm" })).status, 400);
+    // A free conversation must continue without provider traffic.
+    assert.equal((await c.call("budget", { enabled: false })).status, 200);
+    const follower = await c.message(welcomeLeads[0], "Hallo Jochen, ich hätte gern wieder mehr Energie.");
+    assert.equal(follower.status, 200);
+    assert.notEqual(follower.body.replySuppressedReason, "human_owned");
+    assert.ok(getConversationState(welcomeLeads[0], "eltern-vital-fit")?.lastUserMessageAt);
     assert.equal(providerCalls, before);
     assert.equal(process.env.PETE_LLM_API_CALLS_APPROVED, "false");
     assert.equal(process.env.INSTAGRAM_SEND_ENABLED, "false");
