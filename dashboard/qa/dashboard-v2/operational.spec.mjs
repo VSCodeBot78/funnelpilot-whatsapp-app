@@ -41,6 +41,7 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
 
   await page.goto("http://127.0.0.1:5177/");
   await expect(page.locator(".v2-operational")).toBeVisible();
+  await expect(page.getByText("Backend erreichbar", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Kommandozentrale" })).toBeVisible();
   // Regression: the previous attempt exposed the legacy 1.0 dashboard under a V2 shell.
   await expect(page.getByRole("heading", { level: 2, name: /Dein nächster Schritt/ })).toBeVisible();
