@@ -98,7 +98,11 @@ test("desktop login through the real dashboard proxy, no external requests", asy
     await t.test("legacy Vite string proxy reproduces exactly desktop_host_denied", async () => {
       const oldPort = await proxy(true);
       diagnostics.length = 0;
-      const old = await request(oldPort, "session");
+      // Reproduce the historical cross-host condition: client uses localhost,
+      // Vite string shorthand rewrites Host to 127.0.0.1:backendPort.
+      const old = await request(oldPort, "session", {
+        headers: { Host: "localhost:5173", Origin: "http://localhost:5173" },
+      });
       assert.equal(old.status, 403);
       assert.equal(old.body.error, "desktop_local_session_required");
       // Dashboard V2 targets explicit 127.0.0.1, unlike the Pete branch's
