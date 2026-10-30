@@ -59,6 +59,12 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   await navigation.getByRole("button", { name: "Pete testen" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Pete testen" })).toBeVisible();
   await expect(page.getByText("Pete im Testchat", { exact: false })).toBeVisible();
+  await expect(page.getByText("Follower-Begrüßung (von Jochen manuell, nur Simulation)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Begrüßung 1 · Energie / Fitness" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Begrüßung 2 · mit Keto" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "CHECK", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "KETO", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "BULLSHIT", exact: true })).toBeEnabled();
   await expect(page.locator(".v2-operational")).toBeVisible();
 
   await navigation.getByRole("button", { name: "Einstellungen" }).click();
