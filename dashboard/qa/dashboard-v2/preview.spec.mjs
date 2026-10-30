@@ -524,7 +524,7 @@ for (const dark of [false, true])
     }
   });
 
-test("unchanged legacy dashboard comparison uses the same explicitly synthetic fixture", async ({
+test("normal dashboard entry is original V2, not the retired 1.0 comparison", async ({
   page,
 }) => {
   await mockBackend(page);
@@ -532,23 +532,20 @@ test("unchanged legacy dashboard comparison uses the same explicitly synthetic f
     localStorage.setItem("funnelpilot-onboarding-modal-seen-v2", "true"),
   );
   await page.goto("http://127.0.0.1:5177/");
+  await expect(page.locator(".v2-app.v2-operational")).toBeVisible();
+  await expect(page.locator(".fp-app-shell")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Kommandozentrale", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Dein nächster Schritt/, level: 2 })).toBeVisible();
+  await expect(page.getByText("Ada Winter", { exact: true }).first()).toBeVisible();
+  await screenshot(page, "dashboard-operational-v2-1440.png");
+  await page.getByRole("navigation", { name: "Dashboard-Bereiche" })
+    .getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
   await expect(
-    page.getByText("Dein Arbeitsplatz", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Ada Winter", { exact: true }).first(),
-  ).toBeVisible();
-  await screenshot(page, "dashboard-before-1440.png");
-  await page
-    .getByRole("button", { name: "Inbox", exact: true })
-    .first()
-    .click();
-  await expect(
-    page
-      .getByText("Gespeicherte Inbox-Nachrichten")
+    page.getByText("Gespeicherte Inbox-Nachrichten")
       .or(page.getByText("Ada Winter", { exact: true }).first()),
   ).toBeVisible();
-  await screenshot(page, "inbox-before-1440.png");
+  await screenshot(page, "inbox-operational-v2-1440.png");
 });
 
 for (const width of [360, 768, 1440])
