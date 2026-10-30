@@ -35,6 +35,9 @@ export default function DashboardPreview({
   darkMode = false,
   onToggleTheme,
   operatorName,
+  backendHealthy = null,
+  backendHealthMessage = "",
+  onRetryBackend,
 }) {
   const [previewSection, setPreviewSection] = useState("dashboard");
   const section = operational ? activeSection : previewSection;
@@ -374,13 +377,16 @@ export default function DashboardPreview({
             <Badge tone="orange">{operational ? "Lokale Beta" : "Vorschau 2.0"}</Badge>
             <span className="v2-connection">
               <span
-                className={`v2-dot ${snapshot.health?.data ? "is-connected" : ""}`}
+                className={`v2-dot ${(operational ? backendHealthy === true : !!snapshot.health?.data) ? "is-connected" : ""}`}
               />
-              {loading
-                ? "Wird geprüft"
-                : snapshot.health?.data
-                  ? "Backend erreichbar"
-                  : "Backend ungeprüft"}
+              {operational
+                ? (backendHealthy === true ? "Backend erreichbar" :
+                   backendHealthy === false ? "Backend nicht erreichbar" : "Wird geprüft")
+                : loading
+                  ? "Wird geprüft"
+                  : snapshot.health?.data
+                    ? "Backend erreichbar"
+                    : "Backend ungeprüft"}
             </span>
           </div>
         </header>
@@ -391,6 +397,15 @@ export default function DashboardPreview({
             : <><strong>Prüfmodus.</strong> Lesen und navigieren. Speichern, KI-Aufrufe und Versand sind deaktiviert.</>}
           </p>
         </div>
+        {operational && backendHealthy === false && (
+          <div className="v2-operational-health" role="status">
+            {backendHealthMessage || "Das lokale Backend auf Port 3001 ist nicht erreichbar."}
+            <button type="button" className="v2-button"
+              onClick={() => { onRetryBackend?.(); reload(); }}>
+              Backend erneut prüfen
+            </button>
+          </div>
+        )}
         <main
           id="v2-main"
           ref={mainRef}
