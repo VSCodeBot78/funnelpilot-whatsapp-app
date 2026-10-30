@@ -104,7 +104,7 @@ export default function InboxView({
       </nav>
 
       <div
-        className={v2 ? "fp-inbox-grid v2-native-inbox-grid" : "fp-inbox-grid"}
+        className="fp-inbox-grid"
         data-mobile-pane={mobilePane}
         style={{
           display: "grid",
