@@ -577,6 +577,9 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
           darkMode={darkMode}
           onToggleTheme={() => setDarkMode(!darkMode)}
           operatorName={settings.adminName}
+          backendHealthy={backendHealthy}
+          backendHealthMessage={backendHealthMessage}
+          onRetryBackend={retryBackendHealth}
           operationalContent={
             <>
               {backendHealthy === false && (
