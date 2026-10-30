@@ -45,3 +45,243 @@
 .v2-operational .v2-system-row:first-of-type {
   display: none;
 }
+
+
+/* Native operational V2 pages. Existing domain controllers remain the only
+   writer; preview-v2.html does not mount these pages. */
+.v2-operational .v2-operational-content {
+  background: transparent;
+  overflow: visible;
+}
+.v2-operational .v2-native-page {
+  --workspace-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--workspace-radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.v2-operational .v2-native-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 22px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.v2-operational .v2-native-section-head h2,
+.v2-operational .v2-native-section-head .v2-native-subtitle {
+  margin: 5px 0 7px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  color: var(--text);
+}
+.v2-operational .v2-native-section-head p,
+.v2-operational .v2-native-section-head .v2-native-help {
+  max-width: 720px;
+  color: var(--muted) !important;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.v2-operational .v2-native-counter {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--muted);
+  padding: 8px 11px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.v2-operational .v2-native-page :is(input, select, textarea) {
+  border-radius: 8px;
+  border-color: var(--control-border);
+  min-height: 38px;
+}
+.v2-operational .v2-native-page textarea {
+  min-height: 90px;
+}
+.v2-operational .v2-native-page :is(button, a[role="button"]) {
+  border-radius: 8px;
+  min-height: 36px;
+}
+.v2-operational .v2-native-page :is(button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+/* Campaigns: independent list and editor panels, neither a mock nor a second form. */
+.v2-operational .v2-native-campaign-grid {
+  grid-template-columns: minmax(220px, 285px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+  background: var(--bg);
+}
+.v2-operational .v2-native-campaign-grid > * {
+  min-width: 0;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 11px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.v2-operational .v2-native-campaign-grid .fp-campaign-search {
+  padding: 18px;
+}
+.v2-operational .v2-native-campaign-grid .fp-campaign-list button {
+  min-height: 60px;
+  padding: 14px !important;
+}
+.v2-operational .v2-native-campaign-grid .fp-campaign-list [aria-current="true"] {
+  background: var(--accent-soft) !important;
+  box-shadow: inset 3px 0 var(--accent);
+  color: var(--text) !important;
+}
+.v2-operational .v2-native-campaign-grid input,
+.v2-operational .v2-native-campaign-grid textarea,
+.v2-operational .v2-native-campaign-grid select {
+  max-width: 100%;
+}
+.v2-operational .v2-native-campaign-grid .fp-campaign-dirty-banner {
+  color: var(--accent-ink);
+}
+/* Leads: contact list and editable details retain their existing handlers. */
+.v2-operational .v2-native-lead-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+  background: var(--bg);
+}
+.v2-operational .v2-native-lead-grid > * {
+  min-width: 0;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 11px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.v2-operational .v2-native-lead-grid > :last-child {
+  padding: 22px !important;
+}
+.v2-operational .v2-native-lead-grid button:hover:enabled {
+  filter: brightness(.98);
+}
+/* Inbox: owner actions and STOP are still governed by existing backend state. */
+.v2-operational .v2-native-inbox-grid {
+  min-height: 520px !important;
+  margin: 0;
+  border: 0 !important;
+  background: var(--bg) !important;
+  gap: 1px !important;
+  overflow: hidden;
+}
+.v2-operational .v2-native-inbox-grid > * {
+  min-width: 0;
+  background: var(--surface);
+  border-color: var(--border) !important;
+}
+.v2-operational .v2-native-inbox > .fp-mobile-inbox-nav {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.v2-operational .v2-native-inbox > [role="status"] {
+  margin: 12px 18px;
+}
+.v2-operational .v2-native-inbox-grid .fp-inbox-owner-action {
+  border-radius: 8px;
+}
+/* Coach configuration: clear settings sections and one real save path. */
+.v2-operational .v2-native-settings {
+  background: var(--bg);
+  gap: 16px;
+  padding-bottom: 18px;
+}
+.v2-operational .v2-native-settings > .v2-native-section-head {
+  margin-bottom: 2px;
+}
+.v2-operational .v2-native-settings > :not(.v2-native-section-head) {
+  margin: 0 18px;
+  min-width: 0;
+}
+.v2-operational .v2-native-settings > details,
+.v2-operational .v2-native-settings > :not(.v2-native-section-head):not([role="status"]) {
+  border-radius: 11px;
+}
+.v2-operational .v2-native-settings .v2-native-section-head button:first-child {
+  color: #2e2c2c !important;
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  padding: 9px 14px;
+}
+.v2-operational .v2-native-settings .v2-native-section-head button:last-child {
+  color: var(--muted) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  padding: 9px 14px;
+}
+/* Protected synthetic Pete lab: human-readable V2 header + distinct dark console.
+   No UI control bypasses the existing Origin/Host/CSRF or budget backend. */
+.v2-operational .v2-native-lab {
+  min-height: 0 !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  overflow: hidden;
+}
+.v2-operational .v2-native-lab > div {
+  max-width: 1040px !important;
+  margin: 0 auto;
+  padding: 0 22px 22px;
+}
+.v2-operational .v2-native-lab .v2-native-section-head {
+  margin: 0 -22px 22px;
+  padding: 22px 24px;
+}
+.v2-operational .v2-native-lab > div > :not(.v2-native-section-head) {
+  max-width: 100%;
+}
+.v2-operational .v2-native-lab > div > div {
+  border-radius: 12px;
+}
+.v2-operational .v2-native-lab pre {
+  max-height: 280px;
+  overflow: auto;
+  font-size: 11px !important;
+}
+.v2-operational .v2-native-lab button:disabled {
+  opacity: .6;
+}
+@media (max-width: 1000px) {
+  .v2-operational .v2-native-campaign-grid,
+  .v2-operational .v2-native-lead-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-operational .v2-native-campaign-grid .fp-campaign-list {
+    max-height: 300px;
+  }
+}
+@media (max-width: 600px) {
+  .v2-operational .v2-native-section-head {
+    padding: 18px;
+    align-items: flex-start;
+  }
+  .v2-operational .v2-native-campaign-grid,
+  .v2-operational .v2-native-lead-grid {
+    padding: 10px;
+    gap: 10px;
+  }
+  .v2-operational .v2-native-lab > div { padding: 0 12px 12px; }
+  .v2-operational .v2-native-lab .v2-native-section-head { margin: 0 -12px 16px; }
+}
