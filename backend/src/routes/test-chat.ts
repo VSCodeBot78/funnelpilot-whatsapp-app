@@ -282,6 +282,58 @@ router.get("/lab/state/:leadId", guardMobileLab, (req, res) => {
 // LLM call, no Meta event, no outbound transport and no use of real contacts.
 // A later human-typed reply goes through the ordinary test-chat message route.
 const DESKTOP_ENTRY_KEYWORDS = ["CHECK", "KETO", "BULLSHIT"] as const;
+// Owner-authored manual Instagram follower welcomes. Never turn a follow
+// event into permission to DM somebody. These exist ONLY in the authenticated
+// synthetic desktop laboratory and cannot be delivered to Meta.
+const DESKTOP_MANUAL_FOLLOWER_WELCOMES = Object.freeze({
+  WELCOME_1: "Hi, herzlich willkommen bei mir auf dem Profil 🙌\n" +
+    "Freut mich wirklich, dass du da bist.\n" +
+    "Was beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?",
+  WELCOME_2: "Hey, herzlich willkommen bei mir auf dem Profil 🙌\n" +
+    "Freut mich wirklich, dass du da bist.\n" +
+    "Was beschäftigt dich gerade am meisten, mehr Energie, abnehmen oder endlich wieder fitter werden?\n" +
+    "Oder bist du gerade wegen Keto hier?",
+} as const);
+type ManualFollowerWelcome = keyof typeof DESKTOP_MANUAL_FOLLOWER_WELCOMES;
+function isManualFollowerWelcome(value: unknown): value is ManualFollowerWelcome {
+  return typeof value === "string" && Object.hasOwn(DESKTOP_MANUAL_FOLLOWER_WELCOMES, value);
+}
+function simulateManualFollowerWelcome(req: Request, res: Response, keyword: ManualFollowerWelcome): Response {
+  // A source-specific manual OWNER greeting must never claim a received DM,
+  // a 24-hour messaging window or a real follower identity.
+  if (req.body.source !== "instagram_dm" || env.NODE_ENV === "production" ||
+      !env.LOCAL_LAPTOP_TEST_MODE || env.INSTAGRAM_ENGINE_ENABLED ||
+      env.INSTAGRAM_SEND_ENABLED || env.WHATSAPP_SEND_ENABLED) {
+    return res.status(403).json({ ok: false, error: "desktop_manual_follower_only_no_send" });
+  }
+  const leadId = issueDesktopLead(req);
+  const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+  appendHumanMessage(state, DESKTOP_MANUAL_FOLLOWER_WELCOMES[keyword]);
+  const message = state.messages.at(-1);
+  if (message) {
+    message.transport = "lab_manual_owner_greeting";
+    message.outboundStatus = "dry_run";
+    message.dryRun = true;
+    message.sent = false;
+  }
+  // The owner explicitly releases this *synthetic* conversation to Pete,
+  // so the owner's next free-form follower reply can receive a bot answer.
+  releaseToAi(state);
+  state.source = "lab_manual_follower_greeting";
+  state.answers.labEntryKeyword = keyword;
+  state.answers.labEntrySource = "instagram_follower_manual";
+  state.answers.labCampaignMatchStatus = "manual_owner_greeting";
+  persistConversationState(state);
+  return res.json({
+    ok: true, reply: null, replySource: "scripted_context",
+    leadId, campaignId: DEFAULT_CAMPAIGN_ID,
+    entryKeyword: keyword, entrySource: "instagram_follower_manual",
+    matchedRealCampaign: false, campaignMatchStatus: "manual_owner_greeting",
+    note: "Nur simulierte, manuell von Jochen gestartete Begrüßung. Keine automatische Follower-DM, keine Meta-Zustellung und kein fingiertes 24h-Fenster.",
+    state: { messages: publicLabMessages(state.messages) },
+  });
+}
+
 const DESKTOP_ENTRY_SOURCES = [
   "instagram_dm", "instagram_story_reply", "instagram_reel_comment",
 ] as const;
@@ -351,6 +403,10 @@ router.post("/simulate-entry", simulateDesktopEntry);
 router.post("/desktop/entry", guardDesktopBrowser, (req, res) => {
   if (Object.keys(req.body ?? {}).some(key => !["keyword", "source"].includes(key)))
     return res.status(400).json({ ok: false, error: "invalid_desktop_entry" });
+  if (isManualFollowerWelcome(req.body?.keyword)) {
+    try { return simulateManualFollowerWelcome(req, res, req.body.keyword); }
+    catch { return res.status(409).json({ ok: false, error: "desktop_manual_greeting_not_created" }); }
+  }
   try {
     const leadId = issueDesktopLead(req);
     req.body = { ...req.body, leadId };
