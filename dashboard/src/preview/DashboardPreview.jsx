@@ -5,6 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import "./preview.css";
+import "./operational.css";
 import {
   DAILY_NAV,
   ADMIN_NAV,
