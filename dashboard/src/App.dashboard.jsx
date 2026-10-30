@@ -367,7 +367,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
   }, [xwingDryRunOpen, handleCloseWizard]);
 
   function renderContent() {
-    if (section === "pete-lab") return <ChatTest />;
+    if (section === "pete-lab") return <ChatTest v2={uiVersion === "v2"} />;
     if (section === "dashboard" || section === "onboarding") {
       return (
         <DashboardHome
@@ -401,6 +401,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
     if (section === "campaigns") {
       return (
         <CampaignsView
+          v2={uiVersion === "v2"}
           colors={colors}
           settings={settings}
           campaigns={campaigns}
@@ -422,6 +423,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
     if (section === "leads") {
       return (
         <LeadsView
+          v2={uiVersion === "v2"}
           colors={colors}
           contacts={sortedContacts}
           activeContactId={activeContactId}
@@ -446,6 +448,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
           }}
         >
           <InboxView
+          v2={uiVersion === "v2"}
             colors={colors}
             contacts={inboxContacts}
             campaigns={campaigns}
@@ -526,6 +529,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
     if (section === "settings") {
       return (
         <SettingsView
+          v2={uiVersion === "v2"}
           colors={colors}
           settings={settings}
           settingsMessage={settingsMessage}
