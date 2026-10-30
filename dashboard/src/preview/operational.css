@@ -180,7 +180,7 @@
   filter: brightness(.98);
 }
 /* Inbox: owner actions and STOP are still governed by existing backend state. */
-.v2-operational .v2-native-inbox-grid {
+.v2-operational .v2-native-inbox .fp-inbox-grid {
   min-height: 520px !important;
   margin: 0;
   border: 0 !important;
@@ -188,7 +188,7 @@
   gap: 1px !important;
   overflow: hidden;
 }
-.v2-operational .v2-native-inbox-grid > * {
+.v2-operational .v2-native-inbox .fp-inbox-grid > * {
   min-width: 0;
   background: var(--surface);
   border-color: var(--border) !important;
@@ -200,7 +200,7 @@
 .v2-operational .v2-native-inbox > [role="status"] {
   margin: 12px 18px;
 }
-.v2-operational .v2-native-inbox-grid .fp-inbox-owner-action {
+.v2-operational .v2-native-inbox .fp-inbox-grid .fp-inbox-owner-action {
   border-radius: 8px;
 }
 /* Coach configuration: clear settings sections and one real save path. */
