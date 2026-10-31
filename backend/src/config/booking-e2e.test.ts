@@ -40,6 +40,45 @@ async function sendCalendly(base: string, payload: unknown, timestamp?: number, 
   return { response, json: await response.json() as Record<string, any> };
 }
 
+test("P0-1 real HTTP: booked legacy flag never overrides explicit cancelled/pending lead status", async t => {
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  t.after(async () => {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const base = "http://127.0.0.1:" + address.port;
+  for (const [suffix, status] of [["a", "cancelled"], ["b", "pending_confirmation"]] as const) {
+    const id = "p0-booking-status-synthetic-" + suffix;
+    const bookingData = { status, bookingProvider: "manual",
+      ...(status === "cancelled" ? { cancelledAt: "2026-10-30T17:00:00Z" } : {}) };
+    const leadResponse = await fetch(base + "/leads", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, backendLeadId: id, name: "Synthetic QA", phone: "000000000",
+        campaignId: "eltern-vital-fit", booked: true, bookingData }),
+    });
+    assert.equal(leadResponse.status, 200);
+    const saved = await leadResponse.json() as any;
+    assert.equal(saved.lead.booked, false, "stale lead booked flag must not resurrect " + status);
+    assert.equal(saved.lead.bookingData.status, status);
+    const persisted = await fetch(base + "/leads/" + id).then(r => r.json()) as any;
+    assert.equal(persisted.lead.booked, false);
+    assert.equal(persisted.lead.bookingData.status, status);
+    const ensure = await fetch(base + "/conversations/ensure", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ leadId: id, backendLeadId: id, campaignId: "eltern-vital-fit",
+        leadName: "Synthetic QA", phone: "000000000", booked: true, bookingData }),
+    });
+    assert.equal(ensure.status, 200);
+    const ensured = await ensure.json() as any;
+    assert.equal(ensured.state.bookingData.status, status,
+      "conversation ensure must keep the explicit status " + status);
+    assert.notEqual(ensured.state.providerBooking?.status, "booked",
+      "a stale flag must not forge a provider confirmation");
+  }
+});
+
 test("Local testchat -> signed Calendly booking -> Google add-to-calendar link -> cancellation", async (t) => {
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>(resolve => server.once("listening", resolve));
@@ -210,6 +249,20 @@ test("Calendly: dated slots survive, closed days never fallback to fake hours", 
     else process.env.CALENDLY_PAT = oldToken;
     resetAvailabilityConfig();
   }
+});
+
+test("P0-1: explicit booking status outranks a stale legacy booked boolean", async () => {
+  const { normalizeBookingData } = await import("../domain/booking-sync.js");
+  for (const status of ["cancelled", "pending_confirmation", "requested", "inactive", "completed"] as const) {
+    const data = normalizeBookingData({ status, bookingProvider: "calendly",
+      cancelledAt: status === "cancelled" ? "2026-10-30T17:00:00Z" : null }, true);
+    assert.equal(data.status, status, "stale booked=true must not resurrect status=" + status);
+    assert.ok(!data.confirmedAt, "explicit non-booked status must not generate fresh confirmation");
+  }
+  assert.equal(normalizeBookingData({}, true).status, "booked",
+    "missing structured status retains legacy booked compatibility");
+  assert.equal(normalizeBookingData({ status: "booked" }, false).status, "booked");
+  assert.equal(normalizeBookingData({ status: "cancelled" }, false).status, "cancelled");
 });
 
 test("Default booking copy never promises old unverified weekday times", async () => {
