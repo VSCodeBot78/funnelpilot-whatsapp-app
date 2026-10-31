@@ -7,8 +7,8 @@ $dashboard = Join-Path $root "dashboard"
 $url = "http://127.0.0.1:5173/"
 $minimumSha = "43b8ec796614967968ef8a015edbc5e4c6262d84"
 function Fail([string]$why) { throw ("SICHERHEITS-STOP: " + $why) }
-function Git([string[]]$args) {
-  $result = @(& git.exe @args 2>$null)
+function Git([string[]]$arguments) {
+  $result = @(& git.exe @arguments 2>$null)
   if ($LASTEXITCODE -ne 0) { Fail "Git konnte nicht sicher gelesen werden." }
   return (@($result) -join "").Trim()
 }
