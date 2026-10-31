@@ -88,15 +88,14 @@ export default function ChatTest({ v2 = false }) {
   const [calendlyChecking, setCalendlyChecking] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState(null);
   const [aiChecking, setAiChecking] = useState(false);
-  const [budgetChoice, setBudgetChoice] = useState("0.25");
-  const [ownerManagedCostsAcknowledged, setOwnerManagedCostsAcknowledged] = useState(false);
+  const [budgetChoice, setBudgetChoice] = useState("0.50");
 
   const campaignId = "eltern-vital-fit";
 
   const canSend = useMemo(() => Boolean(leadId) && input.trim().length > 0 && !loading && !aiChecking && !aiDiagnostic?.error,
     [leadId, input, loading, aiChecking, aiDiagnostic]);
   const budget = aiDiagnostic?.budget;
-  const aiBlock = desktopBlockReason(aiDiagnostic, ownerManagedCostsAcknowledged);
+  const aiBlock = desktopBlockReason(aiDiagnostic);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,13 +249,12 @@ export default function ChatTest({ v2 = false }) {
     if (aiChecking) return;
     setAiChecking(true);
     try {
-      const ownerManagedCosts = ownerManagedCostsAcknowledged && budget?.ownerManagedApprovalAvailable === true && !budget?.historyVerified;
-      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice, ownerManagedCosts);
-      setAiDiagnostic(previous => ({ ...previous, budget: data.budget }));
+      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice);
+      setAiDiagnostic(previous => ({ ...previous, error: undefined, budget: data.budget }));
     } catch (error) {
       setAiDiagnostic(previous => ({ ...previous, ...(error.budget ? { budget: error.budget } : {}),
         error: budget?.enabled ? "KI-AUS nicht bestätigt. Status erneut prüfen oder lokalen Backenddienst schließen."
-          : "KI-Freigabe nicht bestätigt. Status und Kostenbelege prüfen." }));
+          : "KI-Freigabe nicht bestätigt. Limit und lokalen Status prüfen." }));
     } finally { setAiChecking(false); }
   }
 
@@ -444,64 +442,42 @@ export default function ChatTest({ v2 = false }) {
           <strong>Echte Pete-KI im lokalen Labor: {!budget?.ok || aiDiagnostic?.error
             ? "Status nicht bestätigt" : budget.enabled ? "AN" : "AUS"}</strong>
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
-            GPT-6.1 Sol. Nur für deine synthetischen Desktop-Testkontakte.
-            „KI AN“ erlaubt kostenpflichtige Antworten bis zur gewählten Grenze.
-            Neue Kontakte, AUS/AN und Neustarts setzen den Verbrauch nicht zurück.
-            Nach einem Backend-Neustart bleibt die KI AUS.
+            Du entscheidest: KI verwenden und ein festes Gesamtlimit wählen.
+            Erst dein Klick auf KI AN erlaubt kostenpflichtige Pete-Antworten.
+            Das Limit bleibt bei neuen Kontakten und nach Neustarts erhalten.
+            KI ist nach jedem Backend-Neustart standardmäßig AUS. Keine automatische Nachladung.
           </p>
-          <label htmlFor="pete-desktop-budget">Gesamtbudget dieser Testfreigabe: </label>
+          <label htmlFor="pete-desktop-budget">Maximales Pete-Testbudget: </label>
           <select id="pete-desktop-budget" value={budgetChoice}
             disabled={budget?.enabled || aiChecking || loading}
             onChange={event => setBudgetChoice(event.target.value)}
             style={{ color: "#111827", background: "#fff", padding: 8, borderRadius: 6 }}>
-            {["0.25", "0.50", "1.00", "2.00"].map(amount =>
+            {["0.50", "1.00", "2.00"].map(amount =>
               <option key={amount} value={amount}>{amount} USD</option>)}
           </select>
-          {!budget?.historyVerified && budget?.ownerManagedApprovalAvailable === true &&
-            budget?.ownerManagedCosts !== true && !budget?.enabled && (
-              <label style={{ display: "block", color: "#fff", fontSize: 13, marginTop: 12, marginBottom: 8, lineHeight: 1.55 }}>
-                <input type="checkbox" checked={ownerManagedCostsAcknowledged}
-                  onChange={event => setOwnerManagedCostsAcknowledged(event.target.checked)}
-                  disabled={aiChecking || loading}
-                  style={{ marginRight: 8 }} />
-                Ich habe die tatsächlichen bisherigen OpenAI-Ausgaben eigenständig geprüft und
-                übernehme die Verantwortung für nicht erfasste historische Kosten.
-                Ich genehmige ausschließlich das oben gewählte zusätzliche,
-                kumulativ begrenzte lokale Testbudget. Die historischen Mindestausgaben
-                sind kein bestätigtes Kontoguthaben.
-              </label>
-            )}
           <button type="button" role="switch" aria-checked={budget?.enabled === true}
             onClick={togglePeteAi}
             disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
             style={{ background: budget?.enabled ? "#fbbf24" : "#ff914d", color: "#111827",
               border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, margin: 8 }}>
-            {budget?.enabled ? "KI AUS" : "KI AN (kostenpflichtig)"}
+            {budget?.enabled ? "KI verwenden: AUS" : "KI verwenden: AN"}
           </button>
-          <button type="button" onClick={checkPeteKiReadOnly}
+          {aiDiagnostic?.error && <button type="button" onClick={checkPeteKiReadOnly}
             disabled={aiChecking || loading}
-            style={{ background: "#ff914d", color: "#111827", border: "none",
-              borderRadius: 8, padding: "10px 14px", fontWeight: 700 }}>
-            {aiChecking ? "Prüfe Pete-KI..." : "Pete-KI-Status prüfen (kostenlos)"}
-          </button>
+            style={{ color: "#f8fafc", background: "transparent", border: "none",
+              textDecoration: "underline", cursor: "pointer", padding: 4 }}>
+            Status neu prüfen
+          </button>}
           {aiDiagnostic && <div role="status" style={{
             marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
           }}>
             {aiBlock && <p style={{ color: "#fbbf24" }}>{aiBlock}</p>}
-            {budget?.ownerManagedCosts && !budget.historyVerified && (
-              <p style={{ color: "#fbbf24" }}>
-                Historische Cloudkosten wurden nicht vollständig abgeglichen.
-                Eigenverantwortlicher Budgetmodus aktiv, keine bestätigte Gesamtrestgrenze.
-              </p>
-            )}
             <div>Freigegeben: {formatDesktopUsd(budget?.authorizedUsd)}</div>
             <div>Verbrauch bestätigt: {formatDesktopUsd(budget?.confirmedUsd)}</div>
             <div>Reserviert oder noch ungeklärt: {formatDesktopUsd(budget?.reservedUsd)}</div>
             <div><strong>Für weitere API-Aufrufe verfügbar: {formatDesktopUsd(budget?.remainingUsd)}</strong></div>
-            <div>Historisch im Projekt verbucht, mindestens: {formatDesktopUsd(budget?.knownHistoricalBookedUsd)}</div>
-            <div>Rest im Projekt nach vollständigem Abgleich: {formatDesktopUsd(budget?.projectRemainingUsd)}</div>
             <p style={{ color: "#cbd5e1" }}>
-              Interne USD-Kostenrechnung, kein OpenAI-Kontoguthaben.
+              Lokale Pete-Ausgabenbegrenzung, kein OpenAI-Kontoguthaben.
               Ungeklärte Aufrufe bleiben reserviert. Meta- und WhatsApp-Versand bleiben AUS.
             </p>
           </div>}
