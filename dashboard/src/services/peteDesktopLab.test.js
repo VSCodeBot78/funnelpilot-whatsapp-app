@@ -25,15 +25,11 @@ test("opening a desktop client only bootstraps a session, reads status and creat
   assert.ok(calls.filter(c => !c.url.endsWith("session"))
     .every(c => c.init.headers["X-Pete-CSRF"] === "a".repeat(64)));
   assert.ok(!calls.some(c => /budget|message/.test(c.url)));
-  await client.setBudget(true, "0.25");
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.25" });
+  await client.setBudget(true, "0.50");
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.50" });
   await client.setBudget(false);
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
-  await client.setBudget(true, "0.25", true);
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body),
-    { enabled: true, budgetUsd: "0.25", ownerManagedCosts: true });
-  await client.setBudget(false, undefined, true);
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
+
 });
 
 test("a rejected session never attempts a paid request", async () => {
@@ -45,25 +41,16 @@ test("a rejected session never attempts a paid request", async () => {
   assert.deepEqual(calls, ["/test-chat/desktop/session"]);
 });
 
-test("uncertain historical costs stay blocked and are never formatted as free credit", () => {
-  assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: false }, providerConfigured: true }), /Ausgaben/);
-  assert.match(desktopBlockReason({ budget: { ok: false } }), /gesperrt/);
-  assert.match(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: false }), /fehlen/);
-  assert.equal(desktopBlockReason({ budget: { ok: true, historyVerified: true }, providerConfigured: true }), null);
-  const eligible = { budget: { ok: true, historyVerified: false,
-    ownerManagedCosts: false, ownerManagedApprovalAvailable: true }, providerConfigured: true };
-  assert.match(desktopBlockReason(eligible), /Eigenverantwortung/);
-  assert.equal(desktopBlockReason(eligible, true), null);
-  const historyLocked = { ...eligible, budget: { ...eligible.budget,
-    blockReason: "historical_spend_unverified" } };
-  assert.match(desktopBlockReason(historyLocked), /Eigenverantwortung/);
-  assert.equal(desktopBlockReason(historyLocked, true), null);
-  assert.match(desktopBlockReason({ ...historyLocked, budget: { ...historyLocked.budget,
-    blockReason: "accounting_review_required" } }, true), /gesperrt/);
-  assert.match(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
-    ownerManagedApprovalAvailable: false } }, true), /Eigenverantwortung/);
-  assert.equal(desktopBlockReason({ ...eligible, budget: { ...eligible.budget,
-    ownerManagedCosts: true } }), null);
+test("owner may enable a small local allowance without historical consent, but broken ledgers block", () => {
+  assert.equal(desktopBlockReason({ budget: { ok: true, historyVerified: false,
+    blockReason: null }, providerConfigured: true }), null);
+  assert.equal(desktopBlockReason({ budget: { ok: false } }), "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.");
+  assert.match(desktopBlockReason({ budget: { ok: true,
+    blockReason: "accounting_review_required" }, providerConfigured: true }), /gesperrt/);
+  assert.match(desktopBlockReason({ budget: { ok: true }, providerConfigured: false }), /fehlen/);
+  assert.equal(desktopBlockReason({ budget: { ok: true,
+    blockReason: "desktop_budget_exhausted" }, providerConfigured: true }), null,
+    "owner may deliberately raise the total authorized limit");
   assert.equal(formatDesktopUsd(null), "Nicht belegt");
   assert.equal(formatDesktopUsd(undefined), "Nicht belegt");
   assert.equal(formatDesktopUsd(0.2496), "0.249600 USD");
