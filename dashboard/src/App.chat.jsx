@@ -460,7 +460,7 @@ export default function ChatTest({ v2 = false }) {
             disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
             style={{ background: budget?.enabled ? "#fbbf24" : "#ff914d", color: "#111827",
               border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, margin: 8 }}>
-            {budget?.enabled ? "KI verwenden: AUS" : "KI verwenden: AN"}
+            {budget?.enabled ? "KI verwenden: AN" : "KI verwenden: AUS"}
           </button>
           {aiDiagnostic?.error && <button type="button" onClick={checkPeteKiReadOnly}
             disabled={aiChecking || loading}
