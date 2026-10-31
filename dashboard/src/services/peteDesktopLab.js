@@ -37,23 +37,17 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
-    setBudget: (enabled, budgetUsd, ownerManagedCosts = false) => request("POST", "budget", enabled ? { enabled, budgetUsd, ...(ownerManagedCosts === true ? { ownerManagedCosts: true } : {}) } : { enabled }),
+    setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled ? { enabled, budgetUsd } : { enabled }),
   };
 }
 
-export function desktopBlockReason(status, explicitOwnerManagedCosts = false) {
+export function desktopBlockReason(status) {
   if (!status) return "Status noch nicht geprüft.";
   if (status.error) return status.error;
   if (!status.budget?.ok) return "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.";
-  const ownerCostConsent = status.budget.ownerManagedCosts === true ||
-    (explicitOwnerManagedCosts && status.budget.ownerManagedApprovalAvailable === true);
-  if (!status.budget.historyVerified && !ownerCostConsent)
-    return "Frühere Laptop-Ausgaben sind nicht vollständig abgeglichen. Für einen begrenzten Test ist eine ausdrückliche Kosten-Eigenverantwortung erforderlich, sofern verfügbar.";
-  // Only the historical-review lock may be handled by the backend's explicit
-  // owner-managed path. Accounting errors and exhausted budgets remain locked.
-  if (status.budget.blockReason &&
-      !(ownerCostConsent && status.budget.blockReason === "historical_spend_unverified"))
-    return "Budget gesperrt. Kostenabgleich erforderlich.";
+  if (status.budget.blockReason === "accounting_review_required" ||
+      status.budget.blockReason === "desktop_budget_unavailable")
+    return "Verbrauchsabrechnung unklar. KI gesperrt.";
   if (!status.providerConfigured) return "GPT-6.1 Sol, lokaler API-Schlüssel oder KI-Testmodus fehlen.";
   return null;
 }
