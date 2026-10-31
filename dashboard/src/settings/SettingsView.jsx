@@ -105,8 +105,11 @@ export default function SettingsView({
       >
         <div>
           {v2 && <span className="v2-eyebrow">COACH-PROFIL & KONFIGURATION</span>}
-          <div className={v2 ? "v2-native-subtitle" : undefined}
-            style={v2 ? undefined : { fontWeight: 700, fontSize: 15 }}>Einstellungen</div>
+          {v2 ? (
+            <h2 className="v2-native-subtitle">Einstellungen</h2>
+          ) : (
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Einstellungen</div>
+          )}
           <div className={v2 ? "v2-native-help" : undefined}
             style={v2 ? undefined : { color: colors.sub, fontSize: 12, marginTop: 4 }}>
             {v2 ? "Marke, Pete, Buchungen und Verbindungen in einem Coach-Workspace. Änderungen werden über den bestehenden Speicherweg gesichert." : "Interne Admin- und Owner-Konsole. Nicht für Drittzugriff gedacht."}
