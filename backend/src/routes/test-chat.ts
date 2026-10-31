@@ -35,7 +35,7 @@ router.route("/desktop/status")
 router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
   const { enabled, budgetUsd } = req.body ?? {};
   if (typeof enabled !== "boolean" ||
-      (enabled && !["0.25", "0.50", "1.00", "2.00"].includes(budgetUsd)) ||
+      (enabled && !["0.50", "1.00", "2.00"].includes(budgetUsd)) ||
       Object.keys(req.body).some(key => !["enabled", "budgetUsd"].includes(key)))
     return res.status(400).json({ ok: false, error: "invalid_desktop_budget" });
   if (enabled && !desktopProviderConfigured())
