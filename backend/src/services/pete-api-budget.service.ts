@@ -504,14 +504,14 @@ export function reservePeteBudget(params: {
     if (params.desktopSessionHash !== undefined) {
       assertDesktopRuntimeSafe();
       const desktop = desktopData(data);
-      const history = readDesktopHistoryReview(data);
-      if (params.model !== "gpt-6.1-sol" || !desktop.history ||
-          desktop.history.reviewSha256 !== history.sha256 || desktop.accountingError ||
+      // Local owner's explicit budget is independent of historical QA grants.
+      // The same persistent ledger and exclusive lock still account for every
+      // reservation, including unknown provider responses and failed calls.
+      if (params.model !== "gpt-6.1-sol" || desktop.accountingError ||
           desktop.enabledBootId !== DESKTOP_BOOT_ID ||
           desktop.enabledSessionHash !== params.desktopSessionHash)
         throw new PeteBudgetStop("unavailable");
-      if (desktop.confirmedMicroUsd + desktop.reservedMicroUsd + reservedMicros > desktop.limitMicroUsd ||
-          history.priorMicroUsd + data.committedMicroUsd + reservedMicros > PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
+      if (desktop.confirmedMicroUsd + desktop.reservedMicroUsd + reservedMicros > desktop.limitMicroUsd)
         throw new PeteBudgetStop("exhausted");
       const id = crypto.randomUUID();
       data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(),
@@ -700,21 +700,18 @@ export function getPeteDesktopBudgetStatus(sessionHash?: string) {
     if (fs.existsSync(LOCK_FILE)) throw new PeteBudgetStop("unavailable");
     const data = load();
     const d = desktopData(data);
-    let history: ReturnType<typeof readDesktopHistoryReview> | null = null;
-    try { history = readDesktopHistoryReview(data); } catch { /* fail closed below */ }
     const committed = d.confirmedMicroUsd + d.reservedMicroUsd;
-    const projectRemaining = history === null ? null : Math.max(0,
-      PETE_DESKTOP_HISTORY.projectCeilingMicroUsd - history.priorMicroUsd - data.committedMicroUsd);
-    const remaining = projectRemaining === null ? 0 : Math.min(projectRemaining,
-      Math.max(0, d.limitMicroUsd - committed));
-    const enabled = history !== null && !d.accountingError &&
+    const remaining = Math.max(0, d.limitMicroUsd - committed);
+    const enabled = !d.accountingError && remaining > 0 &&
       d.enabledBootId === DESKTOP_BOOT_ID && d.enabledSessionHash === sessionHash;
-    return { ok: true as const, enabled, historyVerified: history !== null,
-      blockReason: d.accountingError ? "accounting_review_required" : history === null
-        ? "historical_spend_unverified" : projectRemaining === 0 ? "project_budget_exhausted" : null,
+    return { ok: true as const, enabled,
+      // Legacy historical reporting is informational only, not an authorization gate.
+      historyVerified: false, ownerManagedCosts: true, ownerManagedApprovalAvailable: true,
+      blockReason: d.accountingError ? "accounting_review_required" :
+        d.limitMicroUsd > 0 && remaining === 0 ? "desktop_budget_exhausted" : null,
       knownHistoricalBookedUsd: PETE_DESKTOP_HISTORY.knownBookedMicroUsd / 1_000_000,
-      historicalBookedUsd: history ? history.priorMicroUsd / 1_000_000 : null,
-      projectRemainingUsd: projectRemaining === null ? null : projectRemaining / 1_000_000,
+      historicalBookedUsd: null,
+      projectRemainingUsd: null,
       authorizedUsd: d.limitMicroUsd / 1_000_000,
       confirmedUsd: d.confirmedMicroUsd / 1_000_000,
       reservedUsd: d.reservedMicroUsd / 1_000_000,
@@ -736,13 +733,10 @@ export function setPeteDesktopBudget(params: {
     const data = load();
     const d = desktopData(data);
     if (params.enabled) {
-      const review = readDesktopHistoryReview(data);
       if (!PETE_DESKTOP_BUDGET_CHOICES.some(amount => amount === params.limitMicroUsd) || d.accountingError)
         throw new PeteBudgetStop("unavailable");
-      if (params.limitMicroUsd! <= d.confirmedMicroUsd + d.reservedMicroUsd ||
-          review.priorMicroUsd + data.committedMicroUsd >= PETE_DESKTOP_HISTORY.projectCeilingMicroUsd)
+      if (params.limitMicroUsd! <= d.confirmedMicroUsd + d.reservedMicroUsd)
         throw new PeteBudgetStop("exhausted");
-      d.history ??= { reviewSha256: review.sha256, priorMicroUsd: review.priorMicroUsd };
       d.limitMicroUsd = params.limitMicroUsd!;
       d.enabledBootId = DESKTOP_BOOT_ID;
       d.enabledSessionHash = params.sessionHash;
