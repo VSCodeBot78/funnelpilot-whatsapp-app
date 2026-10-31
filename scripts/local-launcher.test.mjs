@@ -81,3 +81,46 @@ test("Windows PowerShell 5.1 cannot erase strict local recipient lists via empty
   assert.match(file, /INSTAGRAM_SEND_ENABLED = "false"/);
   assert.match(file, /WHATSAPP_SEND_ENABLED = "false"/);
 });
+
+test("Owner Laptop GO uses reviewed PR193 and starts both services safely", () => {
+  const owner = fs.readFileSync(path.join(dirname, "start-owner-laptop.ps1"), "utf8");
+  const entry = fs.readFileSync(path.join(dirname, "../FunnelPilot-Laptop-GO.cmd"), "utf8");
+  assert.ok(entry.includes("start-owner-laptop.ps1"));
+  assert.equal([...owner].filter(x => x.charCodeAt(0) > 127).length, 0);
+  for (const text of [
+    "feat/dashboard-v2-preview-20261023",
+    "43b8ec796614967968ef8a015edbc5e4c6262d84",
+    "Funnel Pilot - Laptop GO.lnk",
+    "FunnelPilot-Laptop-GO.cmd",
+    "OPENAI_MODEL = \"gpt-6.1-sol\"",
+    "PETE_LLM_API_CALLS_APPROVED = \"false\"",
+    "INSTAGRAM_ENGINE_ENABLED = \"false\"",
+    "INSTAGRAM_SEND_ENABLED = \"false\"",
+    "WHATSAPP_SEND_ENABLED = \"false\"",
+    "ENABLE_GENERIC_WEBHOOKS = \"false\"",
+    "DISABLE_DESTRUCTIVE_ROUTES = \"true\"",
+    "INSTAGRAM_ALLOWED_SENDER_IDS = \" \"",
+    "WHATSAPP_ALLOWED_RECIPIENT_IDS = \" \"",
+    "node_modules",
+    "http://127.0.0.1:3001/health/readiness",
+    "http://127.0.0.1:5173/health/readiness",
+    "http://127.0.0.1:5173/test-chat/desktop/session",
+    "http://127.0.0.1:5173/test-chat/desktop/status",
+    "SICHERHEITS-STOP",
+    "ConvertFrom-SecureString",
+    "ConvertTo-SecureString",
+  ]) assert.ok(owner.includes(text), "required safe startup gate: " + text);
+  assert.match(owner, /Port-Free 3001/);
+  assert.match(owner, /Port-Free 5173/);
+  assert.match(owner, /Start-Process \$url/);
+  assert.match(owner, /Safe \$b/);
+  assert.match(owner, /Safe \$v/);
+  assert.ok(owner.indexOf('Launch "Funnel Pilot Backend NoSend"') <
+    owner.indexOf('Remove-Item Env:OPENAI_API_KEY'));
+  assert.ok(owner.indexOf('Remove-Item Env:OPENAI_API_KEY') <
+    owner.indexOf('Launch "Funnel Pilot Dashboard V2"'));
+  assert.ok(owner.indexOf('if (!$running)') < owner.indexOf('Start-Process $url'));
+  assert.doesNotMatch(owner, /git\.exe[^\r\n]*(?:pull|push|reset|clean|switch|checkout)/i);
+  assert.doesNotMatch(owner, /cloudflared|tunnel --url|0\.0\.0\.0|live-send/i);
+  assert.doesNotMatch(owner, /https:\/\/api\.openai\.com\/v1\/responses/);
+});
