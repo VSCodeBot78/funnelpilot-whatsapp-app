@@ -69,3 +69,33 @@ jobs:
         run: npm --prefix ../dashboard ci --no-audit --no-fund
       - name: Real Vite + Express Pete desktop login, offline only
         run: node --import tsx --test ../scripts/pete-desktop-session-proxy.test.mjs
+
+  owner-laptop-windows-parse:
+    name: Owner Laptop GO / Windows PowerShell 5.1 syntax
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check owner launcher syntax and no-send contract
+        shell: powershell
+        run: |
+          $script = Join-Path $env:GITHUB_WORKSPACE "scripts\start-owner-laptop.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw "Windows PowerShell 5.1 rejected Laptop GO"
+          }
+          $cmd = Get-Content (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-Laptop-GO.cmd") -Raw
+          $body = Get-Content $script -Raw
+          if ($cmd -notmatch 'start-owner-laptop.ps1' -or
+              $body -notmatch 'INSTAGRAM_SEND_ENABLED = "false"' -or
+              $body -notmatch 'WHATSAPP_SEND_ENABLED = "false"' -or
+              $body -notmatch 'PETE_LLM_API_CALLS_APPROVED = "false"') {
+            throw "NoSend/OneClick safety missing"
+          }
+          if ($body -match 'git.exe[^\r\n]*(reset|clean|push|pull|checkout|switch)') {
+            throw "Unexpected Git mutation in owner launcher"
+          }
+          Write-Host "PASS: Windows PowerShell 5.1 syntax and guarded local start"
