@@ -99,3 +99,19 @@ jobs:
             throw "Unexpected Git mutation in owner launcher"
           }
           Write-Host "PASS: Windows PowerShell 5.1 syntax and guarded local start"
+      - name: Real CMD launches local PowerShell script from a path with spaces
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "Funnel Pilot One Click\Owner Workspace"
+          New-Item -ItemType Directory -Path (Join-Path $root "scripts") -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "FunnelPilot-Laptop-GO.cmd") -Destination (Join-Path $root "FunnelPilot-Laptop-GO.cmd")
+          $probe = @'
+          Set-Content -LiteralPath (Join-Path $PSScriptRoot "..\oneclick-marker.txt") -Value "PASS"
+          '@
+          Set-Content -LiteralPath (Join-Path $root "scripts\start-owner-laptop.ps1") -Value $probe -Encoding Ascii
+          $cmd = Join-Path $root "FunnelPilot-Laptop-GO.cmd"
+          & cmd.exe /d /c ('"' + $cmd + '"')
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $root "oneclick-marker.txt"))) {
+            throw "CMD launcher failed under spaces in Windows path"
+          }
+          Write-Host "PASS: existing CMD button invokes the correct script under Windows paths"
