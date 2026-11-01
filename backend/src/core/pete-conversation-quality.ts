@@ -541,10 +541,18 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: "Hier ist der kostenlose Elternfitness-Check: " +
       OFFER_TRUTH.resources.elterncheck.url };
   }
-  if (/\b(?:buchungslink|terminlink|calendly.?link|strategiegesprach buchen)\b/.test(input) &&
-      !/\b(?:nicht|kein|ohne|erstmal nicht|lieber hier)\b/.test(input)) {
+  // The same verified link should work with natural DM wording, not only
+  // compound keywords such as "Buchungslink". Never infer a booking from a
+  // generic mention of a call, and never fabricate a URL or an available slot.
+  const asksForBookingLink =
+    /\b(?:buchungslink|terminlink|kalenderlink|calendly.?link|strategiegesprach buchen)\b/.test(input) ||
+    (/\b(?:link|kalenderlink|calendly)\b/.test(input) &&
+     /\b(?:termin|strategiegesprach|gesprach|call)\b/.test(input) &&
+     /\b(?:schick\w*|send\w*|zeig\w*|gib\w*|hast|brauche|mochte|will|kann\w*|wo|wie)\b/.test(input));
+  if (asksForBookingLink &&
+      !/\b(?:nicht|kein(?:e|en|em|er|es)?|ohne|lieber hier)\b/.test(input)) {
     return bookingUrl?.startsWith("https://")
-      ? { text: "Hier kannst du einen Termin für ein Strategiegespräch auswählen: " + bookingUrl,
+      ? { text: "Sehr gern 😊 Hier kannst du dir einen Termin für ein persönliches Strategiegespräch aussuchen: " + bookingUrl,
           nextPhase: "booking_offered" }
       : { text: "Ich kann dir hier keinen verifizierten Buchungslink nennen. Jochen kann dir den richtigen Weg zeigen.", handoff: true };
   }
