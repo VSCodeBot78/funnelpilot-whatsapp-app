@@ -519,6 +519,7 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
       return { kind: "handoff", reason: "budget_exhausted" };
     return { kind: "handoff", reason: "budget_unavailable" };
   }
+  let providerResponseReceived = false;
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -529,8 +530,9 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
       signal: AbortSignal.timeout(model === "gpt-6.1-sol" ? 30000 : 12000),
       body: requestBody,
     });
+    providerResponseReceived = true;
 
-    if (!response.ok) return { kind: "handoff", reason: "provider_unavailable", detail: "http_error" };
+    if (!response.ok) return { kind: "handoff", reason: "provider_unavailable", detail: "http_" + response.status };
     const payload = await response.json();
     // No usage means the entire preauthorized amount remains counted.
     const metered = settlePeteBudget(reservation, payload?.usage);
@@ -574,8 +576,12 @@ export async function getPeteLlmConversationReply(state: ConversationState): Pro
     return { kind: "llm", text: validated.reply, ...(metered ? { usage: {
       model, inputTokens: payload.usage.input_tokens, outputTokens: payload.usage.output_tokens,
     } } : {}) };
-  } catch {
-    // No low-quality question-flow fallback on API errors.
-    return { kind: "handoff", reason: "provider_unavailable" };
+  } catch (error) {
+    // Classify failures without reflecting provider error bodies, credentials or lead texts.
+    const timeout = error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+    return { kind: "handoff", reason: "provider_unavailable",
+      detail: timeout ? "request_timeout"
+        : providerResponseReceived ? "provider_processing_error" : "network_error" };
   }
 }
