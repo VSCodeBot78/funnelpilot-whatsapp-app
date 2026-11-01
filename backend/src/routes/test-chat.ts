@@ -65,16 +65,15 @@ router.post("/desktop/provider-check", guardDesktopBrowser, async (req, res) => 
 });
 
 router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
-  const { enabled, budgetUsd } = req.body ?? {};
+  const { enabled } = req.body ?? {};
+  // Cost consent is ONLY the explicit owner KI switch; no hidden tier input.
   if (typeof enabled !== "boolean" ||
-      (enabled && !["0.50", "1.00", "2.00"].includes(budgetUsd)) ||
-      Object.keys(req.body).some(key => !["enabled", "budgetUsd"].includes(key)))
+      Object.keys(req.body).some(key => key !== "enabled"))
     return res.status(400).json({ ok: false, error: "invalid_desktop_budget" });
   if (enabled && !desktopProviderConfigured())
     return res.status(409).json({ ok: false, error: "desktop_provider_not_configured" });
   try {
-    setPeteDesktopBudget({ enabled, sessionHash: desktopSessionHash(req),
-      limitMicroUsd: enabled ? Math.round(Number(budgetUsd) * 1_000_000) : undefined });
+    setPeteDesktopBudget({ enabled, sessionHash: desktopSessionHash(req) });
     return res.json({ ok: true, budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
   } catch {
     return res.status(409).json({ ok: false, error: "desktop_budget_locked",
