@@ -38,7 +38,7 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
-    setBudget: (enabled, budgetUsd) => request("POST", "budget", enabled ? { enabled, budgetUsd } : { enabled }),
+    setBudget: enabled => request("POST", "budget", { enabled }),
   };
 }
 
