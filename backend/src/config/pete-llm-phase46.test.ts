@@ -121,6 +121,27 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(calls, 0);
   });
 
+  await t.test("natural strategy-call link requests return the configured URL without an LLM call", async () => {
+    clearConversationStore();
+    enableMockProvider();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("No provider requests in link regression"); };
+    const messages = [
+      "Schick mir bitte den Link für ein Strategiegespräch",
+      "Hast du den Kalenderlink für einen Termin?",
+      "Ich möchte ein Strategiegespräch buchen",
+      "Kannst du mir den Link zu einem persönlichen Gespräch schicken?",
+    ];
+    for (const [index, message] of messages.entries()) {
+      const result = await send("phase46-natural-booking-link-" + index, message);
+      assert.equal(result.state.answers.peteReplySource, "verified_transaction", message);
+      assert.match(result.text ?? "", /https:\/\/calendly\.com\/eltern-fitundvital\/strategiegespraech/, message);
+      assert.match(result.text ?? "", /persönliches Strategiegespräch/, message);
+      assert.equal(result.state.providerBooking?.status, "awaiting_booking", message);
+    }
+    assert.equal(calls, 0, "showing the trusted booking link must never spend API tokens");
+  });
+
   await t.test("transcript sent to a provider is bounded and redacts common identifiers", () => {
     const messages = Array.from({ length: 40 }, (_, i) => ({
       id: String(i), role: i % 2 ? "assistant" : "user",
