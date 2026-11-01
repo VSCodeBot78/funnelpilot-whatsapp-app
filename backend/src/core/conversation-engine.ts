@@ -16,6 +16,8 @@ import {
   isPeteLlmConversationSelected,
   PETE_LLM_HANDOFF_REPLY,
 } from "./pete-llm-conversation.js";
+import { isRetryableDesktopTechnicalFailure } from "./pete-desktop-error-policy.js";
+import { desktopCallMode } from "../services/pete-desktop-lab.service.js";
 import {
   detectBookingPreference,
   detectBookingRequest,
@@ -1489,6 +1491,21 @@ export async function processIncomingMessage(
           return { text: noncritical, nextStep: latest.currentStep,
             detectedIntent: "flow_answer", state: latest };
         }
+      }
+      // In an authenticated synthetic desktop lab, a provider/network/budget
+      // failure must not permanently transfer this test contact to a human.
+      // The real customer path and model/safety-driven handoffs stay unchanged.
+      if (isRetryableDesktopTechnicalFailure(result.reason, desktopCallMode() !== null)) {
+        patchAnswers(latest, {
+          peteReplySource: "llm_handoff",
+          peteLlmFailureReason: result.reason,
+          peteLlmFailureDetail: result.detail ?? "unspecified",
+        });
+        const localNotice = "Lokaler Test: Keine bestätigte OpenAI-Antwort. Ursache im Pete-KI-Diagnosefeld prüfen.";
+        appendAssistantMessage(latest, localNotice);
+        persistConversationState(latest);
+        return { text: localNotice, nextStep: latest.currentStep,
+          detectedIntent: "flow_answer", state: latest };
       }
       // Fail closed: never silently continue the old broken question loop.
       patchAnswers(latest, {
