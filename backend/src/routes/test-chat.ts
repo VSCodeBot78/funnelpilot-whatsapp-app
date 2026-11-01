@@ -68,6 +68,26 @@ function desktopState(req: Request, res: Response) {
 router.route("/desktop/state/:leadId")
   .get(guardDesktopBrowser, desktopState)
   .post(guardDesktopBrowser, desktopState);
+/** Read-only, secret-free owner-laptop diagnostics. Never expose provider error bodies. */
+function desktopSafeLlmDiagnostic(answers: Record<string, unknown>) {
+  if (answers.peteReplySource !== "llm_handoff") return null;
+  const allowedReasons = new Set([
+    "not_authorized", "provider_unavailable", "invalid_output", "model_handoff",
+    "budget_exhausted", "budget_unavailable",
+  ]);
+  const rawReason = answers.peteLlmFailureReason;
+  const reason = typeof rawReason === "string" && allowedReasons.has(rawReason)
+    ? rawReason : "unknown";
+  const rawDetail = answers.peteLlmFailureDetail;
+  const safeDetail = typeof rawDetail === "string" &&
+    (/^http_[1-5][0-9]{2}$/.test(rawDetail) ||
+      ["http_error", "request_timeout", "network_error", "provider_usage_unverified",
+        "no_output_text", "invalid_json", "model_requested_human",
+        "unspecified", "unsupported_model_configuration"].includes(rawDetail))
+    ? rawDetail : "unspecified";
+  return { reason, detail: safeDetail };
+}
+
 router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
   const { leadId, campaignId, messageText } = req.body ?? {};
   try { assertIssuedDesktopLead(req, leadId, campaignId); }
@@ -82,6 +102,7 @@ router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
     const a = result.state.answers;
     return res.json({ ok: true, reply: result.text,
       replySource: a.peteReplySource ?? "deterministic",
+      llmDiagnostic: desktopSafeLlmDiagnostic(a),
       providerUsage: a.peteReplySource === "llm" && a.peteProviderUsageMetered === true
         ? { model: a.peteProviderModel, inputTokens: a.peteProviderInputTokens,
           outputTokens: a.peteProviderOutputTokens } : null,
