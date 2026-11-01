@@ -375,6 +375,13 @@ export default function DashboardPreview({
           </div>
           <div className="v2-topbar-right">
             <Badge tone="orange">{operational ? "Lokale Beta" : "Vorschau 2.0"}</Badge>
+            {operational && import.meta.env.VITE_FP_BUILD_SHA && (
+              <span title="Lokal gestarteter Git-Commit, nicht eine freigegebene Produktversion"
+                style={{ fontSize: 11, fontWeight: 600, opacity: 0.8, whiteSpace: "nowrap" }}
+                aria-label="Laufende Funnel Pilot Version">
+                Pete V5 / Dashboard V2 · {import.meta.env.VITE_FP_BUILD_DATE || "Datum offen"} · {import.meta.env.VITE_FP_BUILD_SHA}
+              </span>
+            )}
             <span className="v2-connection">
               <span
                 className={`v2-dot ${(operational ? backendHealthy === true : !!snapshot.health?.data) ? "is-connected" : ""}`}
@@ -393,7 +400,7 @@ export default function DashboardPreview({
         <div className="v2-preview-banner">
           <Icon name={operational ? "info" : "lock"} size={16} />
           <p>{operational
-            ? <>Lokaler Testbetrieb. Kampagnen und Einstellungen werden im verbundenen Backend gespeichert. KI erfordert deine gesonderte Labor-Budgetfreigabe. Kein Meta-Live-Versand.</>
+            ? <>Lokaler Testbetrieb. Kampagnen und Einstellungen werden im verbundenen Backend gespeichert. KI nur nach deinem manuellen EIN-Schalten im Pete-Labor; dabei koennen API-Kosten entstehen. Kein Meta-Live-Versand.</>
             : <><strong>Prüfmodus.</strong> Lesen und navigieren. Speichern, KI-Aufrufe und Versand sind deaktiviert.</>}
           </p>
         </div>
