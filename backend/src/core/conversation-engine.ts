@@ -14,7 +14,6 @@ import {
   getPeteLlmConversationReply,
   isExplicitPeteHumanTakeoverRequest,
   isPeteLlmConversationSelected,
-  PETE_LLM_HANDOFF_REPLY,
 } from "./pete-llm-conversation.js";
 import { isRetryableDesktopTechnicalFailure } from "./pete-desktop-error-policy.js";
 import { desktopCallMode } from "../services/pete-desktop-lab.service.js";
@@ -1379,11 +1378,12 @@ export async function processIncomingMessage(
         peteRuntimeHandoffActive: true,
       });
       takeOverByHuman(state);
-      const reply = "Verstanden. Pete pausiert hier. Jochen kann den Chat persönlich übernehmen.";
-      appendAssistantMessage(state, reply);
+      // Owner takeover is an internal state transition, never an automatic
+      // system announcement to the lead. Human replies remain attributable.
       persistConversationState(state);
-      return { text: reply, nextStep: state.currentStep,
-        detectedIntent: "flow_answer", state };
+      return { text: null, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state,
+        replySuppressedReason: "human_owned" };
     }
 
     // A mention of prices, terms or appointments must NOT force a
@@ -1400,6 +1400,10 @@ export async function processIncomingMessage(
             peteRuntimeHandoffActive: true,
           });
           takeOverByHuman(state);
+          persistConversationState(state);
+          return { text: null, nextStep: state.currentStep,
+            detectedIntent: "flow_answer", state,
+            replySuppressedReason: "human_owned" };
         }
         if (verified.nextPhase === "booking_offered" && bookingUrl) {
           patchFlags(state, { wantsBooking: true });
@@ -1518,10 +1522,11 @@ export async function processIncomingMessage(
         peteRuntimeHandoffActive: true,
       });
       takeOverByHuman(latest);
-      appendAssistantMessage(latest, PETE_LLM_HANDOFF_REPLY);
+      // No technical handoff text may be sent to a real contact.
       persistConversationState(latest);
-      return { text: PETE_LLM_HANDOFF_REPLY, nextStep: latest.currentStep,
-        detectedIntent: "flow_answer", state: latest };
+      return { text: null, nextStep: latest.currentStep,
+        detectedIntent: "flow_answer", state: latest,
+        replySuppressedReason: "human_owned" };
     }
 
     const natural = getNaturalConversationReply({
@@ -1541,6 +1546,13 @@ export async function processIncomingMessage(
           peteRuntimeHandoffActive: true,
         });
         takeOverByHuman(state);
+        // The natural responder's handoff wording is for internal routing only.
+        // Keep urgent safety notices on their earlier, separate guarded path.
+        updateAnswer(state, "peteReplySource", "human_handoff");
+        persistConversationState(state);
+        return { text: null, nextStep: state.currentStep,
+          detectedIntent: "flow_answer", state,
+          replySuppressedReason: "human_owned" };
       }
       if (natural.booking) {
         patchFlags(state, { wantsBooking: true });
@@ -1569,11 +1581,10 @@ export async function processIncomingMessage(
       peteRuntimeHandoffActive: true,
     });
     takeOverByHuman(state);
-    const handoffText = "Da möchte ich nichts Falsches sagen. Ich gebe das lieber an Jochen weiter.";
-    appendAssistantMessage(state, handoffText);
     persistConversationState(state);
-    return { text: handoffText, nextStep: state.currentStep,
-      detectedIntent: "unknown", state };
+    return { text: null, nextStep: state.currentStep,
+      detectedIntent: "unknown", state,
+      replySuppressedReason: "human_owned" };
   }
 
   if (isSelfstarterInterest(input.messageText)) {
