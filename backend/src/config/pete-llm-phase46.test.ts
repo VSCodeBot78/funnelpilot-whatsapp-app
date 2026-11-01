@@ -131,6 +131,7 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
       "Hast du den Kalenderlink für einen Termin?",
       "Ich möchte ein Strategiegespräch buchen",
       "Kannst du mir den Link zu einem persönlichen Gespräch schicken?",
+      "Ja, gerne. Schick mir bitte den Link, damit ich mir einen Termin für das Strategiegespräch aussuchen kann.",
     ];
     for (const [index, message] of messages.entries()) {
       const result = await send("phase46-natural-booking-link-" + index, message);
