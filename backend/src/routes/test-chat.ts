@@ -32,6 +32,38 @@ function desktopStatus(req: Request, res: Response) {
 router.route("/desktop/status")
   .get(guardDesktopBrowser, desktopStatus)
   .post(guardDesktopBrowser, desktopStatus);
+/** Operator-triggered metadata check only. Never creates a model response or spends output tokens.
+ * Restricted to the existing local loopback, session cookie, Origin and CSRF gates.
+ * No provider headers, response bodies, secrets or user text are reflected.
+ */
+router.post("/desktop/provider-check", guardDesktopBrowser, async (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
+      Object.keys(req.body).length !== 0)
+    return res.status(400).json({ ok: false, error: "invalid_provider_check_request" });
+  if (!desktopProviderConfigured())
+    return res.json({ ok: true, result: "not_configured", model: "gpt-6.1-sol" });
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) return res.json({ ok: true, result: "not_configured", model: "gpt-6.1-sol" });
+  try {
+    const response = await fetch("https://api.openai.com/v1/models/gpt-6.1-sol", {
+      method: "GET",
+      headers: { Authorization: "Bearer " + key },
+      signal: AbortSignal.timeout(8000),
+    });
+    // HTTP status is intentionally the only detail returned. Never parse provider body.
+    if (!response.ok) return res.json({
+      ok: true, result: "http_error", httpStatus: response.status, model: "gpt-6.1-sol",
+    });
+    return res.json({ ok: true, result: "model_visible", model: "gpt-6.1-sol" });
+  } catch (error) {
+    const timedOut = error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+    return res.json({
+      ok: true, result: timedOut ? "timeout" : "connection_error", model: "gpt-6.1-sol",
+    });
+  }
+});
+
 router.post("/desktop/budget", guardDesktopBrowser, (req, res) => {
   const { enabled, budgetUsd } = req.body ?? {};
   if (typeof enabled !== "boolean" ||
