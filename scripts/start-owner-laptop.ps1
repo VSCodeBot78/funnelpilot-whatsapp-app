@@ -38,6 +38,34 @@ function Safe($r) {
     $r.destructiveRoutesDisabled -eq $true -and $r.peteLlmCostGateApproved -eq $false
 }
 function Load-Owner-Key {
+  # Owner-selected encrypted key wins over stale machine/user env or backend/.env.
+  # This branch is activated ONLY by the explicit local owner repair command.
+  $privateDir = Join-Path $env:LOCALAPPDATA "FunnelPilot\Private"
+  $privateFile = Join-Path $privateDir "openai-key-dpapi.txt"
+  $preferredFile = Join-Path $privateDir "owner-dpapi-preferred.flag"
+  if (Test-Path -LiteralPath $preferredFile) {
+    if ((Get-Content -LiteralPath $preferredFile -Raw).Trim() -ne "dpapi") {
+      Fail "Ungueltige lokale Keyquellen-Auswahl."
+    }
+    if (-not (Test-Path -LiteralPath $privateFile)) {
+      Fail "Owner-Key-Auswahl vorhanden, aber verschluesselter Key fehlt."
+    }
+    try { $secure = (Get-Content -LiteralPath $privateFile -Raw).Trim() | ConvertTo-SecureString }
+    catch { Fail "Verschluesselter Owner-Key ist unlesbar." }
+    $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try {
+      $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+      if (!$key -or $key.Length -lt 20 -or $key -match '[\r\n]') {
+        Fail "Ungueltiges Owner-Key-Format."
+      }
+      $env:OPENAI_API_KEY = $key
+    } finally {
+      [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+      Remove-Variable key -ErrorAction SilentlyContinue
+    }
+    Write-Host "OpenAI-Keyquelle: explizit gewaehlte Windows-DPAPI-Ablage (Key verborgen)." -ForegroundColor Cyan
+    return
+  }
   if ($env:OPENAI_API_KEY -and $env:OPENAI_API_KEY.Trim()) { return }
   $envFile = Join-Path $backend ".env"
   if ((Test-Path -LiteralPath $envFile) -and
