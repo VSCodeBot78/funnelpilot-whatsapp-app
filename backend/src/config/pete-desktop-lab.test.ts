@@ -124,14 +124,14 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     const hash = crypto.createHash("sha256").update(cookie.slice(cookie.indexOf("=") + 1)).digest("hex");
     return { call, lead, message, headers, hash };
   }
-  async function granted(amount = "0.25") {
-    resetFiles(); fakeReview();
+  async function granted() {
+    resetFiles();
     const c = await client();
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: amount })).status, 200);
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
     return c;
   }
 
-  await t.test("missing history displays the known floor and locks paid calls, no implicit provider check", async () => {
+  await t.test("status never authorizes paid calls; owner toggle needs no history or tier", async () => {
     resetFiles();
     const c = await client();
     const before = providerCalls;
@@ -140,10 +140,12 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(status.budget.historyVerified, false);
     assert.equal(status.budget.projectRemainingUsd, null);
     assert.equal(status.budget.enabled, false);
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25" })).status, 409);
-    assert.equal((await c.message(await c.lead())).status, 200);
     assert.equal(providerCalls, before);
     assert.equal(fs.existsSync(ledgerFile), false, "status cannot manufacture or reset a ledger");
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
+    assert.equal((await c.call("budget", { enabled: false })).status, 200);
+    assert.equal((await c.message(await c.lead())).status, 200);
+    assert.equal(providerCalls, before, "switch OFF cannot make a paid model call");
   });
   await t.test("read-only POST aliases preserve strict origin, CSRF and no paid network", async () => {
     resetFiles();
@@ -207,7 +209,7 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(providerCalls, before + 1);
     assert.equal(result.body.budget.confirmedUsd, 0.0004);
     assert.equal(result.body.budget.reservedUsd, 0);
-    assert.equal(result.body.budget.remainingUsd, 0.2496);
+    assert.equal(result.body.budget.remainingUsd, null);
     const health = await (await fetch(base + "/health/readiness")).json() as any;
     assert.equal(health.peteLlmCostGateApproved, false);
     assert.equal(health.instagramSendEnabled, false);
@@ -227,9 +229,9 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     const offline = await c.message(await c.lead());
     assert.notEqual(offline.body.replySource, "llm");
     assert.equal(providerCalls, before);
-    const again = await c.call("budget", { enabled: true, budgetUsd: "0.25" });
+    const again = await c.call("budget", { enabled: true });
     assert.equal(again.body.budget.confirmedUsd, 0.0004);
-    assert.equal(again.body.budget.remainingUsd, 0.2496);
+    assert.equal(again.body.budget.remainingUsd, null);
   });
   await t.test("parallel HTTP requests reserve under the same hard cap before each provider call", async () => {
     const c = await granted();
@@ -265,7 +267,7 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     const after = JSON.parse(probe.stdout.trim().split("\n").at(-1)!);
     assert.equal(after.enabled, false);
     assert.equal(after.reservedUsd, before.reservedUsd);
-    assert.equal(after.authorizedUsd, 0.25);
+    assert.equal(after.authorizedUsd, null);
     assert.equal(after.remainingUsd, before.remainingUsd);
   });
   await t.test("OFF during an in-flight call suppresses its model output without refunding usage", async () => {
@@ -347,7 +349,7 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(status.enabled, false);
     assert.equal(status.blockReason, "accounting_review_required");
     assert.equal(status.reservedUsd, 2);
-    assert.equal(status.remainingUsd, 0);
+    assert.equal(status.remainingUsd, null);
   });
   await t.test("STOP, human ownership and scripted campaign entry cost nothing and never send", async () => {
     const c = await granted();
