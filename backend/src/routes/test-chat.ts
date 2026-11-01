@@ -81,7 +81,7 @@ function desktopSafeLlmDiagnostic(answers: Record<string, unknown>) {
   const rawDetail = answers.peteLlmFailureDetail;
   const safeDetail = typeof rawDetail === "string" &&
     (/^http_[1-5][0-9]{2}$/.test(rawDetail) ||
-      ["http_error", "request_timeout", "network_error", "provider_usage_unverified",
+      ["http_error", "request_timeout", "network_error", "provider_processing_error", "provider_usage_unverified",
         "no_output_text", "invalid_json", "model_requested_human",
         "unspecified", "unsupported_model_configuration"].includes(rawDetail))
     ? rawDetail : "unspecified";
