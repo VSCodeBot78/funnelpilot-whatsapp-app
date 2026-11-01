@@ -511,8 +511,9 @@ export function reservePeteBudget(params: {
           desktop.enabledBootId !== DESKTOP_BOOT_ID ||
           desktop.enabledSessionHash !== params.desktopSessionHash)
         throw new PeteBudgetStop("unavailable");
-      if (desktop.confirmedMicroUsd + desktop.reservedMicroUsd + reservedMicros > desktop.limitMicroUsd)
-        throw new PeteBudgetStop("exhausted");
+      // Owner-managed local KI switch: no cumulative 0.50/1/2 USD allowance.
+      // The reviewed per-call worst-case reservation, durable accounting,
+      // explicit current-session consent and all NoSend guards still apply.
       const id = crypto.randomUUID();
       data.pending[id] = { microUsd: reservedMicros, createdAt: new Date().toISOString(),
         model: "gpt-6.1-sol", desktop: true };
@@ -701,21 +702,19 @@ export function getPeteDesktopBudgetStatus(sessionHash?: string) {
     const data = load();
     const d = desktopData(data);
     const committed = d.confirmedMicroUsd + d.reservedMicroUsd;
-    const remaining = Math.max(0, d.limitMicroUsd - committed);
-    const enabled = !d.accountingError && remaining > 0 &&
+    const enabled = !d.accountingError &&
       d.enabledBootId === DESKTOP_BOOT_ID && d.enabledSessionHash === sessionHash;
     return { ok: true as const, enabled,
       // Legacy historical reporting is informational only, not an authorization gate.
       historyVerified: false, ownerManagedCosts: true, ownerManagedApprovalAvailable: true,
-      blockReason: d.accountingError ? "accounting_review_required" :
-        d.limitMicroUsd > 0 && remaining === 0 ? "desktop_budget_exhausted" : null,
+      blockReason: d.accountingError ? "accounting_review_required" : null,
       knownHistoricalBookedUsd: PETE_DESKTOP_HISTORY.knownBookedMicroUsd / 1_000_000,
       historicalBookedUsd: null,
       projectRemainingUsd: null,
-      authorizedUsd: d.limitMicroUsd / 1_000_000,
+      authorizedUsd: null, // Owner approves calls with the KI switch, not a cumulative dollar cap.
       confirmedUsd: d.confirmedMicroUsd / 1_000_000,
       reservedUsd: d.reservedMicroUsd / 1_000_000,
-      committedUsd: committed / 1_000_000, remainingUsd: remaining / 1_000_000,
+      committedUsd: committed / 1_000_000, remainingUsd: null,
       requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
       inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
     };
@@ -723,9 +722,11 @@ export function getPeteDesktopBudgetStatus(sessionHash?: string) {
     blockReason: "desktop_budget_unavailable" }; }
 }
 
-/** Cumulative allowance: OFF/ON, new contacts and restarts NEVER reset spend. */
+/** Owner KI ON/OFF: spend ledger survives, no artificial cumulative budget tiers.
+ * Backend restart revokes consent; the button never itself calls a model.
+ */
 export function setPeteDesktopBudget(params: {
-  enabled: boolean; sessionHash: string; limitMicroUsd?: number;
+  enabled: boolean; sessionHash: string;
 }): void {
   assertDesktopRuntimeSafe();
   if (!/^[a-f0-9]{64}$/.test(params.sessionHash)) throw new PeteBudgetStop("unavailable");
@@ -733,11 +734,9 @@ export function setPeteDesktopBudget(params: {
     const data = load();
     const d = desktopData(data);
     if (params.enabled) {
-      if (!PETE_DESKTOP_BUDGET_CHOICES.some(amount => amount === params.limitMicroUsd) || d.accountingError)
-        throw new PeteBudgetStop("unavailable");
-      if (params.limitMicroUsd! <= d.confirmedMicroUsd + d.reservedMicroUsd)
-        throw new PeteBudgetStop("exhausted");
-      d.limitMicroUsd = params.limitMicroUsd!;
+      if (d.accountingError) throw new PeteBudgetStop("unavailable");
+      // Preserve all confirmed and uncertain charges; only retire the old tier.
+      d.limitMicroUsd = 0;
       d.enabledBootId = DESKTOP_BOOT_ID;
       d.enabledSessionHash = params.sessionHash;
     } else {
