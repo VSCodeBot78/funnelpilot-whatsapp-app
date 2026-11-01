@@ -233,7 +233,7 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(again.body.budget.confirmedUsd, 0.0004);
     assert.equal(again.body.budget.remainingUsd, null);
   });
-  await t.test("parallel HTTP requests reserve under the same hard cap before each provider call", async () => {
+  await t.test("parallel paid HTTP requests reserve durable cost records", async () => {
     const c = await granted();
     holdProvider = true;
     const leads = await Promise.all(Array.from({ length: 16 }, () => c.lead()));
@@ -241,13 +241,13 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     await new Promise(resolve => setTimeout(resolve, 150));
     const during = (await c.call("status")).body.budget;
     assert.ok(waiting.length > 0);
-    assert.ok(waiting.length < 16, "some requests must be rejected before the provider");
-    assert.ok(during.reservedUsd > 0 && during.committedUsd <= 0.25);
-    assert.ok(during.remainingUsd >= 0);
+    assert.ok(waiting.length <= 16);
+    assert.ok(during.reservedUsd > 0);
+    assert.equal(during.remainingUsd, null);
     holdProvider = false;
     const releases = waiting; waiting = []; releases.forEach(resolve => resolve());
     await Promise.all(inFlight);
-    assert.ok((await c.call("status")).body.budget.committedUsd <= 0.25);
+    assert.ok((await c.call("status")).body.budget.committedUsd > 0);
   });
   await t.test("unknown usage retains the whole reservation across a real process restart; KI starts OFF", async () => {
     const c = await granted();
@@ -288,52 +288,49 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     const before = providerCalls;
     await c.message(await c.lead());
     assert.equal(providerCalls, before);
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25" })).status, 200);
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
     assert.equal((await c.message(leadId, "Mir geht es vor allem um mein Essen am Abend.")).body.replySource, "llm");
   });
-  await t.test("changed evidence, a stale target ledger and understated history all fail closed", async () => {
+  await t.test("old history review cannot bypass session consent or OFF", async () => {
     const c = await granted();
-    fs.appendFileSync(path.join(temp, "FAKE-provider-cost-statement.txt"), "changed");
-    assert.equal((await c.call("status")).body.budget.historyVerified, false);
+    const initial = (await c.call("status")).body.budget;
+    assert.equal(initial.historyVerified, false);
+    assert.equal(initial.ownerManagedCosts, true);
     const before = providerCalls;
+    await c.call("budget", { enabled: false });
     await c.message(await c.lead());
-    assert.equal(providerCalls, before);
-    resetFiles(); fakeReview(PETE_DESKTOP_HISTORY.knownBookedMicroUsd - 1);
-    assert.equal(budgetService.getPeteDesktopBudgetStatus().historyVerified, false);
-    resetFiles(); fakeReview();
-    // Creating a target ledger AFTER the review invalidates its migration hash.
-    budgetService.setPeteDesktopBudget({ enabled: false, sessionHash: c.hash });
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25" })).status, 409);
+    assert.equal(providerCalls, before, "switch OFF prevents paid model calls");
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
+    assert.equal((await c.call("status")).body.budget.confirmedUsd, initial.confirmedUsd);
   });
-  await t.test("an old local spend ledger is included rather than treated as zero", async () => {
+  await t.test("historical review cannot manufacture owner authorization or reset spending", async () => {
     resetFiles(); fakeReview();
-    const filename = path.join(temp, "FAKE-old-local-ledger.json");
-    fs.writeFileSync(filename, JSON.stringify({ version: 1, committedMicroUsd: 150_000,
-      confirmedMicroUsd: 100_000, reservedMicroUsd: 50_000 }));
-    const review = JSON.parse(fs.readFileSync(reviewFile, "utf8"));
-    review.localLedgers[0].sha256 = hashFile(filename);
-    fs.writeFileSync(reviewFile, JSON.stringify(review));
-    assert.equal(budgetService.getPeteDesktopBudgetStatus().historyVerified, false);
-    review.priorMicroUsd += 150_000;
-    fs.writeFileSync(reviewFile, JSON.stringify(review));
-    const status = budgetService.getPeteDesktopBudgetStatus();
-    assert.equal(status.ok && status.historyVerified, true);
-    assert.equal(status.ok && status.historicalBookedUsd, 11.308772);
+    const first = budgetService.getPeteDesktopBudgetStatus();
+    assert.equal(first.historyVerified, false);
+    assert.equal(first.authorizedUsd, null);
+    assert.equal(first.remainingUsd, null);
+    const c = await client();
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
+    const status = (await c.call("status")).body.budget;
+    assert.equal(status.authorizedUsd, null);
+    assert.equal(status.confirmedUsd, 0);
+    assert.equal(status.reservedUsd, 0);
   });
-  await t.test("project ceiling overrides a larger owner choice", async () => {
+  await t.test("owner KI consent no longer inherits unrelated QA project ceiling", async () => {
     resetFiles(); fakeReview(12_995_000);
     const c = await client();
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "2.00" })).status, 200);
+    assert.equal((await c.call("budget", { enabled: true })).status, 200);
     const before = providerCalls;
-    await c.message(await c.lead());
-    assert.equal(providerCalls, before, "worst-case reservation cannot fit the remaining project envelope");
-    assert.equal((await c.call("status")).body.budget.projectRemainingUsd, 0.005);
+    const result = await c.message(await c.lead());
+    assert.equal(result.body.replySource, "llm");
+    assert.equal(providerCalls, before + 1);
+    assert.equal((await c.call("status")).body.budget.projectRemainingUsd, null);
   });
   await t.test("held lock and corrupt ledger cannot be reset from the UI", async () => {
     const c = await granted();
     fs.writeFileSync(path.join(temp, "pete-api-budget.lock"), "crash lock");
     assert.equal((await c.call("status")).body.budget.ok, false);
-    assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25" })).status, 409);
+    assert.equal((await c.call("budget", { enabled: true })).status, 409);
     fs.rmSync(path.join(temp, "pete-api-budget.lock"));
     fs.writeFileSync(ledgerFile, "corrupted");
     assert.equal((await c.call("budget", { enabled: false })).status, 409);
@@ -413,7 +410,7 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     for (const [key, unsafe] of [["INSTAGRAM_SEND_ENABLED", "true"], ["WHATSAPP_SEND_ENABLED", "true"],
       ["PETE_LLM_API_CALLS_APPROVED", "true"], ["NODE_ENV", "production"], ["GITHUB_ACTIONS", "true"]]) {
       const previous = process.env[key]; process.env[key] = unsafe;
-      try { assert.equal((await c.call("budget", { enabled: true, budgetUsd: "0.25" })).status, 403); }
+      try { assert.equal((await c.call("budget", { enabled: true })).status, 403); }
       finally { process.env[key] = previous; }
     }
   });
