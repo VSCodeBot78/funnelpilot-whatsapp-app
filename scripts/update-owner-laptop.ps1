@@ -50,6 +50,24 @@ if ($before -ne $target) {
 }
 $after = Read-Git @("rev-parse","HEAD")
 if ($after -ne $target) { Stop-Safely "HEAD nach Update nicht identisch mit GitHub. Nicht starten." }
+# A remotely changed launcher must still contain all local NoSend guards.
+# Verify before invoking any updated code or displaying a successful start.
+$launcherSource = Get-Content -LiteralPath (Join-Path $root "scripts/start-owner-laptop.ps1") -Raw
+foreach($required in @(
+  'FUNNELPILOT_LOCAL_TEST_MODE = "true"',
+  'INSTAGRAM_ENGINE_ENABLED = "false"',
+  'INSTAGRAM_SEND_ENABLED = "false"',
+  'WHATSAPP_SEND_ENABLED = "false"',
+  'ENABLE_GENERIC_WEBHOOKS = "false"',
+  'DISABLE_DESTRUCTIVE_ROUTES = "true"',
+  'PETE_LLM_API_CALLS_APPROVED = "false"',
+  'INSTAGRAM_ALLOWED_SENDER_IDS = " "',
+  'WHATSAPP_ALLOWED_RECIPIENT_IDS = " "'
+)) {
+  if (-not $launcherSource.Contains($required)) {
+    Stop-Safely ("NoSend-Pruefung fehlt: " + $required)
+  }
+}
 # No package installation, paid API call, live send or deployment at startup.
 # Existing dependencies must be present; source checks run before starting services.
 if (-not (Test-Path (Join-Path $root "backend/node_modules/.bin/tsx.cmd")) -or
@@ -69,6 +87,9 @@ if ($before -ne $after) {
     & node.exe --import tsx --test src/config/pete-llm-phase46.test.ts
     if ($LASTEXITCODE -ne 0) { Stop-Safely "Pete-Offline-Test fehlgeschlagen. Neue Version NICHT starten." }
   } finally { Pop-Location }
+  Write-Host "Pruefe isoliertes Desktop-/NoSend-HTTP-Regressionslabor..." -ForegroundColor Cyan
+  & npm.cmd --prefix (Join-Path $root "backend") run test:desktop
+  if ($LASTEXITCODE -ne 0) { Stop-Safely "Desktop-Sicherheitstests fehlgeschlagen. Neue Version NICHT starten." }
 }
 $committed = Read-Git @("log","-1","--format=%cs")
 $env:VITE_FP_BUILD_SHA = $after.Substring(0,8)
