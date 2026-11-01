@@ -33,6 +33,7 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
   return {
     // A browser same-origin GET omits Origin. Use authenticated read-only POST.
     status: () => request("POST", "status", {}),
+    checkProvider: () => request("POST", "provider-check", {}),
     newLead: () => request("POST", "lead", {}),
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
