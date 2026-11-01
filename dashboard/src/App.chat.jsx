@@ -138,7 +138,6 @@ export default function ChatTest({ v2 = false }) {
   const [aiChecking, setAiChecking] = useState(false);
   const [providerCheck, setProviderCheck] = useState(null);
   const [providerChecking, setProviderChecking] = useState(false);
-  const [budgetChoice, setBudgetChoice] = useState("0.50");
 
   const campaignId = "eltern-vital-fit";
 
@@ -313,12 +312,12 @@ export default function ChatTest({ v2 = false }) {
     if (aiChecking) return;
     setAiChecking(true);
     try {
-      const data = await desktopClient.current.setBudget(budget?.enabled !== true, budgetChoice);
+      const data = await desktopClient.current.setBudget(budget?.enabled !== true);
       setAiDiagnostic(previous => ({ ...previous, error: undefined, budget: data.budget }));
     } catch (error) {
       setAiDiagnostic(previous => ({ ...previous, ...(error.budget ? { budget: error.budget } : {}),
         error: budget?.enabled ? "KI-AUS nicht bestätigt. Status erneut prüfen oder lokalen Backenddienst schließen."
-          : "KI-Freigabe nicht bestätigt. Limit und lokalen Status prüfen." }));
+          : "KI-Freigabe nicht bestätigt. Lokalen Status und Kostenprotokoll prüfen." }));
     } finally { setAiChecking(false); }
   }
 
@@ -499,26 +498,17 @@ export default function ChatTest({ v2 = false }) {
             </p>}
         </div>
 
-        <section aria-label="Pete-KI und dauerhaftes Testbudget" style={{
+        <section aria-label="Pete-KI und Kostenstatus" style={{
           background: "#111827", border: "1px solid #2a3348",
           borderRadius: 12, padding: 14, marginBottom: 14,
         }}>
           <strong>Echte Pete-KI im lokalen Labor: {!budget?.ok || aiDiagnostic?.error
             ? "Status nicht bestätigt" : budget.enabled ? "AN" : "AUS"}</strong>
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
-            Du entscheidest: KI verwenden und ein festes Gesamtlimit wählen.
-            Erst dein Klick auf KI AN erlaubt kostenpflichtige Pete-Antworten.
-            Das Limit bleibt bei neuen Kontakten und nach Neustarts erhalten.
-            KI ist nach jedem Backend-Neustart standardmäßig AUS. Keine automatische Nachladung.
+            KI AN erlaubt kostenpflichtige Pete-Antworten bei deinen manuellen Testnachrichten.
+            Du verwaltest dein OpenAI-Guthaben selbst. Kein festes lokales Testbudget
+            und keine automatische Nachladung. Nach jedem Backend-Neustart ist KI AUS.
           </p>
-          <label htmlFor="pete-desktop-budget">Maximales Pete-Testbudget: </label>
-          <select id="pete-desktop-budget" value={budgetChoice}
-            disabled={budget?.enabled || aiChecking || loading}
-            onChange={event => setBudgetChoice(event.target.value)}
-            style={{ color: "#111827", background: "#fff", padding: 8, borderRadius: 6 }}>
-            {["0.50", "1.00", "2.00"].map(amount =>
-              <option key={amount} value={amount}>{amount} USD</option>)}
-          </select>
           <button type="button" role="switch" aria-checked={budget?.enabled === true}
             onClick={togglePeteAi}
             disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
@@ -551,13 +541,12 @@ export default function ChatTest({ v2 = false }) {
             marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
           }}>
             {aiBlock && <p style={{ color: "#fbbf24" }}>{aiBlock}</p>}
-            <div>Freigegeben: {formatDesktopUsd(budget?.authorizedUsd)}</div>
-            <div>Verbrauch bestätigt: {formatDesktopUsd(budget?.confirmedUsd)}</div>
+            <div>Lokale Pete-Kosten bestätigt: {formatDesktopUsd(budget?.confirmedUsd)}</div>
             <div>Reserviert oder noch ungeklärt: {formatDesktopUsd(budget?.reservedUsd)}</div>
-            <div><strong>Für weitere API-Aufrufe verfügbar: {formatDesktopUsd(budget?.remainingUsd)}</strong></div>
+            <div><strong>Kostenfreigabe: {budget?.enabled ? "KI AN" : "KI AUS"}</strong></div>
             <p style={{ color: "#cbd5e1" }}>
-              Lokale Pete-Ausgabenbegrenzung, kein OpenAI-Kontoguthaben.
-              Ungeklärte Aufrufe bleiben reserviert. Meta- und WhatsApp-Versand bleiben AUS.
+              Kein OpenAI-Kontoguthaben: Die Werte zeigen nur lokal erfasste API-Kosten.
+              Ungeklärte Aufrufe bleiben protokolliert. Meta- und WhatsApp-Versand bleiben AUS.
             </p>
           </div>}
         </section>
