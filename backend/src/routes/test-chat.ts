@@ -27,7 +27,9 @@ router.post("/desktop/session", startDesktopBrowserSession);
 function desktopStatus(req: Request, res: Response) {
   const budget = getPeteDesktopBudgetStatus(desktopSessionHash(req));
   return res.json({ ok: true, budget, providerConfigured: desktopProviderConfigured(),
-    model: "gpt-6.1-sol", globalApiCallsApproved: false, sendsEnabled: false });
+    model: "gpt-6.1-sol", globalApiCallsApproved: false, sendsEnabled: false,
+    buildSha: process.env.FUNNELPILOT_BUILD_SHA?.trim() || null,
+    buildDate: process.env.FUNNELPILOT_BUILD_DATE?.trim() || null });
 }
 router.route("/desktop/status")
   .get(guardDesktopBrowser, desktopStatus)
