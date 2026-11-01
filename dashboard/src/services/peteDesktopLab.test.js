@@ -25,8 +25,8 @@ test("opening a desktop client only bootstraps a session, reads status and creat
   assert.ok(calls.filter(c => !c.url.endsWith("session"))
     .every(c => c.init.headers["X-Pete-CSRF"] === "a".repeat(64)));
   assert.ok(!calls.some(c => /budget|message/.test(c.url)));
-  await client.setBudget(true, "0.50");
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true, budgetUsd: "0.50" });
+  await client.setBudget(true);
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: true });
   await client.setBudget(false);
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { enabled: false });
 
@@ -37,11 +37,11 @@ test("a rejected session never attempts a paid request", async () => {
   const client = createPeteDesktopClient(async (url) => {
     calls.push(url); return { ok: false, json: async () => ({ ok: false }) };
   });
-  await assert.rejects(client.setBudget(true, "2.00"));
+  await assert.rejects(client.setBudget(true));
   assert.deepEqual(calls, ["/test-chat/desktop/session"]);
 });
 
-test("owner may enable a small local allowance without historical consent, but broken ledgers block", () => {
+test("owner may enable local KI by consent without budget tiers, but broken ledgers block", () => {
   assert.equal(desktopBlockReason({ budget: { ok: true, historyVerified: false,
     blockReason: null }, providerConfigured: true }), null);
   assert.equal(desktopBlockReason({ budget: { ok: false } }), "Budget-Ledger oder lokaler Sicherheitsmodus nicht verfügbar. KI gesperrt.");
