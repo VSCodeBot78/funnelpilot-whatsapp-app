@@ -39,6 +39,25 @@ function explainLocalLlmDiagnostic(value) {
   return "Ursache noch nicht ermittelt. Keine erfolgreiche KI-Antwort.";
 }
 
+function describeProviderConnection(result) {
+  if (!result) return "";
+  if (result.result === "model_visible")
+    return "OpenAI erreichbar: Schlüssel akzeptiert und GPT-6.1 Sol sichtbar. Dies ist noch kein KI-Antworttest.";
+  if (result.result === "not_configured")
+    return "Lokaler OpenAI-Schlüssel oder Modellkonfiguration fehlt.";
+  if (result.result === "timeout") return "OpenAI-Verbindungsprüfung: Zeitüberschreitung.";
+  if (result.result === "connection_error") return "OpenAI-Verbindungsprüfung: Netzwerkfehler.";
+  if (result.result === "http_error") {
+    const status = result.httpStatus;
+    if (status === 401) return "OpenAI HTTP 401: API-Schlüssel abgelehnt.";
+    if (status === 403) return "OpenAI HTTP 403: Berechtigung für Projekt oder Modell fehlt.";
+    if (status === 404) return "OpenAI HTTP 404: Modell nicht sichtbar.";
+    if (status === 429) return "OpenAI HTTP 429: API-Limit oder Kontingent erreicht.";
+    return "OpenAI HTTP " + status + ": Zugriff nicht erfolgreich.";
+  }
+  return "OpenAI-Verbindungsprüfung ohne bestätigtes Ergebnis.";
+}
+
 function getLinkLabel(url) {
   const lower = String(url).toLowerCase();
 
@@ -117,6 +136,8 @@ export default function ChatTest({ v2 = false }) {
   const [calendlyChecking, setCalendlyChecking] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState(null);
   const [aiChecking, setAiChecking] = useState(false);
+  const [providerCheck, setProviderCheck] = useState(null);
+  const [providerChecking, setProviderChecking] = useState(false);
   const [budgetChoice, setBudgetChoice] = useState("0.50");
 
   const campaignId = "eltern-vital-fit";
@@ -259,6 +280,20 @@ export default function ChatTest({ v2 = false }) {
         note: "Lokaler Backend-Testdienst nicht erreichbar.", slots: [], bookingUrl: null });
     } finally {
       setCalendlyChecking(false);
+    }
+  }
+
+  async function checkOpenAiProvider() {
+    if (providerChecking || loading) return;
+    setProviderChecking(true);
+    setProviderCheck(null);
+    try {
+      const result = await desktopClient.current.checkProvider();
+      setProviderCheck(result);
+    } catch {
+      setProviderCheck({ result: "connection_error" });
+    } finally {
+      setProviderChecking(false);
     }
   }
 
@@ -497,6 +532,21 @@ export default function ChatTest({ v2 = false }) {
               textDecoration: "underline", cursor: "pointer", padding: 4 }}>
             Status neu prüfen
           </button>}
+          <div style={{ marginTop: 10 }}>
+            <button type="button" onClick={checkOpenAiProvider}
+              disabled={providerChecking || loading}
+              style={{ color: "#111827", background: "#93c5fd", padding: "10px 14px",
+                border: 0, borderRadius: 8, fontWeight: 700 }}>
+              {providerChecking ? "OpenAI-Verbindung wird geprüft ..." : "OpenAI-Verbindung prüfen (ohne KI-Antwort)"}
+            </button>
+            <p style={{ color: "#cbd5e1", fontSize: 12 }}>
+              Nur auf deinen Klick: geschützte Modell-Metadatenabfrage, kein Pete-Gespräch,
+              keine Antwort-Tokens und keine Instagram-/WhatsApp-Nachricht.
+            </p>
+            {providerCheck && <p role="status" style={{ color: "#f8fafc" }}>
+              {describeProviderConnection(providerCheck)}
+            </p>}
+          </div>
           {aiDiagnostic && <div role="status" style={{
             marginTop: 12, color: "#f8fafc", fontSize: 13, lineHeight: 1.5,
           }}>
