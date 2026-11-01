@@ -10,6 +10,35 @@ function getCurrentTime() {
   });
 }
 
+/** Only server-allowlisted, secret-free diagnostics are displayed. */
+function explainLocalLlmDiagnostic(value) {
+  if (!value || typeof value !== "object") return "Ursache noch nicht ermittelt.";
+  const detail = value.detail;
+  const reason = value.reason;
+  if (typeof detail === "string" && /^http_[1-5][0-9]{2}$/.test(detail)) {
+    const status = Number(detail.slice(5));
+    if (status === 401) return "OpenAI HTTP 401: Schlüssel oder Authentifizierung abgelehnt.";
+    if (status === 403) return "OpenAI HTTP 403: Projekt- oder Modellzugriff verweigert.";
+    if (status === 404) return "OpenAI HTTP 404: angefordertes Modell oder Endpunkt nicht gefunden.";
+    if (status === 429) return "OpenAI HTTP 429: Kontingent, Abrechnungsgrenze oder Anfragelimit.";
+    if (status >= 500) return "OpenAI HTTP " + status + ": Anbieterfehler.";
+    return "OpenAI HTTP " + status + ": Anfrage wurde abgelehnt.";
+  }
+  if (detail === "request_timeout") return "Zeitüberschreitung bei der Anbieteranfrage.";
+  if (detail === "network_error") return "Netzwerk-/Verbindungsfehler zum Anbieter.";
+  if (detail === "provider_processing_error") return "Anbieterantwort konnte technisch nicht verarbeitet werden.";
+  if (detail === "provider_usage_unverified") return "Anbieterantwort ohne überprüfbare Token-Nutzung.";
+  if (detail === "invalid_json" || detail === "no_output_text") return "Modellantwort hat kein gültiges Antwortformat.";
+  if (typeof detail === "string" && detail.startsWith("response_incomplete_"))
+    return "Modellantwort unvollständig.";
+  if (reason === "model_handoff") return "Das Modell hat selbst eine menschliche Prüfung verlangt.";
+  if (reason === "invalid_output") return "Antwort durch die Sicherheits- oder Formatprüfung abgewiesen.";
+  if (reason === "budget_unavailable" || reason === "budget_exhausted")
+    return "Bisherige lokale Budget-/Verbrauchsprüfung hat den Aufruf blockiert.";
+  if (reason === "not_authorized") return "Lokale KI-Freigabe oder Konfiguration nicht bestätigt.";
+  return "Ursache noch nicht ermittelt. Keine erfolgreiche KI-Antwort.";
+}
+
 function getLinkLabel(url) {
   const lower = String(url).toLowerCase();
 
@@ -556,6 +585,13 @@ export default function ChatTest({ v2 = false }) {
             {debug.replySource === "llm" && debug.providerUsage &&
               <div>Provider-Nutzung verbucht: {debug.providerUsage.inputTokens} Eingabe- und{" "}
                 {debug.providerUsage.outputTokens} Ausgabetokens ({debug.providerUsage.model}).</div>}
+            {debug.replySource === "llm_handoff" && (
+              <div role="alert" style={{ marginTop: 7, color: "#fbbf24" }}>
+                KI-Diagnose: {explainLocalLlmDiagnostic(debug.llmDiagnostic)}
+                <div>Kein erfolgreicher Modelltext nachgewiesen. Eine lokale Budgetreservierung
+                  ist keine bestätigte OpenAI-Abrechnung.</div>
+              </div>
+            )}
           </div>
         ) : null}
 
