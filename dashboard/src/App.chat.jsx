@@ -145,6 +145,9 @@ export default function ChatTest({ v2 = false }) {
     [leadId, input, loading, aiChecking, aiDiagnostic]);
   const budget = aiDiagnostic?.budget;
   const aiBlock = desktopBlockReason(aiDiagnostic);
+  const frontendBuildSha = import.meta.env.VITE_FP_BUILD_SHA || null;
+  const backendBuildSha = aiDiagnostic?.buildSha || null;
+  const buildMismatch = Boolean(frontendBuildSha && backendBuildSha && frontendBuildSha !== backendBuildSha);
 
   useEffect(() => {
     let cancelled = false;
@@ -504,6 +507,13 @@ export default function ChatTest({ v2 = false }) {
         }}>
           <strong>Echte Pete-KI im lokalen Labor: {!budget?.ok || aiDiagnostic?.error
             ? "Status nicht bestätigt" : budget.enabled ? "AN" : "AUS"}</strong>
+          <div role="status" style={{ fontSize: 12, color: buildMismatch ? "#fbbf24" : "#cbd5e1", marginTop: 6 }}>
+            Version: {frontendBuildSha
+              ? ("Pete V5 / Dashboard V2 · " + (import.meta.env.VITE_FP_BUILD_DATE || "Datum offen") + " · " + frontendBuildSha)
+              : "kein verifizierter One-Click-Build"}
+            {buildMismatch && " | SICHERHEITS-STOP: Frontend/Backend-Version verschieden"}
+            {frontendBuildSha && !backendBuildSha && " | Backend-Version nicht bestätigt"}
+          </div>
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
             KI AN erlaubt kostenpflichtige Pete-Antworten bei deinen manuellen Testnachrichten.
             Du verwaltest dein OpenAI-Guthaben selbst. Kein festes lokales Testbudget
@@ -511,7 +521,7 @@ export default function ChatTest({ v2 = false }) {
           </p>
           <button type="button" role="switch" aria-checked={budget?.enabled === true}
             onClick={togglePeteAi}
-            disabled={aiChecking || (!budget?.enabled && (Boolean(aiBlock) || loading))}
+            disabled={aiChecking || buildMismatch || (!budget?.enabled && (Boolean(aiBlock) || loading))}
             style={{ background: budget?.enabled ? "#fbbf24" : "#ff914d", color: "#111827",
               border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, margin: 8 }}>
             {budget?.enabled ? "KI verwenden: AN" : "KI verwenden: AUS"}
