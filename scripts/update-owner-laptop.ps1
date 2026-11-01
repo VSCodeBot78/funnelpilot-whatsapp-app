@@ -64,8 +64,11 @@ if ($before -ne $after) {
   & npm.cmd --prefix (Join-Path $root "dashboard") run build
   if ($LASTEXITCODE -ne 0) { Stop-Safely "Dashboard-Build/Tests fehlgeschlagen. Neue Version NICHT starten." }
   Write-Host "Pruefe Pete-Kalenderlink-Regression ohne OpenAI..." -ForegroundColor Cyan
-  & npm.cmd --prefix (Join-Path $root "backend") exec -- node --import tsx --test src/config/pete-llm-phase46.test.ts
-  if ($LASTEXITCODE -ne 0) { Stop-Safely "Pete-Offline-Test fehlgeschlagen. Neue Version NICHT starten." }
+  Push-Location (Join-Path $root "backend")
+  try {
+    & node.exe --import tsx --test src/config/pete-llm-phase46.test.ts
+    if ($LASTEXITCODE -ne 0) { Stop-Safely "Pete-Offline-Test fehlgeschlagen. Neue Version NICHT starten." }
+  } finally { Pop-Location }
 }
 $committed = Read-Git @("log","-1","--format=%cs")
 $env:VITE_FP_BUILD_SHA = $after.Substring(0,8)
@@ -73,4 +76,8 @@ $env:VITE_FP_BUILD_DATE = $committed
 $env:FUNNELPILOT_BUILD_SHA = $after.Substring(0,8)
 $env:FUNNELPILOT_BUILD_DATE = $committed
 Write-Host ("VERSION: Pete V5 / Dashboard V2 | Build " + $committed + " | " + $after.Substring(0,8)) -ForegroundColor Green
+# Run the freshly synced launcher in this same process so VITE_/backend
+# revision markers flow into the child Backend and Dashboard windows.
+& (Join-Path $PSScriptRoot "start-owner-laptop.ps1")
+if (-not $?) { Stop-Safely "Startprozess nach Update fehlgeschlagen." }
 exit 0
