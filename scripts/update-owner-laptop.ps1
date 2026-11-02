@@ -74,7 +74,18 @@ if (-not (Test-Path (Join-Path $root "backend/node_modules/.bin/tsx.cmd")) -or
     -not (Test-Path (Join-Path $root "dashboard/node_modules/vite/bin/vite.js"))) {
   Stop-Safely "Node-Abhaengigkeiten fehlen. Kein automatisches npm ci. Erst kontrolliert reparieren."
 }
-if ($before -ne $after) {
+# A failed/interrupted check must NEVER be skipped on the next click merely
+# because Git HEAD was already advanced by the preceding safe fast-forward.
+# The marker is kept in Git metadata (never in the tracked working tree).
+$verificationPath = Read-Git @("rev-parse","--git-path","funnelpilot-owner-verified-sha")
+if (-not [IO.Path]::IsPathRooted($verificationPath)) {
+  $verificationPath = Join-Path $root $verificationPath
+}
+$lastVerified = ""
+if (Test-Path -LiteralPath $verificationPath) {
+  $lastVerified = (Get-Content -LiteralPath $verificationPath -Raw).Trim()
+}
+if ($lastVerified -ne $after) {
   Write-Host "Pruefe aktualisierten Backend-Typenbau..." -ForegroundColor Cyan
   & npm.cmd --prefix (Join-Path $root "backend") run build
   if ($LASTEXITCODE -ne 0) { Stop-Safely "Backend-Build fehlgeschlagen. Neue Version NICHT starten." }
@@ -90,6 +101,20 @@ if ($before -ne $after) {
   Write-Host "Pruefe isoliertes Desktop-/NoSend-HTTP-Regressionslabor..." -ForegroundColor Cyan
   & npm.cmd --prefix (Join-Path $root "backend") run test:desktop
   if ($LASTEXITCODE -ne 0) { Stop-Safely "Desktop-Sicherheitstests fehlgeschlagen. Neue Version NICHT starten." }
+  Write-Host "Pruefe gesamte Pete-Backend-Testsuite (Offline-Modus)..." -ForegroundColor Cyan
+  & npm.cmd --prefix (Join-Path $root "backend") run test
+  if ($LASTEXITCODE -ne 0) { Stop-Safely "Pete-Backend-Regression fehlgeschlagen. Neue Version NICHT starten." }
+  Write-Host "Pruefe bestehende Launcher-/NoSend-Kontrakte..." -ForegroundColor Cyan
+  & npm.cmd --prefix (Join-Path $root "backend") run test:relay
+  if ($LASTEXITCODE -ne 0) { Stop-Safely "Launcher-/NoSend-Kontrakte fehlgeschlagen. Neue Version NICHT starten." }
+  # Mark a specific commit only AFTER every check passed. If interrupted,
+  # the previous marker stays and next click must run all checks again.
+  $tmp = $verificationPath + ".pending"
+  [IO.File]::WriteAllText($tmp, $after + [Environment]::NewLine, [Text.Encoding]::ASCII)
+  Move-Item -LiteralPath $tmp -Destination $verificationPath -Force
+  Write-Host ("Tests bestanden fuer " + $after.Substring(0,8)) -ForegroundColor Green
+} else {
+  Write-Host ("Tests fuer " + $after.Substring(0,8) + " bereits bestaetigt.") -ForegroundColor Green
 }
 $committed = Read-Git @("log","-1","--format=%cs")
 $env:VITE_FP_BUILD_SHA = $after.Substring(0,8)
