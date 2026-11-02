@@ -141,13 +141,19 @@ export default function ChatTest({ v2 = false }) {
 
   const campaignId = "eltern-vital-fit";
 
-  const canSend = useMemo(() => Boolean(leadId) && input.trim().length > 0 && !loading && !aiChecking && !aiDiagnostic?.error,
-    [leadId, input, loading, aiChecking, aiDiagnostic]);
   const budget = aiDiagnostic?.budget;
   const aiBlock = desktopBlockReason(aiDiagnostic);
   const frontendBuildSha = import.meta.env.VITE_FP_BUILD_SHA || null;
   const backendBuildSha = aiDiagnostic?.buildSha || null;
-  const buildMismatch = Boolean(frontendBuildSha && backendBuildSha && frontendBuildSha !== backendBuildSha);
+  const versionVerified = Boolean(frontendBuildSha && backendBuildSha &&
+    frontendBuildSha === backendBuildSha);
+  const buildMismatch = Boolean(frontendBuildSha && backendBuildSha &&
+    frontendBuildSha !== backendBuildSha);
+  // Local chats may remain available without a marker for free manual tests.
+  // Paid KI must NEVER activate without proven matching backend/frontend SHAs.
+  const canSend = useMemo(() => Boolean(leadId) && input.trim().length > 0 &&
+    !loading && !aiChecking && !aiDiagnostic?.error && !buildMismatch,
+    [leadId, input, loading, aiChecking, aiDiagnostic, buildMismatch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -513,6 +519,7 @@ export default function ChatTest({ v2 = false }) {
               : "kein verifizierter One-Click-Build"}
             {buildMismatch && " | SICHERHEITS-STOP: Frontend/Backend-Version verschieden"}
             {frontendBuildSha && !backendBuildSha && " | Backend-Version nicht bestätigt"}
+            {!versionVerified && " | Kostenpflichtige KI gesperrt bis zum geprüften One-Click-Start"}
           </div>
           <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.5 }}>
             KI AN erlaubt kostenpflichtige Pete-Antworten bei deinen manuellen Testnachrichten.
@@ -521,7 +528,7 @@ export default function ChatTest({ v2 = false }) {
           </p>
           <button type="button" role="switch" aria-checked={budget?.enabled === true}
             onClick={togglePeteAi}
-            disabled={aiChecking || buildMismatch || (!budget?.enabled && (Boolean(aiBlock) || loading))}
+            disabled={aiChecking || (!budget?.enabled && (!versionVerified || Boolean(aiBlock) || loading))}
             style={{ background: budget?.enabled ? "#fbbf24" : "#ff914d", color: "#111827",
               border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 700, margin: 8 }}>
             {budget?.enabled ? "KI verwenden: AN" : "KI verwenden: AUS"}
