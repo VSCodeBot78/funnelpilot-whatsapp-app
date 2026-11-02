@@ -151,8 +151,8 @@ test("A- fixer: human handover pauses Pete without promising a human already rep
       conversationMode:"natural",messageText:"Ich will hier mit Jochen persönlich schreiben. Kein Bot bitte."});
     assert.equal(response.state.owner,"human");
     assert.equal(response.state.aiPaused,true);
-    assert.match(response.text??"",/Pete pausiert/);
-    assert.doesNotMatch(response.text??"",/Er übernimmt hier persönlich/);
+    assert.equal(response.text, null, "the lead must not receive a technical takeover announcement");
+    assert.equal(response.replySuppressedReason, "human_owned");
   } finally { process.env.PETE_LLM_CONVERSATION_ENABLED="false"; }
 });
 
