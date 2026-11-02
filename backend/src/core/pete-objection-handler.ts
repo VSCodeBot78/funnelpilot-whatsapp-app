@@ -57,6 +57,8 @@ const HARD_STOP_KEYWORDS = [
   "nicht mehr schreiben",
   "bitte keine nachrichten mehr",
   "keine nachrichten mehr",
+  "keine weiteren nachrichten",
+  "schreib mir keine weiteren nachrichten",
   "spam",
   "abmelden",
 ];
