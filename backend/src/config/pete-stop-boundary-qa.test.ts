@@ -92,6 +92,24 @@ test("P0: no accidental opt-out from 'stopfe', 'Stoppuhr' and ordinary lead lang
   }
 });
 
+test("P0: declining a specific product while wanting coaching must not STOP the chat", () => {
+  for (const input of [
+    "Kein Interesse am Selbststarter, aber das 5-Wochen-Coaching klingt spannend.",
+    "Kein Interesse an dem Keto Guide, aber schick mir den Terminlink.",
+  ]) {
+    assert.notEqual(detectLeadIntent(input).intent, "stop", input);
+    assert.notEqual(classifyPeteObjection(input).intent, "hard_stop", input);
+    assert.notEqual(decidePeteNextAction(input).decisionType, "hard_stop", input);
+  }
+  for (const input of [
+    "Kein Interesse mehr. Bitte nicht kontaktieren.",
+    "Kein Interesse am Selbststarter, aber auch kein Coaching.",
+  ]) {
+    assert.equal(detectLeadIntent(input).intent === "stop" ||
+      classifyPeteObjection(input).intent === "hard_stop", true, input);
+  }
+});
+
 test("P0: explicit no-contact requests still trigger authoritative STOP", () => {
   for (const input of [
     "STOP",
