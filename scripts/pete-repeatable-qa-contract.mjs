@@ -7,6 +7,8 @@
 const MICRO = 1_000_000;
 const MAX_RUN_MICROS = 2_000_000;
 const APPROVED_REF = "refs/heads/feat/pete-policy-v4-20261022";
+const V5_REF = "refs/heads/feat/dashboard-v2-preview-20261023";
+const V5_OWNER_REF = "owner:2026-11-02-yoda-v5-usd2";
 const APPROVED_REPO = "VSCodeBot78/funnelpilot-whatsapp-app";
 const MODEL = "gpt-6.1-sol";
 
@@ -21,7 +23,7 @@ export function parseQaBudgetMicros(value) {
 function assertSafeEnvironment(env) {
   if (env.GITHUB_ACTIONS !== "true" ||
       env.GITHUB_REPOSITORY !== APPROVED_REPO ||
-      env.GITHUB_REF !== APPROVED_REF ||
+      ![APPROVED_REF, V5_REF].includes(env.GITHUB_REF) ||
       !["push", "workflow_dispatch"].includes(env.GITHUB_EVENT_NAME) ||
       env.GITHUB_RUN_ATTEMPT !== "1" ||
       !/^[0-9]{5,}$/.test(env.GITHUB_RUN_ID ?? "") ||
@@ -56,6 +58,20 @@ function validateLedger(ledger) {
     throw Error("qa_extra_ledger_inconsistent");
   return extra;
 }
+function validateV5Ledger(ledger) {
+  const v5 = ledger.ownerV5Qa20261102;
+  if (!v5 || v5.ownerApprovalRef !== V5_OWNER_REF ||
+      v5.capMicroUsd !== 2_000_000 ||
+      !Number.isSafeInteger(v5.usedMicroUsd) || v5.usedMicroUsd < 0 ||
+      !Number.isSafeInteger(v5.reservedMicroUsd) || v5.reservedMicroUsd < 0 ||
+      v5.usedMicroUsd + v5.reservedMicroUsd > v5.capMicroUsd ||
+      !v5.reservations || Array.isArray(v5.reservations) ||
+      !Array.isArray(v5.batches)) throw Error("qa_v5_ledger_invalid");
+  const holds = Object.values(v5.reservations).reduce((sum, entry) =>
+    sum + (Number.isSafeInteger(entry?.holdMicroUsd) ? entry.holdMicroUsd : NaN), 0);
+  if (holds !== v5.reservedMicroUsd) throw Error("qa_v5_reservation_mismatch");
+  return v5;
+}
 /** Does not mutate the ledger. Approval text is a separately recorded owner consent. */
 export function checkPeteQaAdmission(env, ledger, request) {
   assertSafeEnvironment(env);
@@ -65,7 +81,12 @@ export function checkPeteQaAdmission(env, ledger, request) {
       !/^owner:[a-z0-9-]{8,80}$/.test(request.ownerApprovalRef))
     throw Error("qa_approval_required");
   const micro = parseQaBudgetMicros(request.budgetUsd);
-  const extra = validateLedger(ledger);
+  const legacyExtra = validateLedger(ledger);
+  const v5 = env.GITHUB_REF === V5_REF;
+  if (v5 && (request.ownerApprovalRef !== V5_OWNER_REF ||
+      request.budgetUsd !== "2.00" || request.testSet !== "sales32"))
+    throw Error("qa_v5_owner_approval_invalid");
+  const extra = v5 ? validateV5Ledger(ledger) : legacyExtra;
   const id = "pete-qa-" + env.GITHUB_RUN_ID;
   if (extra.reservedMicroUsd !== 0 ||
       extra.usedMicroUsd + micro > extra.conservativeUsdCapMicro ||
@@ -80,7 +101,7 @@ export function checkPeteQaAdmission(env, ledger, request) {
 export function preparePeteQaReservation(env, ledger, request) {
   const ticket = checkPeteQaAdmission(env, ledger, request);
   const next = structuredClone(ledger);
-  const e = next.extraOwnerQa20261022;
+  const e = env.GITHUB_REF === V5_REF ? next.ownerV5Qa20261102 : next.extraOwnerQa20261022;
   e.reservations[ticket.id] = {
     runId: ticket.runId, holdMicroUsd: ticket.micro, testSet: ticket.testSet,
     ownerApprovalRef: request.ownerApprovalRef,
@@ -92,7 +113,8 @@ export function preparePeteQaReservation(env, ledger, request) {
 export function settlePeteQaReservation(env, ledger, localReceipt) {
   if (env.GITHUB_RUN_ATTEMPT !== "1") throw Error("qa_attempt_reuse_denied");
   const id = "pete-qa-" + env.GITHUB_RUN_ID;
-  const e = validateLedger(ledger);
+  const legacy = validateLedger(ledger);
+  const e = env.GITHUB_REF === V5_REF ? validateV5Ledger(ledger) : legacy;
   const held = e.reservations[id];
   if (!held || held.runId !== env.GITHUB_RUN_ID ||
       !Number.isSafeInteger(held.holdMicroUsd) ||
@@ -105,7 +127,7 @@ export function settlePeteQaReservation(env, ledger, localReceipt) {
       localReceipt.committedMicroUsd <= held.holdMicroUsd &&
       Number.isSafeInteger(localReceipt.requestsStarted) &&
       localReceipt.requestsStarted > 0) charge = localReceipt.committedMicroUsd;
-  const next = structuredClone(ledger), extra = next.extraOwnerQa20261022;
+  const next = structuredClone(ledger), extra = env.GITHUB_REF === V5_REF ? next.ownerV5Qa20261102 : next.extraOwnerQa20261022;
   extra.usedMicroUsd += charge;
   extra.reservedMicroUsd -= held.holdMicroUsd;
   delete extra.reservations[id];
