@@ -1400,10 +1400,15 @@ export async function processIncomingMessage(
             peteRuntimeHandoffActive: true,
           });
           takeOverByHuman(state);
+          // Answer an objective transaction question once, then stay silent.
+          // Do not announce the internal takeover or fabricate verification.
+          // Explicit requests for Jochen to write are handled above and stay
+          // completely silent. Future model/automation replies are blocked.
+          if (verified.text) appendAssistantMessage(state, verified.text);
           persistConversationState(state);
-          return { text: null, nextStep: state.currentStep,
+          return { text: verified.text || null, nextStep: state.currentStep,
             detectedIntent: "flow_answer", state,
-            replySuppressedReason: "human_owned" };
+            ...(verified.text ? {} : { replySuppressedReason: "human_owned" as const }) };
         }
         if (verified.nextPhase === "booking_offered" && bookingUrl) {
           patchFlags(state, { wantsBooking: true });
