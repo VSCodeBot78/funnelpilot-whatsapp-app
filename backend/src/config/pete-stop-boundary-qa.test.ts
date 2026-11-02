@@ -83,6 +83,8 @@ test("P0: no accidental opt-out from 'stopfe', 'Stoppuhr' and ordinary lead lang
     "Ich muss etwas ausstopfen, bevor die Kinder kommen.",
     "Ich habe einen Stop-Loss im Depot.",
     "Der Stopfen sitzt fest.",
+    "Ich brauche Hilfe beim Abbrechen meiner Diät.",
+    "Beim Abbrechen von schlechten Gewohnheiten tue ich mich schwer.",
   ]) {
     assert.notEqual(detectLeadIntent(input).intent, "stop", input);
     assert.notEqual(classifyPeteObjection(input).intent, "hard_stop", input);
@@ -98,6 +100,9 @@ test("P0: explicit no-contact requests still trigger authoritative STOP", () => 
     "Lass mich in Ruhe!",
     "Bitte keine Nachrichten mehr.",
     "Schreib mir nicht mehr.",
+    "Bitte schreib mir keine weiteren Nachrichten.",
+    "Keine weiteren Nachrichten bitte.",
+    "Bitte abbrechen.",
   ]) {
     assert.equal(detectLeadIntent(input).intent === "stop" ||
       classifyPeteObjection(input).intent === "hard_stop", true, input);
