@@ -28,6 +28,11 @@ export function matchExplicitStopPhrase(
     if (phrase === "stop" || phrase === "stopp") {
       return /(?:^|[^\p{L}\p{N}-])stopp?(?=$|[^\p{L}\p{N}-])/iu.test(inputText);
     }
+    // "abbrechen" in a normal sentence ("Abbrechen meiner Diaet") is NOT
+    // an instruction to stop this chat. Only an unambiguous short command.
+    if (phrase === "abbrechen") {
+      return /^(?:bitte\s+)?(?:jetzt\s+)?abbrechen[.!?\s]*$/iu.test(inputText.trim());
+    }
     return inputWithBoundaries.includes(` ${phrase} `);
   });
 }
