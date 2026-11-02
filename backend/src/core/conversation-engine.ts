@@ -1399,12 +1399,14 @@ export async function processIncomingMessage(
             peteRuntimeHandoffRequested: true,
             peteRuntimeHandoffActive: true,
           });
+          // Answer once as Pete before transferring ownership; otherwise
+          // appendAssistantMessage would incorrectly reset lastActor to AI
+          // after the owner had already taken the conversation.
+          if (verified.text) appendAssistantMessage(state, verified.text);
           takeOverByHuman(state);
-          // Answer an objective transaction question once, then stay silent.
           // Do not announce the internal takeover or fabricate verification.
           // Explicit requests for Jochen to write are handled above and stay
           // completely silent. Future model/automation replies are blocked.
-          if (verified.text) appendAssistantMessage(state, verified.text);
           persistConversationState(state);
           return { text: verified.text || null, nextStep: state.currentStep,
             detectedIntent: "flow_answer", state,
