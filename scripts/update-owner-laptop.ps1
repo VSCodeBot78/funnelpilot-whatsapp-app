@@ -36,9 +36,10 @@ if ($dirty.Count -gt 0 -and ($dirty -join "").Trim()) {
 }
 $before = Read-Git @("rev-parse","HEAD")
 Write-Host ("Lokaler Stand: " + $before.Substring(0,8)) -ForegroundColor Cyan
-& git.exe -C $root fetch --no-tags origin ("+refs/heads/" + $branch + ":refs/remotes/origin/" + $branch)
+& git.exe -C $root fetch --no-tags origin "+refs/heads/feat/dashboard-v2-preview-20261023:refs/remotes/origin/feat/dashboard-v2-preview-20261023"
 if ($LASTEXITCODE -ne 0) { Stop-Safely "GitHub nicht erreichbar oder Fetch gescheitert. Keine Aenderung." }
-$target = Read-Git @("rev-parse","refs/remotes/origin/" + $branch)
+$target = Read-Git @("rev-parse","refs/remotes/origin/feat/dashboard-v2-preview-20261023")
+if ($target -notmatch "^[0-9a-f]{40}$") { Stop-Safely "Remote-Ziel-Commit ungueltig." }
 & git.exe -C $root merge-base --is-ancestor HEAD $target
 if ($LASTEXITCODE -ne 0) { Stop-Safely "Kein reiner Fast-Forward. Keine Aenderung." }
 if ($before -ne $target) {
