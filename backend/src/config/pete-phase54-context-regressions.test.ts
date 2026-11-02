@@ -115,8 +115,9 @@ test("Phase 54: regression against genuine GPT-5.4 transcript failures", async t
     assert.equal(first.state.aiPaused, true);
     assert.equal(first.state.flags.peteRuntimeHandoffActive, true);
     assert.equal(first.state.answers.peteReplySource, "verified_transaction");
-    assert.match(first.text || "", /Jochen/);
+    assert.match(first.text || "", /doppelten Antworten/);
     assert.match(first.text || "", /anderen Kanal/);
+    assert.doesNotMatch(first.text || "", /Jochen|pausiere Pete|weitergegeben/i);
     assert.doesNotMatch(first.text || "", /auch auf WhatsApp pausiert|alles gestoppt/);
     const second = await send("phase54-two-channels",
       "Ich will nicht von zwei Bots gleichzeitig angequatscht werden.");
