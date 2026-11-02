@@ -51,4 +51,11 @@ test("any update must pass free offline checks before opening the dashboard", ()
     previous = position;
   }
   assert.match(updater, /SICHERHEITS-STOP/);
+  assert.match(updater, /funnelpilot-owner-verified-sha/);
+  assert.match(updater, /if \(\$lastVerified -ne \$after\)/);
+  assert.match(updater, /run test:desktop/);
+  assert.match(updater, /run test:relay/);
+  assert.match(updater, /run test/);
+  assert.ok(updater.indexOf("Move-Item -LiteralPath $tmp") >
+    updater.indexOf("run test:relay"), "cannot mark commit before checks finish");
 });
