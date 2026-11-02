@@ -57,7 +57,8 @@ test("Phase 45: model route is opt-in and preserves all trusted safety interlock
     let calls = 0;
     globalThis.fetch = async () => { calls++; throw Error("should not fetch"); };
     const answer = await send("not-authorized", "Mein Kind war krank, wie kann ich wieder anfangen?");
-    assert.match(answer.text || "", /Jochen weiter/);
+    assert.equal(answer.text, null, "cost gate failures must not announce internal owner handoff");
+    assert.equal(answer.replySuppressedReason, "human_owned");
     assert.equal(answer.state.owner, "human");
     assert.equal(answer.state.aiPaused, true);
     assert.equal(answer.state.answers.peteReplySource, "llm_handoff");
