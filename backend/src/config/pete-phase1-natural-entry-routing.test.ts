@@ -52,7 +52,7 @@ test("Phase 1: every inbound transport selects natural Pete, never legacy", asyn
     const naturalPath = source.slice(start, legacy);
     assert.match(naturalPath, /peteReplySource", "natural_handoff"/);
     assert.match(naturalPath, /takeOverByHuman\(state\)/);
-    assert.match(naturalPath, /return \{ text: handoffText/);
+    assert.match(naturalPath, /replySuppressedReason: "human_owned"/);
   });
 
   await t.test("a real synthetic parent turn stays in natural dialogue", async () => {
