@@ -348,7 +348,7 @@ export function getPeteVerifiedTransactionAnswer(
     /\b(?:antwort\w*|nachricht\w*|bots?|angeschrieb\w*|angequatscht|schreib\w*|nerv\w*)\b/.test(input);
   if ((twoNamedChannels && actualDoubleReply) || explicitDoubleBotComplaint) {
     return {
-      text: "Das klingt nach doppelten Antworten. Ich gebe den Chat an Jochen zur Prüfung weiter und pausiere Pete hier. Ob auf dem anderen Kanal noch etwas läuft, muss Jochen separat prüfen.",
+      text: "Das klingt nach doppelten Antworten. Ob auf dem anderen Kanal noch Nachrichten verschickt werden, kann ich hier nicht verifizieren. Bitte schreib vorerst nur hier, damit wir keine doppelten Antworten auslösen.",
       handoff: true,
     };
   }
@@ -364,7 +364,7 @@ export function getPeteVerifiedTransactionAnswer(
     /\b(?:stopp\w*|aufhor\w*|paus\w*|nicht mehr|ubernehm\w*)\b/.test(input);
   if (recentMultiChannelComplaint && asksWhoStopsWhenHumanWrites) {
     return {
-      text: "Sobald Jochen diesen Chat tatsächlich übernimmt, muss Pete dort pausiert bleiben. Ob die Automatik in einem anderen Kanal ebenfalls gestoppt ist, kann ich hier nicht verifizieren oder garantieren. Jochen muss das im System prüfen.",
+      text: "Eine persönliche Antwort und die Automatik sollten sich nicht überschneiden. Ob ein anderer Kanal ebenfalls pausiert wurde, kann ich hier nicht verifizieren oder garantieren.",
       handoff: true,
     };
   }
@@ -397,7 +397,7 @@ export function getPeteVerifiedTransactionAnswer(
       /\b(?:zugangs\w*|zugang|freischalt\w*|login)\b/.test(input) &&
       /\b(?:nicht|kein\w*|fehl\w*|vermisse\w*|finde\w*\s+nicht)\b/.test(input)) {
     return {
-      text: "Ob der Kauf erfasst wurde und warum deine Zugangs-Mail fehlt, kann ich hier nicht verlässlich prüfen. Bitte prüf auch den Spam-Ordner. Wenn nichts angekommen ist, gebe ich den Vorgang an Jochen zur tatsächlichen Bestellprüfung weiter, ohne einen Zahlungseingang zu bestätigen.",
+      text: "Ob der Kauf erfasst wurde und warum deine Zugangs-Mail fehlt, kann ich hier nicht verlässlich prüfen. Bitte prüf auch den Spam-Ordner. Wenn dort nichts ist, ist eine Bestellprüfung nötig. Einen Zahlungseingang bestätige ich ohne Beleg nicht.",
       handoff: true,
     };
   }
@@ -422,7 +422,7 @@ export function getPeteVerifiedTransactionAnswer(
   if (asksVerifiedStatus) {
     if (payment) {
       return {
-        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Auch eine Freischaltung deines Zugangs kann ich nicht bestätigen. Prüfe bitte deine Bestellbestätigung. Ich gebe den Vorgang an Jochen zur persönlichen Prüfung weiter, statt Zahlung oder Zugang zu erfinden.",
+        text: "Ob deine Zahlung eingegangen ist, kann ich im Chat nicht verlässlich prüfen. Auch die Freischaltung deines Zugangs kann ich nicht bestätigen. Prüfe bitte deine Bestellbestätigung. Ohne verifizierten Beleg wäre jede Bestätigung geraten.",
         handoff: true,
       };
     }
@@ -430,7 +430,7 @@ export function getPeteVerifiedTransactionAnswer(
       return state.providerBooking?.status === "booked"
         ? { text: "Der Termin ist im angebundenen Buchungssystem bestätigt." }
         : {
-          text: "Ich sehe hier keine verifizierte Buchungsbestätigung. Eine eigene Nachricht reicht dafür nicht. Prüfe bitte deine Bestätigung vom Buchungssystem. Falls etwas nicht stimmt, klärt Jochen das persönlich.",
+          text: "Ich sehe hier keine verifizierte Buchungsbestätigung. Eine Nachricht im Chat reicht dafür nicht. Bitte prüfe die Bestätigung vom Buchungssystem.",
           handoff: true,
         };
     }
@@ -465,7 +465,7 @@ export function getPeteVerifiedTransactionAnswer(
       /\b(?:zugang|freischaltung|freigeschaltet|login)\b/.test(input) &&
       /\b(?:fehlt|vermisst|nicht erhalten|nicht bekommen|pruf\w*|problem)\b/.test(input)) {
     return {
-      text: "Das sollte niemand raten: Ob die Zahlung angekommen ist und warum der Zugang fehlt, muss anhand der tatsächlichen Bestellung geprüft werden. Ich gebe den Vorgang an Jochen weiter, ohne den Kauf als bestätigt zu markieren.",
+      text: "Ob die Zahlung angekommen ist und warum der Zugang fehlt, muss anhand der tatsächlichen Bestellung geprüft werden. Ohne Beleg kann ich den Kauf nicht als bestätigt markieren.",
       handoff: true,
     };
   }
@@ -476,7 +476,7 @@ export function getPeteVerifiedTransactionAnswer(
       /\b(?:beleg|bestatigung|rechnung|abgebucht)\b/.test(input) &&
       /\b(?:kein\w*|nicht|fehlt|finde\w*\s+nicht|vermut\w*|unsicher)\b/.test(input)) {
     return {
-      text: "Ob dein Kauf wirklich erfasst wurde, kann ich ohne einen verifizierten Beleg nicht bestätigen. Bitte prüfe zuerst die Bestell- oder Zahlungsbestätigung. Wenn sie fehlt, übernimmt Jochen die Klärung.",
+      text: "Ob dein Kauf wirklich erfasst wurde, kann ich ohne einen verifizierten Beleg nicht bestätigen. Bitte prüfe zuerst die Bestell- oder Zahlungsbestätigung.",
       handoff: true,
     };
   }
@@ -554,7 +554,7 @@ export function getPeteVerifiedTransactionAnswer(
     return bookingUrl?.startsWith("https://")
       ? { text: "Sehr gern 😊 Hier kannst du dir einen Termin für ein persönliches Strategiegespräch aussuchen: " + bookingUrl,
           nextPhase: "booking_offered" }
-      : { text: "Ich kann dir hier keinen verifizierten Buchungslink nennen. Jochen kann dir den richtigen Weg zeigen.", handoff: true };
+      : { text: "Ich kann dir hier leider keinen verifizierten Buchungslink nennen. Einen Link möchte ich nicht erfinden.", handoff: true };
   }
 
   // A generic mention of "price", "book", "appointment" or "Jochen"
