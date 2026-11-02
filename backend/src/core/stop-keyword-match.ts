@@ -37,7 +37,7 @@ export function matchExplicitStopPhrase(
     // a general no-contact instruction. Real STOP phrases still match.
     if ((phrase === "kein interesse" || phrase === "kein interesse mehr") &&
         /\bkein interesse(?: mehr)?\s+(?:an|am|fur)\b/.test(normalized) &&
-        /\b(?:aber|sondern|stattdessen|hingegen)\b(?:(?!\b(?:kein|keine|keinen|nicht|weder)\b).){0,110}\b(?:coaching|begleitung|strategiegesprach|termin|buchungslink|programm)\b/.test(normalized)) {
+        /\b(?:aber|sondern|stattdessen|hingegen)\b(?:(?!\b(?:kein|keine|keinen|nicht|weder)\b).){0,110}\b(?:coaching|begleitung|strategiegesprach|termin(?:link)?|kalenderlink|buchungslink|programm)\b/.test(normalized)) {
       return false;
     }
     return inputWithBoundaries.includes(` ${phrase} `);
