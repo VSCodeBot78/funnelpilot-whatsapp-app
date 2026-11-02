@@ -85,7 +85,10 @@ test("Windows PowerShell 5.1 cannot erase strict local recipient lists via empty
 test("Owner Laptop GO uses reviewed PR193 and starts both services safely", () => {
   const owner = fs.readFileSync(path.join(dirname, "start-owner-laptop.ps1"), "utf8");
   const entry = fs.readFileSync(path.join(dirname, "../FunnelPilot-Laptop-GO.cmd"), "utf8");
-  assert.ok(entry.includes("start-owner-laptop.ps1"));
+  const updater = fs.readFileSync(path.join(dirname, "update-owner-laptop.ps1"), "utf8");
+  assert.ok(entry.includes("update-owner-laptop.ps1"), "Desktop button must update before starting");
+  assert.ok(updater.includes("start-owner-laptop.ps1"), "Updater must then start the guarded launcher");
+  assert.ok(updater.includes("merge --ff-only"), "Only safe fast-forward updates are allowed");
   assert.equal([...owner].filter(x => x.charCodeAt(0) > 127).length, 0);
   for (const text of [
     "feat/dashboard-v2-preview-20261023",
