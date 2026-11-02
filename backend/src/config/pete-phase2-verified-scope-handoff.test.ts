@@ -77,7 +77,8 @@ test("Phase 2: blue facts and human handoff remain truthful in natural Pete", as
     const accepted = await send("phase2-human", "Hier im Chat bitte.");
     assert.equal(accepted.state.owner, "human");
     assert.equal(accepted.state.aiPaused, true);
-    assert.match(accepted.text || "", /an Jochen weiter/);
+    assert.equal(accepted.text, null);
+    assert.equal(accepted.replySuppressedReason, "human_owned");
     assert.doesNotMatch(accepted.text || "", /er meldet sich|wird (?:heute|morgen) antworten|in \d+ minuten/i);
     const later = await send("phase2-human", "Hallo, ist da jemand?");
     assert.equal(later.text, null);
