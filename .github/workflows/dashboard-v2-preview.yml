@@ -106,6 +106,29 @@ jobs:
             throw "Unexpected destructive Git operation in owner launcher"
           }
           Write-Host "PASS: Windows PowerShell 5.1 syntax and guarded Update+Start"
+      - name: Resolve exact origin ref with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = $env:GITHUB_WORKSPACE
+          $ref = "refs/remotes/origin/feat/dashboard-v2-preview-20261023"
+          $expected = (& git.exe -C $root rev-parse HEAD).Trim()
+          & git.exe -C $root update-ref $ref $expected
+          if ($LASTEXITCODE -ne 0) { throw "Could not set isolated CI remote ref" }
+          $source = Get-Content (Join-Path $root "scripts/update-owner-laptop.ps1")
+          $assignment = @($source | Where-Object { $_ -match '^\$target = Read-Git ' })
+          if ($assignment.Count -ne 1) { throw "Missing single target ref assignment" }
+          function Read-Git([string[]]$parameters) {
+            $output = @(& git.exe -C $root @parameters 2>$null)
+            if ($LASTEXITCODE -ne 0) { throw "Git target lookup failed" }
+            return (@($output) -join "`n").Trim()
+          }
+          $branch = "feat/dashboard-v2-preview-20261023"
+          Invoke-Expression $assignment[0]
+          if ($target -ne $expected) {
+            throw ("Updater target ref corrupted in PowerShell 5.1: " + $target)
+          }
+          Write-Host "PASS: real updater remote target resolves to full commit"
       - name: Real CMD launches local PowerShell script from a path with spaces
         shell: powershell
         run: |
