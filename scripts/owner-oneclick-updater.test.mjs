@@ -15,6 +15,11 @@ test("owner desktop shortcut invokes protected update BEFORE starting the local 
   assert.match(cmd, /update-owner-laptop\.ps1/);
   assert.match(updater, /git\.exe -C \$root fetch --no-tags origin/);
   assert.match(updater, /merge-base --is-ancestor HEAD \$target/);
+  // Regression: Windows PowerShell must not split a dynamic branch suffix,
+  // which previously produced only "refs/remotes/origin/" at runtime.
+  assert.match(updater, /Read-Git @\("rev-parse","refs\/remotes\/origin\/feat\/dashboard-v2-preview-20261023"\)/);
+  assert.match(updater, /fetch --no-tags origin "\+refs\/heads\/feat\/dashboard-v2-preview-20261023:refs\/remotes\/origin\/feat\/dashboard-v2-preview-20261023"/);
+  assert.doesNotMatch(updater, /Read-Git @\("rev-parse","refs\/remotes\/origin\/" \+ \$branch\)/);
   assert.match(updater, /git\.exe -C \$root merge --ff-only \$target/);
   assert.match(updater, /status --porcelain --untracked-files=normal/);
   assert.match(updater, /Ensure-PortFree 3001/);
