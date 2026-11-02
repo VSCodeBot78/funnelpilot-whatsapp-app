@@ -17,6 +17,8 @@ const STOP_KEYWORDS = [
   "nicht mehr schreiben",
   "lass mich in ruhe",
   "bitte keine nachrichten mehr",
+  "keine weiteren nachrichten",
+  "schreib mir keine weiteren nachrichten",
 ];
 
 const INFO_LINK_ONLY_KEYWORDS = [
