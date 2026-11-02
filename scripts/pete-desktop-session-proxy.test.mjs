@@ -134,7 +134,7 @@ test("desktop login through the real dashboard proxy, no external requests", asy
       assert.ok(diagnostics.every(line => /^\[pete-desktop\] request_denied reason=desktop_[a-z_]+$/.test(line)));
       assert.ok(diagnostics.every(line => !line.includes(canary)));
     });
-    await t.test("proxied cookie/CSRF status succeeds but unverified history and paid gate remain locked", async () => {
+    await t.test("proxied cookie/CSRF status keeps KI OFF without historic micro-budget gate", async () => {
       // Obtain afresh so this test stays independent of an earlier login failure.
       const valid = await request(backendPort, "session");
       const headers = { Cookie: valid.headers["set-cookie"][0].split(";")[0], "X-Pete-CSRF": valid.body.csrfToken };
@@ -142,7 +142,8 @@ test("desktop login through the real dashboard proxy, no external requests", asy
       assert.equal(result.status, 200);
       assert.equal(result.body.budget.historyVerified, false);
       assert.equal(result.body.budget.enabled, false);
-      assert.equal(result.body.budget.blockReason, "historical_spend_unverified");
+      assert.equal(result.body.budget.ownerManagedCosts, true);
+      assert.equal(result.body.budget.blockReason, null, "owner consent is the KI gate; historic spend is only informational");
       assert.equal(result.body.globalApiCallsApproved, false);
       assert.equal(result.body.sendsEnabled, false);
       assert.equal((await request(port, "status", { method: "GET", headers: { ...headers, "X-Pete-CSRF": "" } })).status, 403);
