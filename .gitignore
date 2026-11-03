@@ -37,6 +37,8 @@ backups/
 dist/
 backend/dist/
 dashboard/dist/
+# dashboard/vite.lab.config.js emits a generated bundle at repository root.
+/mobile-lab-dist/
 
 # Logs
 *.log
