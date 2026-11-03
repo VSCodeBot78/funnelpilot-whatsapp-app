@@ -139,6 +139,26 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
     assert.match(coaching?.text || "", /499/);
   });
 
+  await t.test("accepted strategy-call invitation is never an LLM handoff", async () => {
+    clearConversationStore(); enableMock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("booking acceptance must avoid provider"); };
+    const offer = "Ein persönliches Strategiegespräch wäre dafür ein sinnvoller nächster Schritt, um zu klären, welche Begleitung zu deinem Alltag passt. Möchtest du das?";
+    for (const [index, reply] of ["wenn es unverbindlich ist gerne", "ja gerne", "klar"].entries()) {
+      const leadId = "phase49-yes-" + index;
+      const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+      appendAssistantMessage(state, offer);
+      persistConversationState(state);
+      const out = await send(leadId, reply);
+      assert.match(out.text || "", /calendly\.com\/eltern-fitundvital\/strategiegespraech/);
+      assert.equal(out.state.owner, "ai");
+      assert.equal(out.replySuppressedReason, undefined);
+      assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+      assert.equal(out.state.currentStep, "booking");
+    }
+    assert.equal(calls, 0);
+  });
+
   await t.test("self-reported booking is not a provider-verified booking", async () => {
     clearConversationStore(); enableMock();
     let calls = 0;
