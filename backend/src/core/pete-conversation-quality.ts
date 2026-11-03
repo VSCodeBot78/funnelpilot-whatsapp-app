@@ -8,6 +8,7 @@
 import { OFFER_TRUTH, isUnverifiedLongTermPriceQuestion,
   LONG_TERM_PRICE_UNVERIFIED_REPLY } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
+import { getPeteStrategyCallFollowUp } from "./pete-strategy-call-followup.js";
 
 export type PeteVerifiedAnswer = {
   text: string;
@@ -481,46 +482,8 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
-  // A short cost question immediately after Pete offers a strategy call
-  // refers to THAT conversation, not the paid 5-week coaching.
-  // Calendly confirms booking requires no payment, but not unrelated terms.
-  // Answer safely instead of allowing the LLM to mute a willing prospect.
-  const latestAssistant = [...(state.messages ?? [])].reverse()
-    .find(message => message.role === "assistant");
-  const callOffered = /\b(?:strategiegesprach|kennenlerngesprach|erstgesprach)\b/
-    .test(norm(latestAssistant?.text ?? ""));
-  const shortCallCostQuestion = input.length <= 180 &&
-    /\b(?:kostet|kosten|preis|teuer|kostenlos|gratis|kostenpflichtig|zahlen|bezahl\w*|gebuhr\w*)\b/.test(input) &&
-    /\b(?:das|es|dafur|gesprach|strategiegesprach|kennenlerngesprach|erstgesprach|termin|call)\b/.test(input);
-  const namesPaidOffer = /\b(?:coaching|begleitung|selbststarter|startphase|5[\s-]*wochen|499|monat(?:e|s)?)\b/.test(input);
-  if (callOffered && shortCallCostQuestion && !namesPaidOffer) {
-    const verifiedUrl = OFFER_TRUTH.strategyCall.schedulingUrl;
-    // A different configured event may have different charges. Never extend
-    // this owner-specific Calendly check to an unknown event or SaaS tenant.
-    let sameVerifiedEvent = true;
-    if (bookingUrl) {
-      try {
-        const configured = new URL(bookingUrl);
-        const verified = new URL(verifiedUrl);
-        const cleanPath = (path: string) =>
-          path.endsWith("/") ? path.slice(0, -1) : path;
-        // The booking service adds UTM tracking and contact attribution.
-        // Compare ONLY the exact event origin/path, not query parameters.
-        sameVerifiedEvent = configured.origin === verified.origin &&
-          cleanPath(configured.pathname) === cleanPath(verified.pathname) &&
-          !configured.username && !configured.password;
-      } catch { sameVerifiedEvent = false; }
-    }
-    if (!sameVerifiedEvent) {
-      return { text: "Für den aktuell hinterlegten Buchungslink sind die Kosten nicht bestätigt. Das muss vor einer Buchung geklärt werden.", nextPhase: "info" };
-    }
-    if (OFFER_TRUTH.strategyCall.calendlyBookingRequiresPayment === false) {
-      return {
-        text: "Nein, für die Buchung des Strategiegesprächs ist aktuell keine Zahlung nötig. Hier kannst du dir einen Termin aussuchen: " + verifiedUrl,
-        nextPhase: bookingUrl ? "booking_offered" : "info",
-      };
-    }
-  }
+  const strategyCall = getPeteStrategyCallFollowUp(text, state, bookingUrl);
+  if (strategyCall) return strategyCall;
 
   // Combined scope-and-cost question: answer only approved product facts.
   // Do not assert absence of extras, discounts or contract conditions.
