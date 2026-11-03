@@ -9,12 +9,12 @@ test("opening a desktop client only bootstraps a session, reads status and creat
     return { ok: true, json: async () => url.endsWith("session")
       ? { ok: true, csrfToken: "a".repeat(64) } : { ok: true } };
   });
-  await Promise.all([client.status(), client.newLead()]);
+  await Promise.all([client.status(), client.active(), client.newLead()]);
   await client.state("lab_desktop_synthetic_unit_test");
   assert.equal(calls.filter(c => c.url.endsWith("session")).length, 1);
   // The real browser omits Origin on GET; readonly POST retains it and the
   // backend enforces the same strict cookie, CSRF and Origin checks.
-  for (const route of ["status", "state/lab_desktop_synthetic_unit_test"]) {
+  for (const route of ["status", "active", "state/lab_desktop_synthetic_unit_test"]) {
     const req = calls.find(c => c.url.endsWith("/" + route));
     assert.ok(req);
     assert.equal(req.init.method, "POST");
