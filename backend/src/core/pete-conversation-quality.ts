@@ -483,7 +483,7 @@ export function getPeteVerifiedTransactionAnswer(
 
   // A short cost question immediately after Pete offers a strategy call
   // refers to THAT conversation, not the paid 5-week coaching.
-  // The founder has not verified the strategy-call fee in OFFER_TRUTH yet.
+  // Calendly confirms booking requires no payment, but not unrelated terms.
   // Answer safely instead of allowing the LLM to mute a willing prospect.
   const latestAssistant = [...(state.messages ?? [])].reverse()
     .find(message => message.role === "assistant");
@@ -496,7 +496,7 @@ export function getPeteVerifiedTransactionAnswer(
     const verifiedUrl = OFFER_TRUTH.strategyCall.schedulingUrl;
     // A different configured event may have different charges. Never extend
     // this owner-specific Calendly check to an unknown event or SaaS tenant.
-    if (bookingUrl && bookingUrl.replace(/\\/$/, "") !== verifiedUrl) {
+    if (bookingUrl && (bookingUrl.endsWith("/") ? bookingUrl.slice(0, -1) : bookingUrl) !== verifiedUrl) {
       return { text: "Für den aktuell hinterlegten Buchungslink sind die Kosten nicht bestätigt. Das muss vor einer Buchung geklärt werden.", nextPhase: "info" };
     }
     if (OFFER_TRUTH.strategyCall.calendlyBookingRequiresPayment === false) {
