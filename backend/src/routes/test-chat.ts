@@ -7,7 +7,7 @@ import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCre
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { getPeteBudgetStatusSafe, getPeteDesktopBudgetStatus, setPeteDesktopBudget } from "../services/pete-api-budget.service.js";
 import { startDesktopBrowserSession, guardDesktopBrowser, issueDesktopLead, assertIssuedDesktopLead,
-  desktopSessionHash, desktopProviderConfigured, runDesktopConversation } from "../services/pete-desktop-lab.service.js";
+  desktopSessionHash, desktopProviderConfigured, runDesktopConversation, activeDesktopLead } from "../services/pete-desktop-lab.service.js";
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 import { getAllCampaigns } from "../data/campaigns.store.js";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
@@ -120,6 +120,20 @@ function desktopSafeLlmDiagnostic(answers: Record<string, unknown>) {
     ? rawDetail : "unspecified";
   return { reason, detail: safeDetail };
 }
+
+/** Owner-only read: recover the last test conversation after navigating away.
+ * Not a CRM lead; never contacts OpenAI or a messaging provider. */
+router.post("/desktop/active", guardDesktopBrowser, (req, res) => {
+  const leadId = activeDesktopLead(req);
+  const state = leadId ? getConversationState(leadId, DEFAULT_CAMPAIGN_ID) : undefined;
+  return res.json({ ok: true, leadId: state ? leadId : null,
+    campaignId: DEFAULT_CAMPAIGN_ID,
+    replySource: state?.answers.peteReplySource ?? null,
+    llmDiagnostic: state ? desktopSafeLlmDiagnostic(state.answers) : null,
+    replySuppressedReason: state?.owner === "human" || state?.aiPaused === true
+      ? "human_owned" : state?.flags.stopped === true ? "stopped" : null,
+    state: { messages: publicLabMessages(state?.messages ?? []) } });
+});
 
 router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
   const { leadId, campaignId, messageText } = req.body ?? {};
