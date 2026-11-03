@@ -35,6 +35,7 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     status: () => request("POST", "status", {}),
     checkProvider: () => request("POST", "provider-check", {}),
     newLead: () => request("POST", "lead", {}),
+    active: () => request("POST", "active", {}),
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
