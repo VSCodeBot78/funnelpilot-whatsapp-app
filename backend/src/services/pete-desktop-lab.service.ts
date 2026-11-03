@@ -7,7 +7,7 @@ import { assertDesktopRuntimeSafe, getPeteDesktopBudgetStatus, PeteBudgetStop } 
 
 const COOKIE = "fp_pete_desktop";
 const TTL_MS = 8 * 60 * 60 * 1000;
-type BrowserSession = { csrf: string; hash: string; origin: string; expiresAt: number; leads: Set<string> };
+type BrowserSession = { csrf: string; hash: string; origin: string; expiresAt: number; leads: Set<string>; activeLeadId?: string };
 const sessions = new Map<string, BrowserSession>();
 const requests = new WeakMap<Request, BrowserSession>();
 type CallScope = { sessionHash: string; leadId: string; campaignId: string; paid: boolean };
@@ -111,7 +111,16 @@ export function issueDesktopLead(req: Request): string {
   if (!session || session.leads.size >= 500) throw Error("desktop_lead_capacity");
   const leadId = "lab_desktop_" + crypto.randomBytes(24).toString("hex");
   session.leads.add(leadId);
+  session.activeLeadId = leadId;
   return leadId;
+}
+
+/** Read only the most recent synthetic lead issued to this exact authenticated browser session. */
+export function activeDesktopLead(req: Request): string | null {
+  const session = requests.get(req);
+  if (!session) throw Error("desktop_session_missing");
+  const id = session.activeLeadId;
+  return id && session.leads.has(id) ? id : null;
 }
 
 export function assertIssuedDesktopLead(req: Request, leadId: unknown, campaignId: unknown): asserts leadId is string {
