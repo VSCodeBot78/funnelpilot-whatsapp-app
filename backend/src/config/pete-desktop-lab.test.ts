@@ -155,17 +155,40 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(result.status, 200);
     assert.equal(result.body.ok, true);
     assert.equal(result.body.budget.enabled, false);
+    const empty = await c.call("active", {});
+    assert.equal(empty.status, 200);
+    assert.equal(empty.body.leadId, null);
     const leadId = await c.lead();
     const state = await c.call("state/" + encodeURIComponent(leadId), {});
     assert.equal(state.status, 200);
     assert.equal(state.body.ok, true);
-    for (const route of ["status", "state/" + encodeURIComponent(leadId)]) {
+    const active = await c.call("active", {});
+    assert.equal(active.status, 200);
+    assert.equal(active.body.leadId, leadId);
+    assert.deepEqual(active.body.state.messages, state.body.state.messages);
+    const unrelatedSession = await client();
+    assert.equal((await unrelatedSession.call("active", {})).body.leadId, null);
+    for (const route of ["status", "active", "state/" + encodeURIComponent(leadId)]) {
       assert.equal((await c.call(route, {}, { Origin: "" })).status, 403);
       assert.equal((await c.call(route, {}, { "X-Pete-CSRF": "" })).status, 403);
       assert.equal((await c.call(route, {}, { Host: "evil.invalid:5173" })).status, 403);
     }
     assert.equal(providerCalls, before);
     assert.equal(fs.existsSync(ledgerFile), false);
+  });
+  await t.test("desktop active lab remains visible after handover and is isolated from another browser", async () => {
+    resetFiles();
+    const c = await client();
+    const before = providerCalls;
+    const leadId = await c.lead();
+    const state = getConversationState(leadId, "eltern-vital-fit")!;
+    takeOverByHuman(state); persistConversationState(state);
+    const recovered = (await c.call("active", {})).body;
+    assert.equal(recovered.leadId, leadId);
+    assert.equal(recovered.replySuppressedReason, "human_owned");
+    const outsider = await client();
+    assert.equal((await outsider.call("active", {})).body.leadId, null);
+    assert.equal(providerCalls, before, "opening an existing lab chat is free");
   });
   await t.test("exact origin, host, cookie, CSRF and no forwarded headers are all required", async () => {
     const c = await granted();
