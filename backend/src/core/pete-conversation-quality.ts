@@ -497,7 +497,21 @@ export function getPeteVerifiedTransactionAnswer(
     const verifiedUrl = OFFER_TRUTH.strategyCall.schedulingUrl;
     // A different configured event may have different charges. Never extend
     // this owner-specific Calendly check to an unknown event or SaaS tenant.
-    if (bookingUrl && (bookingUrl.endsWith("/") ? bookingUrl.slice(0, -1) : bookingUrl) !== verifiedUrl) {
+    let sameVerifiedEvent = true;
+    if (bookingUrl) {
+      try {
+        const configured = new URL(bookingUrl);
+        const verified = new URL(verifiedUrl);
+        const cleanPath = (path: string) =>
+          path.endsWith("/") ? path.slice(0, -1) : path;
+        // The booking service adds UTM tracking and contact attribution.
+        // Compare ONLY the exact event origin/path, not query parameters.
+        sameVerifiedEvent = configured.origin === verified.origin &&
+          cleanPath(configured.pathname) === cleanPath(verified.pathname) &&
+          !configured.username && !configured.password;
+      } catch { sameVerifiedEvent = false; }
+    }
+    if (!sameVerifiedEvent) {
       return { text: "Für den aktuell hinterlegten Buchungslink sind die Kosten nicht bestätigt. Das muss vor einer Buchung geklärt werden.", nextPhase: "info" };
     }
     if (OFFER_TRUTH.strategyCall.calendlyBookingRequiresPayment === false) {
