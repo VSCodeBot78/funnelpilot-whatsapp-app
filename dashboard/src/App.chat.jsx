@@ -157,11 +157,21 @@ export default function ChatTest({ v2 = false }) {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([desktopClient.current.status(), desktopClient.current.newLead()])
-      .then(([status, lead]) => {
+    // Reopen the authenticated session's last synthetic lead; never create a
+    // new one just because the owner navigates away and returns.
+    Promise.all([desktopClient.current.status(), desktopClient.current.active()])
+      .then(async ([status, active]) => {
+        if (cancelled) return;
+        const lead = active.leadId ? active : await desktopClient.current.newLead();
         if (cancelled) return;
         setAiDiagnostic(status);
         setLeadId(lead.leadId);
+        if (active.leadId) {
+          setMessages(mapStateMessagesToUi(active.state?.messages || []));
+          setDebug({ replySource: active.replySource,
+            llmDiagnostic: active.llmDiagnostic,
+            replySuppressedReason: active.replySuppressedReason });
+        }
       }).catch(error => { if (!cancelled) setAiDiagnostic({ error: error.message }); });
     return () => { cancelled = true; };
   }, []);
@@ -641,6 +651,14 @@ export default function ChatTest({ v2 = false }) {
             {debug.replySource === "llm" && debug.providerUsage &&
               <div>Provider-Nutzung verbucht: {debug.providerUsage.inputTokens} Eingabe- und{" "}
                 {debug.providerUsage.outputTokens} Ausgabetokens ({debug.providerUsage.model}).</div>}
+            {debug.replySuppressedReason && (
+              <div role="alert" style={{ marginTop: 7, color: "#fbbf24" }}>
+                Pete hat keine Antwort gesendet: {debug.replySuppressedReason === "human_owned"
+                  ? "Interne menschliche Uebernahme / Pete pausiert. Dieser Labor-Lead erscheint nicht automatisch in der normalen Inbox."
+                  : debug.replySuppressedReason === "stopped"
+                    ? "Kontaktstopp (STOP)." : "Nachricht unterdrueckt."}
+              </div>
+            )}
             {debug.replySource === "llm_handoff" && (
               <div role="alert" style={{ marginTop: 7, color: "#fbbf24" }}>
                 KI-Diagnose: {explainLocalLlmDiagnostic(debug.llmDiagnostic)}
