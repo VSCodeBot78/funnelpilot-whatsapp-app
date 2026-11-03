@@ -73,6 +73,25 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
       result.state)?.text || "", /Jochen persönlich/);
   });
 
+  await t.test("natural multi-sentence price questions answer 499 euros without provider or silent takeover", async () => {
+    clearConversationStore(); enableMock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("confirmed prices must not use an LLM"); };
+    const cases = [
+      "Ich glaube, ich brauche eher jemanden, der mich begleitet. Trainingsplaene gibt's ja ueberall, aber alleine ziehe ich das nie durch. Was wuerde mich so eine Begleitung bei Jochen denn kosten?",
+      "Ich brauche wohl jemanden, der mich begleitet. Was wuerde mich eine persoenliche Begleitung bei dir kosten?",
+      "Was wuerde mich so eine Begleitung kosten, so ungefaehr?",
+    ];
+    for (const [index, messageText] of cases.entries()) {
+      const out = await send("phase49-natural-price-" + index, messageText);
+      assert.match(out.text || "", /499/);
+      assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+      assert.notEqual(out.state.owner, "human");
+      assert.equal(out.replySuppressedReason, undefined);
+    }
+    assert.equal(calls, 0, "verified price must never require paid provider output");
+  });
+
   await t.test("self-reported booking is not a provider-verified booking", async () => {
     clearConversationStore(); enableMock();
     let calls = 0;
