@@ -10,6 +10,14 @@ const cmd = fs.readFileSync(path.join(root, "FunnelPilot-Laptop-GO.cmd"), "utf8"
 const launcher = fs.readFileSync(path.join(root, "scripts/start-owner-laptop.ps1"), "utf8");
 const preview = fs.readFileSync(path.join(root, "dashboard/src/preview/DashboardPreview.jsx"), "utf8");
 const app = fs.readFileSync(path.join(root, "dashboard/src/App.chat.jsx"), "utf8");
+const gitignore = fs.readFileSync(path.join(root, ".gitignore"), "utf8");
+const viteLab = fs.readFileSync(path.join(root, "dashboard/vite.lab.config.js"), "utf8");
+
+test("generated mobile lab bundle cannot block a clean owner update", () => {
+  assert.match(viteLab, /outDir:\s*"\.\.\/mobile-lab-dist"/);
+  assert.match(gitignore, /^\/mobile-lab-dist\/$/m);
+});
+
 
 test("owner desktop shortcut invokes protected update BEFORE starting the local launcher", () => {
   assert.match(cmd, /update-owner-laptop\.ps1/);
