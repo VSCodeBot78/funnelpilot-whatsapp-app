@@ -17,6 +17,8 @@ delete process.env.OPENAI_API_KEY;
 const { DEFAULT_CAMPAIGN_ID } = await import("./campaigns.js");
 const { processIncomingMessage } = await import("../core/conversation-engine.js");
 const { clearConversationStore } = await import("../data/store.js");
+const { getOrCreateConversationState, appendAssistantMessage, persistConversationState } =
+  await import("../core/state-manager.js");
 const { writeSettings } = await import("../services/settings-store.js");
 const { OFFER_TRUTH } = await import("./offer-truth.js");
 const { validatePeteLlmReply } = await import("../core/pete-llm-conversation.js");
@@ -90,6 +92,44 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
       assert.equal(out.replySuppressedReason, undefined);
     }
     assert.equal(calls, 0, "verified price must never require paid provider output");
+  });
+
+  await t.test("real follower: 'klar, kostet das was?' means strategy-call booking, never silent LLM handoff", async () => {
+    clearConversationStore(); enableMock();
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("strategy-call booking cost must bypass LLM"); };
+    const question = "Wäre ein persönliches Strategiegespräch für dich passend, um zu klären, welche Unterstützung dir im Alltag wirklich hilft?";
+    for (const [index, messageText] of [
+      "klar, kostet das was?",
+      "Kostet das Strategiegespräch was?",
+      "ja, ist das kostenlos?",
+      "muss ich dafür was zahlen?",
+    ].entries()) {
+      const id = "phase49-strategy-call-" + index;
+      const s = getOrCreateConversationState(id, DEFAULT_CAMPAIGN_ID);
+      appendAssistantMessage(s, question);
+      persistConversationState(s);
+      const out = await send(id, messageText);
+      assert.match(out.text || "", /keine Zahlung nötig/);
+      assert.match(out.text || "", /https:\/\/calendly\.com\/eltern-fitundvital\/strategiegespraech/);
+      assert.doesNotMatch(out.text || "", /499|14,95/);
+      assert.equal(out.state.answers.peteReplySource, "verified_transaction");
+      assert.equal(out.state.owner, "ai");
+      assert.equal(out.state.aiPaused, false);
+      assert.equal(out.replySuppressedReason, undefined);
+    }
+    assert.equal(calls, 0);
+    const differentLinkState = getOrCreateConversationState("phase49-different-event", DEFAULT_CAMPAIGN_ID);
+    appendAssistantMessage(differentLinkState, question);
+    const unverified = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
+      "https://calendly.com/eltern-fitundvital/coaching");
+    assert.match(unverified?.text || "", /nicht bestätigt/);
+    assert.doesNotMatch(unverified?.text || "", /keine Zahlung nötig|strategiegespraech\b/);
+    assert.equal(unverified?.handoff, undefined);
+
+    const coaching = getPeteVerifiedTransactionAnswer("Was kostet die 5-Wochen-Begleitung?",
+      differentLinkState);
+    assert.match(coaching?.text || "", /499/);
   });
 
   await t.test("self-reported booking is not a provider-verified booking", async () => {
