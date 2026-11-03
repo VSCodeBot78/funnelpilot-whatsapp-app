@@ -493,7 +493,18 @@ export function getPeteVerifiedTransactionAnswer(
     .test(input);
   const namesPaidOffer = /\b(?:coaching|begleitung|selbststarter|startphase|5[\s-]*wochen|499|monat(?:e|s)?)\b/.test(input);
   if (callOffered && shortCallCostQuestion && !namesPaidOffer) {
-    return { text: "Gute Frage. Ob für das Strategiegespräch Kosten anfallen, ist in den bestätigten Angaben noch nicht hinterlegt. Ich möchte dir dazu nichts Falsches sagen. Das muss vor einer Buchung geklärt werden.", nextPhase: "strategy_call_cost_unverified" };
+    const verifiedUrl = OFFER_TRUTH.strategyCall.schedulingUrl;
+    // A different configured event may have different charges. Never extend
+    // this owner-specific Calendly check to an unknown event or SaaS tenant.
+    if (bookingUrl && bookingUrl.replace(/\\/$/, "") !== verifiedUrl) {
+      return { text: "Für den aktuell hinterlegten Buchungslink sind die Kosten nicht bestätigt. Das muss vor einer Buchung geklärt werden.", nextPhase: "info" };
+    }
+    if (OFFER_TRUTH.strategyCall.calendlyBookingRequiresPayment === false) {
+      return {
+        text: "Nein, für die Buchung des Strategiegesprächs ist aktuell keine Zahlung nötig. Hier kannst du dir einen Termin aussuchen: " + verifiedUrl,
+        nextPhase: bookingUrl ? "booking_offered" : "info",
+      };
+    }
   }
 
   // Combined scope-and-cost question: answer only approved product facts.
