@@ -506,7 +506,7 @@ export function getPeteVerifiedTransactionAnswer(
     return { text: LONG_TERM_PRICE_UNVERIFIED_REPLY, nextPhase: "longterm_unverified" };
   }
   const explicitPrice = has(text,
-    /\b(?:was kostet|wie teuer|wieviel kostet|wie viel kostet|preis fur|preis von|nenn mir den preis|preis bitte|preis\?|kosten\?|monatsrate|ratenzahlung)\b/);
+    /\b(?:was kostet|wie teuer|wieviel kostet|wie viel kostet|preis fur|preis von|nenn mir den preis|preis bitte|preis\?|kosten\?|monatsrate|ratenzahlung|preislich)\b|\b(?:was|wieviel|wie viel)\b.{0,110}\b(?:kosten|kostet|bezahlen)\b/);
   const specificSelfstarter = /\b(?:selbststarter|buch)\b/.test(input);
   const specificCoaching = /\b(?:5.?wochen|funf wochen|coaching|startphase|begleitung)\b/.test(input);
   const substantiveQuestion = /\b(?:wie unterscheid|was ist anders|wie funktioniert|was bekomme|was enthalt|was beinhaltet|was ist drin|wie geht es|warum|wie genau|wie vereinbar|wie hilft)\b/.test(input);
