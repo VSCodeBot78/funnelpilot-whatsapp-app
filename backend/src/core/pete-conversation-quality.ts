@@ -481,6 +481,21 @@ export function getPeteVerifiedTransactionAnswer(
     };
   }
 
+  // A short cost question immediately after Pete offers a strategy call
+  // refers to THAT conversation, not the paid 5-week coaching.
+  // The founder has not verified the strategy-call fee in OFFER_TRUTH yet.
+  // Answer safely instead of allowing the LLM to mute a willing prospect.
+  const latestAssistant = [...(state.messages ?? [])].reverse()
+    .find(message => message.role === "assistant");
+  const callOffered = /\\b(?:strategiegesprach|kennenlerngesprach|erstgesprach)\\b/
+    .test(norm(latestAssistant?.text ?? ""));
+  const shortCallCostQuestion = /\\b(?:kostet (?:das|es|der termin|das gesprach)(?: was| etwas)?|ist (?:das|es|der termin|das gesprach) (?:kostenlos|gratis|kostenpflichtig)|was kostet (?:das|der) (?:strategie)?gesprach|muss ich (?:dafur|fur das gesprach) (?:etwas )?zahlen|wie teuer ist (?:das|der termin))\\b/
+    .test(input);
+  const namesPaidOffer = /\\b(?:coaching|begleitung|selbststarter|startphase|5[\\s-]*wochen|499|monat(?:e|s)?)\\b/.test(input);
+  if (callOffered && shortCallCostQuestion && !namesPaidOffer) {
+    return { text: "Gute Frage. Ob für das Strategiegespräch Kosten anfallen, ist in den bestätigten Angaben noch nicht hinterlegt. Ich möchte dir dazu nichts Falsches sagen. Das muss vor einer Buchung geklärt werden.", nextPhase: "strategy_call_cost_unverified" };
+  }
+
   // Combined scope-and-cost question: answer only approved product facts.
   // Do not assert absence of extras, discounts or contract conditions.
   if (/\b(?:was ist|was genau|was bekomme|was beinhaltet|was umfasst)\b/.test(input) &&
