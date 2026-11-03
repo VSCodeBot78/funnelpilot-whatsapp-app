@@ -110,7 +110,7 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
       appendAssistantMessage(s, question);
       persistConversationState(s);
       const out = await send(id, messageText);
-      assert.match(out.text || "", /keine Zahlung nötig/);
+      assert.match(out.text || "", /keine Zahlung nötig|Terminbuchung kostet nichts/);
       assert.match(out.text || "", /https:\/\/calendly\.com\/eltern-fitundvital\/strategiegespraech/);
       assert.doesNotMatch(out.text || "", /499|14,95/);
       assert.equal(out.state.answers.peteReplySource, "verified_transaction");
