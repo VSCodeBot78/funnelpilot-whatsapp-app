@@ -123,7 +123,7 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
     appendAssistantMessage(differentLinkState, question);
     const unverified = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
       "https://calendly.com/eltern-fitundvital/coaching");
-    assert.match(unverified?.text || "", /nicht bestätigt/);
+    assert.match(unverified?.text || "", /nicht bestätigt|nicht sicher prüfen/);
     assert.doesNotMatch(unverified?.text || "", /keine Zahlung nötig|strategiegespraech\b/);
     assert.equal(unverified?.handoff, undefined);
     const tracked = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
@@ -132,7 +132,8 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
     assert.equal(tracked?.handoff, undefined);
     const deceptive = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
       "https://calendly.com.evil.example/eltern-fitundvital/strategiegespraech");
-    assert.match(deceptive?.text || "", /nicht bestätigt/);
+    assert.match(deceptive?.text || "", /nicht bestätigt|nicht sicher prüfen/);
+    assert.doesNotMatch(deceptive?.text || "", /evil\.example|keine Zahlung nötig|https:\/\//);
 
     const coaching = getPeteVerifiedTransactionAnswer("Was kostet die 5-Wochen-Begleitung?",
       differentLinkState);
