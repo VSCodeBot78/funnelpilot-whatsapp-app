@@ -489,8 +489,9 @@ export function getPeteVerifiedTransactionAnswer(
     .find(message => message.role === "assistant");
   const callOffered = /\b(?:strategiegesprach|kennenlerngesprach|erstgesprach)\b/
     .test(norm(latestAssistant?.text ?? ""));
-  const shortCallCostQuestion = /\b(?:kostet (?:das|es|der termin|das gesprach)(?: was| etwas)?|ist (?:das|es|der termin|das gesprach) (?:kostenlos|gratis|kostenpflichtig)|was kostet (?:das|der) (?:strategie)?gesprach|muss ich (?:dafur|fur das gesprach) (?:etwas )?zahlen|wie teuer ist (?:das|der termin))\b/
-    .test(input);
+  const shortCallCostQuestion = input.length <= 180 &&
+    /\b(?:kostet|kosten|preis|teuer|kostenlos|gratis|kostenpflichtig|zahlen|bezahl\w*|gebuhr\w*)\b/.test(input) &&
+    /\b(?:das|es|dafur|gesprach|strategiegesprach|kennenlerngesprach|erstgesprach|termin|call)\b/.test(input);
   const namesPaidOffer = /\b(?:coaching|begleitung|selbststarter|startphase|5[\s-]*wochen|499|monat(?:e|s)?)\b/.test(input);
   if (callOffered && shortCallCostQuestion && !namesPaidOffer) {
     const verifiedUrl = OFFER_TRUTH.strategyCall.schedulingUrl;
