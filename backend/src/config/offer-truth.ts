@@ -87,6 +87,12 @@ export const OFFER_TRUTH = {
     startSelectableWithinDays: 14,
     requiresHumanDecision: false,
   },
+  // Calendly owner event 'Coaching / Strategie Gespräch', checked 2026-11-03:
+  // active=true, is_paid=false. This confirms no payment during booking only.
+  strategyCall: {
+    schedulingUrl: "https://calendly.com/eltern-fitundvital/strategiegespraech",
+    calendlyBookingRequiresPayment: false,
+  },
   longTerm: {
     id: "long_term_6m",
     name: "6-Monats-Begleitung",
@@ -115,6 +121,7 @@ export const OFFER_TRUTH = {
 } as const satisfies {
   selfstarter: OfferTruthItem;
   coachingEntry: OfferTruthItem;
+  strategyCall: { schedulingUrl: string; calendlyBookingRequiresPayment: boolean };
   longTerm: UnverifiedLongTermOffer;
   resources: {
     elterncheck: ResourceTruthItem;
