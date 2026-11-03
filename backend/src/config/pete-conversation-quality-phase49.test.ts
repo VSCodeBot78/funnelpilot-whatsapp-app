@@ -126,6 +126,13 @@ test("Phase 49: verified transactions plus safe context-aware AI", async t => {
     assert.match(unverified?.text || "", /nicht bestätigt/);
     assert.doesNotMatch(unverified?.text || "", /keine Zahlung nötig|strategiegespraech\b/);
     assert.equal(unverified?.handoff, undefined);
+    const tracked = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
+      "https://calendly.com/eltern-fitundvital/strategiegespraech?utm_source=whatsapp_funnel_app&utm_campaign=eltern-vital-fit");
+    assert.match(tracked?.text || "", /keine Zahlung nötig/);
+    assert.equal(tracked?.handoff, undefined);
+    const deceptive = getPeteVerifiedTransactionAnswer("klar, kostet das was?", differentLinkState,
+      "https://calendly.com.evil.example/eltern-fitundvital/strategiegespraech");
+    assert.match(deceptive?.text || "", /nicht bestätigt/);
 
     const coaching = getPeteVerifiedTransactionAnswer("Was kostet die 5-Wochen-Begleitung?",
       differentLinkState);
