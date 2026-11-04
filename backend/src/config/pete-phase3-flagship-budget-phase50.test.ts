@@ -59,32 +59,40 @@ test("Phase 50: flagship cost safety, isolated from real API", async t => {
     assert.throws(() => reservePeteBudget({ ...request(), model: "gpt-6-unknown" }),
       (e: any) => e instanceof PeteBudgetStop && e.reason === "model_not_priced");
   });
-  await t.test("ledger update must be confirmed before every new charged batch", () => {
-    for (const name of ["pete-phase3-flagship-comparison.yml", "pete-phase3-synthetic.yml"]) {
-      const yaml = fs.readFileSync(path.resolve(import.meta.dirname,
-        "../../../.github/workflows", name), "utf8");
-      assert.match(yaml, /push_budget_confirmed\(\) \{/);
-      assert.match(yaml, /for attempt in 1 2 3/);
-      assert.match(yaml, /if git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger; then/);
-      const rows = yaml.split("\n");
-      const reserve = rows.findIndex(s => s.includes("node scripts/pete-phase3-ledger.mjs reserve"));
-      const confirm = rows.findIndex((s, i) => i > reserve && s.trim() === "push_budget_confirmed");
-      const execute = rows.findIndex(s => s.includes("npx tsx src/config/pete-phase3-"));
-      assert.ok(reserve >= 0 && confirm > reserve && execute > confirm,
-        "no paid model calls before remote ledger confirmation");
-      assert.doesNotMatch(yaml, /git -C budget-ledger push --force/);
-    }
+  await t.test("remaining approved Sol QA confirms budget reservation before any paid model call", () => {
+    const yaml = fs.readFileSync(path.resolve(import.meta.dirname,
+      "../../../.github/workflows/pete-repeatable-sol-qa.yml"), "utf8");
+    const rows = yaml.split("\n");
+    const reserve = rows.findIndex(s => s.includes("node scripts/pete-repeatable-qa-ledger.mjs reserve"));
+    const confirm = rows.findIndex((s, i) => i > reserve &&
+      s.includes("git -C budget-ledger push origin HEAD:pete-phase3-budget-ledger"));
+    const execute = rows.findIndex(s => s.includes("npx tsx src/config/pete-repeatable-sol-runner.ts"));
+    const settle = rows.findIndex((s, i) => i > execute &&
+      s.includes("node scripts/pete-repeatable-qa-ledger.mjs settle"));
+    assert.ok(reserve >= 0 && confirm > reserve && execute > confirm && settle > execute,
+      "persistent remote budget confirmation must precede each paid model call");
+    assert.doesNotMatch(yaml, /git -C budget-ledger push --force/);
   });
 
-  await t.test("special action requires explicit branch and user-run commit", () => {
-    const file = path.resolve(import.meta.dirname,
-      "../../../.github/workflows/pete-phase3-flagship-comparison.yml");
-    const yaml = fs.readFileSync(file, "utf8");
-    assert.match(yaml, /phase3-flagship-approved-run-20261011/);
-    assert.match(yaml, /PHASE3_FLAGSHIP_APPROVED_10_CHATS/);
-    assert.match(yaml, /PETE_PHASE3_FLAGSHIP_ENVELOPE: "true"/);
-    assert.match(yaml, /OPENAI_MODEL: gpt-5\.4/);
+  await t.test("historical one-shot branches are retired and current QA requires owner approval", () => {
+    const root = path.resolve(import.meta.dirname, "../../../.github/workflows");
+    for (const name of [
+      "pete-phase3-flagship-comparison.yml",
+      "pete-phase3-focused-regression.yml",
+      "pete-phase3-synthetic.yml",
+    ]) {
+      assert.equal(fs.existsSync(path.join(root, name)), false,
+        "retired paid workflow must not reappear: " + name);
+    }
+    const yaml = fs.readFileSync(path.join(root, "pete-repeatable-sol-qa.yml"), "utf8");
+    assert.match(yaml, /feat\/pete-policy-v4-20261022/);
+    assert.match(yaml, /PETE_QA_APPROVED_RUN:/);
+    assert.match(yaml, /github\.run_attempt == 1/);
+    assert.match(yaml, /OPENAI_MODEL: gpt-6\.1-sol/);
     assert.match(yaml, /secrets\.OPENAI_API_KEY/);
-    assert.doesNotMatch(yaml, /workflow_dispatch:/);
+    assert.match(yaml, /node scripts\/pete-repeatable-qa-ledger\.mjs preflight/);
+    assert.match(yaml, /INSTAGRAM_SEND_ENABLED: "false"/);
+    assert.match(yaml, /WHATSAPP_SEND_ENABLED: "false"/);
+    assert.doesNotMatch(yaml, /workflow_dispatch:|pull_request:|schedule:/);
   });
 });
