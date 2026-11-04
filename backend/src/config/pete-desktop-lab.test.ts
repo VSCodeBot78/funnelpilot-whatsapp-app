@@ -26,7 +26,7 @@ const { default: app } = await import("../app.js");
 const budgetService = await import("../services/pete-api-budget.service.js");
 const { PETE_DESKTOP_HISTORY } = await import("./pete-desktop-history.js");
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
-const { saveCampaign } = await import("../data/campaigns.store.js");
+const { saveCampaign, deleteCampaign } = await import("../data/campaigns.store.js");
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
 const ledgerFile = path.join(temp, "pete-api-budget.json");
 const reviewFile = path.join(temp, "pete-desktop-history-review.json");
@@ -290,6 +290,46 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(reel.body.flow, null);
     assert.equal(reel.body.savedOpeningUsed, false);
     assert.equal(providerCalls, before);
+  });
+  await t.test("changed or deleted V2 campaign cannot fall back to default Pete after NoSend handoff", async () => {
+    resetFiles();
+    const c = await client();
+    const before = providerCalls;
+    const saved = {
+      id: "nosend-bound-context", name: "CHECK draft isolated",
+      peteCampaign: {
+        sources: ["instagram_dm"], keywords: ["CHECK"],
+        openingText: "Urspruenglicher CHECK Einstieg.", followUpEnabled: false,
+        flowDraftEnabled: true, autoReplyEnabled: true, peteHandoffEnabled: true,
+      },
+    };
+    saveCampaign(saved);
+    const entry = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    assert.equal(entry.status, 200);
+    assert.equal(entry.body.flow.stage, "pete_ready");
+    assert.equal(entry.body.matchedCampaignId, saved.id);
+    assert.equal((await c.call("message", { leadId: entry.body.leadId,
+      campaignId: "different", messageText: "Hallo" })).status, 403);
+
+    // The saved draft was reconfigured AFTER the server-bound first message.
+    saveCampaign({ ...saved, peteCampaign: {
+      ...saved.peteCampaign, openingText: "Anderer Einstieg nach Aenderung.",
+    } });
+    const changed = await c.message(entry.body.leadId, "Was kostet das?");
+    assert.equal(changed.status, 409);
+    assert.equal(changed.body.error, "nosend_campaign_context_stale");
+    const stateAfter = getConversationState(entry.body.leadId, "eltern-vital-fit")!;
+    assert.equal(stateAfter.messages.filter(message => message.role === "user").length, 1,
+      "stale campaign may not consume a new incoming message");
+
+    const removedEntry = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    assert.equal(removedEntry.status, 200);
+    assert.equal(removedEntry.body.flow.stage, "pete_ready");
+    deleteCampaign(saved.id);
+    const removed = await c.message(removedEntry.body.leadId, "Bitte nenn mir einen Link.");
+    assert.equal(removed.status, 409);
+    assert.equal(removed.body.error, "nosend_campaign_context_stale");
+    assert.equal(providerCalls, before, "a stale or missing draft must never reach OpenAI");
   });
   await t.test("ON reaches the real application model path via mocked Responses and meters usage", async () => {
     const c = await granted();
