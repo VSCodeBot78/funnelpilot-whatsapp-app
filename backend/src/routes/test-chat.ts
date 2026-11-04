@@ -459,7 +459,7 @@ function simulateDesktopEntry(req: Request, res: Response) {
   state.answers.labEntrySource = source;
   state.answers.labCampaignMatchStatus = preview.status;
   state.answers.labOpeningSource = openingSource;
-  state.answers.labMatchedCampaignId = preview.matchedCampaignId;
+  if (preview.matchedCampaignId) state.answers.labMatchedCampaignId = preview.matchedCampaignId;
   persistConversationState(state);
   return res.json({
     ok: true, reply: null, replySource: "scripted_context",
