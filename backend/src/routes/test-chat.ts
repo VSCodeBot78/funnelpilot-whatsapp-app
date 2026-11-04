@@ -11,7 +11,7 @@ import { startDesktopBrowserSession, guardDesktopBrowser, issueDesktopLead, asse
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 import { getAllCampaigns } from "../data/campaigns.store.js";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
-import { startNoSendDraftFlow, getNoSendDraftFlow, advanceNoSendDraftFlow } from "../services/pete-campaign-nosend-lab.service.js";
+import { startNoSendDraftFlow, getNoSendDraftFlow, advanceNoSendDraftFlow, getReadyNoSendPeteCampaignContext } from "../services/pete-campaign-nosend-lab.service.js";
 import { isSalesFollowUpOptOut, isPeteChestBreathingEmergency } from "../core/pete-conversation-quality.js";
 import { isExplicitPeteHumanTakeoverRequest } from "../core/pete-llm-conversation.js";
 import { classifyPeteObjection } from "../core/pete-objection-handler.js";
@@ -151,6 +151,30 @@ router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
   // A matched V2 draft never implies permission to skip its button/link flow.
   // STOP and explicit human requests work at any stage, with no model call.
   const flow = getNoSendDraftFlow(leadId, desktopSessionHash(req));
+  const persisted = getConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+  // A NoSend campaign that vanished after restart/expiry must never silently
+  // turn into an unscoped default Pete conversation.
+  if (persisted?.answers.labNoSendCampaignId && !flow) {
+    const stopRequested = isSalesFollowUpOptOut(messageText) ||
+      classifyPeteObjection(messageText).intent === "hard_stop";
+    const humanRequested = isExplicitPeteHumanTakeoverRequest(messageText);
+    if (stopRequested || humanRequested) {
+      appendUserMessage(persisted, messageText);
+      if (stopRequested) patchFlags(persisted, { stopped: true, salesFollowUpsOptedOut: true });
+      else takeOverByHuman(persisted);
+      persistConversationState(persisted);
+      return res.json({ ok: true, reply: null,
+        replySource: stopRequested ? "guarded_safety" : "human_handoff",
+        replySuppressedReason: stopRequested ? "stopped" : "human_owned",
+        providerUsage: null, flow: null,
+        state: { messages: publicLabMessages(persisted.messages) },
+        budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+    }
+    return res.status(409).json({ ok: false, error: "nosend_flow_session_expired" });
+  }
+  if (flow?.stage === "pete_ready" &&
+      !getReadyNoSendPeteCampaignContext(leadId, desktopSessionHash(req)))
+    return res.status(409).json({ ok: false, error: "nosend_campaign_context_stale" });
   if (flow && flow.stage !== "pete_ready" && !isPeteChestBreathingEmergency(messageText)) {
     const state = getConversationState(leadId, DEFAULT_CAMPAIGN_ID);
     if (!state) return res.status(409).json({ ok: false, error: "nosend_state_missing" });
