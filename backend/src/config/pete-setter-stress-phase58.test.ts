@@ -162,14 +162,15 @@ test("Phase 58: 20 diverse GPT-setting and guarded buyer/safety journeys", async
       pattern: /no-bullshit-elternfitness/ },
     { id: "s03-price", turns: ["Was kostet der Selbststarter?"], source: "verified_transaction",
       pattern: /14,95/ },
+    // Explicit owner handover is SILENT for the lead, not a bot announcement.
     { id: "x01-human", turns: ["Jochen soll bitte hier übernehmen", "Und nun?"], source: "human_handoff",
-      pattern: /Jochen/ },
+      pattern: null },
     { id: "x02-stop", turns: ["Bitte nicht mehr schreiben", "Hallo?"], source: "guarded_safety",
       pattern: /(?:schreib|Nachricht|Kontakt|respekt)/i },
     { id: "x03-duplicates", turns: [
       "Auf Instagram und WhatsApp antworten eure Bots doppelt!",
       "Ich möchte keine Nachrichten von zwei Bots.",
-    ], source: "verified_transaction", pattern: /Jochen/ },
+    ], source: "verified_transaction", pattern: /doppelt/i },
     { id: "x04-payment", turns: [
       "Ich habe den Selbststarter gekauft, aber die Zugangs-Mail fehlt.",
       "Ist meine Bestellung jetzt bezahlt?",
@@ -189,7 +190,13 @@ test("Phase 58: 20 diverse GPT-setting and guarded buyer/safety journeys", async
       }
       assert.ok(first);
       assert.equal(first.state.answers.peteReplySource, scenario.source);
-      assert.match(first.text ?? "", scenario.pattern);
+      if (scenario.id === "x01-human") {
+        assert.equal(first.text, null, "owner takeover must remain invisible to lead");
+        assert.equal(first.replySuppressedReason, "human_owned");
+      } else {
+        assert.ok(scenario.pattern);
+        assert.match(first.text ?? "", scenario.pattern);
+      }
       assert.equal(apiCalls, before, "guarded path must not contact provider");
       if (["x01-human","x03-duplicates","x04-payment"].includes(scenario.id)) {
         assert.equal(first.state.owner, "human");
