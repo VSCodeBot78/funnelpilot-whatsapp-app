@@ -23,17 +23,23 @@ test("Phase3 offline: exactly fifty distinct difficult fictional conversations",
     assert.ok(turns[3].includes("?"));
   }
 });
-test("Phase3 offline: CI runner never triggers on a pull request or normal branch", () => {
-  const file = path.resolve(import.meta.dirname, "../../../.github/workflows/pete-phase3-synthetic.yml");
-  const yaml = fs.readFileSync(file, "utf8");
-  assert.match(yaml, /phase3-approved-run-20261011/);
-  assert.match(yaml, /startsWith\(github.event.head_commit.message, 'PHASE3_APPROVED_50_CHATS'\)/);
-  assert.match(yaml, /secrets\.OPENAI_API_KEY/);
-  assert.match(yaml, /PETE_PHASE3_BUDGET_ENVELOPE: "true"/);
+test("Phase3 offline: obsolete paid workflow is absent and current V2 CI remains NoSend", () => {
+  const dir = path.resolve(import.meta.dirname, "../../../.github/workflows");
+  for (const old of [
+    "pete-phase3-flagship-comparison.yml",
+    "pete-phase3-focused-regression.yml",
+    "pete-phase3-synthetic.yml",
+  ]) {
+    assert.equal(fs.existsSync(path.join(dir, old)), false,
+      "obsolete one-shot paid CI must not be resurrected: " + old);
+  }
+  const yaml = fs.readFileSync(path.join(dir, "dashboard-v2-preview.yml"), "utf8");
+  assert.match(yaml, /feat\/dashboard-v2-preview-20261023/);
+  assert.match(yaml, /contents: read/);
+  assert.match(yaml, /PETE_LLM_API_CALLS_APPROVED: "false"/);
   assert.match(yaml, /INSTAGRAM_SEND_ENABLED: "false"/);
   assert.match(yaml, /WHATSAPP_SEND_ENABLED: "false"/);
-  assert.doesNotMatch(yaml, /pull_request:/);
-  assert.doesNotMatch(yaml, /workflow_dispatch:/);
+  assert.doesNotMatch(yaml, /secrets\.OPENAI_API_KEY|OPENAI_MODEL:|workflow_dispatch:|schedule:/);
 });
 test("Phase3 offline: durable envelope reservations cannot reset or exceed authorized cap", t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fp-phase3-gh-ledger-"));
