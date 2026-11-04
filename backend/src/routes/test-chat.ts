@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 import { DEFAULT_CAMPAIGN_ID } from "../config/campaigns.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
 import { getConversationState } from "../data/store.js";
-import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState, releaseToAi } from "../core/state-manager.js";
+import { appendAssistantMessage, appendHumanMessage, appendUserMessage, getOrCreateConversationState, persistConversationState, releaseToAi, patchFlags, takeOverByHuman } from "../core/state-manager.js";
 import { PETE_LAB_SCENARIOS, getScriptedLabLines, isPeteLabScenarioId, labScenarioPolicy } from "../config/pete-mobile-lab-scenarios.js";
 import { getPeteBudgetStatusSafe, getPeteDesktopBudgetStatus, setPeteDesktopBudget } from "../services/pete-api-budget.service.js";
 import { startDesktopBrowserSession, guardDesktopBrowser, issueDesktopLead, assertIssuedDesktopLead,
@@ -11,6 +11,10 @@ import { startDesktopBrowserSession, guardDesktopBrowser, issueDesktopLead, asse
 import { isPeteLlmReadyForProvider } from "../core/pete-llm-conversation.js";
 import { getAllCampaigns } from "../data/campaigns.store.js";
 import { evaluateCampaignEntryPreview } from "../services/pete-campaign-entry-preview.service.js";
+import { startNoSendDraftFlow, getNoSendDraftFlow, advanceNoSendDraftFlow } from "../services/pete-campaign-nosend-lab.service.js";
+import { isSalesFollowUpOptOut, isPeteChestBreathingEmergency } from "../core/pete-conversation-quality.js";
+import { isExplicitPeteHumanTakeoverRequest } from "../core/pete-llm-conversation.js";
+import { classifyPeteObjection } from "../core/pete-objection-handler.js";
 import { OFFER_TRUTH } from "../config/offer-truth.js";
 import { getCalendlyAvailableSlots } from "../services/calendly-availability.service.js";
 import { formatAvailabilitySlot } from "../services/availability.service.js";
@@ -132,6 +136,7 @@ router.post("/desktop/active", guardDesktopBrowser, (req, res) => {
     llmDiagnostic: state ? desktopSafeLlmDiagnostic(state.answers) : null,
     replySuppressedReason: state?.owner === "human" || state?.aiPaused === true
       ? "human_owned" : state?.flags.stopped === true ? "stopped" : null,
+    flow: state && leadId ? getNoSendDraftFlow(leadId, desktopSessionHash(req)) : null,
     state: { messages: publicLabMessages(state?.messages ?? []) } });
 });
 
@@ -142,6 +147,30 @@ router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
   if (typeof messageText !== "string" || !messageText.trim() || messageText.length > 1500 ||
       Object.keys(req.body).some(key => !["leadId", "campaignId", "messageText"].includes(key)))
     return res.status(400).json({ ok: false, error: "invalid_desktop_message" });
+  // A matched V2 draft never implies permission to skip its button/link flow.
+  // STOP and explicit human requests work at any stage, with no model call.
+  const flow = getNoSendDraftFlow(leadId, desktopSessionHash(req));
+  if (flow && flow.stage !== "pete_ready" && !isPeteChestBreathingEmergency(messageText)) {
+    const state = getConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+    if (!state) return res.status(409).json({ ok: false, error: "nosend_state_missing" });
+    const stopRequested = isSalesFollowUpOptOut(messageText) ||
+      classifyPeteObjection(messageText).intent === "hard_stop";
+    const humanRequested = isExplicitPeteHumanTakeoverRequest(messageText);
+    if (stopRequested || humanRequested) {
+      appendUserMessage(state, messageText);
+      if (stopRequested) patchFlags(state, { stopped: true, salesFollowUpsOptedOut: true });
+      else takeOverByHuman(state);
+      persistConversationState(state);
+      return res.json({ ok: true, reply: null,
+        replySource: stopRequested ? "guarded_safety" : "human_handoff",
+        replySuppressedReason: stopRequested ? "stopped" : "human_owned",
+        providerUsage: null, flow,
+        state: { messages: publicLabMessages(state.messages) },
+        budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
+    }
+    return res.status(409).json({ ok: false, error: "nosend_flow_action_required",
+      flowStage: flow.stage });
+  }
   try {
     const result = await runDesktopConversation(req, leadId, () => processIncomingMessage({
       leadId, campaignId: DEFAULT_CAMPAIGN_ID, messageText, conversationMode: "natural",
@@ -154,6 +183,7 @@ router.post("/desktop/message", guardDesktopBrowser, async (req, res) => {
         ? { model: a.peteProviderModel, inputTokens: a.peteProviderInputTokens,
           outputTokens: a.peteProviderOutputTokens } : null,
       replySuppressedReason: result.replySuppressedReason ?? null,
+      flow,
       state: { messages: publicLabMessages(result.state.messages) },
       budget: getPeteDesktopBudgetStatus(desktopSessionHash(req)) });
   } catch {
@@ -438,10 +468,10 @@ function simulateDesktopEntry(req: Request, res: Response) {
   // A campaign match is NOT proof that its automatic opening step is enabled.
   // Do not present saved, disabled drafts as an executed automation.
   const draft = preview.status === "matched" ? preview.draftContext : null;
-  const savedOpening = draft?.flowDraft.enabled && draft.flowDraft.autoReplyEnabled
-    ? draft.flowDraft.text?.trim() || null : null;
-  const openingSource = savedOpening ? "saved_campaign_draft" : "demo_example";
-  const openingText = savedOpening || safeExamples[keyword];
+  const run = preview.status === "matched"
+    ? startNoSendDraftFlow({ leadId, sessionHash: desktopSessionHash(req), draft }) : null;
+  const openingSource = run ? "saved_campaign_draft" : "demo_example";
+  const openingText = run?.openingMessage || safeExamples[keyword];
   const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
   // A public Reel comment is NOT an inbound DM and cannot create a 24h
   // private conversation window. A user's later DM reply does open one.
@@ -460,6 +490,7 @@ function simulateDesktopEntry(req: Request, res: Response) {
   state.answers.labCampaignMatchStatus = preview.status;
   state.answers.labOpeningSource = openingSource;
   if (preview.matchedCampaignId) state.answers.labMatchedCampaignId = preview.matchedCampaignId;
+  if (run) state.answers.labNoSendCampaignId = run.flow.campaignId;
   persistConversationState(state);
   return res.json({
     ok: true, reply: null, replySource: "scripted_context",
@@ -470,15 +501,49 @@ function simulateDesktopEntry(req: Request, res: Response) {
     campaignMatchStatus: preview.status,
     openingSource,
     savedOpeningUsed: openingSource === "saved_campaign_draft",
+    flow: run?.flow ?? null,
     peteHandoffDraftConfigured: Boolean(draft?.flowDraft.enabled && draft.flowDraft.peteHandoffEnabled),
-    note: openingSource === "saved_campaign_draft"
-      ? "Gespeicherte, aktivierte Erstantwort als NoSend-Entwurf gezeigt. Flow-Schritte und Meta-Zustellung nicht ausgeführt."
+    note: run
+      ? "Gespeicherter NoSend-Flow gestartet: Schritte nur durch simulierte Interaktion; keine Meta-Zustellung. Pete erst nach freigegebenem Handoff."
       : preview.status === "matched"
         ? "Kampagne erkannt, aber keine aktivierte Erstantwort im V2-Entwurf. Nur Beispieltext; kein Flow ausgeführt."
         : "Beispiel-Einstieg; keine passende eindeutige Kampagne oder Meta-Zustellung verifiziert.",
     state: { messages: publicLabMessages(state.messages) },
   });
 }
+// Synthetic V2 button/link events: authenticated session, server-issued lead,
+// exact action allowlist and the same fail-closed STOP/Human gates as Pete.
+router.post("/desktop/flow-action", guardDesktopBrowser, (req, res) => {
+  const { leadId, action } = req.body ?? {};
+  if (Object.keys(req.body ?? {}).some(key => !["leadId", "action"].includes(key)) ||
+      (action !== "button" && action !== "link"))
+    return res.status(400).json({ ok: false, error: "invalid_nosend_action" });
+  try { assertIssuedDesktopLead(req, leadId, DEFAULT_CAMPAIGN_ID); }
+  catch { return res.status(403).json({ ok: false, error: "desktop_server_issued_lead_required" }); }
+  const state = getConversationState(leadId, DEFAULT_CAMPAIGN_ID);
+  if (!state || state.flags.stopped || state.owner === "human" || state.aiPaused === true ||
+      state.flags.peteRuntimeHandoffActive) {
+    return res.status(409).json({ ok: false, error: "nosend_flow_suppressed" });
+  }
+  try {
+    const result = advanceNoSendDraftFlow({ leadId, sessionHash: desktopSessionHash(req), action });
+    if (result.message) {
+      appendAssistantMessage(state, result.message);
+      const message = state.messages.at(-1);
+      if (message) {
+        message.transport = "lab_scripted_automation";
+        message.outboundStatus = "dry_run";
+        message.dryRun = true;
+        message.sent = false;
+      }
+    }
+    persistConversationState(state);
+    return res.json({ ok: true, flow: result.flow, providerUsage: null,
+      state: { messages: publicLabMessages(state.messages) } });
+  } catch {
+    return res.status(409).json({ ok: false, error: "nosend_action_out_of_order_or_missing" });
+  }
+});
 router.post("/simulate-entry", simulateDesktopEntry);
 router.post("/desktop/entry", guardDesktopBrowser, (req, res) => {
   if (Object.keys(req.body ?? {}).some(key => !["keyword", "source"].includes(key)))
