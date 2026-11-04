@@ -435,9 +435,13 @@ function simulateDesktopEntry(req: Request, res: Response) {
     BULLSHIT: "Hier ist der No Bullshit Elternfitness Selbststarter: " +
       OFFER_TRUTH.selfstarter.productUrl + ". Schau ihn dir in Ruhe an.",
   };
-  const storedOpening = preview.status === "matched"
-    ? preview.openingTextPreview : null;
-  const openingText = storedOpening || safeExamples[keyword];
+  // A campaign match is NOT proof that its automatic opening step is enabled.
+  // Do not present saved, disabled drafts as an executed automation.
+  const draft = preview.status === "matched" ? preview.draftContext : null;
+  const savedOpening = draft?.flowDraft.enabled && draft.flowDraft.autoReplyEnabled
+    ? draft.flowDraft.text?.trim() || null : null;
+  const openingSource = savedOpening ? "saved_campaign_draft" : "demo_example";
+  const openingText = savedOpening || safeExamples[keyword];
   const state = getOrCreateConversationState(leadId, DEFAULT_CAMPAIGN_ID);
   // A public Reel comment is NOT an inbound DM and cannot create a 24h
   // private conversation window. A user's later DM reply does open one.
@@ -454,16 +458,24 @@ function simulateDesktopEntry(req: Request, res: Response) {
   state.answers.labEntryKeyword = keyword;
   state.answers.labEntrySource = source;
   state.answers.labCampaignMatchStatus = preview.status;
+  state.answers.labOpeningSource = openingSource;
+  state.answers.labMatchedCampaignId = preview.matchedCampaignId;
   persistConversationState(state);
   return res.json({
     ok: true, reply: null, replySource: "scripted_context",
     leadId, campaignId: DEFAULT_CAMPAIGN_ID,
     entryKeyword: keyword, entrySource: source,
     matchedRealCampaign: preview.status === "matched",
+    matchedCampaignId: preview.matchedCampaignId,
     campaignMatchStatus: preview.status,
-    note: preview.status === "matched"
-      ? "Kampagnenentwurf als synthetische Nachricht verwendet."
-      : "Beispiel-Einstieg; keine echte Kampagne oder Meta-Zustellung verifiziert.",
+    openingSource,
+    savedOpeningUsed: openingSource === "saved_campaign_draft",
+    peteHandoffDraftConfigured: Boolean(draft?.flowDraft.enabled && draft.flowDraft.peteHandoffEnabled),
+    note: openingSource === "saved_campaign_draft"
+      ? "Gespeicherte, aktivierte Erstantwort als NoSend-Entwurf gezeigt. Flow-Schritte und Meta-Zustellung nicht ausgeführt."
+      : preview.status === "matched"
+        ? "Kampagne erkannt, aber keine aktivierte Erstantwort im V2-Entwurf. Nur Beispieltext; kein Flow ausgeführt."
+        : "Beispiel-Einstieg; keine passende eindeutige Kampagne oder Meta-Zustellung verifiziert.",
     state: { messages: publicLabMessages(state.messages) },
   });
 }
