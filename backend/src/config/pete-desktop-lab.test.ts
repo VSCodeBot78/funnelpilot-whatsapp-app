@@ -26,6 +26,7 @@ const { default: app } = await import("../app.js");
 const budgetService = await import("../services/pete-api-budget.service.js");
 const { PETE_DESKTOP_HISTORY } = await import("./pete-desktop-history.js");
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
+const { saveCampaign } = await import("../data/campaigns.store.js");
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
 const ledgerFile = path.join(temp, "pete-api-budget.json");
 const reviewFile = path.join(temp, "pete-desktop-history-review.json");
@@ -428,6 +429,58 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal(process.env.INSTAGRAM_SEND_ENABLED, "false");
     assert.equal(process.env.WHATSAPP_SEND_ENABLED, "false");
   });
+  await t.test("campaign entry distinguishes activated V2 draft from demo fallback (NoSend)", async () => {
+    resetFiles();
+    const c = await client();
+    const before = providerCalls;
+    saveCampaign({ id: "lab-enabled-check", name: "Check im Editor", peteCampaign: {
+      sources: ["instagram_dm"], keywords: ["CHECK"],
+      openingText: "Gespeicherte Check-Erstantwort, kein Versand.",
+      followUpEnabled: false, flowDraftEnabled: true, autoReplyEnabled: true,
+      peteHandoffEnabled: true,
+    } });
+    const enabled = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    assert.equal(enabled.status, 200);
+    assert.equal(enabled.body.campaignMatchStatus, "matched");
+    assert.equal(enabled.body.matchedCampaignId, "lab-enabled-check");
+    assert.equal(enabled.body.matchedRealCampaign, true);
+    assert.equal(enabled.body.openingSource, "saved_campaign_draft");
+    assert.equal(enabled.body.savedOpeningUsed, true);
+    assert.equal(enabled.body.peteHandoffDraftConfigured, true);
+    assert.match(enabled.body.state.messages.at(-1).text, /Gespeicherte Check-Erstantwort/);
+    assert.equal(enabled.body.state.messages.at(-1).syntheticAutomation, true);
+    assert.match(enabled.body.note, /NoSend-Entwurf/);
+
+    saveCampaign({ id: "lab-disabled-keto", name: "Keto ohne aktivierte Autoantwort", peteCampaign: {
+      sources: ["instagram_story_reply"], keywords: ["KETO"],
+      openingText: "Diese deaktivierte Antwort darf nicht als Automation gelten.",
+      followUpEnabled: false, flowDraftEnabled: true, autoReplyEnabled: false,
+      peteHandoffEnabled: false,
+    } });
+    const disabled = await c.call("entry", { keyword: "KETO", source: "instagram_story_reply" });
+    assert.equal(disabled.status, 200);
+    assert.equal(disabled.body.campaignMatchStatus, "matched");
+    assert.equal(disabled.body.matchedCampaignId, "lab-disabled-keto");
+    assert.equal(disabled.body.savedOpeningUsed, false);
+    assert.equal(disabled.body.openingSource, "demo_example");
+    assert.equal(disabled.body.peteHandoffDraftConfigured, false);
+    assert.doesNotMatch(disabled.body.state.messages.at(-1).text, /deaktivierte Antwort/);
+    assert.match(disabled.body.note, /keine aktivierte Erstantwort/);
+
+    const noMatch = await c.call("entry", { keyword: "BULLSHIT", source: "instagram_story_reply" });
+    assert.equal(noMatch.status, 200);
+    assert.equal(noMatch.body.campaignMatchStatus, "no_match");
+    assert.equal(noMatch.body.matchedCampaignId, null);
+    assert.equal(noMatch.body.openingSource, "demo_example");
+    assert.equal(noMatch.body.savedOpeningUsed, false);
+    assert.match(noMatch.body.note, /keine passende eindeutige Kampagne/);
+    assert.equal(providerCalls, before, "synthetic entry must never call the model");
+    for (const entry of [enabled, disabled, noMatch]) {
+      assert.ok(entry.body.state.messages.every((m: any) => m.sent !== true));
+      assert.ok(entry.body.state.messages.some((m: any) => m.syntheticAutomation === true));
+    }
+  });
+
   await t.test("unsafe runtime drift rejects the owner session rather than opening a real channel", async () => {
     const c = await granted();
     for (const [key, unsafe] of [["INSTAGRAM_SEND_ENABLED", "true"], ["WHATSAPP_SEND_ENABLED", "true"],
