@@ -65,11 +65,12 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
       calls++;
       const request = JSON.parse(String((options as RequestInit).body));
       assert.match(request.instructions, /kein Nachfassen/i);
-      assert.match(request.instructions, /wieder dieselben Tipps/i);
+      // Verify the current anti-repetition instruction, not outdated wording.
+      assert.match(request.instructions, /bei jeder Nachricht erneut Tipps/i);
       assert.match(request.instructions, /Stagnation nicht automatisch/i);
       return new Response(JSON.stringify({ output: [{ content: [{
         type: "output_text", text: JSON.stringify({
-          reply: "Verstanden. Du kannst dich selbst melden, wenn du Fragen hast.",
+          reply: "Ein möglichst regelmäßiger Schlaf-Wach-Rhythmus hilft vielen Erwachsenen. Feste Aufstehzeiten können dabei ein sinnvoller Anker sein.",
           needsHuman: false,
         }),
       }] }], usage: { input_tokens: 300, output_tokens: 50 } }), { status: 200 });
