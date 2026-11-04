@@ -132,6 +132,7 @@ export default function ChatTest({ v2 = false }) {
   const [refreshing, setRefreshing] = useState(false);
   const [entrySource, setEntrySource] = useState("instagram_dm");
   const [entryNotice, setEntryNotice] = useState("");
+  const [noSendFlow, setNoSendFlow] = useState(null);
   const [calendlyDiagnostic, setCalendlyDiagnostic] = useState(null);
   const [calendlyChecking, setCalendlyChecking] = useState(false);
   const [aiDiagnostic, setAiDiagnostic] = useState(null);
@@ -168,6 +169,7 @@ export default function ChatTest({ v2 = false }) {
         setLeadId(lead.leadId);
         if (active.leadId) {
           setMessages(mapStateMessagesToUi(active.state?.messages || []));
+          setNoSendFlow(active.flow || null);
           setDebug({ replySource: active.replySource,
             llmDiagnostic: active.llmDiagnostic,
             replySuppressedReason: active.replySuppressedReason });
@@ -181,6 +183,7 @@ export default function ChatTest({ v2 = false }) {
     setMessages([]);
     setInput("");
     setEntryNotice("");
+    setNoSendFlow(null);
     setLoading(true);
     try {
       // Manual follower welcomes are prewritten by Jochen, never triggered by
@@ -190,6 +193,7 @@ export default function ChatTest({ v2 = false }) {
       const data = await desktopClient.current.entry(keyword, source);
       setLeadId(data.leadId);
       setDebug(data);
+      setNoSendFlow(data.flow || null);
       setMessages(mapStateMessagesToUi(data.state?.messages || []));
       setEntryNotice(manualWelcome
         ? `Manuelle Follower-Begrüßung ${keyword === "WELCOME_1" ? "1" : "2"} (nur Simulation). Antworte jetzt frei als Follower. Kein echter Versand.`
@@ -201,6 +205,27 @@ export default function ChatTest({ v2 = false }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function simulateFlowAction(action) {
+    if (!leadId || loading || refreshing || !noSendFlow) return;
+    setLoading(true);
+    try {
+      const result = await desktopClient.current.flowAction(leadId, action);
+      setNoSendFlow(result.flow || null);
+      setMessages(mapStateMessagesToUi(result.state?.messages || []));
+      setEntryNotice(result.flow?.stage === "pete_ready"
+        ? "NoSend-Flow fertig: Pete ist für die nächste echte Test-Eingabe freigegeben."
+        : "NoSend-Schritt ausgeführt. Kein Meta-Versand und keine KI-Kosten.");
+    } catch (error) {
+      setEntryNotice("Flow-Schritt blockiert oder bereits verarbeitet. " +
+        (error instanceof Error ? error.message : "Status prüfen."));
+      try {
+        const state = await desktopClient.current.state(leadId);
+        setNoSendFlow(state.flow || null);
+        setMessages(mapStateMessagesToUi(state.state?.messages || []));
+      } catch { /* Continue to show the last verified state. */ }
+    } finally { setLoading(false); }
   }
 
   async function sendMessage() {
@@ -226,7 +251,8 @@ export default function ChatTest({ v2 = false }) {
 
       if (data?.state?.messages) {
         setMessages(mapStateMessagesToUi(data.state.messages));
-      } else {
+      }
+      setNoSendFlow(data.flow || null); else {
         const botMessage = {
           id: `bot_${Date.now()}`,
           role: "bot",
@@ -349,6 +375,7 @@ export default function ChatTest({ v2 = false }) {
       setMessages([]);
       setInput("");
       setEntryNotice("");
+      setNoSendFlow(null);
       setDebug({ info: "Neuer serverseitiger Testkontakt. Budget unverändert.", leadId: lead.leadId, campaignId });
     } catch (error) { setDebug({ error: error.message }); }
     finally { setRefreshing(false); }
@@ -462,7 +489,8 @@ export default function ChatTest({ v2 = false }) {
           <div style={{ color: "#cbd5e1", fontSize: 13, marginBottom: 12 }}>
             CHECK, KETO oder BULLSHIT starten einen eigenen Testkontakt.
             Die erste Bot-Nachricht ist eine simulierte Kampagnen-Automatik, keine Pete-KI.
-            Danach schreibst du frei mit Pete. Kein Meta-Versand.
+            Bei gespeichertem V2-Flow erst Button und Link im NoSend-Labor durchspielen.
+            Pete übernimmt nur bei aktiviertem Handoff nach diesen Schritten. Kein Meta-Versand.
           </div>
           <label htmlFor="pete-entry-source" style={{ fontSize: 13, marginRight: 8 }}>
             Herkunft:
@@ -510,6 +538,46 @@ export default function ChatTest({ v2 = false }) {
           </div>
           {entryNotice && <p role="status" style={{ color: "#f8fafc", fontSize: 13,
             marginTop: 10, marginBottom: 0 }}>{entryNotice}</p>}
+          {noSendFlow && (
+            <div aria-label="Gespeicherter NoSend-Kampagnenablauf"
+              style={{ marginTop: 12, padding: 12, border: "1px solid #ff914d",
+                background: "#172235", borderRadius: 10, fontSize: 13 }}>
+              <strong>V2-Kampagne: {noSendFlow.campaignId}</strong>
+              <div style={{ marginTop: 5, color: "#cbd5e1" }}>
+                Servergebundener Entwurf · Kein Versand · Status: {noSendFlow.stage}
+              </div>
+              {noSendFlow.stage === "await_button" && (
+                <button type="button" disabled={loading || refreshing}
+                  onClick={() => simulateFlowAction("button")}
+                  style={{ marginTop: 9, padding: "9px 12px", border: 0,
+                    borderRadius: 8, background: "#ff914d", color: "#111827", fontWeight: 700 }}>
+                  Button simulieren: {noSendFlow.buttonLabel}
+                </button>
+              )}
+              {noSendFlow.stage === "await_link" && (
+                <div>
+                  <p style={{ margin: "9px 0", overflowWrap: "anywhere" }}>
+                    Gespeicherter Link (nicht automatisch geöffnet):
+                    {" "}{noSendFlow.linkLabel}: {noSendFlow.linkUrl}
+                  </p>
+                  <button type="button" disabled={loading || refreshing}
+                    onClick={() => simulateFlowAction("link")}
+                    style={{ padding: "9px 12px", border: 0, borderRadius: 8,
+                      background: "#ff914d", color: "#111827", fontWeight: 700 }}>
+                    Link-Schritt simulieren
+                  </button>
+                </div>
+              )}
+              {noSendFlow.stage === "pete_ready" &&
+                <p style={{ margin: "9px 0 0" }}>
+                  Pete-Handoff freigegeben. Erst deine nächste Testnachricht startet Pete.
+                </p>}
+              {noSendFlow.stage === "finished" &&
+                <p style={{ margin: "9px 0 0" }}>
+                  Ablauf beendet. Pete-Handoff ist für diese Kampagne nicht aktiviert.
+                </p>}
+            </div>
+          )}
           {entrySource === "instagram_reel_comment" &&
             <p style={{ color: "#cbd5e1", fontSize: 12, marginTop: 8 }}>
               Ein Kommentar eröffnet noch kein reguläres DM-Nachrichtenfenster.
