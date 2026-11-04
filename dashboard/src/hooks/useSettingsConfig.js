@@ -78,7 +78,7 @@ export const defaultSettings = {
     "https://portal.nutrilize.app/product/Vz5Yf8MBIue2MdQLQO9S",
   maxSuggestions: "2",
   bookingPrompt:
-    "Ein kurzer Austausch ist hier am sinnvollsten.\nWann passt es dir eher?\na) unter der Woche abends\nb) Freitag oder Samstag tags\u00fcber\nc) ich bin flexibel",
+    "Möchtest du dir einen Termin für ein persönliches Strategiegespräch über den geprüften Calendly-Link aussuchen?",
   apiBaseUrl: "",
   whatsappProvider: "meta",
   phoneNumberId: "",
