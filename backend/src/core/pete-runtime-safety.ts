@@ -421,7 +421,7 @@ const IDENTITY_QUESTION_REPLY =
 const UNCLEAR_CONTEXT_REPLY =
   "Alles klar. Dann machen wir es einfach:\nWelches Thema m\u00f6chtest du in den n\u00e4chsten Wochen zuerst angehen: Energie, Bauch, Schlaf/Stress oder Struktur?";
 
-function normalizeText(value: string | null | undefined): string {
+export function normalizeText(value: string | null | undefined): string {
   return String(value ?? "")
     .toLowerCase()
     .normalize("NFD")
