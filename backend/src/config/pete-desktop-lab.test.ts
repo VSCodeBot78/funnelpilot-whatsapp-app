@@ -223,6 +223,74 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     assert.equal((await c.call("entry", { keyword: "CHECK", source: "instagram_dm",
       leadId: "lab_desktop_chosen_by_client" })).status, 400);
   });
+  await t.test("V2 saved flow executes only once in session-bound NoSend lab before Pete handoff", async () => {
+    resetFiles();
+    saveCampaign({
+      id: "owner-check-flow", name: "Owner CHECK V2",
+      peteCampaign: {
+        sources: ["instagram_dm", "instagram_reel_comment"], keywords: ["CHECK"],
+        openingText: "Dein CHECK Einstieg.", followUpEnabled: false,
+        flowDraftEnabled: true, autoReplyEnabled: true,
+        openingDmButtonEnabled: true, openingDmButtonLabel: "CHECK starten",
+        linkEnabled: true, linkLabel: "Elterncheck", linkUrl: "https://check.jochen-kammerer.de",
+        linkMessageText: "Hier geht es zum Check.",
+        peteHandoffEnabled: true,
+      },
+    });
+    const c = await client();
+    const other = await client();
+    const before = providerCalls;
+    const entry = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    assert.equal(entry.status, 200);
+    const { leadId } = entry.body;
+    assert.equal(entry.body.matchedCampaignId, "owner-check-flow");
+    assert.equal(entry.body.openingSource, "saved_campaign_draft");
+    assert.equal(entry.body.flow.mode, "nosend_only");
+    assert.equal(entry.body.flow.sendAllowed, false);
+    assert.equal(entry.body.flow.campaignId, "owner-check-flow");
+    assert.equal(entry.body.flow.stage, "await_button");
+    assert.equal(entry.body.state.messages.filter((m: any) => m.syntheticAutomation).length, 1);
+    assert.equal((await c.call("active", {})).body.flow.stage, "await_button");
+    assert.equal((await c.call("flow-action", { leadId, action: "link" })).status, 409);
+    assert.equal((await c.call("flow-action", { leadId, action: "button", campaignId: "forged" })).status, 400);
+    assert.equal((await other.call("flow-action", { leadId, action: "button" })).status, 403);
+    assert.equal((await c.message(leadId, "Kann Pete schon antworten?")).status, 409);
+    const first = await c.call("flow-action", { leadId, action: "button" });
+    assert.equal(first.status, 200);
+    assert.equal(first.body.flow.stage, "await_link");
+    assert.equal(first.body.state.messages.filter((m: any) => m.syntheticAutomation).length, 2);
+    assert.equal(first.body.state.messages.at(-1).text.includes("https://check.jochen-kammerer.de/"), true);
+    assert.equal((await c.call("flow-action", { leadId, action: "button" })).status, 409);
+    const second = await c.call("flow-action", { leadId, action: "link" });
+    assert.equal(second.status, 200);
+    assert.equal(second.body.flow.stage, "pete_ready");
+    assert.equal(second.body.state.messages.length, first.body.state.messages.length,
+      "link click does not fake another DM");
+    assert.equal((await c.call("flow-action", { leadId, action: "link" })).status, 409);
+    const pete = await c.message(leadId, "Ich bin abends oft müde und snacke.");
+    assert.equal(pete.status, 200);
+    assert.equal(providerCalls, before, "flow and default KI-OFF handoff must not reach a provider");
+
+    const stopped = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    assert.equal(stopped.status, 200);
+    const stop = await c.message(stopped.body.leadId, "STOP");
+    assert.equal(stop.status, 200);
+    assert.equal(stop.body.replySuppressedReason, "stopped");
+    assert.equal((await c.call("flow-action", { leadId: stopped.body.leadId, action: "button" })).status, 409);
+    assert.equal(providerCalls, before);
+
+    const human = await c.call("entry", { keyword: "CHECK", source: "instagram_dm" });
+    const state = getConversationState(human.body.leadId, "eltern-vital-fit")!;
+    takeOverByHuman(state); persistConversationState(state);
+    assert.equal((await c.call("flow-action", { leadId: human.body.leadId, action: "button" })).status, 409);
+    assert.equal(providerCalls, before);
+
+    const reel = await c.call("entry", { keyword: "CHECK", source: "instagram_reel_comment" });
+    assert.equal(reel.body.campaignMatchStatus, "manual_review");
+    assert.equal(reel.body.flow, null);
+    assert.equal(reel.body.savedOpeningUsed, false);
+    assert.equal(providerCalls, before);
+  });
   await t.test("ON reaches the real application model path via mocked Responses and meters usage", async () => {
     const c = await granted();
     const before = providerCalls;
