@@ -50,7 +50,7 @@ function isExplicitPaidOfferRefusal(input: string): boolean {
   return (
     /\b(?:bitte\s+)?(?:auch\s+)?keine?\s+(?:(?:weiteren?|anderen?|gunstigeren?|billigeren?)\s+)?(?:kaufalternativen?|kaufangebote?|verkaufsangebote?|angebote?|selbststarter(?:-option)?)\b/.test(refusalText) ||
     /\b(?:ich\s+(?:will|mochte)\s+)?(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/.test(refusalText) ||
-    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachrichten?|kaufangebote?)\b/.test(refusalText) ||
+    /\b(?:bitte\s+)?keine?\s+(?:weitere[nr]?\s+)?(?:verkaufsnachricht(?:en)?|kaufangebote?)\b/.test(refusalText) ||
     /\b(?:lass|lasst|lassen)\s+(?:mal\s+|bitte\s+)?(?:alle\s+)?(?:angebote?|verkaufsangebote?)\b/.test(refusalText)
   );
 }
@@ -635,19 +635,19 @@ export function isSalesFollowUpOptOut(text: string): boolean {
     // explicitly forbidden. Do not let the positive request erase that choice.
     // Exclude the generic "keine Angebote bekommen" phrase from opt-out.
     return [
-      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachrichten?|nachrichten?)\b/,
-      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:weiteren?|anderen?)\s+(?:angebote?|kaufangebote?|verkaufsnachricht(?:en)?|nachrichten?)\b/,
+      /\bkein(?:e|en)?\s+(?:werbenachrichten?|werbung|verkaufsnachricht(?:en)?)\b/,
       /\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben|kontaktieren)\b/,
       /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
       /\b(?:wirklich\s+|gar\s+)?nichts\s+(?:kaufen|bestellen)\b/,
     ].some(pattern => pattern.test(refusalText));
   }
   return isExplicitPaidOfferRefusal(input) || [
-    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachrichten?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
+    /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufsnachricht(?:en)?|werbenachrichten?|werbung|angebote?|verkaufsgesprache?)\b/,
     /\b(?:nicht|kein)\s+(?:mehr\s+)?nachfassen\b/,
     /\b(?:bitte\s+)?nicht\s+(?:(?:mehr|weiter|erneut|nochmal)\s+)?(?:hinterherlaufen|hinterherschreiben|nachhaken)\b/,
     /\bich\s+melde\s+mich\s+(?:(?:dann|spater|wieder)\s+)?selbst\b/,
-    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachrichten?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
+    /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|erneut\s+|nochmal\s+)?(?:mit\s+)?(?:werbung|angeboten?|verkaufsnachricht(?:en)?)\s+(?:anschreiben|kontaktieren|nerven|nachfassen)\b/,
     /\bkein(?:e|en)?\s+(?:weiteren?\s+)?(?:verkaufs|marketing)[- ]?follow[ -]?ups?\b/,
   ].some(pattern => pattern.test(refusalText));
 }
