@@ -99,7 +99,8 @@ function desktopState(req: Request, res: Response) {
   try {
     assertIssuedDesktopLead(req, req.params.leadId, DEFAULT_CAMPAIGN_ID);
     const state = getConversationState(req.params.leadId as string, DEFAULT_CAMPAIGN_ID);
-    return res.json({ ok: true, state: { messages: publicLabMessages(state?.messages ?? []) } });
+    return res.json({ ok: true, flow: state ? getNoSendDraftFlow(req.params.leadId, desktopSessionHash(req)) : null,
+      state: { messages: publicLabMessages(state?.messages ?? []) } });
   } catch { return res.status(403).json({ ok: false, error: "desktop_server_issued_lead_required" }); }
 }
 router.route("/desktop/state/:leadId")
