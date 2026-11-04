@@ -31,13 +31,13 @@ test("Step 1: inbound routing and GPT context do not require legacy A/B/C funnel
 
   await t.test("fresh backend and dashboard defaults do not reintroduce ABC booking choices", () => {
     const prompt = DEFAULT_SETTINGS.bookingPrompt;
-    assert.equal((prompt.match(/\\?/g) ?? []).length, 1);
+    assert.equal((prompt.match(/\?/g) ?? []).length, 1);
     assert.match(prompt, /Calendly/);
-    assert.doesNotMatch(prompt, /(?:^|\\n)\\s*[a-d]\\)/i);
+    assert.doesNotMatch(prompt, /(?:^|\n)\s*[a-d]\)/i);
     const dashboardDefaults = fs.readFileSync(
       new URL("../../../dashboard/src/hooks/useSettingsConfig.js", import.meta.url), "utf8");
-    assert.doesNotMatch(dashboardDefaults, /Wann passt es dir eher\\?/);
-    assert.match(dashboardDefaults, /bookingPrompt:\\s*\\n\\s*".*Calendly.*\\?"/);
+    assert.doesNotMatch(dashboardDefaults, /Wann passt es dir eher\?/);
+    assert.match(dashboardDefaults, /bookingPrompt:\s*\n\s*".*Calendly.*\?"/);
   });
 
   await t.test("all channels can share natural mode; legacy is explicit and reversible", () => {
