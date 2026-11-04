@@ -8,6 +8,7 @@ import {
 } from "./pete-objection-handler.js";
 import {
   evaluatePeteRuntimeSafety,
+  normalizeText,
   type PeteRuntimeSafetyResult,
 } from "./pete-runtime-safety.js";
 
@@ -78,17 +79,6 @@ const PRIORITY = {
 } as const;
 
 type LinkTarget = "info" | "booking" | "clarify" | "info_clarify";
-
-function normalizeText(value: string | null | undefined): string {
-  return String(value ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ÃŸ/g, "ss")
-    .replace(/[^\p{L}\p{N}\s€]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function includesAnyKeyword(
   normalizedInput: string,
