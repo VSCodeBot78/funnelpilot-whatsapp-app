@@ -59,3 +59,17 @@ export function formatDesktopUsd(value) {
   return typeof value === "number" && Number.isFinite(value)
     ? value.toFixed(6) + " USD" : "Nicht belegt";
 }
+
+/** Translate only known server denials; never mistake a rejected lab step for a network outage. */
+export function explainDesktopMessageFailure(errorCode) {
+  switch (errorCode) {
+    case "nosend_campaign_context_stale":
+      return "Gespeicherte Kampagne wurde geändert oder gelöscht. Pete bleibt gesperrt. STOP oder menschliche Übernahme wurde nicht bestätigt.";
+    case "nosend_flow_session_expired":
+      return "Der NoSend-Test ist abgelaufen. Kein automatischer Übergang zu Pete. STOP oder menschliche Übernahme wurde nicht bestätigt.";
+    case "nosend_flow_action_required":
+      return "Zuerst den offenen Button- oder Link-Schritt im NoSend-Labor abschließen. Diese Nachricht wurde nicht angenommen.";
+    default:
+      return "Testnachricht nicht bestätigt. Bitte den sicheren Laborstatus prüfen; kein erfolgreicher Versand belegt.";
+  }
+}
