@@ -251,8 +251,7 @@ export default function ChatTest({ v2 = false }) {
 
       if (data?.state?.messages) {
         setMessages(mapStateMessagesToUi(data.state.messages));
-      }
-      setNoSendFlow(data.flow || null); else {
+      } else {
         const botMessage = {
           id: `bot_${Date.now()}`,
           role: "bot",
@@ -262,6 +261,7 @@ export default function ChatTest({ v2 = false }) {
 
         setMessages((prev) => [...prev, botMessage]);
       }
+      setNoSendFlow(data.flow || null);
     } catch (error) {
       const errorMessage = {
         id: `bot_error_${Date.now()}`,
