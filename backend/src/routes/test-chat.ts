@@ -505,7 +505,7 @@ function simulateDesktopEntry(req: Request, res: Response) {
     flow: run?.flow ?? null,
     peteHandoffDraftConfigured: Boolean(draft?.flowDraft.enabled && draft.flowDraft.peteHandoffEnabled),
     note: run
-      ? "Gespeicherter NoSend-Flow gestartet: Schritte nur durch simulierte Interaktion; keine Meta-Zustellung. Pete erst nach freigegebenem Handoff."
+      ? "Gespeicherter NoSend-Entwurf: Flow startet im Labor; Button/Link nur simuliert, keine Meta-Zustellung. Pete erst nach freigegebenem Handoff."
       : preview.status === "matched"
         ? "Kampagne erkannt, aber keine aktivierte Erstantwort im V2-Entwurf. Nur Beispieltext; kein Flow ausgeführt."
         : "Beispiel-Einstieg; keine passende eindeutige Kampagne oder Meta-Zustellung verifiziert.",
