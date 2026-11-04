@@ -1,5 +1,7 @@
 # Funnel Pilot – Laptop-Abnahme vor Hetzner (Windows)
 
+> **Aktueller Laptop-Pfad – 04.11.2026 (PR #193):** Für den späteren Owner-Betatest ist ausschließlich `FunnelPilot-Laptop-GO.cmd` im vorhandenen Checkout `feat/dashboard-v2-preview-20261023` vorgesehen. Dieses Startskript verbindet das lokal abgesicherte Backend, Dashboard V2 und das Pete-Labor; Meta-Sends sind AUS, bezahlte KI ist standardmäßig AUS. Der unter anderen Branches entwickelte `FunnelPilot-AutoStart.cmd`, der alleinige Dashboard-Starter und die unten beschriebenen Phase-20/32-Schritte sind historische beziehungsweise gesonderte Diagnosepfade **und nicht die aktuelle gemeinsame Beta-Startanweisung**. Dieser Hinweis ist keine Aussage über eine schon erfolgte physische Laptop-Abnahme. Keine alten Launcher für den gemeinsamen Owner-Test parallel starten.
+
 > **Phase 32 (10.10.2026):** Für den kürzesten sicheren Windows-Abnahmelauf inklusive automatischem HTTP-Sicherheits-Preflight, konkreten STOP-Kriterien und Rollback zuerst **[PHASE32_SICHERER_LAPTOP_TEST.md](PHASE32_SICHERER_LAPTOP_TEST.md)** verwenden. Diese Datei bleibt die ausführliche Hintergrund- und manuelle Fehlerdiagnose. **Der echte Windows-Laptop wurde noch nicht getestet.** Der Starter öffnet das Dashboard nun erst nach grünem lokalem Preflight.
 
 ## Neuer Kurzstart: sicherer Ein-Kommando-Test (Phase 20)
