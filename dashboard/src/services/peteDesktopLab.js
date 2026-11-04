@@ -37,6 +37,7 @@ export function createPeteDesktopClient(fetcher = (...args) => fetch(...args)) {
     newLead: () => request("POST", "lead", {}),
     active: () => request("POST", "active", {}),
     entry: (keyword, source) => request("POST", "entry", { keyword, source }),
+    flowAction: (leadId, action) => request("POST", "flow-action", { leadId, action }),
     state: leadId => request("POST", "state/" + encodeURIComponent(leadId), {}),
     message: (leadId, campaignId, messageText) => request("POST", "message", { leadId, campaignId, messageText }),
     setBudget: enabled => request("POST", "budget", { enabled }),
