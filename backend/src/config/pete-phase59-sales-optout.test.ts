@@ -80,7 +80,11 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
     assert.equal(first.state.flags.stopped, false);
     assert.equal(first.state.owner, "ai");
     assert.equal(first.state.aiPaused, false);
-    assert.equal(first.state.answers.peteReplySource, "llm");
+    // Sales opt-outs receive a deterministic acknowledgement without a paid call.
+    assert.equal(first.state.answers.peteReplySource, "verified_transaction");
+    assert.match(first.text ?? "", /Kaufangebote weg/);
+    assert.doesNotMatch(first.text ?? "", /https?:\/\/|€|checkout/i);
+    assert.equal(calls, 0);
     const state = getConversationState(id, DEFAULT_CAMPAIGN_ID);
     assert.ok(state);
     state.providerBooking = {
@@ -107,7 +111,8 @@ test("Phase 59: sales follow-up refusal is persistent and not a full STOP", asyn
     assert.ok(next.text);
     assert.equal(next.state.flags.salesFollowUpsOptedOut, true);
     assert.equal(next.state.owner, "ai");
-    assert.equal(calls, 2);
+    assert.equal(next.state.answers.peteReplySource, "llm");
+    assert.equal(calls, 1, "only the later user-initiated question reaches the mock LLM");
     assert.equal(evaluateProviderBookingFollowUp(next.state).dueNow, false);
   });
 
