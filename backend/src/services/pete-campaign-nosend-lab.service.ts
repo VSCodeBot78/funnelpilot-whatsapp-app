@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { PeteCampaignDraftContext } from "./pete-campaign-entry-preview.service.js";
+import { getCampaignById as getSavedCampaignById, normalizePeteCampaignConfig } from "../data/campaigns.store.js";
 
 // A single synthetic bridge between saved V2 drafts and Pete's EXISTING owner lab.
 // It has no transport, Meta, provider, campaign-runtime or send capability.
@@ -22,10 +23,29 @@ type InternalFlow = {
   expiresAt: number;
   view: NoSendFlowView;
   linkText: string;
+  campaignFingerprint: string;
+  matchedKeyword: string | null;
 };
+export type NoSendPeteCampaignContext = Readonly<{
+  campaignId: string;
+  source: string;
+  matchedKeyword: string | null;
+}>;
 const FLOWS = new Map<string, InternalFlow>();
 const TTL_MS = 8 * 60 * 60 * 1000;
 const MAX_FLOWS = 1024;
+
+/** A changed/deleted campaign cannot silently become the default Pete offer. */
+function campaignFingerprint(campaignId: string): string | null {
+  const record = getSavedCampaignById(campaignId);
+  if (!record || record.id !== campaignId) return null;
+  const data = JSON.stringify({
+    name: typeof record.name === "string" ? record.name : "",
+    draft: normalizePeteCampaignConfig(record.peteCampaign),
+    offer: record.offerContext ?? null,
+  });
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
 
 function validSession(leadId: string, sessionHash: string): boolean {
   return /^lab_desktop_[a-f0-9]{48}$/.test(leadId) && /^[a-f0-9]{64}$/.test(sessionHash);
@@ -58,6 +78,8 @@ export function startNoSendDraftFlow(input: {
       !draft.flowDraft.enabled || !draft.flowDraft.autoReplyEnabled ||
       !safeMessage(draft.flowDraft.text) ||
       !["instagram_dm", "instagram_story_reply"].includes(draft.source)) return null;
+  const fingerprint = campaignFingerprint(draft.campaignId);
+  if (!fingerprint) return null;
   cleanExpired();
   if (FLOWS.has(leadId)) throw Error("nosend_flow_already_started");
   if (FLOWS.size >= MAX_FLOWS) throw Error("nosend_flow_capacity");
@@ -79,7 +101,8 @@ export function startNoSendDraftFlow(input: {
     openingVariant,
   };
   const flow: InternalFlow = { sessionHash, expiresAt: Date.now() + TTL_MS,
-    view, linkText: safeMessage(config.linkMessageText) };
+    view, linkText: safeMessage(config.linkMessageText),
+    campaignFingerprint: fingerprint, matchedKeyword: draft.matchedKeyword };
   FLOWS.set(leadId, flow);
   const openingMessage = [variants[openingVariant], !withButton && withLink ? linkMessage(flow) : ""]
     .filter(Boolean).join("\n");
@@ -105,6 +128,8 @@ export function advanceNoSendDraftFlow(input: {
   const view = getNoSendDraftFlow(leadId, sessionHash);
   if (!view) throw Error("nosend_flow_missing");
   const record = FLOWS.get(leadId)!;
+  if (campaignFingerprint(view.campaignId) !== record.campaignFingerprint)
+    throw Error("nosend_campaign_context_stale");
   if (view.stage === "await_button" && action === "button") {
     record.view.buttonLabel = null;
     record.view.stage = view.linkUrl ? "await_link" : nextStage(view);
@@ -116,4 +141,20 @@ export function advanceNoSendDraftFlow(input: {
     return { flow: { ...record.view }, message: null };
   }
   throw Error("nosend_action_out_of_order");
+}
+
+/** Only the owning authenticated test session can expose a ready campaign to Pete. */
+export function getReadyNoSendPeteCampaignContext(
+  leadId: string, sessionHash: string,
+): NoSendPeteCampaignContext | null {
+  const view = getNoSendDraftFlow(leadId, sessionHash);
+  if (!view || view.stage !== "pete_ready" || !view.peteHandoffConfigured) return null;
+  const record = FLOWS.get(leadId);
+  if (!record || campaignFingerprint(view.campaignId) !== record.campaignFingerprint)
+    return null;
+  return Object.freeze({
+    campaignId: view.campaignId,
+    source: view.source,
+    matchedKeyword: record.matchedKeyword,
+  });
 }
