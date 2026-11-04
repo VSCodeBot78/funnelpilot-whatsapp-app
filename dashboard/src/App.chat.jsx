@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { buildApiUrl } from "./services/apiBase";
 import { describePeteReplySource } from "./utils/peteReplySource";
-import { createPeteDesktopClient, desktopBlockReason, formatDesktopUsd } from "./services/peteDesktopLab";
+import { createPeteDesktopClient, desktopBlockReason, formatDesktopUsd, explainDesktopMessageFailure } from "./services/peteDesktopLab";
 
 function getCurrentTime() {
   return new Date().toLocaleTimeString("de-DE", {
@@ -263,17 +263,18 @@ export default function ChatTest({ v2 = false }) {
       }
       setNoSendFlow(data.flow || null);
     } catch (error) {
-      const errorMessage = {
-        id: `bot_error_${Date.now()}`,
-        role: "bot",
-        text: "Fehler beim Verbinden mit dem Backend.",
-        time: getCurrentTime(),
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-      setDebug({
-        error: error instanceof Error ? error.message : "Backend nicht erreichbar",
-      });
+      const code = error instanceof Error ? error.message : "";
+      setEntryNotice(explainDesktopMessageFailure(code));
+      setDebug({ error: code || "Pete-Labor nicht erreichbar" });
+      // A failed POST is not an accepted follower message. Never leave the
+      // optimistic copy in the transcript or invent a bot reply.
+      setMessages(previous => previous.filter(message => message.id !== userMessage.id));
+      setInput(text);
+      try {
+        const current = await desktopClient.current.state(leadId);
+        setMessages(mapStateMessagesToUi(current.state?.messages || []));
+        setNoSendFlow(current.flow || null);
+      } catch { /* Retain last verified transcript; do not fake success. */ }
     } finally {
       setLoading(false);
       checkPeteKiReadOnly();
