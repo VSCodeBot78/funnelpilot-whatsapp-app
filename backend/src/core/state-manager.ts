@@ -250,6 +250,23 @@ export function resetPriceFlowState(
   });
 }
 
+/** Typed access to persisted lead answers, with legacy fallback rules. */
+export function getStoredAnswerString(
+  state: ConversationState,
+  key: string,
+): string | undefined {
+  const value = state.answers[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function getStoredAnswerNumber(
+  state: ConversationState,
+  key: string,
+): number | undefined {
+  const value = state.answers[key];
+  return typeof value === "number" ? value : undefined;
+}
+
 export function patchFlags(
   state: ConversationState,
   updates: Partial<LeadFlags>,

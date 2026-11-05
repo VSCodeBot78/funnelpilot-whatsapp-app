@@ -1,4 +1,5 @@
 import { matchExplicitStopPhrase } from "./stop-keyword-match.js";
+import type { ConversationState } from "../types/types.js";
 
 export type ObjectionIntent =
   | "price"
@@ -36,6 +37,36 @@ export type PeteObjectionResult = PeteObjectionClassification & {
   shouldSendInfoLink?: boolean;
   reason?: string;
 };
+
+/** Pure objection progression and state metadata, formerly in engine. */
+function nowIso(): string { return new Date().toISOString(); }
+export function getPeteObjectionCount(
+  state: ConversationState,
+  intent: ObjectionIntent,
+): number {
+  const previousIntent =
+    typeof state.answers.objectionIntent === "string"
+      ? state.answers.objectionIntent
+      : "";
+  const previousCount =
+    typeof state.answers.objectionCount === "number"
+      ? state.answers.objectionCount
+      : 0;
+
+  return previousIntent === intent ? previousCount + 1 : 1;
+}
+
+export function buildPeteObjectionStatePatch(result: PeteObjectionResult) {
+  return {
+    objectionIntent: result.intent,
+    objectionAction: result.action,
+    objectionCount: result.objectionCount,
+    objectionTemplateId: result.templateId,
+    objectionMatchedKeyword: result.matchedKeyword,
+    handoffReason: result.shouldHandoffToJochen ? result.reason : undefined,
+    objectionLastAt: nowIso(),
+  };
+}
 
 const HARD_STOP_REPLY =
   "Alles klar, danke für die Rückmeldung. Dann schreibe ich dir dazu nicht weiter.";

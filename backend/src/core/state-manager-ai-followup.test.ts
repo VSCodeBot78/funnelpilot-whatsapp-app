@@ -4,6 +4,7 @@ import type { ConversationState } from "../types/types.js";
 import {
   getPendingAiFollowUpQuestion, getPendingAiReturnStep,
   getPendingAiSource, resetPriceFlowState,
+  getStoredAnswerString, getStoredAnswerNumber,
 } from "./state-manager.js";
 
 const stateWith = (answers: Record<string, unknown>): ConversationState =>
@@ -44,5 +45,27 @@ test("extracted pending-AI selectors retain exact legacy trim and missing-value 
     assert.equal(s.owner, "human");
     assert.equal(s.flags.stopped, true);
     assert.notEqual(s.updatedAt, "2020-01-01T00:00:00.000Z");
+  });
+});
+
+test("stored answer selectors preserve trimmed-string and number-only access", async t => {
+  const s = stateWith({
+    name: "  Alex  ", score: 7, empty: "   ",
+    numericText: "42", boolFlag: true, zero: 0, nan: Number.NaN,
+  });
+  await t.test("trim string without changing saved state", () => {
+    assert.equal(getStoredAnswerString(s, "name"), "Alex");
+    assert.equal(s.answers.name, "  Alex  ");
+    assert.equal(getStoredAnswerString(s, "empty"), undefined);
+    assert.equal(getStoredAnswerString(s, "score"), undefined);
+    assert.equal(getStoredAnswerString(s, "missing"), undefined);
+  });
+  await t.test("number includes zero and prior NaN behavior, but not numeric strings", () => {
+    assert.equal(getStoredAnswerNumber(s, "score"), 7);
+    assert.equal(getStoredAnswerNumber(s, "zero"), 0);
+    assert.ok(Number.isNaN(getStoredAnswerNumber(s, "nan")));
+    assert.equal(getStoredAnswerNumber(s, "numericText"), undefined);
+    assert.equal(getStoredAnswerNumber(s, "boolFlag"), undefined);
+    assert.equal(getStoredAnswerNumber(s, "missing"), undefined);
   });
 });

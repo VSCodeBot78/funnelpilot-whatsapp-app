@@ -93,6 +93,8 @@ import {
   evaluatePeteObjection,
   type ObjectionIntent,
   type PeteObjectionResult,
+  getPeteObjectionCount,
+  buildPeteObjectionStatePatch,
 } from "./pete-objection-handler.js";
 import {
   buildPeteRuntimeInfoLinkReply,
@@ -106,6 +108,8 @@ import {
   getPendingAiFollowUpQuestion,
   getPendingAiReturnStep,
   getPendingAiSource,
+  getStoredAnswerString,
+  getStoredAnswerNumber,
   resetPriceFlowState,
   patchAnswers,
   patchFlags,
@@ -423,22 +427,6 @@ function getRuntimeBookingUrl(params: {
   return candidates.find(isHttpUrl)?.trim();
 }
 
-function getStoredAnswerString(
-  state: ReturnType<typeof getOrCreateConversationState>,
-  key: string,
-): string | undefined {
-  const value = state.answers[key];
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function getStoredAnswerNumber(
-  state: ReturnType<typeof getOrCreateConversationState>,
-  key: string,
-): number | undefined {
-  const value = state.answers[key];
-  return typeof value === "number" ? value : undefined;
-}
-
 function applyPeteDecisionStatePatch(params: {
   decision: PeteDecision;
   composed: PeteComposedResponse;
@@ -600,34 +588,6 @@ function buildPeteSafetyStatePatch(
     peteRuntimeSafetyLeadTemperature: safety.leadTemperature,
     peteRuntimeSafetyReason: safety.reason,
     peteRuntimeSafetyLastAt: nowIso(),
-  };
-}
-
-function getPeteObjectionCount(
-  state: ReturnType<typeof getOrCreateConversationState>,
-  intent: ObjectionIntent,
-): number {
-  const previousIntent =
-    typeof state.answers.objectionIntent === "string"
-      ? state.answers.objectionIntent
-      : "";
-  const previousCount =
-    typeof state.answers.objectionCount === "number"
-      ? state.answers.objectionCount
-      : 0;
-
-  return previousIntent === intent ? previousCount + 1 : 1;
-}
-
-function buildPeteObjectionStatePatch(result: PeteObjectionResult) {
-  return {
-    objectionIntent: result.intent,
-    objectionAction: result.action,
-    objectionCount: result.objectionCount,
-    objectionTemplateId: result.templateId,
-    objectionMatchedKeyword: result.matchedKeyword,
-    handoffReason: result.shouldHandoffToJochen ? result.reason : undefined,
-    objectionLastAt: nowIso(),
   };
 }
 
