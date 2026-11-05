@@ -9,6 +9,53 @@ import { OFFER_TRUTH, isUnverifiedLongTermPriceQuestion,
   LONG_TERM_PRICE_UNVERIFIED_REPLY } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { getPeteStrategyCallFollowUp } from "./pete-strategy-call-followup.js";
+import { getConversationState } from "../data/store.js";
+import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
+
+/** Founder configuration only. No model, browser or lead supplies hosts/URLs.
+ * A future tenant adapter must provide its own authenticated configuration.
+ */
+export function getPeteGuardedNextStep(
+  text: string, state: ConversationState, bookingUrl?: string,
+  proposal?: PeteNextStepProposal,
+) {
+  // A pending model call can retain an obsolete object after a store update.
+  // Recheck action authority against the current persisted record, including
+  // an opt-out that did not itself transfer human ownership.
+  const current = getConversationState(state.leadId, state.campaignId);
+  if (current && current !== state) {
+    const lastLead = [...current.messages].reverse().find(message => message.role === "user");
+    if (lastLead?.text !== text) return null;
+    state = current;
+  }
+  if (!state.flags) return null;
+  const messages = state.messages ?? [];
+  const lastLead = [...messages].reverse().find(message => message.role === "user");
+  const lastLeadIndex = lastLead ? messages.lastIndexOf(lastLead) : -1;
+  const previous = messages.slice(0, Math.max(0, lastLeadIndex));
+  const lastAssistant = [...previous].reverse().find(message => message.role === "assistant");
+  const latestBookingChoice = previous.filter(message => message.role === "user").slice(-6).reverse()
+    .find(message => isPeteBookingDeclined(message.text) ||
+      guardPeteNextStep(proposePeteNextStep(message.text), {
+        lastUserText: message.text, bookingUrl,
+        bookingHosts: ["calendly.com"], offerInfoHosts: [],
+      })?.nextPhase === "booking_offered");
+  const bookingRequestActive = Boolean(latestBookingChoice && !isPeteBookingDeclined(latestBookingChoice.text) &&
+    lastAssistant?.text.includes("?") && /\b(?:wann|erreichbar|welche.{0,20}zeit)\b/i.test(lastAssistant.text));
+  const inferred = proposePeteNextStep(text);
+  const proposed = proposal ?? (bookingRequestActive && inferred.nextStep === "none"
+    ? { nextStep: "booking" as const, evidenceQuote: text } : inferred);
+  return guardPeteNextStep(proposed, {
+    lastUserText: text, owner: state.owner, aiPaused: state.aiPaused,
+    stopped: state.flags.stopped, handoffActive: state.flags.peteRuntimeHandoffActive,
+    salesOptedOut: state.flags.salesFollowUpsOptedOut,
+    noQuestionsRequested: hasPeteActiveNoQuestionBoundary(state),
+    bookingRequestActive,
+    bookingUrl, offerInfoUrl: OFFER_TRUTH.coachingEntry.infoUrl,
+    bookingHosts: ["calendly.com"], offerInfoHosts: ["jochen-kammerer.de"],
+  });
+}
 
 export type PeteVerifiedAnswer = {
   text: string;

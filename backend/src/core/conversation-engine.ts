@@ -1429,7 +1429,7 @@ export async function processIncomingMessage(
     }
 
     if (isPeteLlmConversationSelected()) {
-      const result = await getPeteLlmConversationReply(state);
+      const result = await getPeteLlmConversationReply(state, bookingUrl);
       // The LLM call is asynchronous. A human may take over, STOP may arrive,
       // or another incoming message may supersede this one during the await.
       // Always reload the authoritative state before appending its response.
@@ -1457,14 +1457,34 @@ export async function processIncomingMessage(
           detectedIntent: "unknown", state: latest,
           replySuppressedReason: "desktop_switched_off" };
       }
-      if (result.kind === "llm" || result.kind === "safe_reply") {
-        updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" : "safe_noncritical");
-        if (result.kind === "llm") patchAnswers(latest, {
+      if (result.kind === "llm" || result.kind === "safe_reply" || result.kind === "verified_next_step") {
+        patchAnswers(latest, {
+          peteProviderUsageMetered: false, peteProviderModel: undefined,
+          peteProviderInputTokens: undefined, peteProviderOutputTokens: undefined,
+          peteSemanticNextStep: undefined,
+          peteSemanticProposalRejected: result.kind === "llm" && result.rejectedNextStep === true,
+        });
+        updateAnswer(latest, "peteReplySource", result.kind === "llm" ? "llm" :
+          result.kind === "verified_next_step" ? "verified_transaction" : "safe_noncritical");
+        if (result.kind === "llm" || result.kind === "verified_next_step") patchAnswers(latest, {
           peteProviderUsageMetered: Boolean(result.usage),
           peteProviderModel: result.usage?.model,
           peteProviderInputTokens: result.usage?.inputTokens,
           peteProviderOutputTokens: result.usage?.outputTokens,
         });
+        if (result.kind === "verified_next_step") {
+          updateAnswer(latest, "peteSemanticNextStep", result.nextStep);
+          if (result.nextPhase) updateAnswer(latest, "naturalPhase", result.nextPhase);
+          // Link-only browsing is NOT booking intent or follow-up authorization.
+          if (result.nextPhase === "booking_offered" && bookingUrl) {
+            patchFlags(latest, { wantsBooking: true });
+            setCurrentStep(latest, "booking");
+            latest.providerBooking = activateProviderBookingState({
+              current: latest.providerBooking, provider: inferBookingProviderFromUrl(bookingUrl),
+              bookingUrl, linkSentAt: nowIso(),
+            });
+          }
+        }
         appendAssistantMessage(latest, result.text);
         persistConversationState(latest);
         return { text: result.text, nextStep: latest.currentStep,
