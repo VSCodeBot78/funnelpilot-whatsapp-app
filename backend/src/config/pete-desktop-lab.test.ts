@@ -329,7 +329,27 @@ test("Desktop owner scope and durable budget, real HTTP with mocked providers on
     const removed = await c.message(removedEntry.body.leadId, "Bitte nenn mir einen Link.");
     assert.equal(removed.status, 409);
     assert.equal(removed.body.error, "nosend_campaign_context_stale");
-    assert.equal(providerCalls, before, "a stale or missing draft must never reach OpenAI");
+
+    // Safety instructions must remain effective even if the stored draft changes.
+    const changedStop = await c.message(entry.body.leadId, "STOP");
+    assert.equal(changedStop.status, 200);
+    assert.equal(changedStop.body.reply, null);
+    assert.equal(changedStop.body.replySuppressedReason, "stopped");
+    assert.equal(changedStop.body.providerUsage, null);
+    const stoppedState = getConversationState(entry.body.leadId, "eltern-vital-fit")!;
+    assert.equal(stoppedState.flags.stopped, true);
+    assert.equal(stoppedState.flags.salesFollowUpsOptedOut, true);
+
+    const removedHuman = await c.message(removedEntry.body.leadId, "Ich möchte mit Jochen sprechen.");
+    assert.equal(removedHuman.status, 200);
+    assert.equal(removedHuman.body.reply, null, "explicit human takeover stays silent");
+    assert.equal(removedHuman.body.replySuppressedReason, "human_owned");
+    assert.equal(removedHuman.body.providerUsage, null);
+    const humanState = getConversationState(removedEntry.body.leadId, "eltern-vital-fit")!;
+    assert.equal(humanState.owner, "human");
+    assert.equal(humanState.aiPaused, true);
+    assert.equal(humanState.lastActor, "human");
+    assert.equal(providerCalls, before, "stale draft STOP/Human may never reach OpenAI");
   });
   await t.test("ON reaches the real application model path via mocked Responses and meters usage", async () => {
     const c = await granted();
