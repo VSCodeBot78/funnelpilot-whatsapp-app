@@ -63,6 +63,7 @@ export function isExplicitPeteHumanTakeoverRequest(text: string): boolean {
   if (/^(?:bitte\s+)?lass\s+jochen\s+(?:(?:bitte|personlich|hier|jetzt|im\s+chat)\s+){0,5}(?:ubernehm\w*|ubernimm\w*|antwort\w*|schreib\w*)[.!\s]*$/i.test(input)) return true;
   if (/\b(?:mit\s+jochen\s+(?:(?:personlich|direkt)\s+)?(?:schreiben|reden|sprechen)|kein\s+bot\s+bitte)\b/i.test(input) &&
       !/\b(?:nicht|kein)\s+(?:mit\s+jochen|personlich\s+schreiben)\b/i.test(input)) return true;
+  if (/\bjochen\s+soll\s+(?:(?:bitte|jetzt)\s+)?(?:den\s+|diesen\s+)?chat\s+(?:personlich\s+)?ubernehm\w*\b/i.test(input)) return true;
   if (/\bjochen\s+(?:(?:soll|kann|konnte)\s+)?(?:bitte\s+)?(?:hier\s+)?(?:(?:in\s+diesem|im)\s+chat\s+)?(?:ubernehm\w*|ubernimm\w*|antwort\w*|schreib\w*)\b/i.test(input)) return true;
   return /\b(?:jochen\s+(?:soll\s+)?(?:bitte\s+)?(?:hier\s+)?(?:ubernehmen|antworten|schreiben)|(?:ich\s+mochte|ich\s+will|bitte)\s+(?:mit\s+)?(?:einem\s+)?(?:echten?\s+)?menschen\s+(?:hier\s+)?(?:schreiben|reden|sprechen)|(?:ubergeb|gib|verbinde)\w*\s+(?:den\s+chat\s+)?(?:an\s+)?jochen|jochen\s+hier\s+(?:im\s+)?chat\s+(?:personlich\s+)?(?:ubernehm|ubernimm|schreib|antwort)|personliche\s+ubernahme\s+ist\s+mir\s+wichtiger|(?:ich\s+will|ich\s+mochte)\s+(?:lieber\s+)?(?:hier\s+)?mit\s+jochen\s+(?:schreiben|reden)|bitte\s+kein(?:en)?\s+bot\s+mehr)\b/i.test(input);
 }

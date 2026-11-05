@@ -11,7 +11,7 @@ import type { ConversationState } from "../types/types.js";
 import { getPeteStrategyCallFollowUp } from "./pete-strategy-call-followup.js";
 import { getConversationState } from "../data/store.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
-import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
+import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, isPeteBookingCancellationRequest, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
 
 /** Founder configuration only. No model, browser or lead supplies hosts/URLs.
  * A future tenant adapter must provide its own authenticated configuration.
@@ -107,6 +107,14 @@ export function getPeteVerifiedTransactionAnswer(
   text: string, state: ConversationState, bookingUrl?: string,
 ): PeteVerifiedAnswer | null {
   const input = norm(text);
+  // Existing appointments are not cancelled in this app. Hand the request to Jochen.
+  if (isPeteBookingCancellationRequest(text)) {
+    return { text: "Eine Terminabsage muss anhand der tatsächlichen Buchung geklärt werden. Ich gebe das an Jochen weiter, ohne eine Stornierung oder einen neuen Termin zu bestätigen.", handoff: true };
+  }
+  // Payment incidents always precede information links and new sales steps.
+  if (/\b(?:doppelt|zweimal|zwei\s+mal)\b.{0,35}\b(?:abgebucht|bezahlt|belastet)\b|\b(?:abgebucht|bezahlt|belastet)\b.{0,35}\b(?:doppelt|zweimal|zwei\s+mal)\b/.test(input)) {
+    return { text: "Eine mögliche doppelte Abbuchung muss Jochen anhand der tatsächlichen Zahlung prüfen. Ich gebe den Vorgang zur persönlichen Klärung weiter, ohne eine Erstattung zu bestätigen.", handoff: true };
+  }
   // Exact source keywords are verified resource requests, including when
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.
@@ -132,6 +140,16 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  // Use the existing exact-evidence guard and trusted server URLs.
+  // A passive calendar request must not create booking consent or reminders.
+  const verifiedLink = getPeteGuardedNextStep(text, state, bookingUrl);
+  if (verifiedLink?.nextStep === "offer_info" && !explicitlyDeclinesPaidOffers &&
+      !/\b(?:bezahlt|gekauft|bestellt|zahlung|rechnung|zugang|freischalt\w*|abbuch\w*|ruckzahl\w*|erstatt\w*)\b/.test(input)) {
+    return { text: verifiedLink.text };
+  }
+  if (verifiedLink?.nextStep === "booking") {
+    return { text: verifiedLink.text, nextPhase: verifiedLink.nextPhase };
+  }
   // A short follow-up may omit the offer name. Use only the latest earlier
   // customer message naming an offer, never an old campaign or guess.
   const lastOfferMention = (state.messages ?? []).slice(0, -1).slice(-8).reverse()

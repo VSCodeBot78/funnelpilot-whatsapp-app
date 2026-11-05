@@ -37,6 +37,7 @@ export function isPeteBookingCancellationRequest(text: string): boolean {
 export function isPeteBookingDeclined(text: string): boolean {
   const s = norm(text);
   return isPeteBookingCancellationRequest(text) ||
+    /\bohne\s+(?:(?:vorheriges?|einen?|ein|verpflichtendes?)\s+)?(?:pflichttermin|pflichtcall|strategiegesprach|erstgesprach|telefonat|gesprach|call|termin)\b/.test(s) ||
     /\bkein(?:e|en)?\s+(?:(?:weiteren?|neuen?|telefonischen?|solchen?|freien?|verfugbaren?|bestatigten?)\s+){0,3}(?:termin\w*|buchungslink|terminlink|kalenderlink|gesprach\w*|telefonat\w*|anruf\w*)\b/.test(s) ||
     /\b(?:bevor|ehe)\b.{0,90}\b(?:termin|gesprach|telefonat|telefonieren)\b/.test(s) ||
     /\berst\b.{0,65}\b(?:verstehen|klaren|besprechen|nachdenken|uberlegen)\b/.test(s) ||
@@ -73,7 +74,8 @@ function hasPeteExplicitBookingWish(s: string): boolean {
 }
 function isPetePassiveBookingLinkRequest(s: string): boolean {
   const urlWords = /\b(?:buchungslink|terminlink|kalenderlink|terminkalender|buchungsseite|kalender)\b/;
-  const lookup = /\b(?:wo|wohin|auf\s+welcher|wie\s+komme|wie\s+finde|wie\s+gelange)\b.{0,85}\b(?:buchungslink|terminlink|kalenderlink|terminkalender|buchungsseite|kalender)\b/.test(s) ||
+  const callLinkLookup = /\b(?:schick\w*|sende\w*|zeig\w*|gib|hast\s+du|kannst\s+du)\b.{0,90}\blink\b.{0,95}\b(?:strategiegesprach|personlich(?:es|en)?\s+gesprach|termin)\b/.test(s);
+  const lookup = callLinkLookup || /\b(?:wo|wohin|auf\s+welcher|wie\s+komme|wie\s+finde|wie\s+gelange)\b.{0,85}\b(?:buchungslink|terminlink|kalenderlink|terminkalender|buchungsseite|kalender)\b/.test(s) ||
     /\b(?:schick\w*|sende\w*|zeig\w*|gib)\b.{0,40}\b(?:buchungslink|terminlink|kalenderlink|terminkalender|kalender)\b/.test(s) ||
     /\b(?:wie\s+(?:kann|konnte)\s+ich|(?:kann|konnte)\s+ich)\b.{0,75}\b(?:kalender|terminkalender|buchungsseite)\b.{0,55}\b(?:ansehen|anschauen|durchsehen|sehen|offnen)\b/.test(s) ||
     /\b(?:kannst|konntest|konnte|kann)\b.{0,75}\b(?:buchungslink|terminlink|kalenderlink|terminkalender)\b.{0,24}\b(?:schick\w*|send\w*|zeig\w*)\b/.test(s) ||
@@ -112,7 +114,8 @@ function isPeteUnrelatedCalendarRequest(s: string): boolean {
 export function proposePeteNextStep(text: string): PeteNextStepProposal {
   const s = norm(text);
   const request = /\b(?:ich|wir)\s+(?:(?:wurde|wurden)\s+)?(?:will|wollen|mochte\w*|hatte\w*|hatten|ware\w*)\b|\b(?:bitte|gerne|gern|schick\w*|sende\w*|zeig\w*|gib|konnen\s+wir|konnten\s+wir|(?:kann|konnte)\w*\s+(?:ich|du)|wo\s+finde|wie\s+finde|wie\s+bekomme|wann\s+kann|wann\s+konnen)\b/.test(s);
-  const bookingTopic = /\b(?:termin\w*|telefontermin|telefonat|telefonisch\w*|telefonieren|strategiegesprach|erstgesprach|buchungslink|terminlink|kalenderlink|kalender|terminkalender|buchungsseite)\b/.test(s);
+  const bookingTopic = /\b(?:termin\w*|telefontermin|telefonat|telefonisch\w*|telefonieren|strategiegesprach|erstgesprach|buchungslink|terminlink|kalenderlink|kalender|terminkalender|buchungsseite)\b/.test(s) ||
+    /\bpersonlich(?:es|en)?\s+gesprach\b/.test(s);
   const bookingQuestion = /\b(?:was|wie|warum|wieso|wie\s+lange)\b.{0,55}\b(?:passiert|lauft|ablauf|dauert|kostet|funktioniert|notwendig|pflicht)\b/.test(s) ||
     /\b(?:ablauf|dauer|pflichttermin|pflichtcall)\b/.test(s);
   const unrelatedAppointment = /\b(?:arzttermin|zahnarzt|arzt|zahnarzttermin|kinderarzt|therapeut\w*)\b/.test(s);
@@ -208,11 +211,11 @@ export function guardPeteNextStep(proposal: PeteNextStepProposal, ctx: PeteNextS
       // NO linkSentAt, NO booking reminder. Engine changes state only for
       // the explicit booking_offered phase; retain every guard above.
       return { nextStep: "booking", outboundAuthorized: false,
-        text: "Den Terminkalender findest du hier: " + url +
+        text: "Den Terminkalender für ein persönliches Strategiegespräch findest du hier: " + url +
           " Die dort verfügbaren Zeiten kannst du unverbindlich ansehen." };
     }
     return { nextStep: "booking", nextPhase: "booking_offered", outboundAuthorized: false,
-      text: "Hier kannst du selbst einen Termin für ein Strategiegespräch mit Jochen auswählen: " + url +
+      text: "Hier kannst du selbst einen Termin für ein persönliches Strategiegespräch mit Jochen auswählen: " + url +
         " Die verfügbaren Zeiten stehen im Kalender. Ein Termin ist erst nach der Buchungsbestätigung vereinbart." };
   }
   const url = trustedUrl(ctx.offerInfoUrl, ctx.offerInfoHosts);

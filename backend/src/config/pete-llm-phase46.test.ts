@@ -121,7 +121,7 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
     assert.equal(calls, 0);
   });
 
-  await t.test("natural strategy-call link requests return the configured URL without an LLM call", async () => {
+  await t.test("strategy-call links stay passive until an explicit booking request, without LLM calls", async () => {
     clearConversationStore();
     enableMockProvider();
     let calls = 0;
@@ -138,7 +138,11 @@ test("Phase 46: LLM safety gate, human ownership and race conditions", async t =
       assert.equal(result.state.answers.peteReplySource, "verified_transaction", message);
       assert.match(result.text ?? "", /https:\/\/calendly\.com\/eltern-fitundvital\/strategiegespraech/, message);
       assert.match(result.text ?? "", /persönliches Strategiegespräch/, message);
-      assert.equal(result.state.providerBooking?.status, "awaiting_booking", message);
+      const explicitlyBooks = message === "Ich möchte ein Strategiegespräch buchen";
+      // A link lookup alone is not permission for a booking follow-up.
+      assert.equal(result.state.providerBooking?.status,
+        explicitlyBooks ? "awaiting_booking" : "inactive", message);
+      assert.equal(result.state.flags.wantsBooking, explicitlyBooks, message);
     }
     assert.equal(calls, 0, "showing the trusted booking link must never spend API tokens");
   });
