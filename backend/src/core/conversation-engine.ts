@@ -165,6 +165,10 @@ import {
 } from "./price-flow.js";
 import {
   decidePeteNextAction,
+  mapPeteDecisionToIntent,
+  mapPeteSafetyCategoryToIntent,
+  shouldLetObjectionModuleHandlePeteSafety,
+  mapPeteObjectionIntentToLeadIntent,
   type PeteDecision,
 } from "./pete-decision-layer.js";
 import {
@@ -480,45 +484,6 @@ function getRuntimeBookingUrl(params: {
   return candidates.find(isHttpUrl)?.trim();
 }
 
-function mapPeteDecisionToIntent(decision: PeteDecision): LeadIntent {
-  if (decision.decisionType === "hard_stop") {
-    return "stop";
-  }
-
-  if (
-    decision.decisionType === "human_request" ||
-    decision.decisionType === "booking_request"
-  ) {
-    return "booking_intent";
-  }
-
-  if (decision.decisionType === "link_request") {
-    return decision.metadata?.linkTarget === "booking"
-      ? "booking_intent"
-      : "info_link_only";
-  }
-
-  if (
-    decision.decisionType === "price_question" ||
-    decision.decisionType === "price_objection"
-  ) {
-    return "price_question";
-  }
-
-  if (
-    decision.decisionType === "offer_info" ||
-    decision.decisionType === "frustration_previous_attempts"
-  ) {
-    return "info_only";
-  }
-
-  if (decision.decisionType === "question_intro_confirmed") {
-    return "flow_answer";
-  }
-
-  return "unknown";
-}
-
 function getStoredAnswerString(
   state: ReturnType<typeof getOrCreateConversationState>,
   key: string,
@@ -688,28 +653,6 @@ function inferBookingProviderFromUrl(bookingUrl: string | undefined): string {
   return "booking_link";
 }
 
-function mapPeteSafetyCategoryToIntent(
-  category: ReturnType<typeof evaluatePeteRuntimeSafety>["category"],
-): LeadIntent {
-  if (category === "price") {
-    return "price_question";
-  }
-
-  if (category === "human_request" || category === "booking_link") {
-    return "booking_intent";
-  }
-
-  if (category === "info_link") {
-    return "info_link_only";
-  }
-
-  if (category === "unclear") {
-    return "unknown";
-  }
-
-  return "unknown";
-}
-
 function buildPeteSafetyStatePatch(
   safety: ReturnType<typeof evaluatePeteRuntimeSafety>,
 ) {
@@ -719,12 +662,6 @@ function buildPeteSafetyStatePatch(
     peteRuntimeSafetyReason: safety.reason,
     peteRuntimeSafetyLastAt: nowIso(),
   };
-}
-
-function shouldLetObjectionModuleHandlePeteSafety(
-  safety: ReturnType<typeof evaluatePeteRuntimeSafety>,
-): boolean {
-  return safety.category === "price" || safety.category === "distrust_aggression";
 }
 
 function getPeteObjectionCount(
@@ -753,28 +690,6 @@ function buildPeteObjectionStatePatch(result: PeteObjectionResult) {
     handoffReason: result.shouldHandoffToJochen ? result.reason : undefined,
     objectionLastAt: nowIso(),
   };
-}
-
-function mapPeteObjectionIntentToLeadIntent(
-  result: PeteObjectionResult,
-): LeadIntent {
-  if (result.intent === "hard_stop") {
-    return "stop";
-  }
-
-  if (result.intent === "price") {
-    return "price_question";
-  }
-
-  if (result.intent === "info") {
-    return result.shouldSendInfoLink ? "info_link_only" : "info_only";
-  }
-
-  if (result.action === "offer_booking") {
-    return "booking_intent";
-  }
-
-  return "unknown";
 }
 
 function handlePeteObjectionResult(params: {
