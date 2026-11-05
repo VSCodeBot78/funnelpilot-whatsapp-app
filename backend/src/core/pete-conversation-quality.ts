@@ -68,6 +68,15 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD")
 
 const has = (s: string, regex: RegExp) => regex.test(norm(s));
 
+/** A recent question about trial facts is not itself a legal dispute. */
+export function isPeteTrialFactFollowUp(text: string, state: ConversationState): boolean {
+  const input = norm(text);
+  if (!/was\s+steht\s+(?:denn\s+)?fest/.test(input)) return false;
+  if (/widerruf|kundig|stornier|ruckzahl|erstatt|abbuch|zahlung|bezahlt|anwalt|haftung|datenschutz|dsgvo|personenbezogen|losch|geld\s+zuruck|rechtlich/.test(input)) return false;
+  return (state.messages ?? []).filter(message => message.role === "user").slice(0,-1).slice(-3)
+    .some(message => /(?:zusammenarbeit|begleitung|coaching).{0,75}testen|(?:paar|einige|wenige)\s+wochen\s+testen|(?:probe|test|kennenlern)phase/.test(norm(message.text)));
+}
+
 // Shared opt-out recognition: the same explicit paid-offer refusal must
 // suppress an immediate upsell AND persistently block scheduled sales follow-ups.
 // Input is already normalized by the calling function.
@@ -140,6 +149,16 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  const asksTrial = /(?:probe|test|kennenlern)phase|(?:paar|einige|wenige)\s+wochen\s+testen|(?:zusammenarbeit|begleitung|coaching).{0,75}testen/.test(input);
+  const coachingContext = /zusammenarbeit|begleitung|coaching|1:1/.test(input) ||
+    (state.messages ?? []).filter(m => m.role === "user").slice(-3)
+      .some(m => /zusammenarbeit|begleitung|coaching/i.test(m.text));
+  if (((asksTrial && coachingContext) || isPeteTrialFactFollowUp(text,state)) &&
+      !explicitlyDeclinesPaidOffers) {
+    const info = !state.flags?.salesFollowUpsOptedOut && !hasPeteActiveNoQuestionBoundary(state)
+      ? " Hier kannst du die Methode vorab ansehen: " + OFFER_TRUTH.coachingEntry.infoUrl : "";
+    return { text: "Eine gesonderte Probe- oder Kennenlernphase ist in den bestätigten Angebotsangaben nicht verbindlich zugesagt. Individuelle Sonderbedingungen muss Jochen persönlich klären." + info };
+  }
   // Use the existing exact-evidence guard and trusted server URLs.
   // A passive calendar request must not create booking consent or reminders.
   const verifiedLink = getPeteGuardedNextStep(text, state, bookingUrl);
@@ -163,6 +182,14 @@ export function getPeteVerifiedTransactionAnswer(
   const previousSelfstarterSelected =
     /\bselbststarter\b/.test(lastOfferText) &&
     !/\b(?:5[\s-]*wochen|startphase|499)\b/.test(lastOfferText);
+  // No verified 1:1 chat-support promise belongs to the DIY product.
+  const asksDiyChatSupport = /\bchat[\s-]*support\b/.test(input) &&
+    /\b(?:gibt|enthalten|dabei|inklusive|inbegriffen|drin)\b/.test(input) &&
+    (/\b(?:selbststarter|diy|14[,.]95)\b/.test(input) || previousSelfstarterSelected) &&
+    !/zahlung|bezahlt|abbuch|ruckzahl|erstatt|widerruf|vertrag|datenschutz|losch|medikament|notfall/.test(input);
+  if (asksDiyChatSupport && !explicitlyDeclinesPaidOffers) {
+    return { text: "Beim Selbststarter ist die eigenständige Nutzung bestätigt. Ob persönlicher Chat-Support dazugehört, ist in den geprüften Angaben nicht verbindlich bestätigt. Erweiterter Chat-Support gehört zur persönlichen 5-Wochen-Begleitung.", nextPhase: "info" };
+  }
   if (!explicitlyDeclinesPaidOffers &&
       (/\bselbststarter\b/.test(input) || previousSelfstarterSelected) &&
       /\b(?:zoom|video(?:-termin|-call)?|1:1|einzelcoaching)\b/.test(input) &&

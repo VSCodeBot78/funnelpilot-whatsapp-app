@@ -2,6 +2,7 @@ import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
   isSalesFollowUpOptOut,
+  isPeteTrialFactFollowUp,
   getPeteVerifiedTransactionAnswer,
   isGeneralNonMedicalKnowledgeRequest,
   isPeteChestBreathingEmergency,
@@ -1324,10 +1325,16 @@ export async function processIncomingMessage(
       isPeteLlmConversationSelected() &&
       (isGeneralNonMedicalKnowledgeRequest(input.messageText) ||
        isPeteNonMedicalPostPregnancyBodyImage(input.messageText));
+    // A narrowly verified trial-facts follow-up can mention the word
+    // "Vertragsbedingungen" without being a legal dispute. Real deletion,
+    // withdrawal and payment concerns still take precedence.
+    const harmlessTrialFacts = isPeteLlmConversationSelected() &&
+      decision.decisionType === "legal_privacy" &&
+      isPeteTrialFactFollowUp(input.messageText, state);
     if ([
       "hard_stop", "medical_critical", "medical_soft",
       "emotional_crisis", "legal_privacy",
-    ].includes(decision.decisionType) &&
+    ].includes(decision.decisionType) && !harmlessTrialFacts &&
         !(safeGeneralKnowledge &&
           ["medical_critical", "medical_soft"].includes(decision.decisionType))) {
       const guarded = composePeteResponse(decision, {
