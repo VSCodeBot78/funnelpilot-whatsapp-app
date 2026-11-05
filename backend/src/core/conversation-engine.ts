@@ -111,6 +111,17 @@ import {
   updateAnswer,
 } from "./state-manager.js";
 import {
+  buildDoneReply,
+  buildPauseReply,
+  buildResumeReply,
+  buildPlayfulNameReply,
+  buildMultiplePeopleReply,
+  buildLowScoreReply,
+  buildAvailabilitySuggestionReply,
+  buildBookingGuardReply,
+  buildCoachingEntryDirectBuyLeadReply,
+  buildProviderBookingPendingReply,
+  buildProviderBookingSimpleAckReply,
   buildBookingConfirmedReply,
   buildBookingPrompt,
   buildCommitmentValidationReply,
@@ -263,16 +274,6 @@ function getStepOrThrow(
   return step;
 }
 
-function buildDoneReply(
-  state: ReturnType<typeof getOrCreateConversationState>,
-): string {
-  const bookingText = state.answers.pendingBookingText?.trim();
-  if (bookingText) {
-    return `Sehr gern 👍 Dann bis ${bookingText}.`;
-  }
-  return "Sehr gern 👍";
-}
-
 function buildBookingRequestData(params: {
   requestedText: string;
   requestedDay?: string;
@@ -313,67 +314,6 @@ function buildResumeQuestion(campaignId: string, stepId: FlowStepId): string {
   }
 
   return buildQuestionReply(campaignId, step);
-}
-
-function buildPauseReply(): string {
-  return "Klar, kein Thema. Zwischen Tür und Angel das hier durchzudrücken macht keinen Sinn.\nMelde dich einfach wieder, wenn du mehr Zeit hast.\nIch knüpfe dann da an, wo wir aufgehört haben.";
-}
-
-function buildResumeReply(question: string): string {
-  return `Willkommen zurück 😊\nWir waren gerade hier:\n${question}`;
-}
-
-function buildPlayfulNameReply(): string {
-  return "Ja genau du 😄 Stell dich doch kurz mit deinem Vornamen vor. Ich spreche dich ungern mit Nobody an.";
-}
-
-function buildMultiplePeopleReply(): string {
-  return "Falls ihr zu zweit seid, geht bitte nicht gemeinsam durch die Fragen. Am besten macht das jeder einzeln und mit eigener WhatsApp Nummer. Und jetzt erstmal du: Wie ist dein Vorname?";
-}
-
-function buildLowScoreReply(campaignId: string, score: number): string {
-  const infoReply = buildInfoOnlyReply(campaignId);
-
-  if (score <= 5) {
-    return (
-      "Danke für die ehrliche Einschätzung.\n" +
-      "Dann macht es gerade wenig Sinn, hier auf Biegen und Brechen einen Termin festzumachen.\n" +
-      "Schau dir erstmal in Ruhe die Infos an.\n\n" +
-      infoReply
-    );
-  }
-
-  return (
-    "Danke für die ehrliche Einschätzung.\n" +
-    "Ich merke, das Thema ist grundsätzlich da, aber gerade noch nicht so klar auf Anschlag.\n" +
-    "Deshalb schicke ich dir erstmal die Infos in Ruhe rüber, statt dich direkt in einen Termin zu drücken.\n\n" +
-    infoReply
-  );
-}
-
-function buildAvailabilitySuggestionReply(
-  suggestions: { label: string }[],
-): string {
-  const topSuggestions = suggestions.slice(0, 3).map((item) => item.label);
-
-  if (topSuggestions.length === 0) {
-    return "Ich hab hier leider keinen freien Termin. Nenn mir bitte kurz eine Alternative innerhalb der nächsten 3 Werktage, dann schauen wir direkt weiter.";
-  }
-
-  return (
-    "Ich hab hier leider keinen freien Termin.\n" +
-    `Ich kann dir stattdessen ${topSuggestions.join(", ")} anbieten.\n` +
-    "Was passt dir davon am besten?"
-  );
-}
-
-function buildBookingGuardReply(finalBookingText: string): string {
-  return (
-    `Alles klar, dann blocke ich dir ${finalBookingText}.\n` +
-    "Kurze Bitte noch:\n" +
-    "Ich halte mir die Zeit bewusst frei.\n" +
-    "Passt das für dich, dass du den Termin auch wirklich wahrnimmst oder rechtzeitig Bescheid gibst, falls etwas dazwischenkommt?"
-  );
 }
 
 function getExternalProviderPreview(
@@ -507,14 +447,6 @@ function isStrongCoachingEntryBuySignal(input: string): boolean {
   );
 }
 
-function buildCoachingEntryDirectBuyLeadReply(campaignId: string): string {
-  return (
-    "Mega 👊\n\n" +
-    `${buildIntentReply(campaignId, "direct_buy_coaching_entry")}\n\n` +
-    "Danke für dein Vertrauen."
-  );
-}
-
 function buildProviderBookingResendReply(
   state: ReturnType<typeof getOrCreateConversationState>,
 ): string {
@@ -548,22 +480,6 @@ function buildProviderBookingResendReply(
     `Hier ist der Link nochmal für die finale Eintragung über ${providerName}:\n` +
     `${bookingUrl}\n\n` +
     "Wenn du durch bist, sag mir kurz Bescheid."
-  );
-}
-
-function buildProviderBookingPendingReply(): string {
-  return (
-    "Sobald du den Termin über den Link final eingetragen hast, sag mir kurz Bescheid.\n" +
-    "Wenn du den Buchungslink nochmal brauchst, schreib einfach kurz Link."
-  );
-}
-
-function buildProviderBookingSimpleAckReply(): string {
-  return (
-    "Perfekt 👍\n\n" +
-    "Dann trag dir den Termin einfach noch kurz über den Link final ein.\n" +
-    "Wenn du durch bist, schreib mir kurz „hab gebucht“.\n" +
-    "Und falls du den Link nochmal brauchst, schreib einfach „Link“."
   );
 }
 
