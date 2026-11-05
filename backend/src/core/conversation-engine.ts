@@ -732,6 +732,47 @@ async function tryHandleExecutionImmediateBooking(
   };
 }
 
+/** Shared legacy checkout-versus-call transition; preserves both entry guards. */
+function handleCoachingEntryDirectBuy(
+  campaignId: string,
+  state: ConversationState,
+): EngineReply {
+  resetPriceFlowState(state);
+  patchFlags(state, {
+    wantsDirectBuyCoachingEntry: true,
+    wantsDirectBuyStarter: true,
+  });
+
+  const replyText = canSendCoachingEntryCheckoutDirectly({
+    hasInstallmentRequest: state.flags.askedInstallments,
+    wantsLongTermSupport: state.flags.wantsLongTermSupport,
+  })
+    ? buildCoachingEntryDirectBuyLeadReply(campaignId)
+    : buildBookingPrompt(campaignId);
+
+  const nextStep: FlowStepId = mustGoToCall({
+    hasInstallmentRequest: state.flags.askedInstallments,
+    wantsLongTermSupport: state.flags.wantsLongTermSupport,
+  })
+    ? "booking"
+    : state.currentStep;
+
+  if (nextStep === "booking") {
+    patchFlags(state, { wantsBooking: true });
+    setCurrentStep(state, "booking");
+  }
+
+  appendAssistantMessage(state, replyText);
+  persistConversationState(state);
+
+  return {
+    text: replyText,
+    nextStep,
+    detectedIntent: "direct_buy_coaching_entry",
+    state,
+  };
+}
+
 export async function processIncomingMessage(
   input: EngineInput,
 ): Promise<EngineReply> {
@@ -1703,40 +1744,7 @@ export async function processIncomingMessage(
     state.currentStep !== "booking" &&
     isStrongCoachingEntryBuySignal(input.messageText)
   ) {
-    resetPriceFlowState(state);
-    patchFlags(state, {
-      wantsDirectBuyCoachingEntry: true,
-      wantsDirectBuyStarter: true,
-    });
-
-    const replyText = canSendCoachingEntryCheckoutDirectly({
-      hasInstallmentRequest: state.flags.askedInstallments,
-      wantsLongTermSupport: state.flags.wantsLongTermSupport,
-    })
-      ? buildCoachingEntryDirectBuyLeadReply(campaign.id)
-      : buildBookingPrompt(campaign.id);
-
-    const nextStep: FlowStepId = mustGoToCall({
-      hasInstallmentRequest: state.flags.askedInstallments,
-      wantsLongTermSupport: state.flags.wantsLongTermSupport,
-    })
-      ? "booking"
-      : state.currentStep;
-
-    if (nextStep === "booking") {
-      patchFlags(state, { wantsBooking: true });
-      setCurrentStep(state, "booking");
-    }
-
-    appendAssistantMessage(state, replyText);
-    persistConversationState(state);
-
-    return {
-      text: replyText,
-      nextStep,
-      detectedIntent: "direct_buy_coaching_entry",
-      state,
-    };
+    return handleCoachingEntryDirectBuy(campaign.id, state);
   }
 
   if (detectedIntent.intent === "installments") {
@@ -1780,40 +1788,7 @@ export async function processIncomingMessage(
   }
 
   if (detectedIntent.intent === "direct_buy_coaching_entry") {
-    resetPriceFlowState(state);
-    patchFlags(state, {
-      wantsDirectBuyCoachingEntry: true,
-      wantsDirectBuyStarter: true,
-    });
-
-    const replyText = canSendCoachingEntryCheckoutDirectly({
-      hasInstallmentRequest: state.flags.askedInstallments,
-      wantsLongTermSupport: state.flags.wantsLongTermSupport,
-    })
-      ? buildCoachingEntryDirectBuyLeadReply(campaign.id)
-      : buildBookingPrompt(campaign.id);
-
-    const nextStep: FlowStepId = mustGoToCall({
-      hasInstallmentRequest: state.flags.askedInstallments,
-      wantsLongTermSupport: state.flags.wantsLongTermSupport,
-    })
-      ? "booking"
-      : state.currentStep;
-
-    if (nextStep === "booking") {
-      patchFlags(state, { wantsBooking: true });
-      setCurrentStep(state, "booking");
-    }
-
-    appendAssistantMessage(state, replyText);
-    persistConversationState(state);
-
-    return {
-      text: replyText,
-      nextStep,
-      detectedIntent: "direct_buy_coaching_entry",
-      state,
-    };
+    return handleCoachingEntryDirectBuy(campaign.id, state);
   }
 
   if (detectedIntent.intent === "price_question") {
