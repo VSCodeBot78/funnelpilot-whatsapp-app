@@ -18,7 +18,7 @@ const { default: app } = await import("../app.js");
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
 const { getOrCreateConversationState } = await import("../core/state-manager.js");
 const { activateProviderBookingState } = await import("../services/provider-booking.service.js");
-const { tryMatchSuggestedOption } = await import("../domain/booking-rules.js");
+const { tryMatchSuggestedOption, isProviderBookingCompletion, isProviderBookingLinkRequest } = await import("../domain/booking-rules.js");
 
 function signedPayload(payload: unknown, timestamp = Math.floor(Date.now() / 1000)) {
   const raw = JSON.stringify(payload);
@@ -357,4 +357,10 @@ test("suggested booking option matching stays exact", () => {
   assert.equal(tryMatchSuggestedOption("Samstag um 11:00", options), options[1]);
   assert.equal(tryMatchSuggestedOption("Samstag 11uhr00", options), options[1]);
   assert.equal(tryMatchSuggestedOption("Montag um 11:00", options), null);
+  assert.equal(isProviderBookingCompletion("Ich habe gebucht"), true);
+  assert.equal(isProviderBookingCompletion("Ich bin eingetragen"), true);
+  assert.equal(isProviderBookingCompletion("Wo ist der Link?"), false);
+  assert.equal(isProviderBookingLinkRequest("Schick mir den Link nochmal"), true);
+  assert.equal(isProviderBookingLinkRequest("Link"), true);
+  assert.equal(isProviderBookingLinkRequest("Nochmal die Infos"), false);
 });

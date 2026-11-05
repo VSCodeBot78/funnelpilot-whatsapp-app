@@ -25,6 +25,8 @@ import {
   getBookingPreferenceFollowUpText,
   isNoShowGuardConfirmation,
   tryMatchSuggestedOption,
+  isProviderBookingCompletion,
+  isProviderBookingLinkRequest,
 } from "../domain/booking-rules.js";
 import { parseCommitmentChoice } from "../domain/commitment.js";
 import {
@@ -216,32 +218,6 @@ const PAUSE_KEYWORDS = [
   "muss erst mal los",
   "muss kurz los",
   "muss weg",
-];
-
-const PROVIDER_BOOKING_DONE_KEYWORDS = [
-  "hab gebucht",
-  "habe gebucht",
-  "ist gebucht",
-  "termin ist gebucht",
-  "termin steht",
-  "eingetragen",
-  "habe mich eingetragen",
-  "hab mich eingetragen",
-  "erledigt",
-  "gemacht",
-];
-
-const PROVIDER_BOOKING_LINK_KEYWORDS = [
-  "link",
-  "buchungslink",
-  "calendly",
-  "nochmal",
-  "erneut",
-  "wieder",
-  "schick nochmal",
-  "schick den link",
-  "send nochmal",
-  "sende nochmal",
 ];
 
 const SIMPLE_ACK_KEYWORDS = [
@@ -592,30 +568,6 @@ function hasActiveProviderBooking(
     state.providerBooking?.status === "awaiting_booking" &&
     !!state.providerBooking.bookingUrl
   );
-}
-
-function isProviderBookingCompletion(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  return PROVIDER_BOOKING_DONE_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
-}
-
-function isProviderBookingLinkRequest(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  const hasLinkSignal = PROVIDER_BOOKING_LINK_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
-
-  return hasLinkSignal && normalized.includes("link");
 }
 
 function isSimpleAcknowledgement(input: string): boolean {

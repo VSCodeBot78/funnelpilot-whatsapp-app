@@ -53,6 +53,32 @@ const BOOKING_CONFIRM_KEYWORDS = [
   "ok",
 ];
 
+const PROVIDER_BOOKING_DONE_KEYWORDS = [
+  "hab gebucht",
+  "habe gebucht",
+  "ist gebucht",
+  "termin ist gebucht",
+  "termin steht",
+  "eingetragen",
+  "habe mich eingetragen",
+  "hab mich eingetragen",
+  "erledigt",
+  "gemacht",
+];
+
+const PROVIDER_BOOKING_LINK_KEYWORDS = [
+  "link",
+  "buchungslink",
+  "calendly",
+  "nochmal",
+  "erneut",
+  "wieder",
+  "schick nochmal",
+  "schick den link",
+  "send nochmal",
+  "sende nochmal",
+];
+
 const WEEKDAY_EVENING_KEYWORDS = [
   "unter der woche",
   "wochentags",
@@ -198,6 +224,30 @@ export function tryMatchSuggestedOption(
   }
 
   return null;
+}
+
+export function isProviderBookingCompletion(input: string): boolean {
+  const normalized = normalizeText(input);
+  if (!normalized) {
+    return false;
+  }
+
+  return PROVIDER_BOOKING_DONE_KEYWORDS.some(
+    (keyword) => normalized === keyword || normalized.includes(keyword),
+  );
+}
+
+export function isProviderBookingLinkRequest(input: string): boolean {
+  const normalized = normalizeText(input);
+  if (!normalized) {
+    return false;
+  }
+
+  const hasLinkSignal = PROVIDER_BOOKING_LINK_KEYWORDS.some(
+    (keyword) => normalized === keyword || normalized.includes(keyword),
+  );
+
+  return hasLinkSignal && normalized.includes("link");
 }
 
 function includesAnyKeyword(input: string, keywords: string[]): string | null {
