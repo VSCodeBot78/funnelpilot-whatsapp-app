@@ -18,6 +18,7 @@ const { default: app } = await import("../app.js");
 const { getConversationState, clearConversationStore } = await import("../data/store.js");
 const { getOrCreateConversationState } = await import("../core/state-manager.js");
 const { activateProviderBookingState } = await import("../services/provider-booking.service.js");
+const { tryMatchSuggestedOption } = await import("../domain/booking-rules.js");
 
 function signedPayload(payload: unknown, timestamp = Math.floor(Date.now() / 1000)) {
   const raw = JSON.stringify(payload);
@@ -344,4 +345,16 @@ test("Desktop Calendly diagnostic: credentials absent, dated provider slots, pro
   const blocked = await failed.json() as Record<string, any>;
   assert.equal(blocked.status, "provider_unavailable");
   assert.deepEqual(blocked.slots, []);
+});
+
+test("suggested booking option matching stays exact", () => {
+  const options = [
+    { day: "Freitag", time: "18:00", label: "Freitag um 18:00" },
+    { day: "Samstag", time: "11:00", label: "Samstag um 11:00" },
+  ];
+  assert.equal(tryMatchSuggestedOption("erste", options), options[0]);
+  assert.equal(tryMatchSuggestedOption("zweite", options), options[1]);
+  assert.equal(tryMatchSuggestedOption("Samstag um 11:00", options), options[1]);
+  assert.equal(tryMatchSuggestedOption("Samstag 11uhr00", options), options[1]);
+  assert.equal(tryMatchSuggestedOption("Montag um 11:00", options), null);
 });

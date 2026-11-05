@@ -24,6 +24,7 @@ import {
   detectBookingWindow,
   getBookingPreferenceFollowUpText,
   isNoShowGuardConfirmation,
+  tryMatchSuggestedOption,
 } from "../domain/booking-rules.js";
 import { parseCommitmentChoice } from "../domain/commitment.js";
 import {
@@ -545,90 +546,6 @@ function buildProviderBookingLinkReply(
     "Sobald das erledigt ist, steht unser Gespräch verbindlich.\n" +
     "Die Terminbestätigung bekommst du danach automatisch per Mail."
   );
-}
-
-function parseNumberSelection(input: string): number | null {
-  const normalized = normalizeText(input);
-
-  if (["1", "erste", "der erste", "die erste", "erstes"].includes(normalized)) {
-    return 0;
-  }
-
-  if (["2", "zweite", "der zweite", "die zweite", "zweites"].includes(normalized)) {
-    return 1;
-  }
-
-  if (["3", "dritte", "der dritte", "die dritte", "drittes"].includes(normalized)) {
-    return 2;
-  }
-
-  return null;
-}
-
-function tryMatchSuggestedOption(
-  input: string,
-  options: SuggestedBookingOption[] | undefined,
-): SuggestedBookingOption | null {
-  if (!options || options.length === 0) {
-    return null;
-  }
-
-  const byNumber = parseNumberSelection(input);
-  if (byNumber !== null && options[byNumber]) {
-    return options[byNumber];
-  }
-
-  const normalized = normalizeText(input);
-  const normalizedNoSpaces = normalized.replace(/\s+/g, "");
-
-  for (const option of options) {
-    const optionLabel = normalizeText(option.label);
-    const optionDay = normalizeText(option.day);
-    const optionTime = normalizeText(option.time);
-
-    const fullDayTimeVariants = [
-      `${optionDay} ${optionTime}`,
-      `${optionDay} um ${optionTime}`,
-      `${optionDay}${optionTime}`,
-      `${optionDay}${optionTime.replace(":", "")}`,
-      `${optionDay} ${optionTime.replace(":", "")}`,
-      `${optionDay} ${optionTime.slice(0, 2)}uhr${optionTime.slice(3)}`,
-      `${optionDay} ${optionTime.slice(0, 2)}:${optionTime.slice(3)}`,
-      `${optionDay} ${optionTime.slice(0, 2)} uhr ${optionTime.slice(3)}`,
-      `${optionDay} ${optionTime.slice(0, 2)}:${optionTime.slice(3)} uhr`,
-      `${optionDay} ${optionTime.slice(0, 2)}uhr`,
-    ].map((value) => normalizeText(value));
-
-    if (normalized === optionLabel) {
-      return option;
-    }
-
-    if (fullDayTimeVariants.includes(normalized)) {
-      return option;
-    }
-
-    if (
-      normalized.includes(optionDay) &&
-      (
-        normalized.includes(optionTime) ||
-        normalized.includes(optionTime.replace(":", "")) ||
-        normalized.includes(`${optionTime.slice(0, 2)}:${optionTime.slice(3)}`) ||
-        normalized.includes(`${optionTime.slice(0, 2)}uhr${optionTime.slice(3)}`) ||
-        normalized.includes(`${optionTime.slice(0, 2)} uhr ${optionTime.slice(3)}`) ||
-        normalized.includes(`${optionTime.slice(0, 2)}:${optionTime.slice(3)} uhr`) ||
-        normalized.includes(`${optionTime.slice(0, 2)}uhr`)
-      )
-    ) {
-      return option;
-    }
-
-    const compactOption = `${optionDay}${optionTime.replace(":", "")}`;
-    if (normalizedNoSpaces.includes(compactOption)) {
-      return option;
-    }
-  }
-
-  return null;
 }
 
 function getPendingAiFollowUpQuestion(
