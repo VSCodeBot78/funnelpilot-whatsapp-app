@@ -1,4 +1,5 @@
 import type { ConversationState } from "../types/types.js";
+import { buildSchedulingPreviewFromState, resolveProviderBookingUrlFromState } from "./scheduling-request.service.js";
 import type {
   ProviderBookingState,
   ProviderFollowUpEvaluationResult,
@@ -47,6 +48,150 @@ function wasStageAlreadySent(
 
   return state.sentHistory.some((entry) => entry.stage === stage);
 }
+
+/** Legacy provider-link helpers extracted without changing booking semantics. */
+export function getExternalProviderPreview(
+  state: ConversationState,
+) {
+  const preview = buildSchedulingPreviewFromState(state);
+
+  if (!preview.ok || !preview.ready || !preview.schedulingRequest) {
+    return null;
+  }
+
+  const { schedulingRequest } = preview;
+
+  if (
+    schedulingRequest.providerMode !== "booking_link" ||
+    !isHttpUrl(schedulingRequest.externalBookingUrl)
+  ) {
+    return null;
+  }
+
+  return schedulingRequest;
+}
+
+export function buildProviderBookingLinkReply(
+  baseReply: string,
+  state: ConversationState,
+): string {
+  const schedulingRequest = getExternalProviderPreview(state);
+
+  if (!schedulingRequest) {
+    return baseReply;
+  }
+
+  state.providerBooking = activateProviderBookingState({
+    current: state.providerBooking,
+    provider: schedulingRequest.provider,
+    bookingUrl: schedulingRequest.externalBookingUrl,
+    linkSentAt: nowIso(),
+  });
+
+  if (schedulingRequest.provider === "calendly") {
+    return (
+      "Top, danke dir 👍\n\n" +
+      "Deine Zeit ist intern vorgemerkt.\n" +
+      "Damit der Termin wirklich verbindlich steht, trag ihn dir bitte jetzt noch kurz final über Calendly ein:\n" +
+      `${schedulingRequest.externalBookingUrl}\n\n` +
+      "Sobald das erledigt ist, steht unser Gespräch verbindlich.\n" +
+      "Die Terminbestätigung bekommst du danach automatisch per Mail."
+    );
+  }
+
+  const providerName =
+    schedulingRequest.providerLabel ?? schedulingRequest.provider;
+
+  return (
+    `${baseReply}\n\n` +
+    "Dann fehlt jetzt nur noch der letzte Schritt:\n" +
+    `Trag dir den Termin bitte noch kurz final über ${providerName} ein:\n` +
+    `${schedulingRequest.externalBookingUrl}\n\n` +
+    "Sobald das erledigt ist, steht unser Gespräch verbindlich.\n" +
+    "Die Terminbestätigung bekommst du danach automatisch per Mail."
+  );
+}
+
+export function hasActiveProviderBooking(
+  state: ConversationState,
+): boolean {
+  return (
+    state.providerBooking?.status === "awaiting_booking" &&
+    !!state.providerBooking.bookingUrl
+  );
+}
+
+export function buildProviderBookingResendReply(
+  state: ConversationState,
+): string {
+  const preview = getExternalProviderPreview(state);
+  const configuredProviderBookingUrl = resolveProviderBookingUrlFromState(state);
+  const bookingUrl = [
+    configuredProviderBookingUrl,
+    preview?.externalBookingUrl,
+    state.providerBooking?.bookingUrl,
+  ].find(isHttpUrl)?.trim();
+
+  if (!bookingUrl) {
+    return (
+      "Ja, das macht Sinn.\n" +
+      "Dann halte ich kurz fest, worum es geht, und Jochen meldet sich pers\u00f6nlich bei dir."
+    );
+  }
+
+  state.providerBooking = activateProviderBookingState({
+    current: state.providerBooking,
+    provider: inferBookingProviderFromUrl(bookingUrl),
+    bookingUrl,
+    linkSentAt: nowIso(),
+  });
+
+  const providerName =
+    preview?.providerLabel || state.providerBooking.provider || "dem Buchungslink";
+
+  return (
+    "Klar 👍\n\n" +
+    `Hier ist der Link nochmal für die finale Eintragung über ${providerName}:\n` +
+    `${bookingUrl}\n\n` +
+    "Wenn du durch bist, sag mir kurz Bescheid."
+  );
+}
+
+function isHttpUrl(value: string | undefined): value is string {
+  const url = value?.trim();
+  return Boolean(url && (url.startsWith("http://") || url.startsWith("https://")));
+}
+
+export function getRuntimeBookingUrl(params: {
+  state: ConversationState;
+}): string | undefined {
+  const preview = getExternalProviderPreview(params.state);
+  const configuredProviderBookingUrl = resolveProviderBookingUrlFromState(
+    params.state,
+  );
+  const candidates = [
+    configuredProviderBookingUrl,
+    preview?.externalBookingUrl,
+    params.state.providerBooking?.bookingUrl,
+  ];
+
+  return candidates.find(isHttpUrl)?.trim();
+}
+
+export function inferBookingProviderFromUrl(bookingUrl: string | undefined): string {
+  const normalized = bookingUrl?.toLowerCase() ?? "";
+
+  if (normalized.includes("calendly.")) {
+    return "calendly";
+  }
+
+  if (normalized.includes("meetergo.")) {
+    return "meetergo";
+  }
+
+  return "booking_link";
+}
+
 
 export function createInitialProviderBookingState(): ProviderBookingState {
   return {
