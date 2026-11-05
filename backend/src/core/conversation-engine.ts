@@ -87,7 +87,7 @@ import {
   getFlowStepById,
   getNextFlowStep,
 } from "./flow-definition.js";
-import { detectLeadIntent } from "./intent-detector.js";
+import { detectLeadIntent, isIntroAckAccepted, isPostDoneThanks, isPauseRequest } from "./intent-detector.js";
 import {
   classifyPeteObjection,
   evaluatePeteObjection,
@@ -167,59 +167,6 @@ function disclosePeteIdentity(state: ConversationState, text: string): string {
     "Ich bin Pete, Jochens KI-Assistent. " + text;
 }
 
-const INTRO_ACK_YES_KEYWORDS = [
-  "ja",
-  "jap",
-  "yes",
-  "klar",
-  "ok",
-  "okay",
-  "gerne",
-  "passt",
-  "mach",
-  "go",
-  "weiter",
-  "leg los",
-  "stell die fragen",
-  "frag ruhig",
-  "fragen ok",
-];
-
-const POST_DONE_THANKS_KEYWORDS = [
-  "danke",
-  "super danke",
-  "perfekt",
-  "top danke",
-  "alles klar danke",
-  "vielen dank",
-  "dankeschön",
-  "dankeschoen",
-];
-
-const PAUSE_KEYWORDS = [
-  "muss los",
-  "muss jetzt los",
-  "muss weiter",
-  "später",
-  "spaeter",
-  "gerade keine zeit",
-  "hab gerade keine zeit",
-  "habe gerade keine zeit",
-  "bin unterwegs",
-  "bin grad unterwegs",
-  "bin gerade unterwegs",
-  "melde mich später",
-  "melde mich spaeter",
-  "ich melde mich später",
-  "ich melde mich spaeter",
-  "sorry muss los",
-  "entschuldigung muss los",
-  "muss erstmal los",
-  "muss erst mal los",
-  "muss kurz los",
-  "muss weg",
-];
-
 const SIMPLE_ACK_KEYWORDS = [
   "ok",
   "okay",
@@ -264,39 +211,6 @@ function normalizeText(value: string): string {
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function isIntroAckAccepted(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  return INTRO_ACK_YES_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
-}
-
-function isPostDoneThanks(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  return POST_DONE_THANKS_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
-}
-
-function isPauseRequest(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  return PAUSE_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
 }
 
 function isScaleValue(input: string, min: number, max: number): boolean {
