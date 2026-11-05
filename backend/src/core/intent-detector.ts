@@ -431,6 +431,68 @@ export function isPauseRequest(input: string): boolean {
   );
 }
 
+/** Legacy short acknowledgement and coaching-entry buy signal recognition. */
+const SIMPLE_ACK_KEYWORDS = [
+  "ok",
+  "okay",
+  "alles klar",
+  "klar",
+  "passt",
+  "verstanden",
+  "gut",
+  "super",
+];
+
+const COACHING_ENTRY_BUY_SIGNAL_KEYWORDS = [
+  "gekauft",
+  "kauf ich",
+  "kauf ich direkt",
+  "nehm ich",
+  "ich nehme es",
+  "nehme ich",
+  "passt",
+  "wo kann ich buchen",
+  "wo kann ich kaufen",
+  "wo kann ich zahlen",
+  "was muss ich weiter tun zum kaufen",
+  "was muss ich tun zum kaufen",
+  "wie gehts weiter",
+  "wie geht's weiter",
+  "schick link",
+  "schick mir den link",
+  "buchungslink",
+  "direkt kaufen",
+  "ich will kaufen",
+  "ich will starten",
+  "ich nehme das",
+  "nehmen wir",
+  "mache ich",
+  "mach ich",
+];
+
+export function isSimpleAcknowledgement(input: string): boolean {
+  const normalized = normalizeText(input);
+  if (!normalized) {
+    return false;
+  }
+
+  return SIMPLE_ACK_KEYWORDS.some(
+    (keyword) => normalized === keyword || normalized.includes(keyword),
+  );
+}
+
+export function isStrongCoachingEntryBuySignal(input: string): boolean {
+  const normalized = normalizeText(input);
+
+  if (!normalized) {
+    return false;
+  }
+
+  return COACHING_ENTRY_BUY_SIGNAL_KEYWORDS.some(
+    (keyword) => normalized === keyword || normalized.includes(keyword),
+  );
+}
+
 export function isHighPriorityIntent(intent: LeadIntent): boolean {
   return (
     intent === "stop" ||

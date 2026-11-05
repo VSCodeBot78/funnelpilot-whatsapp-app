@@ -4,6 +4,8 @@ import {
   isIntroAckAccepted,
   isPostDoneThanks,
   isPauseRequest,
+  isSimpleAcknowledgement,
+  isStrongCoachingEntryBuySignal,
 } from "./intent-detector.js";
 
 test("extracted legacy acknowledgement, thanks and pause detectors remain behavior-identical", async t => {
@@ -28,5 +30,25 @@ test("extracted legacy acknowledgement, thanks and pause detectors remain behavi
   ] as const) {
     await t.test("pause: " + JSON.stringify(message), () =>
       assert.equal(isPauseRequest(message), expected));
+  }
+});
+
+test("legacy simple acknowledgements and strong-entry buy signals retain original matching", async t => {
+  for (const [text, expected] of [
+    ["ok", true], ["OKAY", true], ["Alles klar", true],
+    ["Alles verstanden", true], ["super", true], ["nein", false],
+    ["", false], ["ich moechte nur schauen", false],
+  ] as const) {
+    await t.test("ack " + JSON.stringify(text), () =>
+      assert.equal(isSimpleAcknowledgement(text), expected));
+  }
+  for (const [text, expected] of [
+    ["gekauft", true], ["Kauf ich direkt", true],
+    ["Ich will starten", true], ["Schick mir den Link", true],
+    ["Wo kann ich bezahlen", false],
+    ["Ich muss erst überlegen", false], ["", false],
+  ] as const) {
+    await t.test("buy " + JSON.stringify(text), () =>
+      assert.equal(isStrongCoachingEntryBuySignal(text), expected));
   }
 });

@@ -87,7 +87,7 @@ import {
   getFlowStepById,
   getNextFlowStep,
 } from "./flow-definition.js";
-import { detectLeadIntent, isIntroAckAccepted, isPostDoneThanks, isPauseRequest } from "./intent-detector.js";
+import { detectLeadIntent, isIntroAckAccepted, isPostDoneThanks, isPauseRequest, isSimpleAcknowledgement, isStrongCoachingEntryBuySignal } from "./intent-detector.js";
 import {
   classifyPeteObjection,
   evaluatePeteObjection,
@@ -185,44 +185,6 @@ function disclosePeteIdentity(state: ConversationState, text: string): string {
   return alreadyDisclosed || identifiesPete(text) ? text :
     "Ich bin Pete, Jochens KI-Assistent. " + text;
 }
-
-const SIMPLE_ACK_KEYWORDS = [
-  "ok",
-  "okay",
-  "alles klar",
-  "klar",
-  "passt",
-  "verstanden",
-  "gut",
-  "super",
-];
-
-const COACHING_ENTRY_BUY_SIGNAL_KEYWORDS = [
-  "gekauft",
-  "kauf ich",
-  "kauf ich direkt",
-  "nehm ich",
-  "ich nehme es",
-  "nehme ich",
-  "passt",
-  "wo kann ich buchen",
-  "wo kann ich kaufen",
-  "wo kann ich zahlen",
-  "was muss ich weiter tun zum kaufen",
-  "was muss ich tun zum kaufen",
-  "wie gehts weiter",
-  "wie geht's weiter",
-  "schick link",
-  "schick mir den link",
-  "buchungslink",
-  "direkt kaufen",
-  "ich will kaufen",
-  "ich will starten",
-  "ich nehme das",
-  "nehmen wir",
-  "mache ich",
-  "mach ich",
-];
 
 function normalizeText(value: string): string {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
@@ -392,29 +354,6 @@ function hasActiveProviderBooking(
   return (
     state.providerBooking?.status === "awaiting_booking" &&
     !!state.providerBooking.bookingUrl
-  );
-}
-
-function isSimpleAcknowledgement(input: string): boolean {
-  const normalized = normalizeText(input);
-  if (!normalized) {
-    return false;
-  }
-
-  return SIMPLE_ACK_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
-  );
-}
-
-function isStrongCoachingEntryBuySignal(input: string): boolean {
-  const normalized = normalizeText(input);
-
-  if (!normalized) {
-    return false;
-  }
-
-  return COACHING_ENTRY_BUY_SIGNAL_KEYWORDS.some(
-    (keyword) => normalized === keyword || normalized.includes(keyword),
   );
 }
 
