@@ -145,6 +145,14 @@ const MEDICAL_CRITICAL_KEYWORDS = [
   "schnell abnehmen",
 ];
 
+/** Does not change classification; checks all existing medical signals. */
+export function hasPeteMedicalSafetySignal(text: string): boolean {
+  const normalized = normalizeText(text);
+  return Boolean(includesAnyKeyword(normalized, MEDICAL_KEYWORDS) ??
+    includesAnyKeyword(normalized, MEDICAL_SOFT_KEYWORDS) ??
+    includesAnyKeyword(normalized, MEDICAL_CRITICAL_KEYWORDS));
+}
+
 const EMOTIONAL_CRISIS_KEYWORDS = [
   "ich kann nicht mehr",
   "alles zu viel",

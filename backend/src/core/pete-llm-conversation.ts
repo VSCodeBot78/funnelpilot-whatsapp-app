@@ -368,8 +368,12 @@ export function evaluatePeteLlmContinuity(
 
   // Short acknowledgments can legitimately repeat. Longer prose should not
   // be pasted again to the same lead without context.
+  // The required one-time identity disclosure must not hide a repeated pitch.
+  // Compare substantive text while ignoring ONLY the application-owned prefix.
+  const withoutIdentityPrefix = (value: string) =>
+    continuityNorm(value).replace(/^ich bin pete jochens ki assistent\s+/, "");
   if (candidate.length >= 45 && previousAnswers.some(message =>
-    continuityNorm(message.text) === candidate)) return "repeated_reply";
+    withoutIdentityPrefix(message.text) === withoutIdentityPrefix(reply))) return "repeated_reply";
 
   // Three consecutive generic answers on the same advice motif are too
   // repetitive if the newest one contributes no concrete new information.

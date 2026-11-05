@@ -11,6 +11,7 @@ import type { ConversationState } from "../types/types.js";
 import { getPeteStrategyCallFollowUp } from "./pete-strategy-call-followup.js";
 import { getConversationState } from "../data/store.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { hasPeteMedicalSafetySignal, evaluatePeteRuntimeSafety } from "./pete-runtime-safety.js";
 import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, isPeteBookingCancellationRequest, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
 
 /** Founder configuration only. No model, browser or lead supplies hosts/URLs.
@@ -695,6 +696,28 @@ export function isPeteNonMedicalPostPregnancyBodyImage(text: string): boolean {
 
 export function isGeneralNonMedicalKnowledgeRequest(text: string): boolean {
   const input = norm(text);
+  // A confirmed existing doctor's appointment or a plain statement about
+  // receiving care is not itself a request for a diagnosis or exercise
+  // clearance. Apply this exception ONLY to explicit benign formulations.
+  // Current pain, medication, dosage, treatment changes and fitness clearance
+  // questions keep the ordinary strict medical guard.
+  const incidentalHipCare = /\bwegen\s+meiner\s+hufte\s+bin\s+ich\s+(?:(?:schon|bereits)\s+)?beim\s+arzt\b/.test(input) &&
+    /\bich\s+brauche\s+(?:hier\s+)?keine\s+(?:fern)?diagnose\b/.test(input);
+  const unrelatedDoctorAppointment = /\b(?:mein|der)\s+arzttermin\b/.test(input) &&
+    /\bkein\s+wunsch\s+nach\s+(?:einem\s+)?coachingtermin\b/.test(input);
+  const medicalRedFlag = /\b(?:brust\w*|atemnot|luftnot|schmerz\w*|akut\w*|medikament\w*|insulin\w*|dosis|dosierung|therapie|behandlung|symptom\w*|verschlimmer\w*|belastbarkeit|freigabe|diagnostizier\w*|schwanger|blutung\w*|selbstverletz\w*|suizid|notfall|blut(?:hoch)?druck)\b/.test(input) ||
+    /\b(?:darf|soll|kann)\s+ich\b.{0,65}\b(?:trainier\w*|sport|ubung\w*|belasten|machen)\b/.test(input) ||
+    /\b(?:welche|wie|was)\b.{0,70}\b(?:ubung\w*|trainier\w*|sport|belast\w*|hufte)\b/.test(input);
+  if (incidentalHipCare || unrelatedDoctorAppointment) {
+    // Ignore only the explicitly benign doctor's reference and the explicit
+    // diagnosis refusal. All remaining medical signals stay authoritative,
+    // including critical-only words absent from the older short regex above.
+    const remaining = input
+      .replace(/\bich\s+brauche\s+(?:hier\s+)?keine\s+(?:fern)?diagnose\b/g, "")
+      .replace(/\bbeim\s+arzt\b|\barzttermin\b/g, "");
+    return !medicalRedFlag && !hasPeteMedicalSafetySignal(remaining) &&
+      !["legal_privacy", "emotional_crisis"].includes(evaluatePeteRuntimeSafety(remaining).category);
+  }
   if (/\b(?:brustschmerz\w*|herzschmerz\w*|atemnot|schwindel|ohnmacht|insulin\w*|medikament\w*|schwanger\b|schwangerschaftsdiabetes|typ.?1|essstorung|essanfall|selbstverletz|suizid|krebs|blutung|dosierung|krankheit|therapie|schmerz\w*|tabletten|entzundung|fieber|blutungen|akut\w*|behandlung|diagnose)\b/.test(input))
     return false;
   // Explicit past pregnancy such as "Meine letzte Schwangerschaft ist über

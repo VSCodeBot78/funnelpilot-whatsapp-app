@@ -71,6 +71,7 @@ import {
 } from "../services/scheduling-request.service.js";
 import type {
   BookingRequestData,
+  ConversationState,
   EngineInput,
   EngineReply,
   FlowStepDefinition,
@@ -152,6 +153,16 @@ import {
   composePeteResponse,
   type PeteComposedResponse,
 } from "./pete-response-composer.js";
+
+/** One-time, application-owned disclosure; never delegated to the model. */
+function disclosePeteIdentity(state: ConversationState, text: string): string {
+  const identifiesPete = (value: string) => /\bPete\b.{0,60}\bKI[- ]Assistent\w*\b/i.test(value);
+  const alreadyDisclosed = state.answers.peteIdentityDisclosed === true ||
+    state.messages.some(message => message.role === "assistant" && identifiesPete(message.text));
+  patchAnswers(state, { peteIdentityDisclosed: true });
+  return alreadyDisclosed || identifiesPete(text) ? text :
+    "Ich bin Pete, Jochens KI-Assistent. " + text;
+}
 
 const INTRO_ACK_YES_KEYWORDS = [
   "ja",
@@ -1378,6 +1389,7 @@ export async function processIncomingMessage(
         /\b(?:wer schreibt mir|wer antwortet mir|bist du (?:ein )?bot|bist du (?:eine )?ki|schreibt jochen (?:pers[oö]nlich)?|bist du jochen)\b/i.test(input.messageText)) {
       const identity = "Ich bin Pete, Jochens KI-Assistent. Ich helfe bei der ersten Einordnung. Wenn du persönlich mit Jochen sprechen möchtest, sage es einfach.";
       updateAnswer(state, "peteReplySource", "deterministic");
+      updateAnswer(state, "peteIdentityDisclosed", true);
       appendAssistantMessage(state, identity);
       persistConversationState(state);
       return { text: identity, nextStep: state.currentStep,
@@ -1435,9 +1447,10 @@ export async function processIncomingMessage(
             bookingUrl, linkSentAt: nowIso(),
           });
         }
-        appendAssistantMessage(state, verified.text);
+        const text = disclosePeteIdentity(state, verified.text);
+        appendAssistantMessage(state, text);
         persistConversationState(state);
-        return { text: verified.text, nextStep: state.currentStep,
+        return { text, nextStep: state.currentStep,
           detectedIntent: "flow_answer", state };
       }
     }
@@ -1499,9 +1512,10 @@ export async function processIncomingMessage(
             });
           }
         }
-        appendAssistantMessage(latest, result.text);
+        const text = disclosePeteIdentity(latest, result.text);
+        appendAssistantMessage(latest, text);
         persistConversationState(latest);
-        return { text: result.text, nextStep: latest.currentStep,
+        return { text, nextStep: latest.currentStep,
           detectedIntent: "flow_answer", state: latest };
       }
       // Policy-v4: a narrow, verified non-medical answer can repair a
