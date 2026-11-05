@@ -9,6 +9,8 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
+import { getPeteQaRuntimeAuthorization, type PeteQaGrantHold } from "../../../scripts/pete-repeatable-qa-ledger.mjs";
 import { env } from "../config/env.js";
 import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { writePrivateJsonAtomic } from "../data/private-json-file.js";
@@ -52,6 +54,10 @@ function qualityQaCapMicros(): number | null {
       request = JSON.parse(fs.readFileSync(path.join(workspace, "qa", "pete-approved-test.json"), "utf8"));
       ledger = JSON.parse(fs.readFileSync(path.join(workspace, "budget-ledger", "phase3-budget-ledger.json"), "utf8"));
     } catch { throw new PeteBudgetStop("unavailable"); }
+    if (request.version === 2) {
+      try { return getPeteQaRuntimeAuthorization(e).micro; }
+      catch { throw new PeteBudgetStop("unavailable"); }
+    }
     const dollars = request.budgetUsd;
     if (request.version !== 1 || !["sales20", "sales32", "focus15"].includes(String(request.testSet)) ||
         typeof dollars !== "string" ||
@@ -333,6 +339,8 @@ type Ledger = {
   billedOutputTokens: number;
   pending: Record<string, Reservation>;
   desktop?: DesktopBudget;
+  qaGrant?: PeteQaGrantHold;
+  accountingError?: true;
 };
 export class PeteBudgetStop extends Error {
   constructor(public readonly reason: "exhausted" | "unavailable" | "model_not_priced") {
@@ -389,8 +397,29 @@ function emptyLedger(): Ledger {
 function isWhole(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
+/** Existing owner QA grant: only a confirmed remote ledger hold can authorize a run.
+ * The Git source remains pinned to Pete's original approved branch. */
+function ownerQaGrant(): PeteQaGrantHold | null {
+  if (process.env.PETE_REPEATABLE_QA_ENABLED !== "true") return null;
+  try {
+    const request = JSON.parse(fs.readFileSync(path.join(process.env.GITHUB_WORKSPACE ?? "",
+      "qa", "pete-approved-test.json"), "utf8"));
+    if (request.version === 1) return null;
+    if (request.version !== 2 || path.resolve(process.cwd()) !==
+        path.join(path.resolve(process.env.GITHUB_WORKSPACE ?? ""), "backend") ||
+        path.resolve(env.DATA_DIR) !== path.resolve(process.env.DATA_DIR ?? "") ||
+        env.INSTAGRAM_ENGINE_ENABLED || env.INSTAGRAM_SEND_ENABLED ||
+        env.WHATSAPP_SEND_ENABLED || env.ENABLE_GENERIC_WEBHOOKS)
+      throw Error("qa_grant_scope_invalid");
+    return getPeteQaRuntimeAuthorization(process.env);
+  } catch { throw new PeteBudgetStop("unavailable"); }
+}
 function load(): Ledger {
-  if (!fs.existsSync(LEDGER_FILE)) return emptyLedger();
+  const grant = ownerQaGrant();
+  if (!fs.existsSync(LEDGER_FILE)) {
+    if (grant) throw new PeteBudgetStop("unavailable");
+    return emptyLedger();
+  }
   let value: unknown;
   try { value = JSON.parse(fs.readFileSync(LEDGER_FILE, "utf8")); }
   catch { throw new PeteBudgetStop("unavailable"); }
@@ -404,7 +433,10 @@ function load(): Ledger {
   }
   const prior = data.priorSpentMicroUsd ?? 0;
   if (!isWhole(prior) || prior !== priorSpentMicros() ||
-      data.version !== 1 || data.capMicroUsd !== USD_MICROS_CAP ||
+      data.version !== 1 || data.capMicroUsd !== (grant?.micro ?? USD_MICROS_CAP) ||
+      (grant ? !isDeepStrictEqual(data.qaGrant, grant) || data.desktop !== undefined
+        : data.qaGrant !== undefined) ||
+      data.accountingError !== undefined ||
       !data.pending || typeof data.pending !== "object" || Array.isArray(data.pending) ||
       (data.confirmedMicroUsd as number) + (data.reservedMicroUsd as number) !== data.committedMicroUsd ||
       (data.requestsMetered as number) > (data.requestsStarted as number))
@@ -444,13 +476,16 @@ export function getPeteBudgetStatus() {
   const labRemaining = Math.max(0, approval.newCap - data.committedMicroUsd);
   const qaCap = qualityQaCapMicros();
   const qaRemaining = qaCap === null ? globalRemaining : Math.max(0, qaCap - data.committedMicroUsd);
-  const remaining = Math.min(approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining, qaRemaining);
+  const remaining = data.qaGrant ? qaRemaining :
+    Math.min(approval.active ? Math.min(globalRemaining, labRemaining) : globalRemaining, qaRemaining);
   return {
     model: approval.active ? "gpt-5.4" : (resolvePeteRuntimeModel({
       envModel: process.env.OPENAI_MODEL,
       nodeEnv: process.env.NODE_ENV,
     }) ?? "unavailable"),
-    hardCapUsd: USD_MICROS_CAP / 1_000_000,
+    hardCapUsd: (data.qaGrant ? data.capMicroUsd : USD_MICROS_CAP) / 1_000_000,
+    budgetScope: data.qaGrant ? "owner_qa_grant" : "legacy_pete",
+    ownerGrantId: data.qaGrant?.ownerGrantId ?? null,
     priorConfirmedUsd: prior / 1_000_000,
     committedUsd: (prior + data.committedMicroUsd) / 1_000_000,
     confirmedUsd: (prior + data.confirmedMicroUsd) / 1_000_000,
@@ -461,7 +496,7 @@ export function getPeteBudgetStatus() {
       (approval.active ? approval.newCap / 1_000_000 : null),
     labCommittedUsd: qaCap !== null || approval.active ? data.committedMicroUsd / 1_000_000 : null,
     labRemainingUsd: qaCap !== null || approval.active ? remaining / 1_000_000 : null,
-    globalRemainingUsd: globalRemaining / 1_000_000,
+    globalRemainingUsd: data.qaGrant ? null : globalRemaining / 1_000_000,
     requestsStarted: data.requestsStarted, requestsMetered: data.requestsMetered,
     inputTokens: data.billedInputTokens, outputTokens: data.billedOutputTokens,
     blocked: remaining <= 0,
@@ -527,7 +562,9 @@ export function reservePeteBudget(params: {
     }
     if (approval.active && params.model !== "gpt-5.4")
       throw new PeteBudgetStop("model_not_priced");
-    if (priorSpentMicros() + approval.historicalAdjustment +
+    if (data.qaGrant && (params.model !== "gpt-6.1-sol" || data.reservedMicroUsd !== 0))
+      throw new PeteBudgetStop("unavailable");
+    if (!data.qaGrant && priorSpentMicros() + approval.historicalAdjustment +
         data.committedMicroUsd + reservedMicros > USD_MICROS_CAP)
       throw new PeteBudgetStop("exhausted");
     if (approval.active && data.committedMicroUsd + reservedMicros > approval.newCap)
@@ -557,6 +594,8 @@ export function settlePeteBudget(id: string, usage: unknown): boolean {
     const data = load();
     const pending = data.pending[id];
     if (!pending) return false;
+    // Zero input tokens are never proof of a free provider request in owner QA.
+    if (data.qaGrant && u.input_tokens === 0) return false;
     const pricing = priceFor(pending.model ?? MODEL);
     if (!pricing) throw new PeteBudgetStop("unavailable");
     const actualMicros = Math.ceil(u.input_tokens as number * pricing.input +
@@ -580,6 +619,12 @@ export function settlePeteBudget(id: string, usage: unknown): boolean {
       desktop.confirmedMicroUsd += actualMicros;
       desktop.reservedMicroUsd -= pending.microUsd;
       data.desktop = desktop;
+    }
+    if (data.qaGrant && actualMicros > pending.microUsd) {
+      // Unknown overspend quarantines the QA run without crediting or refunding it.
+      data.accountingError = true;
+      writePrivateJsonAtomic(LEDGER_FILE, data);
+      return false;
     }
     data.confirmedMicroUsd += actualMicros;
     data.reservedMicroUsd -= pending.microUsd;
