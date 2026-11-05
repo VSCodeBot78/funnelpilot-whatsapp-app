@@ -1293,9 +1293,10 @@ export async function processIncomingMessage(
   if (isPeteChestBreathingEmergency(input.messageText)) {
     patchAnswers(state, { peteReplySource: "guarded_safety" });
     patchFlags(state, { peteRuntimeHandoffRequested: true, peteRuntimeHandoffActive: true });
-    takeOverByHuman(state);
     const urgent = "Brustschmerzen zusammen mit Atemproblemen können ein medizinischer Notfall sein. Ruf bitte jetzt 112 an oder lass den Notruf wählen. Nicht trainieren oder selbst zum Arzt fahren.";
+    // Record the permitted emergency notice before human ownership is set.
     appendAssistantMessage(state, urgent);
+    takeOverByHuman(state);
     persistConversationState(state);
     return { text: urgent, nextStep: state.currentStep,
       detectedIntent: "unknown", state };
@@ -1336,13 +1337,19 @@ export async function processIncomingMessage(
         bookingUrl,
       });
       if (guarded) {
+        const transfersSafetyOwnership = ["medical_critical", "emotional_crisis",
+          "legal_privacy"].includes(decision.decisionType);
+        // Record the one permitted safety notice BEFORE human takeover.
+        // appendAssistantMessage changes lastActor to AI; the Inbox must keep
+        // lastActor=human once Jochen owns the conversation.
+        if (transfersSafetyOwnership) appendAssistantMessage(state, guarded.text);
         applyPeteDecisionStatePatch({
           decision, composed: guarded, state, runtimeBookingUrl: bookingUrl,
         });
         // A previous LLM reply must not remain the reported source of this
         // deterministic STOP/medical/privacy response in QA transcripts.
         updateAnswer(state, "peteReplySource", "guarded_safety");
-        appendAssistantMessage(state, guarded.text);
+        if (!transfersSafetyOwnership) appendAssistantMessage(state, guarded.text);
         persistConversationState(state);
         return { text: guarded.text, nextStep: state.currentStep,
           detectedIntent: mapPeteDecisionToIntent(decision), state };

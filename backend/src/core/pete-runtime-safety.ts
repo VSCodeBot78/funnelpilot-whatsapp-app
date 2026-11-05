@@ -170,6 +170,12 @@ const EMOTIONAL_CRISIS_KEYWORDS = [
 const LEGAL_PRIVACY_KEYWORDS = [
   "dsgvo",
   "datenschutz",
+  "personenbezogen",
+  "meine daten löschen",
+  "lösche meine daten",
+  "rückzahlung",
+  "rückerstattung",
+  "geld zurück",
   "vertrag",
   "widerruf",
   "haftung",
