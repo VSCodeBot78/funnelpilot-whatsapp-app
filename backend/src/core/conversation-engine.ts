@@ -103,6 +103,10 @@ import {
   appendAssistantMessage,
   appendUserMessage,
   getOrCreateConversationState,
+  getPendingAiFollowUpQuestion,
+  getPendingAiReturnStep,
+  getPendingAiSource,
+  resetPriceFlowState,
   patchAnswers,
   patchFlags,
   persistConversationState,
@@ -376,43 +380,6 @@ function buildProviderBookingLinkReply(
     "Sobald das erledigt ist, steht unser Gespräch verbindlich.\n" +
     "Die Terminbestätigung bekommst du danach automatisch per Mail."
   );
-}
-
-function getPendingAiFollowUpQuestion(
-  state: ReturnType<typeof getOrCreateConversationState>,
-): string | undefined {
-  const value = state.answers.pendingAiFollowUpQuestion;
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function getPendingAiReturnStep(
-  state: ReturnType<typeof getOrCreateConversationState>,
-): FlowStepId | undefined {
-  const value = state.answers.pendingAiReturnStep;
-  return typeof value === "string" && value.trim()
-    ? (value.trim() as FlowStepId)
-    : undefined;
-}
-
-function getPendingAiSource(
-  state: ReturnType<typeof getOrCreateConversationState>,
-): string | undefined {
-  const value = state.answers.pendingAiSource;
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function resetPriceFlowState(
-  state: ReturnType<typeof getOrCreateConversationState>,
-): void {
-  patchAnswers(state, {
-    priceObjectionOpen: undefined,
-    priceObjectionCategory: undefined,
-    priceObjectionFollowUpText: undefined,
-    priceObjectionExecutionDetail: undefined,
-    priceObjectionExecutionText: undefined,
-    priceExecutionChoice: undefined,
-    priceExecutionBinaryChoice: undefined,
-  });
 }
 
 function hasActiveProviderBooking(

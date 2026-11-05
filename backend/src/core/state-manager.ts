@@ -212,6 +212,44 @@ export function patchAnswers(
   state.updatedAt = nowIso();
 }
 
+/** Persisted AI follow-up selectors and price-flow reset (legacy behavior). */
+export function getPendingAiFollowUpQuestion(
+  state: ConversationState,
+): string | undefined {
+  const value = state.answers.pendingAiFollowUpQuestion;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function getPendingAiReturnStep(
+  state: ConversationState,
+): FlowStepId | undefined {
+  const value = state.answers.pendingAiReturnStep;
+  return typeof value === "string" && value.trim()
+    ? (value.trim() as FlowStepId)
+    : undefined;
+}
+
+export function getPendingAiSource(
+  state: ConversationState,
+): string | undefined {
+  const value = state.answers.pendingAiSource;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function resetPriceFlowState(
+  state: ConversationState,
+): void {
+  patchAnswers(state, {
+    priceObjectionOpen: undefined,
+    priceObjectionCategory: undefined,
+    priceObjectionFollowUpText: undefined,
+    priceObjectionExecutionDetail: undefined,
+    priceObjectionExecutionText: undefined,
+    priceExecutionChoice: undefined,
+    priceExecutionBinaryChoice: undefined,
+  });
+}
+
 export function patchFlags(
   state: ConversationState,
   updates: Partial<LeadFlags>,
