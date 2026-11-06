@@ -634,6 +634,29 @@ function handleCoachingEntryDirectBuy(
   };
 }
 
+/** Only a clear request for Jochen to own this chat overrides the booking path.
+ * "Can I speak to Jochen?" alone can still mean a Calendly telephone call.
+ */
+function isDirectChatTakeoverRequest(text: string): boolean {
+  if (!isExplicitPeteHumanTakeoverRequest(text)) return false;
+  const normalized = text.toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return /\bchat\b|\b(?:ubernehm|ubernimm)\w*\b|\bkein(?:en)?\s+bot\b|\bhier\b.{0,50}\b(?:antwort|schreib)\w*\b/i.test(normalized);
+}
+
+function completeSilentChatTakeover(state: ConversationState): EngineReply {
+  patchAnswers(state, { peteReplySource: "human_handoff" });
+  patchFlags(state, {
+    peteRuntimeHandoffRequested: true,
+    peteRuntimeHandoffActive: true,
+  });
+  takeOverByHuman(state);
+  persistConversationState(state);
+  return { text: null, nextStep: state.currentStep,
+    detectedIntent: "flow_answer", state,
+    replySuppressedReason: "human_owned" };
+}
+
 export async function processIncomingMessage(
   input: EngineInput,
 ): Promise<EngineReply> {
@@ -778,20 +801,11 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
-    if (isPeteLlmConversationSelected() &&
-        isExplicitPeteHumanTakeoverRequest(input.messageText)) {
-      patchAnswers(state, { peteReplySource: "human_handoff" });
-      patchFlags(state, {
-        peteRuntimeHandoffRequested: true,
-        peteRuntimeHandoffActive: true,
-      });
-      takeOverByHuman(state);
-      // Owner takeover is an internal state transition, never an automatic
-      // system announcement to the lead. Human replies remain attributable.
-      persistConversationState(state);
-      return { text: null, nextStep: state.currentStep,
-        detectedIntent: "flow_answer", state,
-        replySuppressedReason: "human_owned" };
+    if (isDirectChatTakeoverRequest(input.messageText) ||
+        (isPeteLlmConversationSelected() &&
+         isExplicitPeteHumanTakeoverRequest(input.messageText))) {
+      // Safety/STOP precedence above remains authoritative in every mode.
+      return completeSilentChatTakeover(state);
     }
 
     // A mention of prices, terms or appointments must NOT force a
@@ -1050,6 +1064,14 @@ export async function processIncomingMessage(
     previousObjectionIntent: getStoredAnswerString(state, "objectionIntent"),
     previousObjectionCount: getStoredAnswerNumber(state, "objectionCount"),
   });
+  // An explicit owner-in-chat request must not become a Calendly sale.
+  // Preserve hard STOP and medical/privacy/crisis precedence in the legacy path.
+  if (isDirectChatTakeoverRequest(input.messageText) &&
+      !["hard_stop", "medical_critical", "medical_soft",
+        "emotional_crisis", "legal_privacy"].includes(peteDecision.decisionType)) {
+    return completeSilentChatTakeover(state);
+  }
+
   const peteComposedResponse = composePeteResponse(peteDecision, {
     campaign,
     currentStep: state.currentStep,

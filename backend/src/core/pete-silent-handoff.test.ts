@@ -70,6 +70,41 @@ test("Silent owner handoff keeps the lead-facing transcript clean", async t => {
     delete process.env.OPENAI_API_KEY;
   });
 
+  await t.test("explicit Jochen chat takeover beats a simultaneous calendar link in every mode", async () => {
+    for (const mode of ["natural", "legacy"] as const) {
+      for (const campaignId of [DEFAULT_CAMPAIGN_ID, "reset"]) {
+        clearConversationStore();
+        const leadId = `silent-${mode}-${campaignId}`;
+        const out = await processIncomingMessage({
+          leadId, campaignId,
+          messageText: "Jochen soll den Chat persönlich übernehmen. Wo ist der Kalenderlink?",
+          ...(mode === "natural" ? { conversationMode: "natural" as const } : {}),
+        });
+        assert.equal(out.text, null, mode + "/" + campaignId + ": no bot announcement");
+        assert.equal(out.replySuppressedReason, "human_owned");
+        assert.equal(out.state.owner, "human");
+        assert.equal(out.state.aiPaused, true);
+        assert.equal(out.state.lastActor, "human");
+        assert.equal(out.state.flags.peteRuntimeHandoffActive, true);
+        assert.equal(out.state.flags.wantsBooking, false);
+        assert.notEqual(out.state.providerBooking?.status, "awaiting_booking");
+        assert.equal(out.state.messages.filter(m => m.role === "assistant").length, 0);
+      }
+    }
+  });
+
+  await t.test("a genuine telephone booking remains booking rather than chat takeover", async () => {
+    clearConversationStore();
+    const out = await processIncomingMessage({
+      leadId: "silent-booking-not-chat",
+      campaignId: DEFAULT_CAMPAIGN_ID,
+      messageText: "Ich möchte einen Telefontermin buchen.",
+    });
+    assert.equal(out.state.owner, "ai");
+    assert.equal(out.state.aiPaused, false);
+    assert.equal(out.state.flags.wantsBooking, true);
+  });
+
   await t.test("urgent emergency advice is never muted by silent handoff", async () => {
     clearConversationStore();
     const result = await say("silent-urgent", "Ich habe Brustschmerzen und bekomme schlecht Luft");
