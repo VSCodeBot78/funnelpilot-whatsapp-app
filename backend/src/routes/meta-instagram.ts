@@ -13,6 +13,7 @@ import {
   takeOverByHuman,
 } from "../core/state-manager.js";
 import { processIncomingMessage } from "../core/conversation-engine.js";
+import { resolveInstagramV2Inbound, settleInstagramV2Delivery } from "../services/instagram-v2-flow-runtime.service.js";
 import { evaluateInstagramSharedMedia } from "../services/instagram-shared-media-policy.js";
 import { getConversationState } from "../data/store.js";
 import { syncInstagramLead } from "../services/instagram-lead-sync.service.js";
@@ -529,17 +530,41 @@ router.post("/", async (req: RawBodyRequest, res) => {
 
       let engineReplyPreview: string | undefined;
       let skipEngineStatePersist = false;
-
-      try {
-        const engineReply = await processIncomingMessage({
+      let v2Delivery: { deliveryAttemptId?: string; assistantMessageId?: string } | undefined;
+      const settleV2 = (delivered: boolean): void => {
+        if (!v2Delivery?.deliveryAttemptId) return;
+        settleInstagramV2Delivery({
           leadId: leadSync.lead.id,
           campaignId: leadSync.campaignId,
-          messageText: event.text,
-          conversationMode: "natural",
+          ...v2Delivery,
+          delivered,
         });
+      };
 
-        engineProcessed = true;
-        messageAppended = true;
+      try {
+        const v2Decision = resolveInstagramV2Inbound({
+          state, senderId: event.senderId, recipientId: event.recipientId,
+          messageText: event.text, quickReplyPayload: event.quickReplyPayload,
+          timestampMs: event.timestampMs,
+        });
+        const engineReply = v2Decision.kind === "prepared"
+          ? { text: v2Decision.text, state: v2Decision.state }
+          : v2Decision.kind === "suppressed"
+            ? { text: null, state: v2Decision.state }
+            : await processIncomingMessage({
+                leadId: leadSync.lead.id,
+                campaignId: leadSync.campaignId,
+                messageText: event.text,
+                conversationMode: "natural",
+              });
+
+        engineProcessed = v2Decision.kind !== "suppressed";
+        if (v2Decision.kind === "suppressed") {
+          sendSkipped = true;
+          sendSkipReason = "v2_" + v2Decision.reason;
+        }
+        messageAppended = v2Decision.kind !== "suppressed" ||
+          v2Decision.reason !== "message_window_unverified_or_expired";
         engineReplyPreview = buildBotReplyPreview(engineReply.text);
         botReplyPrepared = Boolean(
           engineReplyPreview && engineReply.text,
@@ -560,19 +585,34 @@ router.post("/", async (req: RawBodyRequest, res) => {
             message.role === "assistant" &&
             message.text.trim() === engineReply.text?.trim()
           ).at(-1)?.id;
+          if (v2Decision.kind === "prepared") {
+            v2Delivery = {
+              deliveryAttemptId: v2Decision.deliveryAttemptId,
+              assistantMessageId: preparedAssistantId,
+            };
+          }
 
           const outboundPermission = evaluateLatestAiOutboundPermission({
             leadId: leadSync.lead.id,
             campaignId: leadSync.campaignId,
           });
+          // Recheck the trusted Meta clock at ACTUAL send time; an old event
+          // cannot create a new 24h window merely by being processed today.
+          const v2MessageWindowValid = v2Decision.kind !== "prepared" ||
+            (typeof event.timestampMs === "number" &&
+             Date.now() >= event.timestampMs - 5 * 60_000 &&
+             Date.now() < event.timestampMs + 24 * 60 * 60_000);
 
-          if (!outboundPermission.allowed) {
+          if (!outboundPermission.allowed || !v2MessageWindowValid) {
             dryRun = true;
             sent = false;
             sendSkipped = true;
-            sendSkipReason = `outbound_guard_${outboundPermission.reason}`;
+            sendSkipReason = !v2MessageWindowValid
+              ? "outbound_guard_meta_window_expired"
+              : `outbound_guard_${outboundPermission.reason}`;
             outboundStatus = "dry_run";
             ignoredAutomationPaused += 1;
+            settleV2(false);
 
             // The guard reads the latest persisted state. If a human takeover
             // happened after Pete prepared this reply, persisting the older
@@ -582,15 +622,19 @@ router.post("/", async (req: RawBodyRequest, res) => {
             const sendResult = await sendMetaInstagramTextMessage({
               to: event.senderId,
               body: engineReply.text,
+              ...(v2Decision.kind === "prepared" && v2Decision.quickReplies.length
+                ? { quickReplies: v2Decision.quickReplies } : {}),
             });
 
           if (sendResult.sendSkipped) {
+            settleV2(false);
             dryRun = true;
             sent = false;
             sendSkipped = true;
             sendSkipReason = sendResult.reason;
             outboundStatus = "dry_run";
           } else if (sendResult.ok && sendResult.sent) {
+            settleV2(true);
             dryRun = false;
             sent = true;
             outboundStatus = "sent";
@@ -607,6 +651,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
               });
             }
           } else if (!sendResult.ok) {
+            settleV2(false);
             failed += 1;
             dryRun = false;
             sent = false;
@@ -674,6 +719,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
         }
         processed += 1;
       } catch (engineError) {
+        settleV2(false);
         failed += 1;
         const errorMessage =
           engineError instanceof Error
@@ -734,8 +780,8 @@ router.post("/", async (req: RawBodyRequest, res) => {
             leadId: leadSync.lead.id,
             campaignId: leadSync.campaignId,
             conversationUpdated: true,
-            messageAppended: true,
-            engineProcessed: true,
+            messageAppended,
+            engineProcessed,
             botReplyPrepared: Boolean(engineReplyPreview),
             botReplyPreview: engineReplyPreview,
             outboundStatus,
@@ -753,7 +799,7 @@ router.post("/", async (req: RawBodyRequest, res) => {
         status: "processed",
         leadId: leadSync.lead.id,
         campaignId: leadSync.campaignId,
-        engineProcessed: true,
+        engineProcessed,
         botReplyPrepared: Boolean(engineReplyPreview),
         outboundStatus,
         sent,

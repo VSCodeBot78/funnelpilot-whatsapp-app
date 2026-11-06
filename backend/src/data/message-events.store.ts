@@ -92,11 +92,12 @@ export function getMessageEventByMessageId(
     return undefined;
   }
 
-  const blockingStatuses: MessageEventStatus[] = [
-    "processed",
-    "ignored_unsupported",
-    "failed",
-  ];
+  const blockingStatuses: MessageEventStatus[] = provider === "meta_instagram"
+    // Inbound is synchronously claimed before its first await. Replays and
+    // concurrent duplicate signed deliveries must fail closed, including
+    // "received" and paused events. A crashed claim needs operator review.
+    ? ["received", "processed", "ignored_status", "ignored_unsupported", "failed"]
+    : ["processed", "ignored_unsupported", "failed"];
 
   return [...messageEventsStore].reverse().find(
     (event) =>

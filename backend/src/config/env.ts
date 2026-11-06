@@ -144,6 +144,8 @@ export const env = {
   INSTAGRAM_GRAPH_API_VERSION: getInstagramGraphApiVersion(),
   INSTAGRAM_SEND_ENABLED: getInstagramSendEnabled(),
   INSTAGRAM_ENGINE_ENABLED: getInstagramEngineEnabled(),
+  // Separate owner-only cutover gate: never enabled by a saved V2 draft.
+  INSTAGRAM_V2_FLOW_ENABLED: getBooleanEnv("INSTAGRAM_V2_FLOW_ENABLED"),
   INSTAGRAM_ALLOWED_SENDER_IDS: getInstagramAllowedSenderIds(),
   INSTAGRAM_ALLOW_ALL_SENDERS: getInstagramAllowAllSenders(),
   INSTAGRAM_AUTO_ENABLE_NEW_LEADS: getInstagramAutoEnableNewLeads(),

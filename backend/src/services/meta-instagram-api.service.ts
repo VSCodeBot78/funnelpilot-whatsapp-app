@@ -36,6 +36,8 @@ type SendTextMessageInput = {
   body: string;
   // Dashboard/human messages are not AI echoes, even on the same transport.
   origin?: "ai" | "human";
+  // Instagram text-only quick replies; optional, never inferred from a draft.
+  quickReplies?: Array<{ title: string; payload: string }>;
 };
 
 function normalizeString(value: unknown): string {
@@ -114,6 +116,14 @@ export async function sendMetaInstagramTextMessage(
     };
   }
 
+  const quickReplies = input.quickReplies ?? [];
+  if (quickReplies.length > 13 || quickReplies.some(item =>
+    !item.title || item.title.length > 20 ||
+    !item.payload || item.payload.length > 1000)) {
+    return { ok: false, sent: false, dryRun: false, sendSkipped: false,
+      error: "Instagram Quick-Reply-Payload ungültig." };
+  }
+
   const pendingToken = input.origin === "human"
     ? null
     : registerPendingAiInstagramOutbound({
@@ -134,6 +144,9 @@ export async function sendMetaInstagramTextMessage(
         },
         message: {
           text: body,
+          ...(quickReplies.length ? { quick_replies: quickReplies.map(item => ({
+            content_type: "text", title: item.title, payload: item.payload,
+          })) } : {}),
         },
       }),
     });

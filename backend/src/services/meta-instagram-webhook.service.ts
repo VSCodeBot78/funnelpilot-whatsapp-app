@@ -3,6 +3,7 @@ export type InstagramWebhookMessage = {
   text?: string;
   is_echo?: boolean;
   attachments?: unknown[];
+  quick_reply?: { payload?: string };
 };
 
 export type InstagramWebhookMessagingEvent = {
@@ -41,6 +42,7 @@ export type ParsedInstagramMessageEvent = {
   timestampMs?: number;
   isEcho: boolean;
   hasAttachments: boolean;
+  quickReplyPayload?: string;
 };
 
 function normalizeString(value: unknown): string {
@@ -112,6 +114,7 @@ export function parseInstagramMessageEvents(
 
       seenMessageIds.add(messageId);
 
+      const payload = normalizeString(message.quick_reply?.payload);
       result.push({
         messageId,
         senderId,
@@ -122,6 +125,7 @@ export function parseInstagramMessageEvents(
         hasAttachments:
           Array.isArray(message.attachments) &&
           message.attachments.length > 0,
+        ...(payload ? { quickReplyPayload: payload } : {}),
       });
     }
   }
