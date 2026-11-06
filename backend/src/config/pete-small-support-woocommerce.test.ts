@@ -124,3 +124,75 @@ test("real conversation engine routes the smaller support reply without any prov
     globalThis.fetch = originalFetch;
   }
 });
+
+test("buying signal: first one month and later three months gives the first checkout link, not a question", () => {
+  const reply = getPeteVerifiedTransactionAnswer(
+    "kann ich erst ein monat testen und dann erweitern auf 3 monate?", state)?.text ?? "";
+  assert.match(reply, /^Ja, du kannst klein starten/);
+  assert.ok(reply.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.match(reply, /14,95 €.*84,05 €.*99 €.*100 €.*199 €/);
+  assert.match(reply, /1 Monat App.*45-Minuten-Coaching/);
+  assert.match(reply, /3 Monate App.*2 Coachings/);
+  assert.equal((reply.match(/\?/g) ?? []).length, 0);
+  assert.doesNotMatch(reply, /bereits gekauft|bereits gebucht|kostenlose[r]? Probephase/);
+});
+
+test("clear purchase question after a smaller-support discussion gives the starter link immediately", () => {
+  const context = { ...state, messages: [
+    { role: "user", text: "bischen persönliche betreuung, aber nicht so intensiv, ich brauche Hilfe" },
+    { role: "assistant", text: "Es gibt 1 Monat App mit Coaching oder insgesamt 3 Monate mit Chat-Support." },
+  ] } as any;
+  const reply = getPeteVerifiedTransactionAnswer(
+    "klingt gut, wie kann ich das buchen", context)?.text ?? "";
+  assert.ok(reply.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.match(reply, /99 €/);
+  assert.equal((reply.match(/\?/g) ?? []).length, 0);
+});
+
+test("purchase-interest intent cannot override STOP or refund problems", () => {
+  assert.equal(getPeteVerifiedSmallSupportAnswer(
+    "STOP. Kann ich erst ein Monat testen und dann auf 3 Monate erweitern?", state), null);
+  assert.equal(getPeteVerifiedSmallSupportAnswer(
+    "Mein App-Starter ist doppelt abgebucht. Kann ich auf 3 Monate erweitern?", state), null);
+  const refused = getPeteVerifiedTransactionAnswer(
+    "Nein, ich will keine Begleitung, kann ich trotzdem den kostenlosen Check bekommen?", state)?.text ?? "";
+  assert.doesNotMatch(refused, /14,95 €|99 €|199 €|app-starter/);
+});
+
+test("full conversation engine preserves staged-upgrade checkout CTA without paid LLM usage", async () => {
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  const oldFetch = globalThis.fetch;
+  let providerCalls = 0;
+  globalThis.fetch = async () => { providerCalls++; throw new Error("NETWORK_DISABLED_IN_SYNTHETIC_TEST"); };
+  try {
+    const response = await processIncomingMessage({
+      leadId: "staged-app-upgrade-buying-intent",
+      campaignId: "eltern-vital-fit",
+      messageText: "kann ich erst ein monat testen und dann erweitern auf 3 monate?",
+      conversationMode: "natural",
+    });
+    assert.equal(response.state.answers.peteReplySource, "verified_transaction");
+    assert.ok(response.text?.includes(OFFER_TRUTH.selfstarter.productUrl));
+    assert.match(response.text ?? "", /99 €.*199 €/);
+    assert.equal(providerCalls, 0);
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+test("exact free-form parent message recognizes smaller coaching, not only DIY or 499 coaching", () => {
+  const actual = "mmh bischen persönliche betreuung berauch ich schon sonst zieh ich das nicht durch, gibt es da was ohne gleich ein riesen coaching zu buchen?";
+  const reply = getPeteVerifiedTransactionAnswer(actual, state)?.text ?? "";
+  assert.match(reply, /99 €/);
+  assert.match(reply, /199 €/);
+  assert.ok(reply.includes(OFFER_TRUTH.selfstarter.productUrl));
+});
+
+test("exact owner dialogue 'klingt gut, wie kann ich das buchen' sends checkout first", () => {
+  const context = { ...state, messages: [
+    { role: "user", text: "mmh bischen persönliche betreuung berauch ich schon sonst zieh ich das nicht durch, gibt es da was ohne gleich ein riesen coaching zu buchen?" },
+    { role: "assistant", text: "Ja, es gibt eine kleinere Begleitung: 1 Monat App mit einem Coaching oder 3 Monate mit zwei Coachings." },
+  ] } as any;
+  const reply = getPeteVerifiedTransactionAnswer("klingt gut, wie kann ich das buchen", context)?.text ?? "";
+  assert.ok(reply.includes(OFFER_TRUTH.selfstarter.productUrl));
+  assert.match(reply, /99 €.*199 €/);
+  assert.equal((reply.match(/\?/g) ?? []).length, 0);
+});
