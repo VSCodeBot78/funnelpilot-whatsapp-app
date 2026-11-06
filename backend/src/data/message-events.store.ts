@@ -30,6 +30,17 @@ const MAX_EVENTS = 1000;
 
 let messageEventsStore: MessageEventLogEntry[] = [];
 
+/** Instagram delivery telemetry must not create a second copy of lead/chat
+ * content. Also scrub old in-memory events when a saved store is loaded.
+ */
+function minimizeEventContent(entry: MessageEventLogEntry): MessageEventLogEntry {
+  if (entry.provider !== "meta_instagram" || !entry.raw) return { ...entry };
+  const raw = { ...entry.raw };
+  delete raw.textPreview;
+  delete raw.botReplyPreview;
+  return { ...entry, raw };
+}
+
 function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
@@ -64,7 +75,7 @@ function readMessageEventsFile(): MessageEventLogEntry[] {
           item.provider === "meta_instagram") &&
         typeof item.messageId === "string" &&
         typeof item.status === "string",
-    );
+    ).map(minimizeEventContent);
   } catch (error) {
     if (env.NODE_ENV === "production") throw new Error("message_events_store_invalid_stop_restore", { cause: error });
     console.error("message events store read error:", error);
@@ -110,7 +121,7 @@ export function getMessageEventByMessageId(
 export function saveMessageEventLogEntry(
   entry: MessageEventLogEntry,
 ): MessageEventLogEntry {
-  const safeEntry = { ...entry };
+  const safeEntry = minimizeEventContent(entry);
   messageEventsStore = [...messageEventsStore, safeEntry].slice(-MAX_EVENTS);
   persistMessageEventsStore();
   return safeEntry;

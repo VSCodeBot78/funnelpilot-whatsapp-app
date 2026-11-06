@@ -25,7 +25,7 @@ const { sendMetaInstagramTextMessage } = await import("../services/meta-instagra
 const { syncInstagramLead } = await import("../services/instagram-lead-sync.service.js");
 const { getConversationState } = await import("../data/store.js");
 const { takeOverByHuman, persistConversationState } = await import("../core/state-manager.js");
-const { getAllMessageEvents } = await import("../data/message-events.store.js");
+const { getAllMessageEvents, saveMessageEventLogEntry } = await import("../data/message-events.store.js");
 const { DEFAULT_CAMPAIGN_ID } = await import("../config/campaigns.js");
 
 function writeDraft(id: string, keyword: string) {
@@ -111,6 +111,24 @@ test("signed Instagram DM CHECK -> persisted V2 opener -> verified button -> HTT
   assert.equal(first.campaignId, "stored-v2-CHECK");
   assert.equal(typeof first.buttonPayload, "string");
   assert.equal(Boolean(state.lastUserMessageAt), true);
+
+  // Preserve delivery metadata, not private conversation excerpts.
+  const logEntry = getAllMessageEvents().find(item =>
+    item.messageId === "v2-signed-check-1" && item.status === "processed");
+  assert.ok(logEntry);
+  assert.equal(Object.hasOwn(logEntry.raw ?? {}, "textPreview"), false);
+  assert.equal(Object.hasOwn(logEntry.raw ?? {}, "botReplyPreview"), false);
+  saveMessageEventLogEntry({
+    id: "synthetic-audit", provider: "meta_instagram",
+    messageId: "synthetic-audit-record", status: "processed",
+    receivedAt: new Date().toISOString(),
+    raw: { textPreview: "FAKE_INBOUND_SENTINEL",
+      botReplyPreview: "FAKE_OUTBOUND_SENTINEL", metadataOnly: true },
+  });
+  const eventFile = fs.readFileSync(path.join(directory, "message-events.json"), "utf8");
+  assert.doesNotMatch(eventFile, /FAKE_INBOUND_SENTINEL|FAKE_OUTBOUND_SENTINEL/);
+  assert.doesNotMatch(eventFile, /gespeicherter CHECK-Einstieg/);
+  assert.match(eventFile, /"metadataOnly"\s*:\s*true/);
 
   const duplicate = await post("v2-check-one", "v2-signed-check-1", "CHECK");
   assert.equal(duplicate.status, 200);

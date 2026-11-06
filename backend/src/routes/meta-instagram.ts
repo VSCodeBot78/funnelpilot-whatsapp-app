@@ -76,7 +76,8 @@ function buildRawPreview(
 ): Record<string, unknown> {
   return {
     recipientId: event.recipientId || undefined,
-    textPreview: event.text ? event.text.slice(0, 160) : undefined,
+    // Event telemetry contains only metadata, never private DM text.
+    hasText: Boolean(event.text),
     isEcho: event.isEcho,
     hasAttachments: event.hasAttachments,
     timestampMs: event.timestampMs,
