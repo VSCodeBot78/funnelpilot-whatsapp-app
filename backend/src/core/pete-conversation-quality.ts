@@ -11,6 +11,7 @@ import type { ConversationState } from "../types/types.js";
 import { getPeteStrategyCallFollowUp } from "./pete-strategy-call-followup.js";
 import { getConversationState } from "../data/store.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { getPeteVerifiedSmallSupportAnswer } from "./pete-smaller-coaching-offers.js";
 import { hasPeteMedicalSafetySignal, evaluatePeteRuntimeSafety } from "./pete-runtime-safety.js";
 import { guardPeteNextStep, proposePeteNextStep, isPeteBookingDeclined, isPeteBookingCancellationRequest, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
 
@@ -150,6 +151,12 @@ export function getPeteVerifiedTransactionAnswer(
   // Mixed messages can contain both old buying words and a newer refusal.
   // Detect the current refusal BEFORE any checkout or paid-product CTA.
   const explicitlyDeclinesPaidOffers = isExplicitPaidOfferRefusal(input);
+  // A parent asking for a lighter personal offer must never be trapped
+  // between the DIY Selfstarter and intensive five-week coaching. The
+  // verified WooCommerce ladder answers without model-generated prices.
+  const smallSupport = !explicitlyDeclinesPaidOffers
+    ? getPeteVerifiedSmallSupportAnswer(text, state) : null;
+  if (smallSupport) return { text: smallSupport, nextPhase: "info" };
   const asksTrial = /(?:probe|test|kennenlern)phase|(?:paar|einige|wenige)\s+wochen\s+testen|(?:zusammenarbeit|begleitung|coaching).{0,75}testen/.test(input);
   const coachingContext = /zusammenarbeit|begleitung|coaching|1:1/.test(input) ||
     (state.messages ?? []).filter(m => m.role === "user").slice(-3)

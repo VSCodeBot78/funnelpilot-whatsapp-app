@@ -130,6 +130,48 @@ export const OFFER_TRUTH = {
   postPurchaseOnly: readonly string[];
 };
 
+/**
+ * Owner-approved WooCommerce ladder, checked against the live public Store
+ * API on 2026-11-06 (IDs 1853, 1897, 1929).
+ *
+ * Total prices include the previously purchased Selfstarter, NOT the future
+ * separate Minikurs. Never infer that a lead bought any step from chat text.
+ * These URLs are product-information links, NOT payment confirmations.
+ */
+export const VERIFIED_SMALL_SUPPORT = {
+  appStarter: {
+    id: 1897,
+    name: "App-Starter Upgrade",
+    upgradePriceEur: 84.05,
+    upgradePriceText: "84,05 €",
+    totalWithSelfstarterEur: 99,
+    totalWithSelfstarterText: "99 €",
+    productUrl: "https://jochen-kammerer.de/produkt/no-bullshit-elternfitness_app-starter/",
+    includedAppMonths: 1,
+    includedCoachingSessions: 1,
+    coachingSessionMinutes: 45,
+    optionalAppRenewalEur: 19.95,
+    optionalAppRenewalText: "19,95 € pro Monat",
+    optionalAppRenewalNeedsSeparateSetup: true,
+    cancellationNoticeDays: 14,
+  },
+  implementation: {
+    id: 1929,
+    name: "Umsetzung Upgrade",
+    upgradePriceEur: 100,
+    upgradePriceText: "100 €",
+    totalWithSelfstarterEur: 199,
+    totalWithSelfstarterText: "199 €",
+    productUrl: "https://jochen-kammerer.de/produkt/umsetzung-upgrade/",
+    totalAppMonths: 3,
+    includedCoachingSessions: 2,
+    coachingSessionMinutes: 45,
+    includesIndividualStartPlan: true,
+    includesChatSupportDuringMonths: 3,
+    automaticRenewal: false,
+  },
+} as const;
+
 export function getSelfstarterOffer(): OfferTruthItem {
   return OFFER_TRUTH.selfstarter;
 }
