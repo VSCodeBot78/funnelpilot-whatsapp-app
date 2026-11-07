@@ -1,4 +1,4 @@
-import { VERIFIED_SMALL_SUPPORT } from "../config/offer-truth.js";
+import { OFFER_TRUTH, VERIFIED_SMALL_SUPPORT } from "../config/offer-truth.js";
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
@@ -844,8 +844,9 @@ export async function processIncomingMessage(
     // A refund, missing access, duplicate charge or verified-payment dispute
     // still goes through the protected transaction path below.
     const repeatSelfstarterPurchaseQuestion =
-      /\b(?:selbststarter|ihn|den)\b/.test(normalizedBookingText) &&
-      /\b(?:nochmals?|nochmal|erneut|wieder|doppelt)\b/.test(normalizedBookingText) &&
+      (/\b(?:selbststarter|ihn|den)\b/.test(normalizedBookingText) ||
+       /\b(?:noch\s+einmal|nochmal)\s+kaufen\b/.test(normalizedBookingText)) &&
+      /\b(?:nochmals?|nochmal|noch\s+einmal|erneut|wieder|doppelt)\b/.test(normalizedBookingText) &&
       /\b(?:bezahlen|kaufen|bestellen|zahlen)\b/.test(normalizedBookingText) &&
       /\b(?:muss|musste|brauche|soll)\b/.test(normalizedBookingText) &&
       !/\b(?:abbuchung|abgebucht|rechnung|ruckerstattung|widerruf|zugang|bestatigung|nachweis|beleg|wirklich bezahlt)\b/.test(normalizedBookingText);
@@ -916,6 +917,62 @@ export async function processIncomingMessage(
         current: state.providerBooking, provider: inferBookingProviderFromUrl(bookingUrl),
         bookingUrl, linkSentAt: nowIso(),
       });
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    // PL19: a strategy call is not an agreement to buy coaching.
+    // Never claim a price, payment, confirmed call or contract.
+    const noAutomaticCoachingCommitment =
+      /\b(?:muss|musste|verpflicht\w*)\b.{0,75}\b(?:coaching|kaufen|buchen|499|zahlen|abschliess\w*)\b/.test(latestLower) &&
+      /\b(?:danach|anschliessend|nach dem (?:gesprach|termin)|sofort|gleich)\b/.test(latestLower) &&
+      /\b(?:unsicher|gesprach|termin|strategie)\b/.test(latestLower) &&
+      !/\b(?:zahlung|rechnung|widerruf|abbuchung|vertrag kundigen|datenschutz)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && noAutomaticCoachingCommitment &&
+        !explicitLiveChatTakeover) {
+      const reply = "Nein, das Strategiegespraech verpflichtet dich nicht, sofort ein Coaching zu kaufen. Du kannst danach in Ruhe entscheiden, ob die Begleitung ueberhaupt zu dir passt. Eine Buchung oder Zahlung bestaetige ich hier nicht.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    // A cheaper *personal* offer is not synonymous with the DIY-only starter.
+    // Send ONLY approved URLs, and do not treat a claimed purchase as verified.
+    const wantsSmallerPersonalSupport =
+      /\b(?:kleiner\w*|gunstiger\w*|weniger intensiv\w*|nicht so teuer)\b.{0,50}\b(?:betreu\w*|begleit\w*|variante|coaching|angebot)\b/.test(latestLower) ||
+      (/\b(?:499|funf wochen|5 wochen)\b/.test(latestLower) &&
+       /\b(?:zu teuer|zu viel|nicht leisten|kleiner\w*|gunstiger\w*)\b/.test(latestLower) &&
+       /\b(?:betreu\w*|begleit\w*|variante)\b/.test(latestLower));
+    const earlierSmallOffer = state.messages.slice(-12).some(message =>
+      message.role === "assistant" &&
+      /\b(?:app-starter|kleinere\s+personliche\s+begleitung|99\s*(?:euro|€))\b/i.test(message.text));
+    const asksSmallOfferLink =
+      earlierSmallOffer &&
+      /\b(?:wo|link|anschauen|sehen|finden|schick\w*|zeige\w*)\b/.test(latestLower) &&
+      /\b(?:angebot|app|betreuung|begleitung|variante|das|link)\b/.test(latestLower) &&
+      !/\b(?:nicht|kein|ohne)\b.{0,30}\b(?:angebot|link|kaufen|begleitung)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && (wantsSmallerPersonalSupport || asksSmallOfferLink) &&
+        !explicitLiveChatTakeover &&
+        !/\b(?:widerruf|rechnung|zahlung|abbuchung|ruckerstattung|zugang fehlt|doppelt bezahlt|stop|nicht mehr schreiben)\b/.test(latestLower)) {
+      const ownedClaim = state.messages.slice(-12).some(message =>
+        message.role === "user" &&
+        /\bselbststarter\b/i.test(message.text) &&
+        /\b(?:gekauft|schon|bereits|habe|hab)\b/i.test(message.text));
+      const reply = ownedClaim
+        ? "Wenn du den Selbststarter bereits besitzt, ist das persoenliche App-Starter-Upgrade der kleine Einstieg: " +
+          VERIFIED_SMALL_SUPPORT.appStarter.upgradePriceText + " zusaetzlich, " +
+          VERIFIED_SMALL_SUPPORT.appStarter.totalWithSelfstarterText + " insgesamt. Das Upgrade findest du hier: " +
+          VERIFIED_SMALL_SUPPORT.appStarter.productUrl + ". Ob der fruehere Kauf tatsaechlich erfasst ist, kann ich hier nicht pruefen."
+        : "Ja, neben dem 5-Wochen-Coaching gibt es die kleinere persoenliche Begleitung: " +
+          "Selbststarter und App-Starter-Upgrade fuer " + VERIFIED_SMALL_SUPPORT.appStarter.totalWithSelfstarterText +
+          " insgesamt, mit 1 Monat App und einem 45-Minuten-Coaching. Erst der Selbststarter: " +
+          OFFER_TRUTH.selfstarter.productUrl + " Danach das App-Starter-Upgrade: " +
+          VERIFIED_SMALL_SUPPORT.appStarter.productUrl + ". Du musst dich jetzt nicht entscheiden.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
       appendAssistantMessage(state, reply);
       persistConversationState(state);
       return { text: reply, nextStep: state.currentStep,

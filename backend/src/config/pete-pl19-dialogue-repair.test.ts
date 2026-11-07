@@ -99,3 +99,43 @@ test("PL19 R3: personal call or booking ambiguity offers verified Calendly witho
  assert.notEqual(r.state.owner,"human");
  assert.notEqual(r.state.providerBooking?.status,"booked");
 });
+
+test("PL19 R4: already owned selfstarter does not get repurchase link",async()=>{
+ const leadId="pl19-r4-repeat-buy";
+ const state=getOrCreateConversationState(leadId,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(state,"Ich habe den Selbststarter schon gekauft.");
+ appendAssistantMessage(state,"Wenn du den Selbststarter schon hast, ist der naechste Schritt das App-Starter-Upgrade.");
+ persistConversationState(state);
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+    messageText:"Muss ich den Selbststarter dann noch einmal kaufen?",conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/nicht erneut kaufen/);
+ assert.ok(!(r.text??"").includes("/produkt/no-bullshit-elternfitness-selbststarter"));
+ assert.notEqual(r.state.owner,"human");
+});
+test("PL19 R4: after Calendly a strategy meeting is not an automatic coaching purchase",async()=>{
+ const leadId="pl19-r4-no-obligation";
+ await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+    messageText:"Ich will gerne persoenlich mit Jochen sprechen. Wie buche ich einen Termin?",
+    conversationMode:"natural"});
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+    messageText:"Und wenn ich noch unsicher bin, muss ich danach sofort ein Coaching kaufen?",
+    conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/nicht, sofort|nicht sofort|verpflichtet dich nicht/);
+ assert.notEqual(r.state.owner,"human");
+});
+test("PL19 R4: explicit smaller personal help at 499 EUR objection uses app starter",async()=>{
+ const leadId="pl19-r4-small-support";
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+    messageText:"499 Euro sind mir gerade zu viel. Gibt es eine kleinere Betreuung?",
+    conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/99/);
+ assert.ok((r.text??"").includes("no-bullshit-elternfitness_app-starter"));
+ const next=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+    messageText:"Danke, wo sehe ich das Angebot konkret?",conversationMode:"natural"});
+ assert.equal(next.state.answers.peteReplySource,"verified_transaction");
+ assert.ok((next.text??"").includes("no-bullshit-elternfitness_app-starter"));
+ assert.notEqual(next.state.owner,"human");
+});
