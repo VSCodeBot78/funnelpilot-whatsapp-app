@@ -886,6 +886,42 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
+    // PL19 R7: A plain claimed-old-order query is not a billing dispute.
+    // Answer honestly without allowing a model to silently hand off.
+    const claimedOldStarterStatus =
+      /\bselbststarter\b/.test(latestLower) &&
+      /\b(?:glaub\w*|vielleicht|vermut\w*|schon|bereits|gekauft|bestellt)\b/.test(latestLower) &&
+      /\b(?:kannst du (?:das|den kauf|meine bestellung|die zahlung)?\s*pruf\w*|kannst du (?:das|die zahlung|den kauf)\s*bestatig\w*|ist (?:das|der kauf|die zahlung) eingegangen)\b/.test(latestLower) &&
+      !/\b(?:doppelt\\s+(?:abgebucht|belastet|bezahlt)|zweimal\\s+(?:abgebucht|belastet|bezahlt)|abgebucht|abbuchung|widerruf|ruckerstattung|erstattung|fehlender zugang|zugang fehlt|rechnung|betrug|anwalt|stornieren)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && claimedOldStarterStatus && !explicitLiveChatTakeover) {
+      const reply = "Ob dein früherer Selbststarter-Kauf bezahlt oder erfasst wurde, kann ich hier nicht verifizieren. Prüfe bitte deine Bestellbestätigung. Falls sie fehlt, kann Jochen den konkreten Vorgang prüfen – ich bestätige weder Kauf noch Zahlung.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
+    // A repeat request for the free CHECK URL must repeat the URL, not
+    // merely promise to send it. Look at recent turns and respect STOP above.
+    const recentCheckContext = state.messages.slice(-9).some(message =>
+      (message.role === "assistant" && message.text.includes(OFFER_TRUTH.resources.elterncheck.url)) ||
+      (message.role === "user" &&
+       /\b(?:kostenlos\w*|gratis|frei\w*)\b/.test(message.text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")) &&
+       /\b(?:check|fitness.?check|eltern.?check)\b/i.test(message.text)));
+    const requestsSameFreeLink =
+      /\b(?:link|url|adresse|seite)\b/.test(latestLower) &&
+      /\b(?:schick\w*|sende\w*|gib|konkret|direkt|nochmal|noch einmal|wo|bitte|zeigen)\b/.test(latestLower) &&
+      !/\b(?:kein|nicht|ohne)\s+(?:link|url|adresse)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && recentCheckContext && requestsSameFreeLink &&
+        !explicitLiveChatTakeover &&
+        !/\b(?:abbuchung|widerruf|rechnung|stornier\w*|datenschutz)\b/.test(latestLower)) {
+      const reply = "Hier ist der kostenlose Elternfitness-Check: " + OFFER_TRUTH.resources.elterncheck.url;
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
     const asksAfterBookingLink =
       state.providerBooking?.status === "awaiting_booking" &&
       /\b(?:termin|gebucht|buchung|slot|frei\w*|auswahlen|waehlen|wahlen)\b/.test(latestLower) &&
@@ -953,6 +989,12 @@ export async function processIncomingMessage(
        /\b499\b/.test(latestLower) &&
        /\b(?:nicht|ohne)\b.{0,35}\b(?:499|ausgeben|bezahlen|zahlen|kaufen)\b/.test(latestLower) &&
        /\b(?:kosten|kostet|preis|alternative|angebot|moglich|gibt es|haben)\b/.test(latestLower));
+    const asksUnder499ForPersonalHelp =
+      /\b499\b/.test(latestLower) &&
+      /\b(?:personlich\w*|betreu\w*|begleit\w*|coach\w*|hilfe)\b/.test(latestLower) &&
+      /\b(?:weniger|gunstig\w*|nicht|ohne|unter|statt|alternative)\b/.test(latestLower) &&
+      /\b(?:kost\w*|preis|wie viel|wieviel|angebot|gibt es|moglich|bekomm\w*)\b/.test(latestLower) &&
+      !/\b(?:gar nichts kaufen|nichts kaufen|keine angebote|keine kaufangebote|kein interesse|kein coaching|keine begleitung)\b/.test(latestLower);
     const earlierSmallOffer = state.messages.slice(-12).some(message =>
       message.role === "assistant" &&
       /\b(?:app-starter|kleinere\s+personliche\s+begleitung|99\s*(?:euro|€))\b/i.test(message.text));
@@ -961,7 +1003,7 @@ export async function processIncomingMessage(
       /\b(?:wo|link|anschauen|sehen|finden|schick\w*|zeige\w*)\b/.test(latestLower) &&
       /\b(?:angebot|app|betreuung|begleitung|variante|das|link)\b/.test(latestLower) &&
       !/\b(?:nicht|kein|ohne)\b.{0,30}\b(?:angebot|link|kaufen|begleitung)\b/.test(latestLower);
-    if (isPeteLlmConversationSelected() && (wantsSmallerPersonalSupport || asksSmallOfferLink) &&
+    if (isPeteLlmConversationSelected() && (wantsSmallerPersonalSupport || asksSmallOfferLink || asksUnder499ForPersonalHelp) &&
         !explicitLiveChatTakeover &&
         !/\b(?:widerruf|rechnung|zahlung|abbuchung|ruckerstattung|zugang fehlt|doppelt bezahlt|stop|nicht mehr schreiben)\b/.test(latestLower)) {
       const ownedClaim = state.messages.slice(-12).some(message =>
@@ -1072,6 +1114,25 @@ export async function processIncomingMessage(
     if (isPeteLlmConversationSelected() && simpleKneeDiscomfort &&
         !explicitLiveChatTakeover) {
       const reply = "Wenn dein Knie beim Treppensteigen schmerzt, erzwinge keine schmerzhafte Belastung. Bei Beschwerden seit Wochen ist eine fachliche Abklärung sinnvoll. Wir können erst deinen Zeitrahmen und Alltag besprechen, ohne Knieübungen aus der Ferne freizugeben.";
+      updateAnswer(state, "peteReplySource", "guarded_safety");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
+    // Follow-up to a mild knee symptom: give a safety-bounded reply,
+    // not an exercise prescription or an opaque model handoff.
+    const recentMildKneeContext = state.messages.slice(-8).some(message =>
+      message.role === "user" &&
+      /\b(?:knie|knieschmerz\w*|kniebeschwerd\w*)\b/i.test(message.text) &&
+      !/\b(?:brustschmerz|atemnot|ohnmacht|unfall|sturz|geschwollen|notfall)\b/i.test(message.text));
+    const asksKneeExerciseFollowup =
+      /\b(?:knie|kniebeschwerd\w*|knieschmerz\w*)\b/.test(latestLower) &&
+      /\b(?:ubung\w*|sport|training|trainier\w*|belast\w*|kniebeuge\w*|empfehl\w*)\b/.test(latestLower) &&
+      recentMildKneeContext &&
+      !/\b(?:stark\w*|plötzlich|plotzlich|unfall|gesturzt|sturz|geschwollen|fieber|nicht auftreten|nicht laufen|atemnot|brustschmerz|schwindel|lähmung|lahmung|operation|medikament|arzt sagt)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksKneeExerciseFollowup && !explicitLiveChatTakeover) {
+      const reply = "Welche Übungen für dein Knie geeignet sind, kann ich aus der Ferne nicht sicher beurteilen. Trainiere nicht in den Schmerz hinein und lass Beschwerden, die seit Wochen bestehen, fachlich abklären. Wir können bis dahin eine alltagstaugliche Routine ohne belastende Knieübungen planen.";
       updateAnswer(state, "peteReplySource", "guarded_safety");
       appendAssistantMessage(state, reply);
       persistConversationState(state);

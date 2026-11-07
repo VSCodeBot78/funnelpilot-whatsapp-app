@@ -176,3 +176,48 @@ test("PL19 R5: negated purchase must never count as an owned Selfstarter", async
    messageText:"Was kostet ein Monat App mit einem Coaching?",conversationMode:"natural"});
  assert.ok((r.text??"").includes("/produkt/no-bullshit-elternfitness-selbststarter/"));
 });
+test("R7 claim old selfstarter payment cannot be checked, no model handoff",async()=>{
+ const r=await processIncomingMessage({leadId:"r7-oldbuy",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will nicht doppelt zahlen, ich glaube den Selbststarter habe ich schon gekauft. Kannst du das prüfen?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.match(r.text??"",/nicht verifizieren/);
+});
+test("R7 repeated check link after a prior check must include actual URL",async()=>{
+ const leadId="r7-recheck"; const st=getOrCreateConversationState(leadId,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(st,"Ich interessiere mich nur für den kostenlosen Elternfitness-Check.");
+ appendAssistantMessage(st,"Hier ist der kostenlose Check: "+OFFER_TRUTH.resources.elterncheck.url);
+ persistConversationState(st);
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Kannst du mir bitte den konkreten Link schicken, statt darüber zu reden?",conversationMode:"natural"});
+ assert.ok((r.text??"").includes("check.jochen-kammerer.de"));
+});
+test("R7 knee followup gets cautious response without a sudden silent handoff",async()=>{
+ const leadId="r7-knee";const st=getOrCreateConversationState(leadId,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(st,"Seit einigen Wochen zwickt mein Knie beim Treppensteigen.");
+ appendAssistantMessage(st,"Lass das fachlich abklären.");
+ persistConversationState(st);
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Welche Übungen würdest du bei solchen Kniebeschwerden empfehlen?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.match(r.text??"",/nicht sicher beurteilen/);
+});
+test("R7 a cheaper personal offer under 499 must show verified 99 app starter",async()=>{
+ const r=await processIncomingMessage({leadId:"r7-under499",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will zwar nicht 499 Euro bezahlen, aber falls es persönliche Hilfe für weniger gibt, wie viel kostet die?",conversationMode:"natural"});
+ assert.match(r.text??"",/99/);
+ assert.ok((r.text??"").includes("no-bullshit-elternfitness_app-starter"));
+});
+test("R7 guard: hard STOP blocks repeated check link",async()=>{
+ const leadId="r7-stopped";
+ await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Bitte schreib mir keine weiteren Nachrichten.",conversationMode:"natural"});
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Schick mir trotzdem den Check-Link.",conversationMode:"natural"});
+ assert.equal(r.text,null); assert.equal(r.state.flags.stopped,true);
+});
+test("R7 guard: no mistaken ownership, explicit chat takeover remains human",async()=>{
+ const r=await processIncomingMessage({leadId:"r7-actual-human",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Jochen soll bitte diesen Chat persönlich übernehmen.",conversationMode:"natural"});
+ assert.equal(r.state.owner,"human"); assert.equal(r.text,null);
+});
+test("R7 guard: actual double booking charge stays with human",async()=>{
+ const r=await processIncomingMessage({leadId:"r7-dispute",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Der Selbststarter wurde doppelt abgebucht. Kannst du das prüfen?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"human");
+});
+test("R7 guard: acute medical risk never routed as mild knee issue",async()=>{
+ const r=await processIncomingMessage({leadId:"r7-danger",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich habe starke Brustschmerzen und Atemnot, aber was ist mit meinen Knieübungen?",conversationMode:"natural"});
+ assert.ok(!(r.text??"").includes("alltagstaugliche Routine"));
+});
