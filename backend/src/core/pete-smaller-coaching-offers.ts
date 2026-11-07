@@ -38,6 +38,30 @@ export function getPeteVerifiedSmallSupportAnswer(
     /\b(?:wie|wo)\b.{0,45}\b(?:buchen|bestellen|kaufen|starten)\b|\b(?:kauf|buch|bestell)link\b/.test(input) &&
     /\b(?:das|es|angebot|paket|app|begleitung|starter|buchen|bestellen|kaufen|starten|link)\b/.test(input);
   const appNamed = /\bapp[\s-]*starter\b|\bapp[\s-]*upgrade\b/.test(input);
+  // A parent may name the actual services, not the marketing product label.
+  // "1 Monat App mit 1 Coaching" must not be intercepted as a DIY offer merely
+  // because the same message also mentions an already-owned Selfstarter.
+  const oneMonthAppCoaching =
+    /\b(?:1|ein(?:en|em)?|erste[nmrs]?)[\s-]*monat\w*\b/.test(input) &&
+    /\bapp\b/.test(input) && /\bcoach(?:ing)?\b|\b1[:\s-]*1\b/.test(input);
+  const recentOneMonthAppCoaching = (state.messages ?? []).slice(-8).some(message =>
+    message.role === "user" &&
+    /\b(?:1|ein(?:en|em)?|erste[nmrs]?)[\s-]*monat\w*\b/.test(normalize(message.text)) &&
+    /\bapp\b/.test(normalize(message.text)) &&
+    /\bcoach(?:ing)?\b|\b1[:\s-]*1\b/.test(normalize(message.text))
+  );
+  const contextualThreeMonthUpgrade = recentOneMonthAppCoaching &&
+    /\b(?:3|drei)[\s-]*monat\w*\b/.test(input) &&
+    /\b(?:spater|danach|insgesamt|kostet|preis|erweiter\w*|upgrade|mochte|will)\b/.test(input);
+  const claimsAlreadyOwnsSelfstarter = (message: string): boolean => {
+    const stated = normalize(message);
+    return /\b(?:hab|habe|besitze|gekauft)\b.{0,45}\bselbststarter\b.{0,32}\b(?:schon|bereits)\b/.test(stated) ||
+      /\bselbststarter\b.{0,25}\b(?:hab|habe|besitze|gekauft)\b.{0,25}\b(?:schon|bereits)\b/.test(stated);
+  };
+  const selfstarterOwnedClaim = claimsAlreadyOwnsSelfstarter(text) ||
+    (state.messages ?? []).slice(-8).some(message =>
+      message.role === "user" && claimsAlreadyOwnsSelfstarter(message.text)
+    );
   const implementationNamed =
     /\bumsetzungs[\s-]*(?:upgrade|bundle)\b/.test(input) ||
     /\b(?:drei|3)[\s-]*monat\w*\b.{0,60}\b(?:app|begleit\w*|coach\w*)\b/.test(input) ||
@@ -51,18 +75,45 @@ export function getPeteVerifiedSmallSupportAnswer(
   const asksAppContinuation = /\bapp\b/.test(input) &&
     /\b(?:nach dem ersten monat|nach einem monat|weiter\s*nutz\w*|weiter\s*laufen|verlangern|verlangerung|abo|kundigungsfrist|monatlich danach)\b/.test(input);
   if (!appNamed && !implementationNamed && !lighterSupport &&
-      !asksAppContinuation && !trialWithoutCall && !stagedUpgrade && !asksHowToStart) return null;
+      !asksAppContinuation && !trialWithoutCall && !stagedUpgrade && !asksHowToStart &&
+      !oneMonthAppCoaching && !contextualThreeMonthUpgrade) return null;
 
   const app = VERIFIED_SMALL_SUPPORT.appStarter;
   const implementation = VERIFIED_SMALL_SUPPORT.implementation;
+  if (oneMonthAppCoaching) {
+    // A claimed earlier purchase is not a verified payment. Explain the price
+    // conditionally and send the actual smaller-support offer, never DIY again.
+    return (selfstarterOwnedClaim
+      ? "Wenn du den Selbststarter bereits hast, kostet das App-Starter-Upgrade zusätzlich "
+      : "Das App-Starter-Upgrade kostet zusätzlich zum Selbststarter ") +
+      app.upgradePriceText + " – also " + app.totalWithSelfstarterText +
+      " insgesamt inklusive Selbststarter. Dafür gibt es 1 Monat App und ein persönliches " +
+      app.coachingSessionMinutes + "-Minuten-Coaching. " +
+      (selfstarterOwnedClaim
+        ? "Hier findest du das App-Starter-Upgrade: " + app.productUrl
+        : "Zum Einstieg zuerst der Selbststarter: " + OFFER_TRUTH.selfstarter.productUrl +
+          " und anschließend das App-Starter-Upgrade: " + app.productUrl);
+  }
+  if (contextualThreeMonthUpgrade) {
+    return "Wenn du nach dem App-Starter auf 3 Monate erweitern möchtest, kommen weitere " +
+      implementation.upgradePriceText + " hinzu. Das macht " +
+      implementation.totalWithSelfstarterText +
+      " Gesamtpreis inklusive Selbststarter und App-Starter: 3 Monate App, " +
+      "2 Coachings, individueller Startplan und Chat-Support. " +
+      "Die Infos zur Erweiterung: " + implementation.productUrl +
+      ". Eine bereits erfolgte Zahlung oder Buchung kann ich hier nicht bestätigen.";
+  }
   if (stagedUpgrade || asksHowToStart) {
     // Clear closing guidance: send the first purchasable step now; do not
     // claim a payment or a booking happened, and do not claim upgrading is
     // possible after an expired entitlement without an owner confirmation.
+    const startingLink = selfstarterOwnedClaim
+      ? "Wenn du den Selbststarter bereits hast, ist der nächste Schritt das App-Starter-Upgrade: " +
+        app.productUrl
+      : "Zuerst der Selbststarter für " + OFFER_TRUTH.selfstarter.priceText + ": " +
+        OFFER_TRUTH.selfstarter.productUrl + " Danach das App-Starter-Upgrade: " + app.productUrl;
     return "Ja, du kannst klein starten und danach auf die 3-Monats-Begleitung erweitern. " +
-      "Zuerst der Selbststarter für " + OFFER_TRUTH.selfstarter.priceText + ": " +
-      OFFER_TRUTH.selfstarter.productUrl +
-      " Danach das App-Starter-Upgrade für zusätzlich " + app.upgradePriceText +
+      startingLink + " Das App-Starter-Upgrade kostet zusätzlich " + app.upgradePriceText +
       " – also " + app.totalWithSelfstarterText +
       " insgesamt für 1 Monat App und ein persönliches 45-Minuten-Coaching. " +
       "Die spätere Erweiterung kostet weitere " + implementation.upgradePriceText +

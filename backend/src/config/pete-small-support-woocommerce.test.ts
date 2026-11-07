@@ -103,6 +103,75 @@ test("the five-week coaching remains separate and its purchase path is unchanged
   assert.doesNotMatch(result, /(?:^|[^\d])(?:99|199) €|App-Starter/);
 });
 
+test("owner synthetic DM: already owns Selfstarter and asks for one month App plus one coaching", () => {
+  const ownedContext = { ...state, messages: [
+    { role: "user", text: "alleine zieh ichs nie lange durch, 499 euro sind zu viel" },
+    { role: "assistant", text: "Du kannst auch kleiner anfangen." },
+    { role: "user", text: "hab den selbststarter schon. was kostet 1 monat app mit 1 coaching?" },
+  ] } as any;
+  const reply = getPeteVerifiedTransactionAnswer(
+    "hab den selbststarter schon. was kostet 1 monat app mit 1 coaching?", ownedContext)?.text ?? "";
+  assert.match(reply, /84,05 €/);
+  assert.match(reply, /99 €/);
+  assert.match(reply, /1 Monat.*45-Minuten-Coaching/);
+  assert.ok(reply.includes(VERIFIED_SMALL_SUPPORT.appStarter.productUrl));
+  assert.doesNotMatch(reply, /(?:Selbststarter für 14,95 €|Dein Einstieg:.*selbststarter)/);
+  assert.equal((reply.match(/\?/g) ?? []).length, 0);
+});
+
+test("owner DM continuation: three-month total follows one-month App plus coaching context", () => {
+  const followUpState = { ...state, messages: [
+    { role: "user", text: "hab den selbststarter schon. was kostet 1 monat app mit 1 coaching?" },
+    { role: "assistant", text: "1 Monat App und ein Coaching kosten mit Selbststarter insgesamt 99 €." },
+    { role: "user", text: "und wenn ich später 3 monate will, was kostet mich das insgesamt?" },
+  ] } as any;
+  const reply = getPeteVerifiedTransactionAnswer(
+    "und wenn ich später 3 monate will, was kostet mich das insgesamt?", followUpState)?.text ?? "";
+  assert.match(reply, /100 €.*199 €/);
+  assert.match(reply, /3 Monate App/);
+  assert.match(reply, /2 Coachings|zwei.*Coachings/i);
+  assert.ok(reply.includes(VERIFIED_SMALL_SUPPORT.implementation.productUrl));
+  assert.doesNotMatch(reply, /wenn du eine bestimmte Variante meinst|Selbststarter für 14,95 €/i);
+  assert.equal((reply.match(/\?/g) ?? []).length, 0);
+});
+
+test("real short Instagram phrasing: already-owned Selfstarter is not sold again at booking", () => {
+  const context = { ...state, messages: [
+    { role: "user", text: "brauche bisschen persönliche begleitung, aber kein riesen coaching für 499 euro" },
+    { role: "assistant", text: "Es gibt einen Monat App-Zugang mit einem persönlichen Coaching." },
+    { role: "user", text: "den selbststarter hab ich schon. was kostet 1 monat app mit 1 coaching?" },
+    { role: "assistant", text: "Das App-Starter-Upgrade kostet zusätzlich 84,05 €." },
+    { role: "user", text: "und wenn ich später 3 monate will, was kostet mich das insgesamt?" },
+    { role: "assistant", text: "Die Erweiterung auf 3 Monate kostet weitere 100 €." },
+  ] } as any;
+  const direct = getPeteVerifiedTransactionAnswer(
+    "den selbststarter hab ich schon. was kostet 1 monat app mit 1 coaching?", context)?.text ?? "";
+  assert.match(direct, /84,05 €.*99 €/);
+  assert.ok(direct.includes(VERIFIED_SMALL_SUPPORT.appStarter.productUrl));
+  assert.ok(!direct.includes(OFFER_TRUTH.selfstarter.productUrl));
+  const booking = getPeteVerifiedTransactionAnswer(
+    "klingt gut, wie kann ich das buchen?", context)?.text ?? "";
+  assert.ok(booking.includes(VERIFIED_SMALL_SUPPORT.appStarter.productUrl));
+  assert.match(booking, /84,05 €.*99 €.*100 €.*199 €/);
+  assert.ok(!booking.includes(OFFER_TRUTH.selfstarter.productUrl),
+    "an already-owned product must not be the first purchase step again");
+  assert.equal((booking.match(/\?/g) ?? []).length, 0);
+});
+
+test("small-support DM price routing does not override STOP, billing or declined offers", () => {
+  const ctx = { ...state, messages: [
+    { role: "user", text: "hab den selbststarter schon. was kostet 1 monat app mit 1 coaching?" },
+  ] } as any;
+  for (const input of [
+    "STOP. 3 Monate App wären toll.",
+    "Meine Rechnung zum App Starter ist doppelt abgebucht, 3 Monate?",
+    "Bitte keine weiteren Nachrichten, ich will nur wissen was 3 Monate kostet",
+  ]) {
+    const reply = getPeteVerifiedTransactionAnswer(input, ctx)?.text ?? "";
+    assert.doesNotMatch(reply, /199 €|84,05 €|produkt\/umsetzung-upgrade/);
+  }
+});
+
 test("real conversation engine routes the smaller support reply without any provider call", async () => {
   const { processIncomingMessage } = await import("../core/conversation-engine.js");
   const originalFetch = globalThis.fetch;
@@ -122,6 +191,34 @@ test("real conversation engine routes the smaller support reply without any prov
     assert.equal(r.state.flags.stopped, false);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("two owner DM turns reach the correct App-Starter and 3-month links through the full engine", async () => {
+  const { processIncomingMessage } = await import("../core/conversation-engine.js");
+  const oldFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async () => {
+    externalCalls++;
+    throw new Error("SYNTHETIC_TEST_MUST_NOT_CALL_PROVIDER");
+  };
+  try {
+    const shared = { leadId: "app-starter-context-20261107", campaignId: "eltern-vital-fit",
+      conversationMode: "natural" as const };
+    const first = await processIncomingMessage({ ...shared,
+      messageText: "hab den selbststarter schon. was kostet 1 monat app mit 1 coaching?" });
+    assert.equal(first.state.answers.peteReplySource, "verified_transaction");
+    assert.match(first.text ?? "", /84,05 €.*99 €/);
+    assert.ok(first.text?.includes(VERIFIED_SMALL_SUPPORT.appStarter.productUrl));
+    const second = await processIncomingMessage({ ...shared,
+      messageText: "und wenn ich später 3 monate will, was kostet mich das insgesamt?" });
+    assert.equal(second.state.answers.peteReplySource, "verified_transaction");
+    assert.match(second.text ?? "", /100 €.*199 €/);
+    assert.ok(second.text?.includes(VERIFIED_SMALL_SUPPORT.implementation.productUrl));
+    assert.equal(externalCalls, 0);
+    assert.equal(second.state.flags.stopped, false);
+  } finally {
+    globalThis.fetch = oldFetch;
   }
 });
 
