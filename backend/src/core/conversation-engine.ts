@@ -1,3 +1,4 @@
+import { VERIFIED_SMALL_SUPPORT } from "../config/offer-truth.js";
 import { getCampaignById } from "../config/campaigns.js";
 import { getNaturalConversationReply } from "./natural-conversation.js";
 import {
@@ -798,6 +799,70 @@ export async function processIncomingMessage(
       appendAssistantMessage(state, identity);
       persistConversationState(state);
       return { text: identity, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    // PL19: A request to book a strategy call is not a request to let
+    // Jochen take over THIS chat. Preserve explicit chat takeover precedence.
+    const normalizedBookingText = input.messageText.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const asksForStrategyBooking =
+      /\b(?:wie|wo)\s+(?:kann\s+ich\s+)?(?:buche|buch|vereinbare)\w*\b.{0,35}\b(?:termin|gesprach|strategiegesprach)\b/.test(normalizedBookingText) ||
+      (/\b(?:termin|strategiegesprach|gesprach)\b/.test(normalizedBookingText) &&
+       /\b(?:buchen|vereinbaren|buchungslink|online)\b/.test(normalizedBookingText));
+    const explicitlyWantsChatOwner =
+      /\b(?:hier|diesen|den)\s+chat\b|\b(?:chat\s+)?ubernehm\w*\b|\bkein(?:en)?\s+bot\b/.test(normalizedBookingText);
+    // Very narrow correction: only the tested combination "personally
+    // speak to Jochen + how do I book" otherwise rely on existing booking
+    // intent/consent guard (including negation and external calendar tests).
+    const personallyRequestsJochenBooking =
+      /\b(?:personlich|persoenlich)\b.{0,25}\bmit\s+jochen\s+sprechen\b/.test(normalizedBookingText) &&
+      /\bwie\s+buche\s+ich\b.{0,25}\btermin\b/.test(normalizedBookingText);
+    if (isPeteLlmConversationSelected() && asksForStrategyBooking &&
+        personallyRequestsJochenBooking &&
+        !/\b(?:kein(?:en)?|nicht|absagen|stornieren|friseur|schulkalender)\b/.test(normalizedBookingText) &&
+        !explicitlyWantsChatOwner && bookingUrl) {
+      const reply = "Du kannst dir hier direkt ein Strategiegespr\u00e4ch mit Jochen buchen: " +
+        bookingUrl + " Ein Termin gilt erst nach der Buchungsbest\u00e4tigung als gebucht.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      updateAnswer(state, "naturalPhase", "booking_offered");
+      patchFlags(state, { wantsBooking: true });
+      setCurrentStep(state, "booking");
+      state.providerBooking = activateProviderBookingState({
+        current: state.providerBooking,
+        provider: inferBookingProviderFromUrl(bookingUrl),
+        bookingUrl, linkSentAt: nowIso(),
+      });
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    // A buyer's plain follow-up question is NOT payment verification.
+    // Answer from approved price facts without asserting that a purchase occurred.
+    // A refund, missing access, duplicate charge or verified-payment dispute
+    // still goes through the protected transaction path below.
+    const repeatSelfstarterPurchaseQuestion =
+      /\b(?:selbststarter|ihn|den)\b/.test(normalizedBookingText) &&
+      /\b(?:nochmals?|nochmal|erneut|wieder|doppelt)\b/.test(normalizedBookingText) &&
+      /\b(?:bezahlen|kaufen|bestellen|zahlen)\b/.test(normalizedBookingText) &&
+      /\b(?:muss|musste|brauche|soll)\b/.test(normalizedBookingText) &&
+      !/\b(?:abbuchung|abgebucht|rechnung|ruckerstattung|widerruf|zugang|bestatigung|nachweis|beleg|wirklich bezahlt)\b/.test(normalizedBookingText);
+    const buyerClaimedSelfstarter = state.messages.slice(-12).some(message =>
+      message.role === "user" &&
+      /\b(?:selbststarter)\b/i.test(message.text) &&
+      /\b(?:schon|bereits|gekauft|habe|hab)\b/i.test(message.text));
+    if (isPeteLlmConversationSelected() && repeatSelfstarterPurchaseQuestion &&
+        buyerClaimedSelfstarter && !isExplicitPeteHumanTakeoverRequest(input.messageText)) {
+      const reply = "Nein, wenn du den Selbststarter bereits gekauft hast, musst du ihn f\u00fcr das App-Starter-Upgrade nicht erneut kaufen. Das Upgrade kostet zus\u00e4tzlich " +
+        VERIFIED_SMALL_SUPPORT.appStarter.upgradePriceText + ", zusammen sind es " +
+        VERIFIED_SMALL_SUPPORT.appStarter.totalWithSelfstarterText +
+        ". Ob dein fr\u00fcherer Kauf eingegangen ist, kann ich hier nicht pr\u00fcfen.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
         detectedIntent: "flow_answer", state };
     }
 

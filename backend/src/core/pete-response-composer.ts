@@ -184,7 +184,21 @@ function buildMedicalCriticalReply(userText = ""): string {
   );
 }
 
-function buildMedicalSoftReply(): string {
+function buildMedicalSoftReply(userText = "", lastAssistantText = ""): string {
+  const input = normalizeText(userText);
+  const last = normalizeText(lastAssistantText);
+  // A specific non-urgent exercise question deserves a useful bounded answer,
+  // not the identical generic medical intake question twice in succession.
+  if (/\b(?:knie|knieschmerz\w*)\b/.test(input) &&
+      /\b(?:kniebeug\w*|trainier\w*|ubung\w*|sport|belast\w*)\b/.test(input)) {
+    return "Wenn dein Knie dabei schmerzt, erzwinge keine Kniebeugen oder andere schmerzhafte Belastung. Welche Übungen für dich geeignet sind, lässt sich hier nicht sicher beurteilen; lass anhaltende oder zunehmende Schmerzen fachlich abklären. Ein Einstieg ohne schmerzauslösende Übungen kann sinnvoller sein.";
+  }
+  if (/\b(?:knie|knieschmerz\w*)\b/.test(input)) {
+    return "Beim Wiedereinstieg mit Kniebeschwerden ist wichtig, schmerzhafte Belastungen nicht zu erzwingen und Beschwerden bei Bedarf fachlich abklären zu lassen. Wir können deinen zeitlichen Rahmen berücksichtigen, ohne bestimmte Knieübungen aus der Ferne freizugeben.";
+  }
+  if (last.includes("gesundheitlichen hinweis notiere ich mir")) {
+    return "Zu deinen Beschwerden möchte ich keine Ferndiagnose stellen. Lass sie bei Bedarf fachlich abklären; wir können zunächst über die alltagstaugliche Planung ohne konkrete Belastungsempfehlungen sprechen.";
+  }
   return (
     "Den gesundheitlichen Hinweis notiere ich mir. Sowas sollte bei Bedarf sauber abgekl\u00e4rt werden.\n" +
     "F\u00fcr die Einordnung hier ist wichtig:\n" +
@@ -327,7 +341,7 @@ export function composePeteResponse(
     case "medical_critical":
       return { text: buildMedicalCriticalReply(context.userText) };
     case "medical_soft":
-      return { text: buildMedicalSoftReply() };
+      return { text: buildMedicalSoftReply(context.userText, context.lastAssistantText) };
     case "legal_privacy":
       return { text: buildLegalReply() };
     case "emotional_crisis":
