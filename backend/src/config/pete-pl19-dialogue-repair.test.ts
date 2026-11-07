@@ -64,3 +64,38 @@ test("PL19 knee follow-up answers conditionally without repeating generic boiler
  assert.notEqual(first.text,next.text);
  assert.doesNotMatch(next.text??"",/Stress\/Schlaf, Energie oder Bauch/);
 });
+
+test("PL19 R3: after Calendly link, follow-up is an honest unbooked status",async()=>{
+ const leadId="pl19-r3-calendar-followup";
+ const first=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ich will gerne persoenlich mit Jochen sprechen. Wie buche ich einen Termin?",
+   conversationMode:"natural"});
+ assert.ok((first.text??"").includes("https://"));
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ist der Termin dann schon gebucht oder muss ich erst einen freien Slot waehlen?",
+   conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/keine Buchung/);
+ assert.notEqual(r.state.owner,"human");
+ assert.notEqual(r.state.providerBooking?.status,"booked");
+});
+test("PL19 R3: status question about alleged old purchase never invents payment",async()=>{
+ const leadId="pl19-r3-payment";
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Gibt es einen bestaetigten Zahlungseingang fuer meinen alten Selbststarter, oder kannst du das nicht sehen?",
+   conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/nicht verifizieren/);
+ assert.notEqual(r.state.owner,"human");
+ assert.doesNotMatch(r.text??"",/ist bezahlt|wurde gebucht|ist bestaetigt/);
+});
+test("PL19 R3: personal call or booking ambiguity offers verified Calendly without silent handoff",async()=>{
+ const leadId="pl19-r3-ambiguous";
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Koennte Jochen persoenlich mit mir sprechen oder gibt es zuerst eine Terminbuchung?",
+   conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.ok((r.text??"").includes("https://"));
+ assert.notEqual(r.state.owner,"human");
+ assert.notEqual(r.state.providerBooking?.status,"booked");
+});

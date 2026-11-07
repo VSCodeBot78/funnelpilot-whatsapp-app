@@ -866,6 +866,62 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
+    // PL19 round 3: state-grounded follow-ups must not depend on a model
+    // choosing to hand over a routine informational question. No status
+    // inference from a customer's wording; all replies are read-only.
+    const latestLower = normalizedBookingText;
+    const explicitLiveChatTakeover = /\b(?:ubernimm|ubernehmen|ubernehm\w*|hier im chat|diesen chat|den chat|kein(?:en)? bot)\b/.test(latestLower);
+    const paymentStatusQuestion =
+      /\b(?:zahlungseingang|zahlung|kauf|selbststarter|bestellung)\b/.test(latestLower) &&
+      /\b(?:bestatig\w*|eingegangen|sehen|prufen|nachweisen|verifizier\w*)\b/.test(latestLower) &&
+      /\b(?:kannst du|gibt es|ist (?:das|der|die)|hast du)\b/.test(latestLower) &&
+      !/\b(?:widerruf|ruckerstatt\w*|abgebucht|doppelt|zugang fehlt|login|fehlende zugangsdaten)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && paymentStatusQuestion && !explicitLiveChatTakeover) {
+      const reply = "Einen Zahlungseingang oder alten Kauf kann ich hier nicht verifizieren. Bitte pruefe die Bestell- oder Zahlungsbestaetigung; wenn sie fehlt oder unklar ist, kann Jochen den Vorgang anhand der Bestellung persoenlich pruefen.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    const asksAfterBookingLink =
+      state.providerBooking?.status === "awaiting_booking" &&
+      /\b(?:termin|gebucht|buchung|slot|frei\w*|auswahlen|waehlen|wahlen)\b/.test(latestLower) &&
+      /\b(?:schon|bereits|erst|noch|muss|wie|ist|wann)\b/.test(latestLower) &&
+      !/\b(?:absagen|stornier\w*|verschieb\w*|nicht gebucht|andere person|fremd)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksAfterBookingLink && !explicitLiveChatTakeover) {
+      const reply = "Der Link ist noch keine Buchungsbestätigung. Wähle bitte einen freien Termin aus und schließe die Buchung ab. Erst die Bestätigung des Buchungssystems macht ihn verbindlich. Ich kann hier weder freie Zeiten noch eine erfolgte Buchung bestätigen.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    const asksPersonalCallOrBooking =
+      /\b(?:jochen|personlich|persoenlich)\b/.test(latestLower) &&
+      /\b(?:sprechen|reden|telefonieren)\b/.test(latestLower) &&
+      /\b(?:oder|zuerst|terminbuchung|termin|buchen|buchung)\b/.test(latestLower) &&
+      !/\b(?:nicht|kein|ohne|absagen|stornieren)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksPersonalCallOrBooking &&
+        !explicitLiveChatTakeover && bookingUrl) {
+      const reply = "Fuer ein persoenliches Strategiegespraech mit Jochen kannst du dir hier einen passenden Termin aussuchen: " +
+        bookingUrl + " Erst mit der Buchungsbestaetigung ist er verbindlich. Wenn du stattdessen moechtest, dass Jochen diesen Chat selbst uebernimmt, sag es bitte ausdruecklich.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      updateAnswer(state, "naturalPhase", "booking_offered");
+      patchFlags(state, { wantsBooking: true });
+      setCurrentStep(state, "booking");
+      state.providerBooking = activateProviderBookingState({
+        current: state.providerBooking, provider: inferBookingProviderFromUrl(bookingUrl),
+        bookingUrl, linkSentAt: nowIso(),
+      });
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
     if (isDirectChatTakeoverRequest(input.messageText) ||
         (isPeteLlmConversationSelected() &&
          isExplicitPeteHumanTakeoverRequest(input.messageText))) {
