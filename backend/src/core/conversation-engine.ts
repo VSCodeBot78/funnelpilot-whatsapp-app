@@ -946,7 +946,13 @@ export async function processIncomingMessage(
       /\b(?:kleiner\w*|gunstiger\w*|weniger intensiv\w*|nicht so teuer)\b.{0,50}\b(?:betreu\w*|begleit\w*|variante|coaching|angebot)\b/.test(latestLower) ||
       (/\b(?:499|funf wochen|5 wochen)\b/.test(latestLower) &&
        /\b(?:zu teuer|zu viel|nicht leisten|kleiner\w*|gunstiger\w*)\b/.test(latestLower) &&
-       /\b(?:betreu\w*|begleit\w*|variante)\b/.test(latestLower));
+       /\b(?:betreu\w*|begleit\w*|variante)\b/.test(latestLower)) ||
+      // Explicit price objection with support need, even when phrased
+      // "nicht sofort 499 Euro ausgeben will" rather than "zu teuer".
+      (/\b(?:begleit\w*|betreu\w*|coaching)\b/.test(latestLower) &&
+       /\b499\b/.test(latestLower) &&
+       /\b(?:nicht|ohne)\b.{0,35}\b(?:499|ausgeben|bezahlen|zahlen|kaufen)\b/.test(latestLower) &&
+       /\b(?:kosten|kostet|preis|alternative|angebot|moglich|gibt es|haben)\b/.test(latestLower));
     const earlierSmallOffer = state.messages.slice(-12).some(message =>
       message.role === "assistant" &&
       /\b(?:app-starter|kleinere\s+personliche\s+begleitung|99\s*(?:euro|€))\b/i.test(message.text));

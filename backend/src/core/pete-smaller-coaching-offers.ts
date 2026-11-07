@@ -55,8 +55,16 @@ export function getPeteVerifiedSmallSupportAnswer(
     /\b(?:spater|danach|insgesamt|kostet|preis|erweiter\w*|upgrade|mochte|will)\b/.test(input);
   const claimsAlreadyOwnsSelfstarter = (message: string): boolean => {
     const stated = normalize(message);
-    return /\b(?:hab|habe|besitze|gekauft)\b.{0,45}\bselbststarter\b.{0,32}\b(?:schon|bereits)\b/.test(stated) ||
-      /\bselbststarter\b.{0,25}\b(?:hab|habe|besitze|gekauft)\b.{0,25}\b(?:schon|bereits)\b/.test(stated);
+    // Purchase is only CLAIMED, never verified. Accept everyday German word
+    // order, including "den Selbststarter vor ein paar Wochen gekauft".
+    // A mere mention of the product or a negated purchase is insufficient.
+    const selfstarterNearPurchase =
+      /\bselbststarter\b.{0,85}\b(?:gekauft|bestellt|besitze|habe|hab)\b/.test(stated) ||
+      /\b(?:gekauft|bestellt|besitze|habe|hab)\b.{0,85}\bselbststarter\b/.test(stated);
+    const explicitlyOwned = /\b(?:gekauft|bestellt|besitze|schon|bereits)\b/.test(stated);
+    const deniedOwnership = /\b(?:nicht|nie|noch nicht|kein(?:en)?)\b.{0,25}\b(?:gekauft|bestellt|besitze|selbststarter)\b/.test(stated) ||
+      /\bselbststarter\b.{0,40}\b(?:nicht|nie)\b.{0,18}\b(?:gekauft|bestellt|besitze)\b/.test(stated);
+    return selfstarterNearPurchase && explicitlyOwned && !deniedOwnership;
   };
   const selfstarterOwnedClaim = claimsAlreadyOwnsSelfstarter(text) ||
     (state.messages ?? []).slice(-8).some(message =>

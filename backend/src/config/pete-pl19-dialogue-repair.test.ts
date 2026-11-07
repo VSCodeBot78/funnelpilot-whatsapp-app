@@ -139,3 +139,40 @@ test("PL19 R4: explicit smaller personal help at 499 EUR objection uses app star
  assert.ok((next.text??"").includes("no-bullshit-elternfitness_app-starter"));
  assert.notEqual(next.state.owner,"human");
 });
+test("PL19 R5: a claimed Selfstarter purchase in natural German word order prevents a repeat checkout", async () => {
+ const leadId="pl19-r5-owned-order";
+ const state=getOrCreateConversationState(leadId,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(state,"Ich habe den Selbststarter vor ein paar Wochen gekauft und moechte Begleitung.");
+ appendAssistantMessage(state,"Es gibt ein App-Starter-Upgrade.");
+ persistConversationState(state);
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Was kostet fuer mich ein Monat App und ein Coaching?",conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.ok((r.text??"").includes("no-bullshit-elternfitness_app-starter"));
+ assert.ok(!(r.text??"").includes("/produkt/no-bullshit-elternfitness-selbststarter/"));
+ assert.match(r.text??"",/84,05/);
+});
+test("PL19 R5: the 499 refusal with personal help requests the smaller coaching", async () => {
+ const r=await processIncomingMessage({leadId:"pl19-r5-price-objection",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Was kostet eine Begleitung bei Jochen, wenn ich nicht sofort 499 Euro ausgeben will?",
+   conversationMode:"natural"});
+ assert.equal(r.state.answers.peteReplySource,"verified_transaction");
+ assert.match(r.text??"",/99/);
+ assert.ok((r.text??"").includes("no-bullshit-elternfitness_app-starter"));
+});
+test("PL19 R5: plain 499 EUR price question remains about the 5-week product", async () => {
+ const r=await processIncomingMessage({leadId:"pl19-r5-explicit-499",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Wie viel kostet die 5-Wochen-Startphase bei Jochen?",conversationMode:"natural"});
+ assert.notEqual(r.state.owner,"human");
+ assert.match(r.text??"",/499/);
+});
+test("PL19 R5: negated purchase must never count as an owned Selfstarter", async () => {
+ const leadId="pl19-r5-not-owned";
+ const state=getOrCreateConversationState(leadId,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(state,"Den Selbststarter habe ich noch nicht gekauft.");
+ appendAssistantMessage(state,"Es gibt auch ein App-Starter-Upgrade.");
+ persistConversationState(state);
+ const r=await processIncomingMessage({leadId,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Was kostet ein Monat App mit einem Coaching?",conversationMode:"natural"});
+ assert.ok((r.text??"").includes("/produkt/no-bullshit-elternfitness-selbststarter/"));
+});
