@@ -889,7 +889,7 @@ export async function processIncomingMessage(
     const asksAfterBookingLink =
       state.providerBooking?.status === "awaiting_booking" &&
       /\b(?:termin|gebucht|buchung|slot|frei\w*|auswahlen|waehlen|wahlen)\b/.test(latestLower) &&
-      /\b(?:schon|bereits|erst|noch|muss|wie|ist|wann)\b/.test(latestLower) &&
+      /\b(?:schon|bereits|erst|noch|muss|wie|ist|wann|automatisch|also|dann)\b/.test(latestLower) &&
       !/\b(?:absagen|stornier\w*|verschieb\w*|nicht gebucht|andere person|fremd)\b/.test(latestLower);
     if (isPeteLlmConversationSelected() && asksAfterBookingLink && !explicitLiveChatTakeover) {
       const reply = "Der Link ist noch keine Buchungsbestätigung. Wähle bitte einen freien Termin aus und schließe die Buchung ab. Erst die Bestätigung des Buchungssystems macht ihn verbindlich. Ich kann hier weder freie Zeiten noch eine erfolgte Buchung bestätigen.";
