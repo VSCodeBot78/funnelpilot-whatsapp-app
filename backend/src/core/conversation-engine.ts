@@ -985,6 +985,99 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
+    // PL19: The lead is asking how to BOOK an appointment, not asking
+    // Jochen to take ownership of this active chat.
+    const bookJochenByQuestion =
+      /\b(?:wie|wo|wann)\s+(?:kann\s+ich\s+)?(?:buch\w*|vereinbar\w*)\b/.test(latestLower) &&
+      /\b(?:jochen|gesprach|termin|das)\b/.test(latestLower) &&
+      /\b(?:jochen|personlich|persoenlich|strategie)\b/.test(latestLower) &&
+      !/\b(?:nicht|kein|ohne|absagen|stornieren|friseur|schulkalender)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && bookJochenByQuestion &&
+        !explicitLiveChatTakeover && bookingUrl) {
+      const reply = "Ein persönliches Strategiegespräch mit Jochen kannst du hier buchen: " +
+        bookingUrl + " Ein Termin ist erst nach einer Buchungsbestätigung verbindlich.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      updateAnswer(state, "naturalPhase", "booking_offered");
+      patchFlags(state, { wantsBooking: true });
+      setCurrentStep(state, "booking");
+      state.providerBooking = activateProviderBookingState({
+        current: state.providerBooking, provider: inferBookingProviderFromUrl(bookingUrl),
+        bookingUrl, linkSentAt: nowIso(),
+      });
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep,
+        detectedIntent: "flow_answer", state };
+    }
+
+    // The call itself does not obligate anyone to buy coaching. Keep this
+    // independent of the previous conversation (and separate from contracts).
+    const asksCallPurchaseObligation =
+      /\b(?:gesprach|erstes gesprach|strategiegesprach|termin|call)\b/.test(latestLower) &&
+      /\b(?:kaufpflicht|kaufzwang|ohne kauf|ohne verpflichtung|muss ich|verpflichtet)\b/.test(latestLower) &&
+      !/\b(?:vertrag|widerruf|rechnung|abbuchung|ruckzahlung|kundigung)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksCallPurchaseObligation &&
+        !explicitLiveChatTakeover) {
+      const reply = "Ja, das Strategiegespräch kannst du ohne Kaufpflicht wahrnehmen. Du musst danach kein Coaching buchen und kannst in Ruhe entscheiden.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
+    // A smaller personal support request without a price word must not be
+    // handed to the LLM to hallucinate or withhold an approved price.
+    const asksSmallPriceWithoutProductName =
+      /\b(?:klein\w*|gunstig\w*|personlich\w*)\b/.test(latestLower) &&
+      /\b(?:variante|begleitung|betreuung|coaching|paket)\b/.test(latestLower) &&
+      /\b(?:was kostet|wie teuer|preis|kosten|bekomme|dafur|dabei|genau)\b/.test(latestLower) &&
+      !/\b(?:nicht|kein|ohne)\b.{0,40}\b(?:angebote?|coaching|begleitung|kaufen)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksSmallPriceWithoutProductName &&
+        !explicitLiveChatTakeover) {
+      const app = VERIFIED_SMALL_SUPPORT.appStarter;
+      const reply = "Die kleinere persönliche Begleitung umfasst einen Monat App und ein 45-Minuten-Coaching. Zusammen mit dem Selbststarter kostet sie " +
+        app.totalWithSelfstarterText + " (das App-Starter-Upgrade zusätzlich " +
+        app.upgradePriceText + "). Hier findest du das Upgrade: " + app.productUrl +
+        " Einen bereits erfolgten Kauf kann ich nicht bestätigen.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
+    // A lead may want the free CHECK and explicitly NO paid offers. A
+    // request for a trusted URL is not consent to sell or to reactivate.
+    const asksFreeFitnessCheck =
+      /\b(?:check|fitness.?check|eltern.?check)\b/.test(latestLower) &&
+      /\b(?:kostenlos|gratis|frei|link|schick|haben|gibt|brauche|mochte|will)\b/.test(latestLower) &&
+      !/\b(?:kein|nicht|ohne)\b.{0,20}\b(?:check|link)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksFreeFitnessCheck &&
+        !explicitLiveChatTakeover &&
+        !/\b(?:abbuchung|widerruf|datenschutz|doppelt bezahlt|stornieren)\b/.test(latestLower)) {
+      const reply = "Hier ist der kostenlose Elternfitness-Check, ohne Kaufpflicht: " +
+        OFFER_TRUTH.resources.elterncheck.url;
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
+    // Non-acute knee discomfort merits a bounded, concrete response instead
+    // of an opaque model-requested handoff. Acute or complex symptoms stay
+    // with the earlier medical/emergency guard.
+    const simpleKneeDiscomfort =
+      /\b(?:knie|knieschmerz\w*|kniebeschwerd\w*)\b/.test(latestLower) &&
+      /\b(?:zwickt|zieht|tut weh|schmerzt|schmerzen|beschwerden)\b/.test(latestLower) &&
+      !/\b(?:stark\w*|plötzlich|plotzlich|unfall|gesturzt|sturz|geschwollen|rot|fieber|nicht auftreten|nicht laufen|atemnot|brustschmerz|schwindel|lähmung|lahmung|diagnose|operation|medikament|arzt sagt)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && simpleKneeDiscomfort &&
+        !explicitLiveChatTakeover) {
+      const reply = "Wenn dein Knie beim Treppensteigen schmerzt, erzwinge keine schmerzhafte Belastung. Bei Beschwerden seit Wochen ist eine fachliche Abklärung sinnvoll. Wir können erst deinen Zeitrahmen und Alltag besprechen, ohne Knieübungen aus der Ferne freizugeben.";
+      updateAnswer(state, "peteReplySource", "guarded_safety");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
     if (isDirectChatTakeoverRequest(input.messageText) ||
         (isPeteLlmConversationSelected() &&
          isExplicitPeteHumanTakeoverRequest(input.messageText))) {
