@@ -1102,6 +1102,33 @@ export function evaluatePeteRuntimeSafety(
     });
   }
 
+  // Non-acute musculoskeletal symptoms are not an automatic invisible
+  // handoff. Keep this *safety classifier* independent of selling prompts.
+  // Actual red flags require human/medical evaluation, never exercise advice.
+  const kneePain = /\bknie\w*\b/.test(normalized) &&
+    /\b(?:schmerz\w*|schmerzt|schmerzen|zwick\w*|tut.{0,110}weh|weh\s+tut|beschwerden|verletzt|geschwollen|schwell\w*)\b/.test(normalized);
+  if (kneePain) {
+    const urgentKnee = /\b(?:sturz|gesturzt|unfall|stark\w*|akut\w*|plotzlich|geschwollen|schwell\w*|kaum\s+auftreten|nicht\s+auftreten|nicht\s+laufen|fehlstellung)\b/.test(normalized);
+    if (urgentKnee) {
+      return result({
+        category: "medical_critical",
+        leadTemperature: "handoff",
+        replyText: "Bei Kniebeschwerden mit diesen Warnzeichen solltest du zeitnah ärztliche Hilfe suchen, nach einem Unfall mit fehlender Belastbarkeit umgehend. Bitte nicht weiter belasten; ich kann das hier nicht diagnostizieren oder eine Übung freigeben.",
+        shouldHandoffToJochen: true,
+        shouldStopAutomation: true,
+        reason: "medical:knee_red_flag",
+      });
+    }
+    return result({
+      category: "medical_soft",
+      leadTemperature: "warm",
+      replyText: "Wenn dein Knie schmerzt, erzwinge keine schmerzhafte Belastung und lass anhaltende Beschwerden fachlich abklären. Welche Knieübungen geeignet sind, kann ich aus der Ferne nicht beurteilen. Wir können zunächst deinen Alltag betrachten, ohne eine Übung freizugeben.",
+      shouldHandoffToJochen: false,
+      shouldStopAutomation: false,
+      reason: "medical:knee_nonacute",
+    });
+  }
+
   if (medicalMatch) {
     return result({
       category: "medical_soft",

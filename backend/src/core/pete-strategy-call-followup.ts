@@ -5,6 +5,7 @@
  */
 import { OFFER_TRUTH } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
+import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export type VerifiedStrategyCallReply = { text: string; nextPhase?: string };
 
@@ -30,6 +31,10 @@ export function getPeteStrategyCallFollowUp(
 ): VerifiedStrategyCallReply | null {
   const input = normalized(text).trim();
   if (!input || input.length > 180) return null;
+  // A previous invitation and a casual "okay" never override an explicit
+  // current no-follow-up/no-questions boundary.
+  if (hasPeteActiveNoQuestionBoundary(state)) return null;
+  if (/\b(?:bitte\s+)?nicht\s+(?:mehr\s+)?(?:nachfassen|nachhaken|anschreiben)\b/.test(input)) return null;
   const latestAssistant = [...(state.messages ?? [])].reverse()
     .find(message => message.role === "assistant");
   const earlier = normalized(latestAssistant?.text ?? "");

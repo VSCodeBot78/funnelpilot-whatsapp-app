@@ -1043,8 +1043,12 @@ export async function processIncomingMessage(
       /\b(?:wo|link|anschauen|sehen|finden|schick\w*|zeige\w*)\b/.test(latestLower) &&
       /\b(?:angebot|app|betreuung|begleitung|variante|das|link)\b/.test(latestLower) &&
       !/\b(?:nicht|kein|ohne)\b.{0,30}\b(?:angebot|link|kaufen|begleitung)\b/.test(latestLower);
+    // A buyer saying "not the DIY Selfstarter again" is NEGATING the extra
+    // purchase, not rejecting the requested App-Starter link. Block only
+    // a rejection of the upgrade itself or an actual payment dispute.
     if (isPeteLlmConversationSelected() && asksSmallOfferLink &&
-        !/\b(?:nicht|kein|ohne|widerruf|abbuchung|ruckerstattung|zahlung)\b/.test(latestLower)) {
+        !/\b(?:widerruf|abbuchung|ruckerstattung|zahlung)\b/.test(latestLower) &&
+        !/\b(?:nicht|kein|ohne)\s+(?:den\s+|das\s+)?(?:app[\s-]*starter|upgrade[-\s]*link)\b/.test(latestLower)) {
       const reply = "Hier findest du die persönliche App-Starter-Variante mit 1 Monat App und einem 45-Minuten-Coaching: " +
         VERIFIED_SMALL_SUPPORT.appStarter.productUrl +
         " Das Upgrade kostet 84,05 € zusätzlich zum Selbststarter (99 € zusammen).";

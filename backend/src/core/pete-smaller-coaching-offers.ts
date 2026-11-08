@@ -88,6 +88,18 @@ export function getPeteVerifiedSmallSupportAnswer(
 
   const app = VERIFIED_SMALL_SUPPORT.appStarter;
   const implementation = VERIFIED_SMALL_SUPPORT.implementation;
+  // The lead explicitly asks ONLY for the verified upgrade link. A refusal
+  // to buy a second Selfstarter is not a refusal of the App Starter itself.
+  // This is a shared offer-intent rule, not a chat-engine sentence override.
+  const onlyAppUpgradeLink =
+    appNamed &&
+    /\b(?:link|url|adresse|shoplink|kaufweg|checkout)\b/.test(input) &&
+    (/\b(?:nur|ausschliesslich|lediglich|genau)\b/.test(input) ||
+     /\b(?:nicht|ohne)\s+(?:noch\s+mal\s+|nochmal\s+|erneut\s+|den\s+)?selbststarter\b/.test(input));
+  if (onlyAppUpgradeLink) {
+    return "Hier ist nur der verifizierte App-Starter-Upgrade-Link: " + app.productUrl +
+      ". Das ist keine Kauf- oder Zahlungsbestätigung.";
+  }
   if (oneMonthAppCoaching) {
     // A claimed earlier purchase is not a verified payment. Explain the price
     // conditionally and send the actual smaller-support offer, never DIY again.

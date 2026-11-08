@@ -6,7 +6,11 @@ function normalize(value: string): string {
 }
 
 function refusesQuestions(value: string): boolean {
-  return /\bkeine\s+(?:(?:weiteren?|zusatzlichen?|neuen?|mehr)\s+)?nachfragen\b/.test(value) ||
+  // Explicit "do not follow up" also prohibits a new qualifying question
+  // in the same DM; it is not itself a global STOP.
+  return /\b(?:bitte\s+)?nicht\s+(?:mehr\s+|weiter\s+|nochmal\s+)?(?:nachfassen|nachhaken|hinterherfragen)\b/.test(value) ||
+    /\bkeine\s+(?:weiteren?\s+)?nachfass(?:aktionen?|nachrichten?)\b/.test(value) ||
+    /\bkeine\s+(?:(?:weiteren?|zusatzlichen?|neuen?|mehr)\s+)?nachfragen\b/.test(value) ||
     /\bkeine\s+(?:weiteren?|neuen?|zusatzlichen?|mehr)\s+fragen\b/.test(value) ||
     /\b(?:bitte\s+keine\s+fragen\s+mehr|keine\s+fragen\s+mehr\s+bitte)\b/.test(value) ||
     /\b(?:will|mochte)\b.{0,40}\bkeine\s+fragen\s+mehr\b/.test(value) ||

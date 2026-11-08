@@ -266,4 +266,81 @@ test("PL20 holdout: a double charge is still handled as payment incident", async
  const r=await processIncomingMessage({leadId:"pl20-double-charge",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich habe für den Selbststarter zweimal bezahlt, kann Jochen das prüfen?",conversationMode:"natural"});
  assert.notEqual(r.state.answers.peteReplySource,"llm");
  assert.doesNotMatch(r.text??"",/Erstattung (?:ist|wurde) bestätigt/);
+});test("PL21 one requested app-starter upgrade URL never re-pitches the DIY checkout",async()=>{
+ const id="pl21-upgrade-only"; const st=getOrCreateConversationState(id,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(st,"Ich interessiere mich für die persönliche App-Starter-Variante.");
+ appendAssistantMessage(st,"Dafür gibt es den App-Starter mit einem Monat App und einem Coaching.");
+ persistConversationState(st);
+ const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Kannst du mir genau den App-Starter-Upgrade-Link senden, nicht den Selbststarter nochmal?",
+   conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.match(r.text??"",/https:\/\/jochen-kammerer\.de\/produkt\/no-bullshit-elternfitness_app-starter/);
+ assert.equal((r.text??"").match(/https:\/\//g)?.length,1);
+ assert.doesNotMatch(r.text??"",/erst der selbststarter|zuerst der selbststarter/i);
+});
+test("PL21 explicit no follow-up beats a pending strategy booking invitation",async()=>{
+ const id="pl21-no-follow-up"; const st=getOrCreateConversationState(id,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(st,"Kann ich einen Termin bei Jochen buchen?");
+ appendAssistantMessage(st,"Hier ist die Einladung zum Strategiegespräch. Möchtest du einen Termin aussuchen?");
+ persistConversationState(st);
+ const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Okay, dann schaue ich mir in Ruhe meinen Kalender an. Bitte nicht nachfassen.",
+   conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.equal(r.state.flags.salesFollowUpsOptedOut,true);
+ assert.match(r.text??"",/nicht nach/i);
+ assert.doesNotMatch(r.text??"",/\?|https?:\/\/|wann passt/i);
+});
+test("PL21 a user-initiated later question remains allowed after declining followups",async()=>{
+ const id="pl21-future-question";
+ const first=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+  messageText:"Bitte nicht nachfassen.",conversationMode:"natural"});
+ assert.equal(first.state.flags.salesFollowUpsOptedOut,true);
+ const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ist das erste Strategiegespräch ohne Kaufpflicht?",
+   conversationMode:"natural"});
+ assert.equal(r.state.flags.salesFollowUpsOptedOut,true);
+ assert.match(r.text??"",/ohne Kaufpflicht/i);
+ assert.equal(r.state.flags.stopped,false);
+});
+test("PL21 needsHuman prompt does not misclassify nonacute discomfort or uncertain purchases",async()=>{
+ const {buildPeteEffectiveInstructions}=await import("../core/pete-llm-conversation.js");
+ const prompt=buildPeteEffectiveInstructions();
+ assert.match(prompt,/nichtakute Beschwerden allein sind KEIN Übergabegrund/i);
+ assert.match(prompt,/nur vermuteter früherer Kauf/i);
+ assert.match(prompt,/ausdrücklich gewünschte menschliche Chat-Übernahme/i);
+});
+test("PL21 mild knee symptom gets cautious response instead of silent LLM handoff",async()=>{
+ const r=await processIncomingMessage({leadId:"pl21-knee-mild",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ich möchte wieder fitter werden. Mein Knie tut seit vier Wochen auf Treppen manchmal weh.",
+   conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.equal(r.state.answers.peteReplySource,"guarded_safety");
+ assert.match(r.text??"",/Knie|Belastung/i);
+ assert.doesNotMatch(r.text??"",/https?:\/\/|kaufen|Training.*sicher/i);
+});
+test("PL21 knee red flag is not treated like a normal training inquiry",async()=>{
+ const r=await processIncomingMessage({leadId:"pl21-knee-urgent",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Beim Sturz ist mein Knie dick geschwollen und ich kann kaum auftreten.",
+   conversationMode:"natural"});
+ assert.equal(r.state.owner,"human");
+ assert.equal(r.state.answers.peteReplySource,"guarded_safety");
+ assert.match(r.text??"",/ärztlich|ärztliche|Hilfe/i);
+ assert.doesNotMatch(r.text??"",/Kauf|Checkout|Kniebeugen/i);
+});
+test("PL21 healthy reference to knee exercise is not medical escalation",async()=>{
+ const r=await processIncomingMessage({leadId:"pl21-knee-exercise",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ich mache Kniebeugen beim Training. Wie kann ich insgesamt stärker werden?",
+   conversationMode:"natural"});
+ assert.notEqual(r.state.answers.peteReplySource,"guarded_safety");
+});
+
+
+test("PL21 combined red-flag symptoms must outrank ordinary knee advice", async()=>{
+ const r=await processIncomingMessage({leadId:"pl21-chest-knee",campaignId:DEFAULT_CAMPAIGN_ID,
+  messageText:"Ich habe Brustschmerzen und Schmerzen im Knie, mir ist schwindelig.",conversationMode:"natural"});
+ assert.equal(r.state.owner,"human");
+ assert.equal(r.state.answers.peteReplySource,"guarded_safety");
+ assert.doesNotMatch(r.text??"",/zunächst deinen Alltag betrachten/i);
 });

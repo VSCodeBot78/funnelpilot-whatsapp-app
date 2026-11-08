@@ -138,6 +138,16 @@ export function getPeteVerifiedTransactionAnswer(
   if (asksToCheckPriorOrder) {
     return {text: "Ob dein früherer Kauf bei uns erfasst oder bezahlt wurde, kann ich hier nicht verifizieren. Bitte prüfe deine Bestellbestätigung; wenn sie fehlt, kann Jochen den Vorgang persönlich anhand deiner Bestellung prüfen.", nextPhase:"info"};
   }
+  // An explicit refusal of follow-up contact is a communication boundary.
+  // A previous strategy-call offer must not re-trigger a question or link.
+  // Different from STOP: the customer may initiate future messages.
+  const declinesUnsolicitedFollowUp =
+    isSalesFollowUpOptOut(text) &&
+    /\b(?:nachfass\w*|nachhak\w*|hinterher\w*|meld\w*\s+mich\s+(?:\w+\s+){0,2}selbst)\b/.test(input);
+  if (declinesUnsolicitedFollowUp &&
+      !/\b(?:wie|wo)\b.{0,70}\b(?:buch\w*|link|termin)\b/.test(input)) {
+    return { text: "Verstanden. Ich fasse nicht nach. Wenn du später etwas möchtest, meldest du dich von dir aus.", nextPhase:"info" };
+  }
   // Exact source keywords are verified resource requests, including when
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.
