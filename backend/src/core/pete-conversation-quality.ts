@@ -126,6 +126,18 @@ export function getPeteVerifiedTransactionAnswer(
   if (/\b(?:doppelt|zweimal|zwei\s+mal)\b.{0,35}\b(?:abgebucht|bezahlt|belastet)\b|\b(?:abgebucht|bezahlt|belastet)\b.{0,35}\b(?:doppelt|zweimal|zwei\s+mal)\b/.test(input)) {
     return { text: "Eine mögliche doppelte Abbuchung muss Jochen anhand der tatsächlichen Zahlung prüfen. Ich gebe den Vorgang zur persönlichen Klärung weiter, ohne eine Erstattung zu bestätigen.", handoff: true };
   }
+  // Verified transaction priority: a question about the status of a *past*
+  // purchase is not consent to buy the same item again. This is a category-
+  // level guard, not a reply for one test sentence. Explicit payment disputes
+  // above still take priority and require an owner.
+  const asksToCheckPriorOrder =
+    /\b(?:selbststarter|bestellung|kauf|zahlung|bestellstatus)\b/.test(input) &&
+    /\b(?:nachsehen|nachschauen|nachprufen|prufen|uberprufen|einsehen|verifizieren|bestatigen|im\s+system\s+sehen)\b/.test(input) &&
+    /\b(?:damals|fruher|bereits|schon|vorher|alter|alten|alte|bestellt|gekauft|bezahlt|eingegangen|registriert)\b/.test(input) &&
+    !/\b(?:widerruf|erstattung|ruckerstattung|ruckzahlung|stornieren|rechnung|zugang\s+fehlt|fehlender\s+zugang)\b/.test(input);
+  if (asksToCheckPriorOrder) {
+    return {text: "Ob dein früherer Kauf bei uns erfasst oder bezahlt wurde, kann ich hier nicht verifizieren. Bitte prüfe deine Bestellbestätigung; wenn sie fehlt, kann Jochen den Vorgang persönlich anhand deiner Bestellung prüfen.", nextPhase:"info"};
+  }
   // Exact source keywords are verified resource requests, including when
   // the genuinely conversational LLM path is selected. Never ask the model
   // to generate URLs or turn a keyword into a coaching sales pitch.

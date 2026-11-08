@@ -251,3 +251,19 @@ test("R8 STOP still suppresses even requested tip",async()=>{
  const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will nichts kaufen, gib mir nur einen Tipp.",conversationMode:"natural"});
  assert.equal(r.text,null);
 });
+
+test("PL20 holdout: checking old Selfstarter order does not trigger new checkout", async()=>{
+ const r=await processIncomingMessage({leadId:"pl20-old-order-check",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Könnt ihr bei euch überhaupt nachsehen, ob ich den Selbststarter damals bestellt habe?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.match(r.text??"",/nicht verifizieren/i);
+ assert.doesNotMatch(r.text??"",/https?:\/\//);
+});
+test("PL20 holdout: an actual purchase request still offers verified product URL", async()=>{
+ const r=await processIncomingMessage({leadId:"pl20-new-buy",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Wo kann ich den Selbststarter heute kaufen?",conversationMode:"natural"});
+ assert.match(r.text??"",/jochen-kammerer.de\/produkt\//);
+});
+test("PL20 holdout: a double charge is still handled as payment incident", async()=>{
+ const r=await processIncomingMessage({leadId:"pl20-double-charge",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich habe für den Selbststarter zweimal bezahlt, kann Jochen das prüfen?",conversationMode:"natural"});
+ assert.notEqual(r.state.answers.peteReplySource,"llm");
+ assert.doesNotMatch(r.text??"",/Erstattung (?:ist|wurde) bestätigt/);
+});

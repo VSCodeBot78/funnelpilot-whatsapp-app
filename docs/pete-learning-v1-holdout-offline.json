@@ -5,8 +5,8 @@
   "productionPromptChanged": false,
   "proposedLearningActivated": false,
   "cases": 13,
-  "passed": 7,
-  "failed": 1,
+  "passed": 8,
+  "failed": 0,
   "notEvaluableWithoutModel": 5,
   "criticalPass": true,
   "readinessForOwnerPromotion": false,
@@ -26,12 +26,12 @@
     {
       "id": "holdout-02",
       "category": "premature_handoff",
-      "pass": false,
+      "pass": true,
       "critical": false,
       "expectation": "Kaufstatus ohne erfundene Bestätigung beantworten",
       "source": "verified_transaction",
       "owner": "ai",
-      "observedLength": 254,
+      "observedLength": 249,
       "failureReason": "none"
     },
     {
