@@ -839,6 +839,29 @@ export async function processIncomingMessage(
         detectedIntent: "flow_answer", state };
     }
 
+    // A user may decline selling while still explicitly asking for one
+    // concrete tip. Respect the refusal AND fulfill the informational request.
+    const textForTip = normalizedBookingText;
+    const noPurchaseAndRequestsTip =
+      /\b(?:nichts kaufen|nichts bestellen|kein(?:e|en)?\s+(?:angebot|kaufangebot)|keine werbung|nicht kaufen)\b/.test(textForTip) &&
+      /\b(?:tipp\w*|rat\w*|ersten schritt|konkret\w*\s+(?:idee|schritt))\b/.test(textForTip) &&
+      /\b(?:gib|nenn|sag|brauch|mochte|will|konkret)\b/.test(textForTip);
+    if (isPeteLlmConversationSelected() && noPurchaseAndRequestsTip) {
+      const previous = state.messages.slice(-12)
+        .filter(message => message.role === "user")
+        .map(message => message.text.toLowerCase()).join(" ");
+      const tip = /(?:schlaf|schicht|erschopf|mude)/.test(previous)
+        ? "Wenn du wenig Schlaf hast, plane morgen lieber eine kurze Erholungspause als ein zusätzliches hartes Workout."
+        : /(?:snack|suss|essen|stress)/.test(previous)
+        ? "Leg deinen Abend-Snack morgen vor dem Essen bewusst auf einen Teller statt direkt aus der Packung zu naschen."
+        : "Plane morgen ein realistisches 10-Minuten-Zeitfenster für Bewegung ein, ohne ausgefallene Einheiten nachzuholen.";
+      const reply = "Verstanden, keine Kaufangebote. Ein konkreter Tipp: " + tip;
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
+
     // A buyer's plain follow-up question is NOT payment verification.
     // Answer from approved price facts without asserting that a purchase occurred.
     // A refund, missing access, duplicate charge or verified-payment dispute
@@ -884,6 +907,23 @@ export async function processIncomingMessage(
       persistConversationState(state);
       return { text: reply, nextStep: state.currentStep,
         detectedIntent: "flow_answer", state };
+    }
+
+    // PL19 R8: A question about an unverified *previous* purchase is not
+    // a payment confirmation or refund request. Variations such as
+    // "kannst du den Selbststarter-Kauf überhaupt prüfen?" are fact questions.
+    // Actual double charges or refund disputes stay in their hard handoff.
+    const previousPurchaseCheck =
+      /\b(?:selbststarter|bestellung|(?:alten|fruheren)\s+kauf|kauf)\b/.test(latestLower) &&
+      /\b(?:kannst du|konntest du|ist|wurde|hast du)\b/.test(latestLower) &&
+      /\b(?:pruf\w*|bestatig\w*|eingegangen|registriert|erfasst|nachweis\w*)\b/.test(latestLower) &&
+      !/\b(?:doppelt\s+(?:abgebucht|belastet|bezahlt)|zweimal\s+(?:abgebucht|belastet|bezahlt)|abgebucht|abbuchung|widerruf|ruckerstattung|erstattung|rechnung|betrug|anwalt|stornieren|zugang fehlt|fehlender zugang)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && previousPurchaseCheck && !explicitLiveChatTakeover) {
+      const reply = "Ob dein früherer Selbststarter-Kauf erfasst oder bezahlt wurde, kann ich hier nicht verifizieren. Schau bitte in deine Bestellbestätigung. Wenn sie fehlt, kann Jochen den Kauf anhand der Bestellung persönlich prüfen; ich bestätige keinen Zahlungseingang.";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
     }
 
     // PL19 R7: A plain claimed-old-order query is not a billing dispute.
@@ -1003,6 +1043,16 @@ export async function processIncomingMessage(
       /\b(?:wo|link|anschauen|sehen|finden|schick\w*|zeige\w*)\b/.test(latestLower) &&
       /\b(?:angebot|app|betreuung|begleitung|variante|das|link)\b/.test(latestLower) &&
       !/\b(?:nicht|kein|ohne)\b.{0,30}\b(?:angebot|link|kaufen|begleitung)\b/.test(latestLower);
+    if (isPeteLlmConversationSelected() && asksSmallOfferLink &&
+        !/\b(?:nicht|kein|ohne|widerruf|abbuchung|ruckerstattung|zahlung)\b/.test(latestLower)) {
+      const reply = "Hier findest du die persönliche App-Starter-Variante mit 1 Monat App und einem 45-Minuten-Coaching: " +
+        VERIFIED_SMALL_SUPPORT.appStarter.productUrl +
+        " Das Upgrade kostet 84,05 € zusätzlich zum Selbststarter (99 € zusammen).";
+      updateAnswer(state, "peteReplySource", "verified_transaction");
+      appendAssistantMessage(state, reply);
+      persistConversationState(state);
+      return { text: reply, nextStep: state.currentStep, detectedIntent: "flow_answer", state };
+    }
     if (isPeteLlmConversationSelected() && (wantsSmallerPersonalSupport || asksSmallOfferLink || asksUnder499ForPersonalHelp) &&
         !explicitLiveChatTakeover &&
         !/\b(?:widerruf|rechnung|zahlung|abbuchung|ruckerstattung|zugang fehlt|doppelt bezahlt|stop|nicht mehr schreiben)\b/.test(latestLower)) {

@@ -221,3 +221,33 @@ test("R7 guard: acute medical risk never routed as mild knee issue",async()=>{
  const r=await processIncomingMessage({leadId:"r7-danger",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich habe starke Brustschmerzen und Atemnot, aber was ist mit meinen Knieübungen?",conversationMode:"natural"});
  assert.ok(!(r.text??"").includes("alltagstaugliche Routine"));
 });
+test("R8 plain question about old Selfstarter purchase is answered, not handed over", async()=>{
+ const r=await processIncomingMessage({leadId:"r8-check-status",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will nicht doppelt zahlen. Kannst du den Selbststarter-Kauf überhaupt prüfen?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"ai");
+ assert.match(r.text??"",/nicht (?:überprüfen|verifizieren)/);
+});
+test("R8 actual double charge remains human-owned",async()=>{
+ const r=await processIncomingMessage({leadId:"r8-double",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Mein Selbststarter wurde doppelt abgebucht, kannst du das prüfen?",conversationMode:"natural"});
+ assert.equal(r.state.owner,"human");
+});
+test("R8 explicit tip despite no purchase gets actual tip not just optout",async()=>{
+ const r=await processIncomingMessage({leadId:"r8-tip",campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will momentan nichts kaufen, gib mir nur einen brauchbaren Tipp.",conversationMode:"natural"});
+ assert.match(r.text??"",/Ein konkreter Tipp:/);
+ assert.doesNotMatch(r.text??"",/https?:\/\//);
+});
+test("R8 short answer to app offer link does not re-sell both links",async()=>{
+ const id="r8-link";const st=getOrCreateConversationState(id,DEFAULT_CAMPAIGN_ID);
+ appendUserMessage(st,"Ich möchte die kleine persönliche Variante für 99 Euro.");
+ appendAssistantMessage(st,"Die kleinere persönliche Begleitung gibt es über das App-Starter-Upgrade für 99 Euro.");
+ persistConversationState(st);
+ const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Kannst du den Shoplink zu dieser Variante schicken?",conversationMode:"natural"});
+ assert.ok((r.text??"").includes("no-bullshit-elternfitness_app-starter"));
+ assert.equal((r.text??"").includes("/produkt/no-bullshit-elternfitness-selbststarter/"),false);
+ assert.ok((r.text??"").length<430);
+});
+test("R8 STOP still suppresses even requested tip",async()=>{
+ const id="r8-stop";
+ await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Bitte schreib mir keine weiteren Nachrichten.",conversationMode:"natural"});
+ const r=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,messageText:"Ich will nichts kaufen, gib mir nur einen Tipp.",conversationMode:"natural"});
+ assert.equal(r.text,null);
+});
