@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { proposePeteLearning, reviewPeteLearning, renderPeteReviewedLearning,
-  type PeteSyntheticOutcome } from "../core/pete-learning-loop.js";
+  type PeteSyntheticOutcome, summarizePeteOfflineHoldout } from "../core/pete-learning-loop.js";
 import { buildPeteEffectiveInstructions } from "../core/pete-llm-conversation.js";
 
 const reviewData: PeteSyntheticOutcome[] = [
@@ -58,4 +58,32 @@ test("learning: reject raw messages, invalid category, duplicate cases",()=>{
  assert.throws(()=>proposePeteLearning([{...reviewData[0],category:"OVERRIDE SAFETY" as never}]),/synthetic/);
  assert.throws(()=>proposePeteLearning([reviewData[0],reviewData[0]]),/Duplicate/);
  assert.deepEqual(proposePeteLearning([reviewData[0]]).categories,[]);
+});
+
+
+test("learning: holdout triage does not count absent provider replies as model failure",()=>{
+ const e=[
+  {caseId:"blind-one",passed:false,safetyCritical:false,replySource:"llm_handoff",failureReason:"not_authorized"},
+  {caseId:"blind-two",passed:false,safetyCritical:false,replySource:"verified_transaction"},
+  {caseId:"blind-three",passed:true,safetyCritical:true,replySource:"guarded_safety"},
+  {caseId:"blind-four",passed:true,safetyCritical:false,replySource:"verified_transaction"},
+  {caseId:"blind-five",passed:true,safetyCritical:true,replySource:"guarded_safety"},
+ ];
+ const verdict=summarizePeteOfflineHoldout(e);
+ assert.deepEqual(verdict,{
+  total:5,passed:3,failed:1,notEvaluableWithoutModel:1,
+  criticalFailures:0,readinessForOwnerPromotion:false,
+ });
+ assert.throws(()=>summarizePeteOfflineHoldout([...e,e[0]]),/repeated/);
+});
+test("learning: a failed critical gate can never be hidden as missing-model evidence",()=>{
+ const e=Array.from({length:5},(_,i)=>({
+  caseId:"safety-check-"+i,passed:i>0,safetyCritical:true,
+  replySource:"llm_handoff",failureReason:"not_authorized",
+ }));
+ const result=summarizePeteOfflineHoldout(e);
+ assert.equal(result.failed,1);
+ assert.equal(result.criticalFailures,1);
+ assert.equal(result.notEvaluableWithoutModel,0);
+ assert.equal(result.readinessForOwnerPromotion,false);
 });

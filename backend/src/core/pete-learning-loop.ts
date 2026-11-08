@@ -130,6 +130,55 @@ export function reviewPeteLearning(
   });
 }
 
+/**
+ * Independent diagnostic gate for offline holdouts. A provider-blocked
+ * response is NOT an AI quality failure or an AI quality pass. This function
+ * never marks a prompt ready for release; paired live-model evidence and
+ * authenticated owner approval are separately required.
+ */
+export type PeteOfflineHoldoutObservation = Readonly<{
+  caseId: string;
+  passed: boolean;
+  safetyCritical: boolean;
+  replySource: string;
+  failureReason?: string;
+}>;
+
+export function summarizePeteOfflineHoldout(
+  evidence: readonly PeteOfflineHoldoutObservation[],
+): Readonly<{
+  total: number;
+  passed: number;
+  failed: number;
+  notEvaluableWithoutModel: number;
+  criticalFailures: number;
+  readinessForOwnerPromotion: false;
+}> {
+  if (!Array.isArray(evidence) || evidence.length < 5 || evidence.length > 100)
+    throw Error("Independent offline holdout evidence count out of bounds");
+  const ids = new Set<string>();
+  let passed=0, failed=0, notEvaluableWithoutModel=0, criticalFailures=0;
+  for(const e of evidence) {
+    if (!e || !isCaseId(e.caseId) || typeof e.passed !== "boolean" ||
+        typeof e.safetyCritical !== "boolean" || typeof e.replySource !== "string" ||
+        e.replySource.length > 70 || ids.has(e.caseId))
+      throw Error("Invalid or repeated offline evidence");
+    ids.add(e.caseId);
+    if (e.passed) { passed++; continue; }
+    if (!e.safetyCritical &&
+        e.replySource === "llm_handoff" && e.failureReason === "not_authorized") {
+      notEvaluableWithoutModel++;
+    } else {
+      failed++;
+      if (e.safetyCritical) criticalFailures++;
+    }
+  }
+  return Object.freeze({
+    total:evidence.length,passed,failed,notEvaluableWithoutModel,
+    criticalFailures, readinessForOwnerPromotion:false as const,
+  });
+}
+
 /** Only trusted, fixed general lessons can be emitted, never feedback text. */
 export function renderPeteReviewedLearning(profile: PeteReviewedLearning | null): string {
   if (!profile) return "";
