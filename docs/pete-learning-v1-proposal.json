@@ -1,0 +1,19 @@
+{
+  "version": "pete-learning-v1",
+  "status": "proposed",
+  "categories": [
+    "premature_handoff",
+    "offer_context_drift",
+    "medical_boundary"
+  ],
+  "trainingCaseIds": [
+    "r7-app-mix",
+    "r7-knee",
+    "r7-old-buy",
+    "r8-app-mix",
+    "r8-knee",
+    "r8-old-buy"
+  ],
+  "failureCount": 6,
+  "note": "Synthetic QA category metadata only. No customer text. NOT approved. NOT used by production Pete. Offline holdout and owner review required."
+}

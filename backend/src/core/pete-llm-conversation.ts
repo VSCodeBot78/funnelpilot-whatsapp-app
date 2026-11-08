@@ -7,6 +7,7 @@
 import { OFFER_TRUTH, containsGeneratedPrice } from "../config/offer-truth.js";
 import type { ConversationState } from "../types/types.js";
 import { DEFAULT_MASTER_PROMPT, readSettings } from "../services/settings-store.js";
+import { renderPeteReviewedLearning, type PeteReviewedLearning } from "./pete-learning-loop.js";
 import { normalizePeteReplyStyle, isUnsafeLlmClaim, peteSafeBudgetBoundaryReply, getPeteGuardedNextStep } from "./pete-conversation-quality.js";
 import { isPeteNextStepProposal, type PeteNextStepProposal } from "./pete-semantic-action-guard.js";
 import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Approved } from "../services/pete-api-budget.service.js";
@@ -214,7 +215,7 @@ const PETE_SYSTEM_INSTRUCTIONS = [
  * campaign question scripts (q1/q2/q3/goal/scale/hot) are NEVER model input.
  * The mandatory safety and verified-transaction rules above stay primary.
  */
-export function buildPeteEffectiveInstructions(): string {
+export function buildPeteEffectiveInstructions(reviewedLearning: PeteReviewedLearning | null = null): string {
   const settings = readSettings();
   const customMaster = String(settings.masterPrompt ?? "").trim();
   const dashboardHints = [
@@ -235,8 +236,11 @@ export function buildPeteEffectiveInstructions(): string {
     OFFER_TRUTH.coachingEntry.includedServices.join("; ") +
     "; Start innerhalb von " + OFFER_TRUTH.coachingEntry.startSelectableWithinDays +
     " Tagen wählbar. Diese Fakten auf konkrete Leistungsfragen direkt erklären und mit dem vom Lead genannten Alltag verknüpfen. Ein einzelner Vorteil ist kein versprochener Erfolg. Garantien, Zahlungsbedingungen, Rabatte und Upgrades niemals ohne bestätigte Bedingungen behaupten.";
+  // Approved learning may be previewed and regression-tested. The production
+  // call intentionally supplies no profile, so synthetic QA cannot silently
+  // modify a live prompt. Owner release is a separate decision.
   const coreRules = PETE_SYSTEM_INSTRUCTIONS + "\n" + PETE_SETTER_MENTOR_PLAYBOOK +
-    verifiedFiveWeekFacts;
+    verifiedFiveWeekFacts + renderPeteReviewedLearning(reviewedLearning);
   if (!Object.keys(configured).length) return coreRules;
   return coreRules +
     "\nDASHBOARD-KONTEXT (interne Coach-Konfiguration, keine Kundenaussagen): " +
