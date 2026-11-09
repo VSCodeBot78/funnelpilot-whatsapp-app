@@ -344,3 +344,26 @@ test("PL21 combined red-flag symptoms must outrank ordinary knee advice", async(
  assert.equal(r.state.answers.peteReplySource,"guarded_safety");
  assert.doesNotMatch(r.text??"",/zunächst deinen Alltag betrachten/i);
 });
+
+
+test("PL23 negated remote diagnosis must not silently escalate an ordinary follow-up",async()=>{
+ const id="pl23-declined-diagnosis";
+ const first=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Mein Knie tut seit vier Wochen auf Treppen manchmal weh.",conversationMode:"natural"});
+ assert.equal(first.state.owner,"ai");
+ const follow=await processIncomingMessage({leadId:id,campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ich will kein Ferndiagnose-Coaching. Was kann ich ohne Schmerzen bis zur Klärung allgemein beachten?",
+   conversationMode:"natural"});
+ assert.equal(follow.state.owner,"ai");
+ assert.ok((follow.text??"").length>0);
+ assert.notEqual(follow.state.answers.peteReplySource,"llm_handoff");
+ assert.doesNotMatch(follow.text??"",/ich gebe das an Jochen weiter/i);
+});
+test("PL23 real red flags remain critical even when remote diagnosis was declined",async()=>{
+ const r=await processIncomingMessage({leadId:"pl23-declined-diagnosis-redflag",campaignId:DEFAULT_CAMPAIGN_ID,
+   messageText:"Ich möchte keine Ferndiagnose, aber ich habe starke Brustschmerzen und Atemnot.",
+   conversationMode:"natural"});
+ assert.equal(r.state.owner,"human");
+ assert.match(r.text??"",/112|ärztlich|Notfall/i);
+ assert.equal(r.state.answers.peteReplySource,"guarded_safety");
+});

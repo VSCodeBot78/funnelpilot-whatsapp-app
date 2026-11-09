@@ -1084,11 +1084,19 @@ export function evaluatePeteRuntimeSafety(
     });
   }
 
+  // A refusal of remote diagnosis is not itself a requested diagnosis.
+  // Strip ONLY the negated "Ferndiagnose" phrase before keyword scanning:
+  // actual symptoms (including chest pain or acute knee injury) remain
+  // available to the existing medical safety gates.
+  const medicalSignalText = normalized.replace(
+    /\b(?:keine|keinen|kein|ohne|nicht)\s+(?:(?:medizinische|arztliche|aerztliche)\s+)?ferndiagnose(?:\s+coaching)?\b/g,
+    " ",
+  );
   const medicalMatch =
-    includesAnyKeyword(normalized, MEDICAL_KEYWORDS) ??
-    includesAnyKeyword(normalized, MEDICAL_SOFT_KEYWORDS);
+    includesAnyKeyword(medicalSignalText, MEDICAL_KEYWORDS) ??
+    includesAnyKeyword(medicalSignalText, MEDICAL_SOFT_KEYWORDS);
   const medicalCriticalMatch = includesAnyKeyword(
-    normalized,
+    medicalSignalText,
     MEDICAL_CRITICAL_KEYWORDS,
   );
   if (medicalMatch && medicalCriticalMatch) {
