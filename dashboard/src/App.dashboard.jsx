@@ -600,6 +600,8 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
         />
         {(section === "onboarding" || xwingDryRunOpen) && (
           <SetupWizardModal
+            key={xwingDryRunOpen ? "xwing-rehearsal" : "real-setup"}
+            onStartDryRun={openXwingDryRun}
             startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
             dryRun={xwingDryRunOpen}
             colors={colors}
@@ -704,6 +706,8 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
 
       {(section === "onboarding" || xwingDryRunOpen) && (
         <SetupWizardModal
+          key={xwingDryRunOpen ? "xwing-rehearsal" : "real-setup"}
+          onStartDryRun={openXwingDryRun}
           startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
           dryRun={xwingDryRunOpen}
           colors={colors}

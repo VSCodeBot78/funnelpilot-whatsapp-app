@@ -21,7 +21,7 @@ export function initialSetupStep(search = "") {
 
 export default function SetupWizardModal({
   colors, settings, onSettingsChange, onSaveSettings, onSaveCoachDraft, onOpenTestChat,
-  onOpenSection, onClose, onFinish = onClose, startStep = 0, dryRun = false,
+  onOpenSection, onClose, onFinish = onClose, onStartDryRun, startStep = 0, dryRun = false,
 }) {
   const [stage, setStage] = useState(() =>
     !dryRun && new URLSearchParams(window.location.search).get("setup") === "connections"
@@ -325,6 +325,11 @@ export default function SetupWizardModal({
                   : "Dein persönlicher Startassistent. Alle Einstellungen später jederzeit ändern."}
               </div>
             </div>
+            {!dryRun && onStartDryRun && (
+              <button type="button" style={{ ...btn, fontSize: 12 }} onClick={onStartDryRun}>
+                X-Wing: Erststart offline testen
+              </button>
+            )}
             <button type="button" style={{ ...btn, padding: "5px 11px" }}
               aria-label="Einrichtung schließen" onClick={onClose}>✕</button>
           </div>
