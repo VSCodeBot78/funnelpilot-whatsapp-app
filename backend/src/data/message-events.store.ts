@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { env } from "../config/env.js";
 import { writePrivateJsonAtomic } from "./private-json-file.js";
 
@@ -27,6 +28,22 @@ export type MessageEventLogEntry = {
 const DATA_DIR = env.DATA_DIR;
 const MESSAGE_EVENTS_FILE = path.join(DATA_DIR, "message-events.json");
 const MAX_EVENTS = 1000;
+const ERASED_INSTAGRAM_MID_PREFIX = "erased-sha256:";
+
+/** Stable one-way pseudonym for replay protection; NOT anonymous deletion.
+ * Message IDs carry high-entropy provider-generated values, not follower names.
+ */
+function erasedInstagramMessageId(messageId: string): string {
+  return ERASED_INSTAGRAM_MID_PREFIX + createHash("sha256")
+    .update("funnelpilot:instagram-erasure:v1\0")
+    .update(messageId)
+    .digest("hex");
+}
+
+export function isErasedInstagramEvent(entry: MessageEventLogEntry): boolean {
+  return entry.provider === "meta_instagram" &&
+    entry.messageId.startsWith(ERASED_INSTAGRAM_MID_PREFIX);
+}
 
 let messageEventsStore: MessageEventLogEntry[] = [];
 
@@ -113,7 +130,8 @@ export function getMessageEventByMessageId(
   return [...messageEventsStore].reverse().find(
     (event) =>
       event.provider === provider &&
-      event.messageId === cleanMessageId &&
+      (event.messageId === cleanMessageId ||
+        (provider === "meta_instagram" && event.messageId === erasedInstagramMessageId(cleanMessageId))) &&
       blockingStatuses.includes(event.status),
   );
 }
@@ -125,6 +143,35 @@ export function saveMessageEventLogEntry(
   messageEventsStore = [...messageEventsStore, safeEntry].slice(-MAX_EVENTS);
   persistMessageEventsStore();
   return safeEntry;
+}
+
+/** Removes sender/recipient references and raw metadata when a synthetic/real
+ * Instagram lead is deleted. Retains only a pseudonymous replay tombstone so
+ * a signed provider retry cannot silently recreate the erased conversation.
+ * Retention period and legal basis for tombstones require separate approval.
+ * Commit to disk before changing the in-memory store; a failed disk write must
+ * stop lead deletion rather than report a successful erasure.
+ */
+export function redactInstagramEventsForSender(instagramScopedId: string): number {
+  const sender = instagramScopedId.trim();
+  if (!sender) return 0;
+  let count = 0;
+  const next = messageEventsStore.map(entry => {
+    if (entry.provider !== "meta_instagram" ||
+        (entry.from !== sender && entry.raw?.recipientId !== sender)) return entry;
+    count++;
+    return {
+      id: "erased-" + createHash("sha256").update(entry.id).digest("hex"),
+      provider: "meta_instagram" as const,
+      messageId: erasedInstagramMessageId(entry.messageId),
+      receivedAt: entry.receivedAt.slice(0, 10),
+      status: "processed" as const,
+    };
+  });
+  if (!count) return 0;
+  writeMessageEventsFile(next);
+  messageEventsStore = next;
+  return count;
 }
 
 export function getAllMessageEvents(): MessageEventLogEntry[] {

@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import type { RawBodyRequest } from "../app.js";
 import {
   getMessageEventByMessageId,
+  isErasedInstagramEvent,
   saveMessageEventLogEntry,
   type MessageEventStatus,
 } from "../data/message-events.store.js";
@@ -245,6 +246,9 @@ router.post("/", async (req: RawBodyRequest, res) => {
       );
       if (existing) {
         duplicates += 1;
+        // Erased sender must not be written back to the log by a signed retry.
+        // Its pseudonymous tombstone already preserves the replay block.
+        if (isErasedInstagramEvent(existing)) continue;
         saveMessageEventLogEntry(
           buildLogEntry({
             messageId: event.messageId,

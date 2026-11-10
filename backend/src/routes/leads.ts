@@ -8,6 +8,8 @@ import {
   type LeadRecord,
 } from "../data/leads.store.js";
 import { normalizeBookingData } from "../domain/booking-sync.js";
+import { getAllBookingEvents } from "../data/booking-events.store.js";
+import { redactInstagramEventsForSender } from "../data/message-events.store.js";
 import {
   deleteConversationState,
   deleteConversationStatesByBackendLeadId,
@@ -170,6 +172,27 @@ router.delete("/leads/:id", (req, res) => {
   try {
     const leadId = req.params.id;
     const existingLead = getLeadById(leadId);
+    // A booking can have statutory retention requirements. Never declare a
+    // complete GDPR erasure while a linked booking record still needs review.
+    if (existingLead && (
+      existingLead.booked ||
+      ["pending_confirmation", "booked", "completed", "cancelled"].includes(
+        existingLead.bookingData?.status ?? "inactive",
+      ) ||
+      getAllBookingEvents().some(event =>
+        event.leadId === leadId ||
+        (existingLead.backendLeadId && event.leadId === existingLead.backendLeadId))
+    )) {
+      return res.status(409).json({
+        ok: false,
+        error: "Buchungsdaten vorhanden: Loeschung erfordert eine individuelle Aufbewahrungspruefung.",
+      });
+    }
+    // Erase identity-bearing Instagram telemetry first. A failed disk write
+    // must leave the lead intact rather than return an incorrect success.
+    if (existingLead && leadId.startsWith("instagram:")) {
+      redactInstagramEventsForSender(leadId.slice("instagram:".length));
+    }
     const deleted = deleteLead(leadId);
 
     if (!deleted) {
