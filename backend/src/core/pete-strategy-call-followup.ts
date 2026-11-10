@@ -9,6 +9,36 @@ import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
 
 export type VerifiedStrategyCallReply = { text: string; nextPhase?: string };
 
+/**
+ * A previous verified booking-fee statement is a source-backed fact, not an
+ * LLM opinion. Prevent subsequent generated replies from withdrawing it.
+ * Calendly is_paid=false supports ONLY "no payment to reserve the slot",
+ * not a broad claim that the coaching or every meeting is free.
+ * This guard applies to the model's output regardless of the new lead wording.
+ */
+export function getPeteVerifiedBookingFeeRepair(
+  state: ConversationState, generatedReply: string,
+): string | null {
+  if (OFFER_TRUTH.strategyCall.calendlyBookingRequiresPayment !== false ||
+      state.answers?.peteReplySource !== "verified_transaction") return null;
+  const lastAssistant = [...(state.messages ?? [])].reverse().find(m => m.role === "assistant");
+  const prior = normalized(lastAssistant?.text ?? "");
+  const alreadyConfirmed = /\bterminbuchung\b.{0,55}\b(?:kostet nichts|keine zahlung (?:notig|erforderlich))\b/.test(prior) ||
+    /\bfur die terminbuchung\b.{0,45}\bkeine zahlung (?:notig|erforderlich)\b/.test(prior);
+  if (!alreadyConfirmed) return null;
+
+  const candidate = normalized(generatedReply);
+  const discussesCallFees = /\b(?:terminbuchung|termin|strategiegesprach|gesprach|buchung)\b/.test(candidate) &&
+    /\b(?:kosten|kostet|kostenpflichtig|preis|zahlung|zahlen|gebuhr(?:en)?)\b/.test(candidate);
+  if (!discussesCallFees) return null;
+  const withdrawsVerifiedFact =
+    /\b(?:nicht (?:verlasslich|sicher|eindeutig) (?:bestatigt|geklart)|unklar|unbekannt|nicht bekannt|nicht verifiziert|kann (?:ich|man) nicht (?:bestatigen|sagen|prufen)|moglicherweise kostenpflichtig)\b/.test(candidate) ||
+    /\bterminbuchung\b.{0,45}\b(?:kostenpflichtig|kostet|gebuhren?)\b/.test(candidate) &&
+      !/\bterminbuchung\b.{0,28}\bkostet nichts\b/.test(candidate);
+  if (!withdrawsVerifiedFact) return null;
+  return "Für die Terminbuchung über den bestätigten Calendly-Link ist keine Zahlung nötig. Das ist noch keine kostenpflichtige Coaching-Buchung.";
+}
+
 const normalized = (text: string) => text.toLowerCase()
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
 

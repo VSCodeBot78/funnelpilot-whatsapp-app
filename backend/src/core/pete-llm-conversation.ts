@@ -14,6 +14,7 @@ import { PeteBudgetStop, reservePeteBudget, settlePeteBudget, isPeteLabGpt54Appr
 import { PETE_SETTER_MENTOR_PLAYBOOK } from "./pete-setter-mentor.js";
 import { resolvePeteRuntimeModel } from "../config/pete-model-selection.js";
 import { hasPeteActiveNoQuestionBoundary } from "./pete-question-boundary.js";
+import { getPeteVerifiedBookingFeeRepair } from "./pete-strategy-call-followup.js";
 import { decidePeteTurnV4, explainPeteTurnV4 } from "./pete-turn-policy-v4.js";
 import { desktopCallMode, desktopCallSessionHash } from "../services/pete-desktop-lab.service.js";
 
@@ -574,6 +575,12 @@ export async function getPeteLlmConversationReply(state: ConversationState, book
     }
     const validated = validatePeteLlmReply(parsed);
     if (!validated) return { kind: "handoff", reason: "invalid_output", detail: classifyPeteOutputRejection(parsed) };
+    // A generated answer cannot withdraw a verified no-payment-to-book fact.
+    // A verified strategy-call booking is NOT proof of free coaching.
+    if (!validated.needsHuman) {
+      const verifiedFeeRepair = getPeteVerifiedBookingFeeRepair(state, validated.reply);
+      if (verifiedFeeRepair) return { kind: "safe_reply", text: verifiedFeeRepair };
+    }
     let rejectedNextStep = false;
     if (!validated.needsHuman && validated.nextStep && validated.nextStep !== "none") {
       const latestLead = [...state.messages].reverse().find(message => message.role === "user");
