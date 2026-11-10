@@ -35,6 +35,63 @@ export function getOnboardingReadiness(readiness) {
   };
 }
 
+// Four distinct, read-only Meta gates. A documented app or tester role can
+// never become a verified webhook or a live send permission by implication.
+// The optional observation is visibly labeled (external or synthetic), never
+// treated as an authenticated provider response.
+export function getMetaOnboardingGates({ readiness, observation } = {}) {
+  const backendReady = readiness?.ok === true &&
+    readiness.service === "funnel-pilot-backend" && readiness.status === "ready";
+  const observed = observation?.source === "synthetic_first_run" ||
+    observation?.source === "manual_owner_readback";
+  const source = observation?.source === "synthetic_first_run"
+    ? "Nur X-Wing-Simulation – keine echte Meta-Abfrage."
+    : "Nur externer Betreiber-Nachweis – nicht durch Funnel Pilot autorisiert.";
+  const appExists = observed && observation.appExists === true;
+  const testReady = observed && observation.testerPresent === true &&
+    observation.scopesTestReady === true;
+  const relayMissing = !backendReady ||
+    readiness.publicBackendUrlConfigured !== true ||
+    readiness.webhookBaseUrlConfigured !== true;
+  const callbackFailed = observed && observation.callbackReachable === false;
+  const sendOff = !backendReady ||
+    readiness.instagramSendEnabled !== true ||
+    readiness.instagramEngineEnabled !== true;
+  return [
+    {
+      id: "app_exists", title: "1. Meta-App vorhanden",
+      status: appExists ? "documented_only" : "not_verified",
+      detail: appExists
+        ? "App-Eintrag belegt. " + source
+        : "Nicht im Dashboard verifizierbar. Eine installierte App beweist keine Verbindung.",
+    },
+    {
+      id: "authorized_test_ready", title: "2. IG-Konto / Tester / Berechtigungen",
+      status: testReady ? "test_ready_only" : "not_verified",
+      detail: testReady
+        ? "Konto-/Testerrolle und Scopes nur TESTBEREIT. " + source +
+          " Kein bestätigtes OAuth-Token oder Live-Recht."
+        : "Autorisierung und Scopes nicht über die laufende API bestätigt. Nicht verbunden.",
+    },
+    {
+      id: "webhook_verified", title: "3. Webhook öffentlich und bestätigt",
+      status: relayMissing || callbackFailed ? "blocked" : "not_verified",
+      detail: callbackFailed
+        ? "Callback laut Prüfbeispiel nicht erreichbar. Keine signierte Live-Zustellung belegt."
+        : relayMissing
+          ? "Öffentliche Backend-URL oder WebhookBase fehlt. Keine Meta-Zustellung möglich."
+          : "URL konfiguriert, aber echte Callback-Verifikation und Zustellung nicht belegt.",
+    },
+    {
+      id: "live_enabled", title: "4. Instagram Live-Betrieb",
+      status: sendOff ? "off" : "not_verified",
+      detail: sendOff
+        ? "Send AUS / kein Live-Betrieb. Kein automatisches Freischalten durch Tests."
+        : "Lokale Flags allein sind kein Live-Nachweis. Meta-Rechte, Datenschutz und Freigabe fehlen.",
+    },
+  ];
+}
+
 export const ONBOARDING_LABELS = [
   "Workspace",
   "Pete",

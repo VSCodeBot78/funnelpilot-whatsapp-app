@@ -1,11 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../services/apiBase";
-import { getSetupDiagnostics } from "./onboardingReadiness";
+import { getMetaOnboardingGates, getSetupDiagnostics } from "./onboardingReadiness";
 import CoachDraftEditor from "./CoachDraftEditor";
 import CoachProfilePreview from "./CoachProfilePreview";
 import ProviderBrandIcon from "./ProviderBrandIcon";
 
 const STAGES = ["Willkommen", "Marke & Pete", "Angebote", "Verbindungen", "Test", "Fertig"];
+// Isolated rehearsal of the 10 Nov Owner-Meta findings. This does NOT
+// describe the next Coach's real account or grant any runtime permissions.
+const XWING_META_EXAMPLE = Object.freeze({
+  source: "synthetic_first_run",
+  appExists: true, testerPresent: true, scopesTestReady: true,
+  callbackReachable: false,
+});
 const PROVIDERS = [
   { id: "instagram", name: "Instagram", group: "Social Media", symbol: "◎" },
   { id: "facebook", name: "Facebook", group: "Social Media", symbol: "f" },
@@ -173,7 +180,7 @@ export default function SetupWizardModal({
       ? { label: "Nur Demo: verbunden simuliert. Keine echte API-Verbindung.", status: "demo_connected" }
       : { label: "Offline-Demo: noch nicht simuliert verbunden.", status: "dry_run" };
     if (["instagram", "facebook", "whatsapp"].includes(provider)) {
-      return { label: "Meta-Freigabe / Embedded Signup ausstehend", status: "external" };
+      return { label: "Meta-Kanal nicht durch die lokale API autorisiert oder live verifiziert", status: "external" };
     }
     const item = integrations?.providers?.find(i => i.provider === provider);
     if (!item) return { label: "Serverstatus nicht abrufbar", status: "unknown" };
@@ -290,13 +297,23 @@ export default function SetupWizardModal({
       : <div style={{ ...small, fontWeight: 600 }}>
         {current.status === "dry_run" ? "Zum Verbinden später den regulären Einrichtungsassistenten öffnen."
           : current.status === "external"
-            ? "Meta-Verknüpfung folgt nach App-Einrichtung."
+            ? "Eine vorhandene Meta-App oder Testerrolle ist keine aktive API-Verbindung. Erst Berechtigung, Webhook und Live-Gate prüfen."
             : "Noch kein Login möglich, bis die Entwickler-App eingerichtet ist."}
       </div>}
     </div>;
   }
 
   const diagnostics = getSetupDiagnostics({ readiness, integrations, settings });
+  const metaGates = getMetaOnboardingGates({
+    readiness, observation: dryRun ? XWING_META_EXAMPLE : null,
+  });
+  const metaLabels = {
+    documented_only: "NUR EXTERN / DEMO BELEGT",
+    test_ready_only: "NUR TESTBEREIT",
+    blocked: "BLOCKIERT",
+    off: "AUS",
+    not_verified: "NICHT VERIFIZIERT",
+  };
 
   return (
     <div style={{
@@ -535,11 +552,33 @@ export default function SetupWizardModal({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(235px, 1fr))", gap: 12 }}>
               {PROVIDERS.map(connectTile)}
             </div>
-            <div style={{ ...box, marginTop: 14, fontSize: 13 }}>
-              <strong>Meta/WhatsApp:</strong> App-Freigabe, Webhooks und Embedded Signup werden
-              separat sicher eingerichtet. Einfache Login-Buttons erscheinen erst,
-              wenn diese Verbindung wirklich funktionsfähig ist. ManyChat bleibt bis zum
-              kontrollierten Handoff unverändert.
+            <div role="group" aria-label="Meta-Status: App, Testberechtigung, Webhook, Live"
+              style={{ ...box, marginTop: 14, fontSize: 13 }}>
+              <strong>Instagram / Meta: vier getrennte Freigabestufen</strong>
+              <p style={small}>{dryRun
+                ? "X-Wing-Szenario nach dem dokumentierten Owner-Befund: App und Tester nur simuliert, alter Callback nicht erreichbar. Kein Kontakt zu Meta."
+                : "Nur Backend-Flags werden hier live gelesen. Ein externer Meta-App-Eintrag oder eine Testerrolle sind keine bestätigte Funnel-Pilot-Verbindung."}</p>
+              <div style={{ display: "grid", gap: 9 }}>
+                {metaGates.map(gate => (
+                  <div key={gate.id} data-meta-gate={gate.id}
+                    data-meta-state={gate.status}
+                    style={{ background: "#fff", border: "1px solid #dbe4f0",
+                      padding: 11, borderRadius: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between",
+                      flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      <strong>{gate.title}</strong>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#854d0e" }}>
+                        {metaLabels[gate.status]}
+                      </span>
+                    </div>
+                    <p style={{ ...small, margin: "7px 0 0" }}>{gate.detail}</p>
+                  </div>
+                ))}
+              </div>
+              <p style={{ ...small, marginTop: 12, fontWeight: 700 }}>
+                Viele grüne Konfigurationsprüfungen ergeben kein Live-GO.
+                ManyChat bleibt bis zum kontrollierten Handoff unverändert.
+              </p>
             </div>
           </div>}
 

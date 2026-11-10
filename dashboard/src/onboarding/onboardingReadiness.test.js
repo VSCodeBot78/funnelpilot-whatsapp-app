@@ -168,3 +168,58 @@ test("the setup wizard refuses a green local-test status if advanced safety flag
   assert.equal(getSetupDiagnostics(base).relayVerified, false);
   assert.equal(getSetupDiagnostics(base).liveIntegrationVerified, false);
 });
+
+test("synthetic first-run: documented app and test scopes NEVER imply webhook or live", async () => {
+  const { getMetaOnboardingGates } = await import("./onboardingReadiness.js");
+  const gates = getMetaOnboardingGates({
+    readiness: { ...safeLocalFlags, publicBackendUrlConfigured: false,
+      webhookBaseUrlConfigured: false, instagramEngineEnabled: false,
+      instagramSendEnabled: false },
+    observation: { source: "synthetic_first_run", appExists: true,
+      testerPresent: true, scopesTestReady: true, callbackReachable: false },
+  });
+  assert.deepEqual(gates.map(g => [g.id, g.status]), [
+    ["app_exists", "documented_only"],
+    ["authorized_test_ready", "test_ready_only"],
+    ["webhook_verified", "blocked"],
+    ["live_enabled", "off"],
+  ]);
+  assert.match(gates[1].detail, /TESTBEREIT/);
+  assert.match(gates[1].detail, /kein bestätigtes OAuth-Token/i);
+  assert.match(gates[2].detail, /nicht erreichbar/i);
+  assert.match(gates[3].detail, /Send AUS/);
+});
+
+test("real first-run without authenticated Meta readback shows UNKNOWN, not connected", async () => {
+  const { getMetaOnboardingGates } = await import("./onboardingReadiness.js");
+  const fakeCredentials = {
+    ...safeLocalFlags, instagramVerifyTokenConfigured: true,
+    instagramAppSecretConfigured: true, instagramSendConfigured: true,
+    publicBackendUrlConfigured: false, webhookBaseUrlConfigured: false,
+  };
+  const gates = getMetaOnboardingGates({ readiness: fakeCredentials });
+  assert.equal(gates[0].status, "not_verified");
+  assert.equal(gates[1].status, "not_verified");
+  assert.equal(gates[2].status, "blocked");
+  assert.equal(gates[3].status, "off");
+  const noBackend = getMetaOnboardingGates();
+  assert.deepEqual(noBackend.map(g => g.status),
+    ["not_verified", "not_verified", "blocked", "off"]);
+});
+
+test("even locally activated flags and URL do not fabricate live verification", async () => {
+  const { getMetaOnboardingGates } = await import("./onboardingReadiness.js");
+  const gates = getMetaOnboardingGates({
+    readiness: { ...safeLocalFlags, instagramSendEnabled: true,
+      instagramEngineEnabled: true, publicBackendUrlConfigured: true,
+      webhookBaseUrlConfigured: true },
+    observation: { source: "manual_owner_readback",
+      appExists: true, testerPresent: true, scopesTestReady: true,
+      callbackReachable: false },
+  });
+  assert.equal(gates[0].status, "documented_only");
+  assert.equal(gates[1].status, "test_ready_only");
+  assert.equal(gates[2].status, "blocked");
+  assert.equal(gates[3].status, "not_verified");
+  assert.doesNotMatch(gates.map(g => g.status).join(" "), /\bverified\b|\blive\b/);
+});

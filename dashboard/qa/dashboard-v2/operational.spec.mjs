@@ -93,3 +93,81 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   expect(requests.some((r) => /\/meta|\/webhook|\/ghosting\/send|\/conversations\/send/i.test(r.path))).toBe(false);
   expect(pageErrors).toEqual([]);
 });
+
+test("six-stage synthetic Coach first-run never upgrades Meta test roles to live", async ({ page }) => {
+  const requests = [];
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.route("**/*", async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.hostname !== "127.0.0.1")
+      throw Error("External call blocked by First-Run QA: " + url.origin);
+    const api = /^\/(health|leads|campaigns|conversations|settings-config|ghosting|ghosting-config|availability-config|scheduling-config|integrations|booking-events|test-chat)(\/|$)/;
+    if (!api.test(url.pathname)) return route.continue();
+    requests.push({ method: request.method(), path: url.pathname });
+    if (request.method() !== "GET")
+      return route.fulfill({ status: 403, json: { ok: false, error: "QA_offline_only" } });
+    const data = url.pathname === "/integrations/oauth/status"
+      ? { ok: true, providers: [] }
+      : fixtureResponse(url.pathname);
+    return route.fulfill(data
+      ? { status: 200, json: data }
+      : { status: 404, json: { ok: false, error: "QA_no_provider" } });
+  });
+  await page.goto("http://127.0.0.1:5177/");
+  const realWizard = page.getByRole("dialog", { name: /Funnel Pilot einrichten/ });
+  await expect(realWizard).toBeVisible();
+  await realWizard.getByRole("button", { name: "4. Verbindungen" }).click();
+  const realMeta = realWizard.getByRole("group", {
+    name: "Meta-Status: App, Testberechtigung, Webhook, Live",
+  });
+  for (const [gate, status] of [
+    ["app_exists", "not_verified"],
+    ["authorized_test_ready", "not_verified"],
+    ["webhook_verified", "blocked"],
+    ["live_enabled", "off"],
+  ]) await expect(realMeta.locator('[data-meta-gate="' + gate + '"]'))
+    .toHaveAttribute("data-meta-state", status);
+  await page.getByRole("button", { name: "X-Wing: Erststart offline testen" }).click();
+  const wizard = page.getByRole("dialog", { name: /X-Wing: Erststart offline testen/ });
+  await expect(wizard).toBeVisible();
+  await expect(wizard.getByText("Schritt 1 von 6")).toBeVisible();
+  await wizard.getByRole("button", { name: /Direkt einrichten/ }).click();
+  await expect(wizard.getByText("Schritt 2 von 6")).toBeVisible();
+  await wizard.getByLabel("Betreibername").fill("Synthetische Coach");
+  await wizard.getByLabel("Assistentenname").fill("Offline Pete");
+  await wizard.getByRole("button", { name: "Weiter →" }).click();
+  await expect(wizard.getByText("Schritt 3 von 6")).toBeVisible();
+  await wizard.getByRole("button", { name: "Weiter →" }).click();
+  await expect(wizard.getByText("Schritt 4 von 6")).toBeVisible();
+  const meta = wizard.getByRole("group", { name: "Meta-Status: App, Testberechtigung, Webhook, Live" });
+  await expect(meta).toBeVisible();
+  for (const [gate, status] of [
+    ["app_exists", "documented_only"],
+    ["authorized_test_ready", "test_ready_only"],
+    ["webhook_verified", "blocked"],
+    ["live_enabled", "off"],
+  ]) await expect(meta.locator('[data-meta-gate="' + gate + '"]'))
+    .toHaveAttribute("data-meta-state", status);
+  await expect(meta.getByText("NUR TESTBEREIT", { exact: true })).toBeVisible();
+  await expect(meta.getByText("AUS", { exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-six-step-xwing-meta-nosend.png", fullPage: true });
+  await wizard.getByRole("button", { name: "Weiter →" }).click();
+  await expect(wizard.getByText("Schritt 5 von 6")).toBeVisible();
+  await expect(wizard.getByText(/Live-Pete, Inbox, Kalender und Testkäufe sind bewusst gesperrt/)).toBeVisible();
+  await wizard.getByRole("button", { name: "Weiter →" }).click();
+  await expect(wizard.getByText("Schritt 6 von 6")).toBeVisible();
+  await wizard.getByRole("button", { name: "Trockenlauf schließen" }).click();
+  const storage = await page.evaluate(() => ({
+    completed: localStorage.getItem("funnelpilot-onboarding-complete-v1"),
+    seen: localStorage.getItem("funnelpilot-onboarding-modal-seen-v2"),
+  }));
+  expect(storage).toEqual({ completed: null, seen: null });
+  // The legacy dashboard shell tries /conversations/ensure in the background.
+  // Every POST is intercepted with 403; X-Wing must not issue provider, Meta,
+  // onboarding save or checkout requests.
+  expect(requests.filter(r => r.method !== "GET" &&
+    r.path !== "/conversations/ensure")).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
