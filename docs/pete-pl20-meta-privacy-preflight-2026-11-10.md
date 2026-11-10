@@ -1,0 +1,40 @@
+# PL20 | 10.11.2026 | Instagram-Einzelaccount-Beta: Meta-/Datenschutz-Preflight
+
+**Status:** READ-ONLY-/NO-SEND-VORABNAHME. Keine produktive Freigabe. Nur `@eltern_fitundvital`, kein SaaS-Onboarding anderer Coaches. Keine neuen Agenten oder Issues.
+
+## Tatsächlich geprüft
+
+- PETE_MASTER_STATE gelesen; Git HEAD beim Audit `f5763c9`, Arbeitsverzeichnis sauber.
+- Besitzer-Laptop über Desktop Commander online. Chrome per read-only Windows-UI-Automation untersucht: **genau ein sichtbarer Tab „Armaturenbrett“**, keine Meta-Developer-Ansicht. **Dadurch sind App-ID, Login-Produkt, App-Modus, IG-Professional, Rollen, Scopes, Advanced Access und Subscriptions NICHT VERIFIZIERT.** Das beweist nicht, dass keine Meta-App existiert.
+- Lokaler `GET http://127.0.0.1:3001/health/readiness`: `ready`, aber `publicBackendUrlConfigured=false`, `webhookBaseUrlConfigured=false`, `instagramVerifyTokenConfigured=false`, `instagramAppSecretConfigured=false`, `instagramEngineEnabled=false`, `instagramSendEnabled=false`, `legalLinksReady=false`, `metaSendConfigured=false`. **SEND AUS bleibt verbindlich.**
+- Backend-Parser `backend/src/services/meta-instagram-webhook.service.ts` bearbeitet `messaging` und `changes.field=messages`; kein Nachweis einer live abonnierten Meta-App. `pete-campaign-event-classifier.service.ts` ist explizit `preview_only`, `sendAllowed:false`. `pete-campaign-entry-preview.service.ts` setzt `instagram_new_follower` ausdrücklich auf `manual_only`. **Follower-Welcome nicht aktivieren.**
+- Neu gelaufene kostenlose Tests: `node --import tsx --test src/config/instagram-v2-webhook.test.ts src/config/instagram-transport.test.ts src/config/prelive-hardening.test.ts src/config/pete-phase4b-event-origin.test.ts src/config/pete-legal-privacy-priority.test.ts` – **49/49 PASS**, Exit 0. Log `C:\Users\Jo\Desktop\PL20_META_PREFLIGHT_OFFLINE_2026-11-10.log`. Diese Offline-Mocks bestätigen **keine** reale Send- oder Webhook-Berechtigung.
+- Öffentlich erreichbare Datenschutzerklärung: `https://jochen-kammerer.de/datenschutz/`; Impressum: `https://jochen-kammerer.de/impressum/`, zuvor beide HTTP 200. In Funnel Pilot noch **nicht** als gesetzlich relevante Links konfiguriert; Eintragen **erst nach** Inhaltsprüfung, sonst irreführendes `legalLinksReady`.
+
+## Neu identifizierter Datenschutz-Blocker: Lead-Löschung nicht durchgängig belegt
+
+**CODE-FAIL (Löschstrecke vollständig):** `backend/src/routes/leads.ts` DELETE `/leads/:id` entfernt Lead über `deleteLead` und zugehörige `ConversationState`-Datensätze. Separat werden Instagram-Ereignisse in `backend/src/data/message-events.store.ts` unter `message-events.json` mit `from` (Absenderkennung), `messageId`, ggf. `raw` abgelegt. Im Lead-DELETE-Handler ist **kein Lösch-/Anonymisierungsaufruf für diesen Store** sichtbar. Instagram-Leads erhalten zudem in `instagram-lead-sync.service.ts` die Kennung `instagram:<IGSID>` und eine Kennungsnotiz. `MAX_EVENTS=1000` ist nur Mengenbegrenzung, **keine zeitgebundene Löschregel**. `conversations.json` und `leads.json` sind lokale JSON-Stores; `private-json-file.ts` erklärt explizit, dass es keine At-Rest-Verschlüsselung, Backup- oder Retention-Strategie garantiert.
+
+Die betroffenen Metadaten sind potenziell personenbezogen. Die vollständige rechtskonforme Löschung aus allen relevanten Systemen ist **NICHT nachgewiesen**. Andere Speicher (Buchungsereignisse, Backups, Host-/Provider-Logs und Daten beim KI-Dienst) müssen ebenfalls inventarisiert werden. Hier keine echte Kundenlöschung und keine Migration vorgenommen.
+
+**Abnahmekriterium für Reparatur:** Synthetischen IG-Kontakt mit eindeutigem Fake-IGSID, DM, Event-Metadaten, Lead und Conversation erzeugen; dokumentierten Betroffenen-Löschpfad ausführen; anschließend alle Stores und relevante Backups/Verarbeitungslisten auf wiederverknüpfbare personenbezogene Daten prüfen. Duplikat-/Replay-Schutz darf durch Löschbereinigung nicht unbeabsichtigt aufgehoben werden. Geeignete Aufbewahrungsfrist und Rechtsgrundlage zuerst festlegen. Erst nach PASS eine Frist in die Datenschutzerklärung aufnehmen.
+
+## Rechtlicher Textbaustein – NUR PRÜFENTWURF, NICHT VERÖFFENTLICHEN
+
+> **KI-unterstützte Kommunikation über Instagram/WhatsApp (geplant).** Wenn du uns eine Direktnachricht sendest, können wir deine Nachricht durch unseren digitalen KI-Assistenten „Pete“ bearbeiten lassen. Pete unterstützt bei allgemeinen Fragen zu unserem Coaching und leitet bei Bedarf an einen Menschen weiter. Hierfür verarbeiten wir unter anderem die zur Unterhaltung gehörende Plattformkennung, Zeitpunkte, Nachrichteninhalte und Informationen, die du uns freiwillig mitteilst. Es erfolgt keine automatische Buchung oder Zahlung allein durch das Gespräch.
+>
+> Verantwortlicher und Kontaktwege: **[entsprechend bestehender Datenschutzerklärung prüfen]**. Zwecke und Rechtsgrundlagen: **[je Szenario fachkundig festlegen: Anfragebearbeitung, Kontaktpflege, Marketing; Einwilligung versus berechtigtes Interesse nicht pauschal behaupten]**. Empfänger und Auftragsverarbeiter: **[Meta, technischer Hosting-Anbieter, OpenAI/API bzw. tatsächlich eingesetzte Anbieter und deren Rollen/Vertragsgrundlagen konkret prüfen]**. Drittlandbezug und Schutzmechanismen: **[verifizieren]**. Speicherdauer sowie nachvollziehbare Löschverfahren: **[technisch festlegen, testen und verbindlich eintragen]**. Betroffenenrechte einschließlich Auskunft/Löschung/Widerspruch: **[bestehenden Weg ergänzen, reale Durchsetzung technisch bestätigen]**. Hinweise zu besonders sensiblen Gesundheitsangaben und menschlicher Übernahme: **[mit tatsächlichem Chat-Verhalten abgleichen]**.
+
+**Nicht als Fakt veröffentlichen**, dass OpenAI-Daten niemals gespeichert oder zum Training verwendet werden; `store:false` im API-Request ist kein Ersatz für die richtige Vertrags-/Datenflussprüfung. Der LfDI BW unterstreicht die Prüfung von Rechtsgrundlagen und Rollen je Verarbeitungsschritt: https://www.baden-wuerttemberg.datenschutz.de/rechtsgrundlagen-datenschutz-ki/ (aktuelle Papier-Version 2.0 vom 17.10.2024).
+
+## Minimaler Owner-Pfad später – bis dahin keine Live-Aktivierung
+
+1. **Meta for Developers → Meine Apps → bestehende App → App-Einstellungen/Grundlegendes**: App/Produkt/Modus und zugehörige Geschäftszuordnung ablesen. Keine App-ID öffentlich verbreiten, keine Tokens/Secrets kopieren.
+2. **Instagram API / Instagram Login bzw. Facebook Login → Berechtigungen/Rollen**: tatsächlich aktiven Produktpfad, Professional-Konto, Testrollen, `instagram_business_manage_messages` bzw. produktabhängige Berechtigungen und Review-/Access-Status belegen. Nur der belegte Pfad wird eingerichtet.
+3. **Webhooks → Instagram**: Callback-URL, GET-Verify, HMAC-Signatur mit App-Secret, abonnierte Felder und tatsächliche Lieferereignisse erst **nach** vorbereitetem sicheren HTTPS-Backend prüfen. Ein Domain-/Linkfeld im Dashboard ersetzt keinen echten Meta-E2E-Nachweis.
+4. Zunächst **nur Nutzer-initiierten DM-Eingang** und streng allowlistete Testkontakte für eine spätere separate Owner-Go-Freigabe planen. `instagram_new_follower` bleibt `manual_only`. Reel-Kommentar-Private-Replies benötigen ein anderes eigenständig geprüftes Trigger-/Permission-/Einmalnachrichtengate.
+5. Datenschutztext, Datenfluss, AVV/Provider, technische Löschung und Speicherfristen vor echtem Personen-DM-Test freigeben. Dann gegebenenfalls `privacyPolicyUrl` und `imprintUrl` im bestehenden Workspace setzen und mit Backend-Readiness rückprüfen.
+
+**Nächste sichere technische Aufgabe:** Vor produktivem DM-Test eine konsistente DSGVO-Deletion-/Retention-Implementierung für Lead, Conversation, Event-/Booking-Logs und Backup-Betroffenheit konzipieren und synthetisch testen. Dazu API-Send/Kill-Switch, eventgesteuerte Berechtigungen und Metas echte App-Konfiguration weiterhin separat nachweisen.
+
+**NO-GO:** Live-Sends, OAuth, App-Review, Datenmigration, Deployments oder zusätzliche API-Kosten ohne ausdrückliche Owner-Freigabe. Dieses Dokument ist Projektprüfung, keine Rechtsberatung oder abgeschlossene DSGVO-Bescheinigung.
