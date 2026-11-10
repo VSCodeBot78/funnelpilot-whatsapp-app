@@ -329,10 +329,10 @@ export function getPeteVerifiedTransactionAnswer(
       !asksFiveWeekDetails && !ambiguousOfferInCurrentTurn &&
       !declinedSelfstarterPurchase && !explicitlyDeclinesPaidOffers) {
     return {
-      text: "Hier ist der hinterlegte Kaufweg für die persönliche 5-Wochen-Startphase: " +
-        OFFER_TRUTH.coachingEntry.checkoutUrl +
-        ". Bitte prüfe die verbindlichen Angaben im Checkout vor einer Bestellung.",
-      nextPhase: "info",
+      text: "Die 5-Wochen-Startphase kostet " + OFFER_TRUTH.coachingEntry.priceText + ". Vor dem Kauf ist ein Strategiegespräch erforderlich. Termin: " +
+        (bookingUrl || OFFER_TRUTH.strategyCall.schedulingUrl) +
+        ". Der Kaufweg für das 5-Wochen-Coaching wird erst nach einem Strategiegespräch von Jochen freigegeben.",
+      nextPhase: "booking_offered",
     };
   }
 
@@ -447,9 +447,8 @@ export function getPeteVerifiedTransactionAnswer(
         return hasSelfstarter
           ? { text: "Klar, hier ist der verifizierte Selbststarter-Link noch einmal: " +
               OFFER_TRUTH.selfstarter.productUrl, nextPhase: "selfstarter_offered" }
-          : { text: "Klar, hier ist der verifizierte Link zur 5-Wochen-Startphase noch einmal: " +
-              OFFER_TRUTH.coachingEntry.checkoutUrl +
-              ". Die verbindlichen Bedingungen siehst du vor dem Kauf im Checkout.", nextPhase: "info" };
+          : { text: "Der 5-Wochen-Checkout wird erst nach einem Strategiegespräch und Jochens Freigabe versendet. Hier kannst du das Gespräch buchen: " +
+              (bookingUrl || OFFER_TRUTH.strategyCall.schedulingUrl), nextPhase: "booking_offered" };
       }
     }
   }

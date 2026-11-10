@@ -348,29 +348,11 @@ export function getCoachingEntryPriceReply(_campaignId: string): string {
   );
 }
 
-export function getCoachingEntryDirectBuyReply(campaignId: string): string {
-  const campaign = getCampaignById(campaignId);
+export function getCoachingEntryDirectBuyReply(_campaignId: string): string {
   const offer = getCoachingEntryOffer();
-  const editableCheckoutUrl =
-    getSchedulingTextsConfig(campaignId).starterCheckoutUrl?.trim();
-
-  const checkoutUrl =
-    editableCheckoutUrl ||
-    campaign.texts.starterCheckoutUrl?.trim() ||
-    offer.checkoutUrl ||
-    "";
-
-  if (!checkoutUrl) {
-    return (
-      `Das ${offer.name} liegt bei ${offer.priceText}.\n` +
-      "Für den Start klären wir den nächsten Schritt kurz persönlich."
-    );
-  }
-
-  return (
-    `Klar. Das ${offer.name} liegt bei ${offer.priceText}.\n` +
-    `Hier kannst du direkt starten:\n${checkoutUrl}`
-  );
+  return "Das " + offer.name + " kostet " + offer.priceText +
+    ". Den Checkout gibt Jochen erst nach einem Strategiegespräch und persönlicher Freigabe heraus. " +
+    "Hier kannst du einen Termin buchen: https://calendly.com/eltern-fitundvital/strategiegespraech";
 }
 
 export function getSelfstarterReply(): string {
@@ -421,7 +403,8 @@ export function canSendCoachingEntryCheckoutDirectly(params: {
     return false;
   }
 
-  return true;
+  // No server-verified owner approval mechanism exists yet. Fail closed.
+  return false;
 }
 
 /** @deprecated Legacy aliases. "Starter" historically meant the 499 EUR coaching entry. */

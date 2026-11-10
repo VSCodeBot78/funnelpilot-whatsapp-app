@@ -85,7 +85,8 @@ export const OFFER_TRUTH = {
       "Power Walk & Call einmal pro Woche",
     ],
     startSelectableWithinDays: 14,
-    requiresHumanDecision: false,
+    // Checkout is enabled only after the strategy call and owner approval.
+    requiresHumanDecision: true,
   },
   // Calendly owner event 'Coaching / Strategie Gespräch', checked 2026-11-03:
   // active=true, is_paid=false. This confirms no payment during booking only.

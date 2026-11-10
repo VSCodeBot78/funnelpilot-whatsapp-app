@@ -520,7 +520,7 @@ export function getNaturalConversationReply(params: {
     return {
       text: (ketoInConversation ? "Keto kann in der 5-Wochen-Startphase individuell eingebaut werden.\n" : "") +
         priceFiveWeeks +
-        "\nWillst du dazu erst ein Strategiegespräch oder direkt mit der Startphase beginnen?",
+        "\nMöchtest du dazu ein unverbindliches Strategiegespräch vereinbaren?",
       phase: "coaching_close", track: ketoInConversation ? "keto" : "coaching",
     };
   }
@@ -543,9 +543,11 @@ export function getNaturalConversationReply(params: {
     if (!declinesDirectCheckout && matches(input, /\b(direkt|checkout|kaufen|loslegen|beginnen|link)\b/) &&
         (rejectsCall || !matches(input, /\b(gesprach|strategie|termin)\b/))) {
       return {
-        text: "Hier kannst du dir die 5-Wochen-Startphase ansehen und direkt starten:\n" +
-          OFFER_TRUTH.coachingEntry.checkoutUrl,
-        phase: "checkout_offered", track: ketoInConversation ? "keto" : "coaching",
+        text: "Die 5-Wochen-Startphase kostet " + OFFER_TRUTH.coachingEntry.priceText +
+          ". Den Checkout gibt Jochen erst nach einem Strategiegespräch und persönlicher Freigabe heraus." +
+          (bookingUrl ? " Hier kannst du ein Gespräch buchen: " + bookingUrl : ""),
+        phase: bookingUrl ? "booking_offered" : "info",
+        booking: Boolean(bookingUrl), track: ketoInConversation ? "keto" : "coaching",
       };
     }
     if (!rejectsCall && matches(input, /\b(termin|gesprach|strategie)\b/)) {
@@ -557,7 +559,7 @@ export function getNaturalConversationReply(params: {
     }
     return {
       text: "Die 5-Wochen-Startphase kann Jochen auf deine Situation abstimmen.\n" +
-        "Möchtest du persönlich darüber sprechen oder direkt starten?",
+        "Möchtest du dazu ein unverbindliches Strategiegespräch vereinbaren?",
       phase: "coaching_close", track: ketoInConversation ? "keto" : "coaching",
     };
   }

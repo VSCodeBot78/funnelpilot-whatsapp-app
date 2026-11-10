@@ -357,7 +357,8 @@ test("Phase 31 – real in-process endpoints connected into complete, provider-m
     assert.match(interest.body.reply ?? "", /499\s*€/);
     const direct = await chat(base, leadId, "Lieber direkt starten, kein Gespräch.");
     assert.equal(direct.status, 200);
-    assert.match(direct.body.reply ?? "", /portal\.nutrilize\.app/);
+    assert.doesNotMatch(direct.body.reply ?? "", /portal\.nutrilize\.app/);
+    assert.match(direct.body.reply ?? "", /Strategiegespräch|calendly\.com/i);
 
     const checkout = {
       leadId, campaignId: CAMPAIGN, event: "checkout.completed",

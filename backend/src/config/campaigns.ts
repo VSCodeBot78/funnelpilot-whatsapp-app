@@ -153,7 +153,7 @@ export const campaigns: Record<string, CampaignConfig> = {
       starterPriceText: OFFER_TRUTH.coachingEntry.priceText,
       starterCheckoutUrl: OFFER_TRUTH.coachingEntry.checkoutUrl ?? "",
       starterDirectBuyText:
-        `Klar. Das 5-Wochen-Coaching liegt bei ${OFFER_TRUTH.coachingEntry.priceText}.\nHier kannst du direkt starten:\n${OFFER_TRUTH.coachingEntry.checkoutUrl}`,
+        `Das 5-Wochen-Coaching kostet ${OFFER_TRUTH.coachingEntry.priceText}. Einen Checkout gibt Jochen erst nach einem Strategiegespräch frei. Termin: ${OFFER_TRUTH.strategyCall.schedulingUrl}`,
       starterPriceReply:
         `Das 5-Wochen-Coaching liegt bei ${OFFER_TRUTH.coachingEntry.priceText}.\nWenn persönliche Begleitung gerade nicht passt, gibt es den Selbststarter für ${OFFER_TRUTH.selfstarter.priceText}.`,
       longTermReply:

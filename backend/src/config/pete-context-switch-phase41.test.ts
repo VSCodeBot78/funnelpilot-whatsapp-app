@@ -126,12 +126,13 @@ test("Phase 41: coaching buyer is not sent checkout on an explicit negation", as
     assert.equal(answer.state.answers.naturalPhase, "info");
     assert.notEqual(answer.state.providerBooking.status, "booked");
   });
-  await t.test("Papa explicitly asks to buy, checkout remains possible", async () => {
+  await t.test("Papa explicitly asks to buy, checkout remains owner-gated", async () => {
     const id = "phase41-buy";
     await send(id, "Ich möchte die 5-Wochen-Begleitung buchen.");
     const answer = await send(id, "Ich möchte direkt kaufen, ohne Termin.");
-    assert.match(answer.text || "", /portal\.nutrilize\.app/);
-    assert.equal(answer.state.answers.naturalPhase, "checkout_offered");
+    assert.doesNotMatch(answer.text || "", /portal\.nutrilize\.app/);
+    assert.match(answer.text || "", /calendly\.com/);
+    assert.equal(answer.state.answers.naturalPhase, "booking_offered");
     assert.notEqual(answer.state.providerBooking.status, "booked");
   });
   await t.test("Mama wants a conversation before buying, not checkout", async () => {

@@ -210,8 +210,8 @@ test("Adversarial founder QA: realistic mother/father scripts recorded for revie
     if (index === 4) assert.doesNotMatch(transcript[1].pete ?? "", /Woran hakt es bei Keto bisher/);
     if (index === 5) assert.doesNotMatch(transcript[1].pete ?? "", /Knackpunkt|499 €/);
     if (index === 8) {
-      assert.match(transcript[1].pete ?? "", /portal\.nutrilize/);
-      assert.doesNotMatch(transcript[1].pete ?? "", /calendly/);
+      assert.doesNotMatch(transcript[1].pete ?? "", /portal\.nutrilize/);
+      assert.match(transcript[1].pete ?? "", /calendly/);
     }
     if (index === 10) {
       assert.match(transcript[0].pete ?? "", /calendly/);

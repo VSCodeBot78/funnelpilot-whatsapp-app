@@ -594,45 +594,34 @@ async function tryHandleExecutionImmediateBooking(
   };
 }
 
-/** Shared legacy checkout-versus-call transition; preserves both entry guards. */
+/** An unapproved 5-week buyer can ask for a strategy call, never a checkout. */
 function handleCoachingEntryDirectBuy(
-  campaignId: string,
+  _campaignId: string,
   state: ConversationState,
 ): EngineReply {
   resetPriceFlowState(state);
   patchFlags(state, {
     wantsDirectBuyCoachingEntry: true,
-    wantsDirectBuyStarter: true,
+    wantsDirectBuyStarter: false,
+    wantsBooking: true,
   });
-
-  const replyText = canSendCoachingEntryCheckoutDirectly({
-    hasInstallmentRequest: state.flags.askedInstallments,
-    wantsLongTermSupport: state.flags.wantsLongTermSupport,
-  })
-    ? buildCoachingEntryDirectBuyLeadReply(campaignId)
-    : buildBookingPrompt(campaignId);
-
-  const nextStep: FlowStepId = mustGoToCall({
-    hasInstallmentRequest: state.flags.askedInstallments,
-    wantsLongTermSupport: state.flags.wantsLongTermSupport,
-  })
-    ? "booking"
-    : state.currentStep;
-
-  if (nextStep === "booking") {
-    patchFlags(state, { wantsBooking: true });
-    setCurrentStep(state, "booking");
+  setCurrentStep(state, "booking");
+  const bookingUrl = getRuntimeBookingUrl({ state });
+  const replyText = "Das 5-Wochen-Coaching kostet " + OFFER_TRUTH.coachingEntry.priceText +
+    ". Den Kaufweg gibt Jochen erst nach einem Strategiegespräch persönlich frei." +
+    (bookingUrl ? " Hier kannst du ein Strategiegespräch buchen: " + bookingUrl :
+      " Wenn du interessiert bist, klärt Jochen den nächsten Schritt mit dir.");
+  if (bookingUrl) {
+    state.providerBooking = activateProviderBookingState({
+      current: state.providerBooking,
+      provider: inferBookingProviderFromUrl(bookingUrl),
+      bookingUrl, linkSentAt: nowIso(),
+    });
   }
-
   appendAssistantMessage(state, replyText);
   persistConversationState(state);
-
-  return {
-    text: replyText,
-    nextStep,
-    detectedIntent: "direct_buy_coaching_entry",
-    state,
-  };
+  return { text: replyText, nextStep: "booking",
+    detectedIntent: "direct_buy_coaching_entry", state };
 }
 
 /** Only a clear request for Jochen to own this chat overrides the booking path.
@@ -718,6 +707,21 @@ export async function processIncomingMessage(
     persistConversationState(state);
     return { text: urgent, nextStep: state.currentStep,
       detectedIntent: "unknown", state };
+  }
+
+  // Owner requests must win before deterministic sales, onboarding and
+  // offline paths. Preserve STOP, medical and privacy decision precedence.
+  if (isDirectChatTakeoverRequest(input.messageText)) {
+    const safety = decidePeteNextAction(input.messageText, {
+      campaign,
+      currentStep: state.currentStep,
+      lastAssistantText: getLastAssistantText(state),
+      bookingUrl: getRuntimeBookingUrl({ state }),
+    });
+    if (!["hard_stop", "medical_critical", "medical_soft",
+      "emotional_crisis", "legal_privacy"].includes(safety.decisionType)) {
+      return completeSilentChatTakeover(state);
+    }
   }
 
   if (input.conversationMode === "natural") {

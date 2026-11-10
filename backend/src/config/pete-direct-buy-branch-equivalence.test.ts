@@ -56,13 +56,16 @@ test("both legacy coaching-entry direct-buy triggers share identical safe state 
   await t.test("asked-price route and direct-intent route are behavior-identical", async () => {
     const afterPrice = await run("buy-price-branch", true);
     const direct = await run("buy-direct-intent-branch", false, {}, "direkt kaufen");
-    assert.deepEqual(afterPrice, direct);
+    assert.deepEqual({ ...afterPrice, reply: afterPrice.reply?.replace(/utm_content=[^&\s]+/, "utm_content=lead") },
+      { ...direct, reply: direct.reply?.replace(/utm_content=[^&\s]+/, "utm_content=lead") });
     assert.equal(direct.intent, "direct_buy_coaching_entry");
     assert.equal(direct.flags.directBuyEntry, true);
-    assert.equal(direct.flags.directBuyStarter, true);
+    assert.equal(direct.flags.directBuyStarter, false);
     assert.equal(direct.owner, "ai");
     assert.equal(direct.flags.stopped, false);
-    assert.equal(direct.bookingStatus, "inactive");
+    assert.equal(direct.bookingStatus, "awaiting_booking");
+    assert.doesNotMatch(direct.reply ?? "", /portal\.nutrilize\.app/);
+    assert.match(direct.reply ?? "", /Strategiegespr/i);
     assert.equal(requests, 0);
   });
   await t.test("installments require booking, not automatic checkout or confirmed slot", async () => {
@@ -70,7 +73,37 @@ test("both legacy coaching-entry direct-buy triggers share identical safe state 
     assert.equal(out.intent, "direct_buy_coaching_entry");
     assert.equal(out.step, "booking");
     assert.equal(out.flags.booking, true);
-    assert.equal(out.bookingStatus, "inactive");
+    assert.equal(out.bookingStatus, "awaiting_booking");
+    assert.doesNotMatch(out.reply ?? "", /portal\.nutrilize\.app/);
+    assert.equal(requests, 0);
+  });
+
+  await t.test("offline natural chat transfers to Jochen silently and stays human-owned", async () => {
+    const base = { leadId: "owner-human-offline", campaignId: DEFAULT_CAMPAIGN_ID, conversationMode: "natural" as const };
+    const first = await processIncomingMessage({ ...base, messageText: "Jochen soll den Chat persönlich übernehmen." });
+    assert.equal(first.text, null);
+    assert.equal(first.state.owner, "human");
+    assert.equal(first.state.flags.peteRuntimeHandoffActive, true);
+    assert.equal(first.replySuppressedReason, "human_owned");
+    const follow = await processIncomingMessage({ ...base, messageText: "Hallo, bist du da?" });
+    assert.equal(follow.text, null);
+    assert.equal(follow.state.owner, "human");
+  });
+
+  await t.test("negated human request does not seize ownership", async () => {
+    const out = await processIncomingMessage({
+      leadId: "owner-human-negated", campaignId: DEFAULT_CAMPAIGN_ID,
+      conversationMode: "natural", messageText: "Jochen soll den Chat nicht übernehmen.",
+    });
+    assert.notEqual(out.state.owner, "human");
+  });
+
+  await t.test("five-week natural buy remains call-first with no payment URL", async () => {
+    const out = await processIncomingMessage({
+      leadId: "five-week-natural-buy", campaignId: DEFAULT_CAMPAIGN_ID,
+      conversationMode: "natural", messageText: "Ich möchte die 5-Wochen-Startphase direkt kaufen.",
+    });
+    assert.doesNotMatch(out.text ?? "", /portal\.nutrilize\.app/);
     assert.equal(requests, 0);
   });
 });

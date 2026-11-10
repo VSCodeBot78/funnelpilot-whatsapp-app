@@ -161,14 +161,15 @@ test("Verified transaction: repeat only the last previously sent approved checko
   } as any);
   assert.match(check(OFFER_TRUTH.selfstarter.productUrl)?.text ?? "", /selbststarter/i);
   assert.ok(check(OFFER_TRUTH.selfstarter.productUrl)?.text.includes(OFFER_TRUTH.selfstarter.productUrl));
-  assert.ok(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
+  assert.ok(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.strategyCall.schedulingUrl));
+  assert.equal(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), false);
   assert.equal(check(OFFER_TRUTH.coachingEntry.checkoutUrl)?.text.includes(OFFER_TRUTH.selfstarter.productUrl), false);
   assert.equal(check("https://unverified.example/checkout"), null);
   assert.equal(check(OFFER_TRUTH.selfstarter.productUrl, "Schick mir den Link nicht nochmal."), null);
   assert.equal(check(OFFER_TRUTH.coachingEntry.checkoutUrl, "Schick mir den Selbststarter-Link nochmal."), null);
 });
 
-test("Verified five-week buyer gets checkout directly without forced strategy call", async () => {
+test("Five-week buyer sees verified strategy call, not unapproved checkout", async () => {
   const { getPeteVerifiedTransactionAnswer } = await import("../core/pete-conversation-quality.js");
   const { OFFER_TRUTH } = await import("../config/offer-truth.js");
   const answer = (text: string) => getPeteVerifiedTransactionAnswer(text,
@@ -180,7 +181,8 @@ test("Verified five-week buyer gets checkout directly without forced strategy ca
     "Mein Mann ist einverstanden, ich will die 5-Wochen-Startphase kaufen.",
   ]) {
     const result = answer(lead);
-    assert.ok(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), lead);
+    assert.ok(result?.text.includes(OFFER_TRUTH.strategyCall.schedulingUrl), lead);
+    assert.equal(result?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), false, lead);
     assert.doesNotMatch(result?.text ?? "", /Pflichttermin|Pflichtcall|zuerst ein Gespräch/i);
   }
   for (const lead of [
@@ -286,7 +288,8 @@ test("Pete real-model focus15 corrections stay deterministic where possible", as
     } as any);
   const direct = response("Ich will die 5-Wochen-Startphase, nicht den Selbststarter.",
     "Ich möchte jetzt ohne Verkaufscall direkt kaufen.");
-  assert.ok(direct?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl));
+  assert.ok(direct?.text.includes(OFFER_TRUTH.strategyCall.schedulingUrl));
+  assert.equal(direct?.text.includes(OFFER_TRUTH.coachingEntry.checkoutUrl), false);
   assert.doesNotMatch(direct?.text ?? "", /Pflichttermin|erst Jochen/i);
 
   const noConsent = response("Ich möchte die 5-Wochen-Startphase, muss aber meinen Mann fragen.",
