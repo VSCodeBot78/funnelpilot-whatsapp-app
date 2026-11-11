@@ -47,6 +47,15 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   await expect(page.getByRole("heading", { level: 2, name: /Dein nächster Schritt/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pete-Labor öffnen" })).toBeVisible();
   await expect(page.locator(".fp-app-shell")).toHaveCount(0);
+  const logo = page.locator(".v2-operational .v2-brand-logo");
+  await expect(logo).toBeVisible();
+  await expect.poll(async () => logo.evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+  const themeBefore = await page.locator(".v2-operational").getAttribute("data-theme");
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-brand-first-theme.png", fullPage: true });
+  await page.getByRole("button", { name: themeBefore === "dark" ? "Hellmodus einschalten" : "Dunkelmodus einschalten" }).click();
+  await expect(page.locator(".v2-operational")).toHaveAttribute("data-theme", themeBefore === "dark" ? "light" : "dark");
+  await expect(logo).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-brand-second-theme.png", fullPage: true });
   await page.screenshot({ path: "test-results/dashboard-v2-operational-home.png", fullPage: true });
 
 
@@ -88,6 +97,15 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   await expect(page.getByRole("heading", { level: 2, name: "Einstellungen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Einstellungen speichern" })).toBeEnabled();
   await page.screenshot({ path: "test-results/dashboard-v2-operational-settings.png", fullPage: true });
+
+  await navigation.getByRole("button", { name: "Einrichtung" }).click();
+  const setupDialog = page.getByRole("dialog", { name: /Funnel Pilot einrichten/ });
+  await expect(setupDialog).toBeVisible();
+  const setupMark = setupDialog.locator('img[src="/brand/pete-mark.webp"]');
+  await expect(setupMark).toBeVisible();
+  await expect.poll(async () => setupMark.evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expect(setupDialog.getByText("Schritt 1 von 6")).toBeVisible();
+  await page.screenshot({ path: "test-results/dashboard-v2-operational-setup-brand.png", fullPage: true });
 
   expect(requests.some((r) => r.method === "POST" && r.path === "/test-chat/desktop/session")).toBe(true);
   expect(requests.some((r) => /\/meta|\/webhook|\/ghosting\/send|\/conversations\/send/i.test(r.path))).toBe(false);
