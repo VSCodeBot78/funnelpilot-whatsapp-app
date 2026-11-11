@@ -602,6 +602,7 @@ export default function AppDashboard({ onOpenTestChat = () => {}, uiVersion = "v
           <SetupWizardModal
             startStep={xwingDryRunOpen ? 0 : onboardingStartStep}
             dryRun={xwingDryRunOpen}
+            v2Brand
             colors={colors}
             settings={xwingDryRunOpen ? xwingSettings : settings}
             onSettingsChange={xwingDryRunOpen ? setXwingSettings : setSettings}
