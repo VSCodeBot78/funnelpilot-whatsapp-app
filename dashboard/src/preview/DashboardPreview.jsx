@@ -241,11 +241,9 @@ export default function DashboardPreview({
         {...(mobileNav ? { role: "dialog", "aria-modal": true } : {})}
       >
         <div className="v2-brand">
-          <span className="v2-brand-mark">
-            <Icon name="spark" size={24} />
-          </span>
-          <div>
-            funnel<span>pilot</span>
+          <div className="v2-brand-identity">
+            <img className="v2-brand-wordmark" src="/brand/settingpilot-wordmark.webp"
+              width="210" height="62" alt="SettingPilot" decoding="async" />
             <small>Dein Workspace mit Pete</small>
           </div>
           <button

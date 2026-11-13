@@ -28,7 +28,7 @@ export function initialSetupStep(search = "") {
 
 export default function SetupWizardModal({
   colors, settings, onSettingsChange, onSaveSettings, onSaveCoachDraft, onOpenTestChat,
-  onOpenSection, onClose, onFinish = onClose, onStartDryRun, startStep = 0, dryRun = false,
+  onOpenSection, onClose, onFinish = onClose, onStartDryRun, startStep = 0, dryRun = false, v2Brand = false,
 }) {
   const [stage, setStage] = useState(() =>
     !dryRun && new URLSearchParams(window.location.search).get("setup") === "connections"
@@ -371,6 +371,17 @@ export default function SetupWizardModal({
         <div style={{ overflowY: "auto", padding: "22px 28px", flex: 1, minHeight: 0 }}>
           {stage === 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 16 }}>
             <div style={{ ...box, background: "#eaf3ff" }}>
+              {v2Brand && <div style={{ display: "flex", alignItems: "center", gap: 11,
+                marginBottom: 16, paddingBottom: 13, borderBottom: "1px solid #d4deeb" }}>
+                <img src="/brand/pete-mark.webp" width="44" height="44" alt=""
+                  aria-hidden="true" decoding="async" style={{ objectFit: "contain", flexShrink: 0 }} />
+                <div style={{ lineHeight: 1.2 }}>
+                  <div style={{ fontSize: 16, fontWeight: 850, letterSpacing: "0.035em", color: "#172335" }}>
+                    FUNNEL <span style={{ color: "#b65d1e" }}>PILOT</span>
+                  </div>
+                  <small style={{ fontSize: 11, color: "#52657e" }}>Dein persönlicher Workspace mit Pete</small>
+                </div>
+              </div>}
               <h2 style={{ margin: "0 0 12px", fontSize: 26, color: "#0f1b3d" }}>Willkommen bei Funnel Pilot!</h2>
               <p style={{ ...small, fontSize: 15 }}>
                 Richte deine Marke, Angebote, Antworten und Verbindungen Schritt für Schritt ein.

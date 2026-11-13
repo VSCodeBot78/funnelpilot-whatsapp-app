@@ -112,9 +112,8 @@ export function CommandCenter({
           </div>
         </div>
         <div className="v2-hero-note">
-          <span className="v2-pete-symbol">
-            <Icon name="spark" size={30} />
-          </span>
+          <img className="v2-pete-mascot" src="/brand/pete-mascot.webp"
+            width="74" height="81" alt="" aria-hidden="true" decoding="async" />
           <strong>Pete, dein KI-Setter</strong>
           <p>Gespeicherte Zustände statt geschätzter Kennzahlen.</p>
           <span className="v2-hero-rule" />

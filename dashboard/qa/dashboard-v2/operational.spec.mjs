@@ -46,6 +46,9 @@ test("operational V2 exposes editable campaigns and Pete in the same workspace",
   // Regression: the previous attempt exposed the legacy 1.0 dashboard under a V2 shell.
   await expect(page.getByRole("heading", { level: 2, name: /Dein nächster Schritt/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pete-Labor öffnen" })).toBeVisible();
+  // The owner-approved SettingPilot wordmark and Pete mascot must load as real image assets.
+  await expect(page.locator(".v2-brand-wordmark")).toHaveJSProperty("naturalWidth", 355);
+  await expect(page.locator(".v2-hero-note .v2-pete-mascot")).toHaveJSProperty("naturalWidth", 112);
   await expect(page.locator(".fp-app-shell")).toHaveCount(0);
   await page.screenshot({ path: "test-results/dashboard-v2-operational-home.png", fullPage: true });
 

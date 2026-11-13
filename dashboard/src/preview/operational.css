@@ -285,3 +285,48 @@
   .v2-operational .v2-native-lab > div { padding: 0 12px 12px; }
   .v2-operational .v2-native-lab .v2-native-section-head { margin: 0 -12px 16px; }
 }
+
+/* Owner brand mark: compact, responsive, and compatible with the existing themes. */
+.v2-operational .v2-brand-logo {
+  display: block;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 9px;
+}
+.v2-operational .v2-brand > div {
+  min-width: 0;
+  overflow-wrap: normal;
+}
+@media (max-width: 760px) {
+  .v2-operational .v2-brand-logo {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+}
+
+/* Owner-approved SettingPilot beta brand: logo and Pete card only. */
+.v2-operational .v2-brand-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.v2-operational .v2-brand-wordmark {
+  display: block;
+  width: min(100%, 210px);
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.v2-operational .v2-brand-identity small {
+  margin-top: 1px;
+}
+.v2-operational .v2-pete-mascot {
+  display: block;
+  width: 74px;
+  height: 81px;
+  object-fit: contain;
+  border-radius: 11px;
+  margin-bottom: 12px;
+}
